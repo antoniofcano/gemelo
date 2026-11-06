@@ -1,7 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: lienzo, visor, renderer, scene, camera, SRGB, LUZ_SOL, LUZ_CIELO, hemi, sol, texColor, colorVertSRGB, colorCss, exag, modo, calidad
-// Consume: 01_datos ($, EXT, FOG0, FOG1), 01a_aparato (Aparato), 02f_xr_perillas (XrPerillas), 02h_render (Render), 05_nube (nube),
-//   08_marcadores (capas), 15_tiempo (pintaFondoTiempo)
+// Consume: 01_datos ($, EXT, FOG0, FOG1), 01a_aparato (Aparato), 02f_xr_perillas (XrPerillas), 02h_render (Render), 15_tiempo (pintaFondoTiempo)
 // ===============================================================================
   // ---- escena
   var lienzo = $("lienzo"), visor = $("visor");

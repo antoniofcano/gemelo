@@ -1,9 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D, $), 01a_aparato (Aparato), 02c_componentes (ConfigPuro, Componentes), 02d_laminas (LaminasPuro, Laminas),
-//   02e_entidades (Entidades), 03_escena (visor, scene, camera), 08_marcadores (pendiente), 12_paseo (persona, teclas),
-//   14_historia (hist, marca, lista, aviso), 15_tiempo (hace), 16_vida (mira), 29_vr (VRX, panel, ficha, PanelVR), 31_hud (Hud),
-//   33_ajustes (Ajustes)
+// Consume: 01_datos (D), 01a_aparato (Aparato), 02c_componentes (ConfigPuro, Componentes), 02d_laminas (LaminasPuro, Laminas),
+//   02e_entidades (Entidades), 03_escena (visor, scene, camera), 29_vr (VRX, PanelVR), 31_hud (Hud), 33_ajustes (Ajustes)
 // Nota: Componente «corro-voz» (F3k-2 y F3k-3, ADR-0032; decisiones 205-212, provisionales): la voz por cercanía en la visita libre, en corros con aceptación. Solo se registra; nadie lo nombra. Sin servidor, sin LiveKit (503) o con el interruptor de la oficina apagado no crea nada. Con él: Configuración → Voz → «Voz por cercanía» (apagada por defecto; el aviso «cercania» v1 con la declaración de mayor de edad ANTES de activarla), invitar desde el avatar y desde Gente a menos de 8 m (Presencia.accionesPersona), la invitación con «Aceptar» / «Ahora no» (foco en «Ahora no»; en VR, una lámina), la lista del corro con quién habla (aria-live y un halo), silenciar, bloquear, avisar a la oficina y salir con las rutas de la api, el icono de corro con voz para quien no está (Entidades, tipo «corro») y las salidas solas (lejos, cambio de sala, vista aérea). La voz la pone 45_voz.js (Voz.entraCorro) y el micro 47_habla.js. Emite «corro:estado»; escucha «voz:habla», «voz:estado» y «depura:lineas». ?corro=0 lo apaga. Publica window.__corro (pruebas). Todo con textContent. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/corro.test.js.
 // ===============================================================================
   // ---------- la voz por cercanía en la visita libre, en corros (F3k-2 y F3k-3; ADR-0032, decisiones 205-212; contratos/presencia.md «Los corros»,

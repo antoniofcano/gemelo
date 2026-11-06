@@ -1,8 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 02c_componentes (Bus, Componentes), 02d_laminas (Laminas), 02e_entidades (EntidadesPuro, Entidades, Usables),
-//   03_escena (lienzo, camera, modo), 06_arboles (tronco), 08_marcadores (capas), 09_camara (suelta, elige), 12_paseo (persona), 15_tiempo (hace),
-//   16_vida (mira), 29_vr (VRX, ficha, fichaB, PanelVR)
+// Consume: 02c_componentes (Componentes), 02d_laminas (Laminas), 02e_entidades (EntidadesPuro, Entidades, Usables), 03_escena (camera),
+//   29_vr (VRX, PanelVR)
 // Nota: Componente «fichas-mundo» (EV2-A1, ?ui=capas, apagado por defecto): en VR, la ficha de un olivo o de una baliza colgada junto a lo que describe con Laminas (encima de la copa, girándose hacia quien mira, como mucho 3), en lugar de las láminas de 29_vr que siguen a la cabeza (presentador encadenado de Usables y PanelVR.tapa). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/fichas_mundo.test.js.
 // ===============================================================================
   // ---------- EV2-A1: las fichas en el mundo (doc/sistema/VIABILIDAD-INTERACCION.md §A.5, paso 2), solo con ?ui=capas (apagado por defecto).

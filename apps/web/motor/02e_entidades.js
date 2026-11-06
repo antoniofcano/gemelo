@@ -1,7 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: EntidadesPuro, Entidades, Usables
-// Consume: 01_datos ($), 02_mundo (suelo, copas), 02c_componentes (Bus), 03_escena (lienzo, scene, modo), 09_camara (suelta, elige),
-//   12_paseo (paseando, persona, primera), 14_historia (lista), 16_vida (quita, quad, enDron, dron), 29_vr (VRX, ficha)
+// Consume: 01_datos ($), 02c_componentes (Bus), 03_escena (lienzo, scene, modo), 12_paseo (paseando, pp), 16_vida (enDron, dr), 29_vr (VRX)
 // Nota: Servicio del núcleo (ADR-0023, C7): EntidadesPuro, Entidades (registro de tipos de cosas del mundo con id estable; cada módulo registra su tipo y responde por sus cosas) y Usables (la selección única para toque, clic, rayo VR y cercanía, la ficha común #ficha, el anillo de resaltado y los eventos usable:*). Publica además window.__usables (pruebas). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/entidades.test.js.
 // ===============================================================================
   // ---------- entidades y usables (ADR-0023, C7; doc/sistema/COMPONENTES.md §6): las cosas del mundo con un id estable y UNA sola forma de elegirlas.

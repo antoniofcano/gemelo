@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: HazasPuro, Hazas
-// Consume: 01_datos (D, $), 02_mundo (suelo), 02c_componentes (Bus), 02e_entidades (Entidades, Usables), 03_escena (camera, exag),
-//   09_camara (objetivo, elige), 12_paseo (paseando, primera), 13_parcelas (parcelas), 14_historia (lista), 15_tiempo (lindes), 29_vr (ficha)
+// Consume: 01_datos (D), 02_mundo (suelo), 02c_componentes (Bus), 02e_entidades (Entidades, Usables), 03_escena (camera, exag),
+//   09_camara (objetivo), 12_paseo (paseando, pp), 15_tiempo (lindes)
 // Nota: Sin D.base /teselas/… ni ?api= no pide nada ni crea nada. No dibuja la linde: la da con Hazas.lindes() y avisa con «hazas:cambia» (la dibuja 44_lindes.js); el trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/hazas.test.js.
 // ===============================================================================
   // ---------- las hazas en el mundo (F1, el «3c»): sus límites (los dibuja sobre el suelo el componente «lindes», 44_lindes.js, con Hazas.lindes() y el evento

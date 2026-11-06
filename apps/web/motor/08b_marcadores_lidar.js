@@ -1,8 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
 // Consume: 01_datos ($), 02_mundo (suelo, copas, cIn, marc), 02c_componentes (Componentes), 02g_vr_presupuesto (VrPresupuesto),
-//   02j_estaticos (Estaticos), 03_escena (scene, colorCss, exag, modo), 05_nube (nube), 08_marcadores (gLinde, marcadores, listo, aplica, capas),
-//   09_camara (suelta), 13_parcelas (parcelas), 16_vida (esfera)
+//   02j_estaticos (Estaticos), 03_escena (scene, colorCss, exag), 08_marcadores (listo)
 // ===============================================================================
 
   // ---------- los marcadores de la nube LiDAR (componente «marcadores-lidar», ADR-0023, C10 tercera tanda): las copas detectadas (octaedros), los olivos guardados en

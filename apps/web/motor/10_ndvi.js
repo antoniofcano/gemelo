@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: NDV, ndviIdx, rampa, pintaNdvi, ndviRel
-// Consume: 01_datos (D, $, b64, i16, ANCHO, ALTO), 02_mundo (tinte, ndLo, ndHi), 02c_componentes (Bus), 03_escena (modo), 05_nube (nube),
-//   06_arboles (gArboles, gFollaje, gSombras), 08_marcadores (aplicaLuego), 15_tiempo (hace)
+// Consume: 01_datos (D, $, b64, i16, x0, yN, ANCHO, ALTO), 02_mundo (tinte, ndLo, ndHi), 02c_componentes (Bus), 03_escena (modo), 05_nube (nube),
+//   06_arboles (gArboles, gFollaje, gSombras), 08_marcadores (aplicaLuego)
 // ===============================================================================
   // ---------- NDVI de Sentinel-2 (10 m), con escala relativa a la parcela (como hace Vigía). Esto es el núcleo: los datos, la fecha del campo y la escala, que leen el
   // tinte de los árboles, la hierba, la estación y la VR. La capa que lo pinta sobre el terreno, su leyenda y su gráfica son el componente «capa-ndvi» (10b_capa_ndvi.js):

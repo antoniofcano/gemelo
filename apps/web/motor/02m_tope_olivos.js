@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: TopeOlivos
-// Consume: 02l_tope_tiles (TopeTilesPuro), 14_historia (hist, rango), 15_tiempo (nivel, hace), 29_vr (VR_PERFILES)
+// Consume: 02l_tope_tiles (TopeTilesPuro)
 // ===============================================================================
   // ---------- Q0n: los olivos que dibuja el propio motor (07b: nivel 0 de siempre, niveles 1 y 2; 07ab: generados; 07ac: lejanos de la escalera)
   // también respetan el tope de triángulos de cada nivel de VR (doc/sistema/VR.md#tope-de-triángulos-de-los-olivos-del-motor-q0n).

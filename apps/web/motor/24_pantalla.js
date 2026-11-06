@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: Menu, Pantalla, TR, suave, iniciaTransicion, transEntrada, aterriza, iniciaSalida, transSalida
-// Consume: 01_datos ($), 02c_componentes (Bus), 03_escena (visor, camera, modo), 09_camara (pon), 12_paseo (paseando, persona), 15_tiempo (hace),
-//   16_vida (altSuelo, quita), 22_huellas (sueloSeco), 31_hud (Hud), 90_final (tamano)
+// Expone: Menu, TR, iniciaTransicion, transEntrada, iniciaSalida, transSalida
+// Consume: 01_datos ($), 02c_componentes (Bus), 03_escena (camera), 12_paseo (paseando, persona, pp), 16_vida (altSuelo), 22_huellas (sueloSeco),
+//   31_hud (Hud), 90_final (tamano)
 // ===============================================================================
   // ---------- la página ES el visor (decisión 83): el menú (☰ o Esc) y la pantalla completa de verdad
   // El menú es un <dialog> nativo y modal: atrapa el foco y Esc lo cierra solo. Pestañas con el patrón ARIA (flechas, Inicio, Fin).

@@ -1,7 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: XrPerillas
-// Consume: 02m_tope_olivos (TopeOlivos), 03_escena (lienzo, renderer), 08_marcadores (aplica), 14_historia (hist, tabla, rango),
-//   15_tiempo (nivel, hace, anuncia), 29_vr (VR_PERFILES)
+// Consume: 02m_tope_olivos (TopeOlivos), 03_escena (renderer), 14_historia (rango)
 // ===============================================================================
   // ---------- perillas de rendimiento VR por URL (Q0b; doc/sistema/VR.md#perillas-de-rendimiento-por-url). Para probar en el casco sin recompilar:
   //   ?xrfov=0..1 (foveación; defecto 1) · ?xrescala=0.5..1.5 (framebufferScaleFactor; defecto 0,9) · ?xrhz=72|80|90|120 (frecuencia pedida; defecto 72, solo si el casco la anuncia)

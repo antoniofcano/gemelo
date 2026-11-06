@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: D, $, tinta, fmt, b64, i16, RES, x0, yN, ANCHO, ALTO, EXT, FOG0, FOG1, DIST_MAX, DIST_INI, DEPURA, VRP, FACTOR_R8, FACTOR_R8_GEN,
 //   factorCopaDeConfig, ESC_R8
-// Consume: 02_mundo (Mundo, suelo), 02c_componentes (Config), 05_nube (nube), 15_tiempo (nivel)
+// Consume: 02c_componentes (Config)
 // Nota: Abre la IIFE que cierra 99_cierre.js y activa "use strict". Primer módulo: define D (los datos de la finca) y las utilidades.
 // ===============================================================================
 

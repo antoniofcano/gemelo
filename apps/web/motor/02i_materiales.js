@@ -1,7 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Materiales
-// Consume: 02_mundo (copas), 02f_xr_perillas (XrPerillas), 02h_render (Render), 03_escena (modo), 15_tiempo (hace), 16_vida (quita),
-//   24_pantalla (suave)
+// Consume: 02f_xr_perillas (XrPerillas), 02h_render (Render)
 // ===============================================================================
   // ---------- AG-3a / F1 (doc/sistema/MULTIVIEW.md §4, ADR-0031): la fábrica ÚNICA de los materiales propios del motor.
   // Todo sombreador propio pasa por aquí: los ShaderMaterial y los materiales de three con su parche (onBeforeCompile). Hoy devuelve EXACTAMENTE lo de siempre

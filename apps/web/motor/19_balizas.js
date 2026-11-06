@@ -1,9 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: colocaBalizas, avisoBaliza, dibujaBalizasMini, actualizaBalizas
-// Consume: 01_datos (D, $), 02_mundo (suelo, copas), 02c_componentes (Bus), 02e_entidades (Entidades, Usables), 02i_materiales (Materiales),
-//   02j_estaticos (Estaticos), 03_escena (visor, scene, camera, exag), 09_camara (objetivo, suelta, elige), 12_paseo (paseando, persona, teclas),
-//   12b_llegada (Llegada), 13_parcelas (parcelas), 13b_hazas (HazasPuro), 14_historia (VIVO, marca, aviso), 15_tiempo (num1, esc, hace),
-//   16_vida (tVida, enQuad, quad, dron), 26_presencia (Encuentro, sitioJunto), 29_vr (VRX, ficha)
+// Consume: 01_datos (D, $), 02_mundo (suelo), 02c_componentes (Bus), 02e_entidades (Entidades, Usables), 02i_materiales (Materiales),
+//   02j_estaticos (Estaticos), 03_escena (visor, scene, camera, exag), 09_camara (objetivo), 12_paseo (paseando, pp), 12b_llegada (Llegada),
+//   13_parcelas (parcelas), 13b_hazas (HazasPuro), 14_historia (OT, VIVO), 15_tiempo (num1, esc), 16_vida (tVida, enQuad), 24_pantalla (TR),
+//   26_presencia (Encuentro, sitioJunto), 29_vr (VRX)
 // Nota: Registra el tipo baliza en Entidades (C7). Publica además window.__vrBalizas (pruebas VR: el pie de cada columna de luz).
 // ===============================================================================
   // ---------- las balizas: una por parcela, con lo que OlivarTrack sabe de ella; en el paseo, al acercarte, sale su ficha

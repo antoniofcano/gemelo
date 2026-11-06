@@ -1,8 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: mini, MW, MH, Minimapa, actualizaMinimapa
-// Consume: 01_datos (D, $, ANCHO, ALTO), 02_mundo (Mundo, cIn), 02e_entidades (Entidades, Usables), 03_escena (modo), 08_marcadores (capas),
-//   12_paseo (paseando, persona), 13_parcelas (parcelas), 14_historia (aviso), 15_tiempo (esc), 16_vida (enQuad, quita, mira, quad, enDron, dron),
-//   19_balizas (avisoBaliza, dibujaBalizasMini), 29_vr (panel, ficha), 34_movibles (Movibles), 90_final (cuadro)
+// Expone: Minimapa, actualizaMinimapa
+// Consume: 01_datos (D, $, x0, yN, ANCHO, ALTO), 02_mundo (Mundo, cIn), 02e_entidades (Entidades, Usables), 08_marcadores (capas),
+//   12_paseo (paseando, pp), 15_tiempo (esc), 16_vida (enQuad, enDron, dr), 19_balizas (avisoBaliza, dibujaBalizasMini), 34_movibles (Movibles)
 // ===============================================================================
   // ---------- el minimapa del paseo: la ortofoto vista desde arriba con tú, tu rastro, el dron y los conejos (M o un toque cambia el zoom)
   var mini = { cv: $("mapita"), cerca: false, oculto: false, rastro: [], t: 0, pts: [], bal: [], sel: null }, MW = 240, MH = Math.round(MW * ALTO / ANCHO);

@@ -1,7 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: ComponentesPuro, Reparto, Bus, Pausa, ConfigPuro, Teclas, Componentes, Config
-// Consume: 01_datos (D, $), 02b_cola (Cola), 08_marcadores (listo, aplica, capas), 09_camara (suelta, pon), 12_paseo (teclas, primera),
-//   14_historia (marca, tabla, lista), 15_tiempo (nivel, hace), 16_vida (quita), 28_depura (dep), 90_final (bucle)
+// Consume: 01_datos (D), 08_marcadores (listo), 09_camara (pon), 16_vida (quita), 28_depura (dep)
 // Nota: Núcleo de componentes (ADR-0023): ComponentesPuro, Bus (catálogo en contratos/eventos.json), Teclas, Componentes (registro, encendido URL > servidor > defecto, fases del bucle) y Config (GET /api/config del mismo origen al cargar, solo con D.base /teselas/… o ?api=; caída al código; contratos/config.schema.json). Publica además window.__componentes y window.__config (pruebas y ?debug). El trozo [puro:…] lo evalúa en Node pruebas/guardianes/componentes.test.js.
 // ===============================================================================
   // ---------- núcleo de componentes (ADR-0023, doc/sistema/COMPONENTES.md §3): el registro, el bus de eventos y las teclas.

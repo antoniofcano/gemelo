@@ -1,10 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: tVida, enQuad, vq, gFauna, esfera, altSuelo, quita, mira, quad, temaEstela, velPaseo, giroPaseo, ponQuad, vidaPaseo, enDron, dr, dron,
-//   ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale, actualizaVida
-// Consume: 01_datos (D, $), 02_mundo (suelo, copaAlta, copas), 02c_componentes (Bus), 02i_materiales (Materiales),
-//   03_escena (scene, camera, sol, exag, modo), 07_follaje (matSombra, geoSombra), 12_paseo (paseando, persona, teclas, primera, camPos),
-//   12b_llegada (Llegada), 15_tiempo (calma, nivelEn, texBrillo, cur, meta, ins, nivel, temaBarrera, num1, rumbo),
-//   22_huellas (pendFactor, quadInc, inclinaQuad)
+// Expone: tVida, enQuad, vq, gFauna, altSuelo, quita, mira, quad, temaEstela, velPaseo, giroPaseo, ponQuad, vidaPaseo, enDron, dr, dron, ponDron,
+//   cicloVista, dronMando, camaraDron, vidaEntra, vidaSale, actualizaVida
+// Consume: 01_datos (D, $), 02_mundo (suelo, copaAlta), 02c_componentes (Bus), 02i_materiales (Materiales), 03_escena (scene, camera, exag),
+//   07_follaje (matSombra, geoSombra), 12_paseo (paseando, persona, teclas, primera, pp, camPos), 12b_llegada (Llegada),
+//   15_tiempo (nivelEn, texBrillo, cur, meta, ins, temaBarrera, num1, rumbo), 22_huellas (pendFactor, quadInc, inclinaQuad)
 // ===============================================================================
   // ---------- la vida del olivar: el quad con estela de luz (Tron) y el dron para el paseo (los pájaros y los conejos son el componente «fauna-olivar», 16b_fauna.js)
   var tVida = 0, enQuad = false, vq = 0, gFauna = new THREE.Group(); gFauna.name = "fauna"; scene.add(gFauna);

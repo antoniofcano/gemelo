@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D, $), 02_mundo (suelo), 02c_componentes (Componentes), 02e_entidades (Entidades, Usables), 03_escena (scene, exag),
-//   09_camara (elige), 13_parcelas (parcelas), 14_historia (lista), 29_vr (ficha)
-// Nota: Componente «trabajo-hoy» (F4b, W1): un tractor ilustrativo en cada haza con tarea en curso (DEDUCIDO), APAGADO por defecto (?trabajo=1). Solo se registra; nadie lo nombra. No pide nada: escucha el evento mundo:hoy. De lo que la derivación cree que consume, solo D, suelo, Componentes, Entidades, scene y exag son usos: $, Usables, elige, parcelas, lista, quita y ficha son palabras de sus textos o nombres propios. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/trabajo_hoy.test.js.
+// Consume: 01_datos (D), 02_mundo (suelo), 02c_componentes (Componentes), 02e_entidades (Entidades), 03_escena (scene, exag),
+//   13_parcelas (parcelas), 29_vr (ficha)
+// Nota: Componente «trabajo-hoy» (F4b, W1): un tractor ilustrativo en cada haza con tarea en curso (DEDUCIDO), APAGADO por defecto (?trabajo=1). Solo se registra; nadie lo nombra. No pide nada: escucha el evento mundo:hoy. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/trabajo_hoy.test.js.
 // ===============================================================================
   // ---------- trabajo en vivo, paso estático (F4b, tarea W1): un tractor de juguete en la haza que OlivarTrack dice que tiene una tarea en curso. DEDUCIDO (regla 5):
   // lo único que se sabe es «en esta parcela hay una tarea abierta»; no se sabe quién, cuántas personas, a qué hora, ni dónde dentro de la haza. NADA POR PERSONA: no se

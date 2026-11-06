@@ -1,8 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D, $), 02_mundo (Mundo), 02c_componentes (Bus, Teclas, Componentes), 02d_laminas (Laminas),
-//   03_escena (visor, camera, sol, modo), 09_camara (suelta), 12_paseo (paseando), 14_historia (FINCA, marca, aviso),
-//   15_tiempo (ahoraMs, calma, lluvia, nivel, rumbo, hace, TiempoVivo), 16_vida (mira), 29_vr (VRX, panel, ficha, PanelVR), 31_hud (Hud)
+// Consume: 02c_componentes (Teclas, Componentes), 02d_laminas (Laminas), 03_escena (camera), 12_paseo (paseando),
+//   15_tiempo (ahoraMs, nivel, TiempoVivo), 29_vr (VRX, PanelVR), 31_hud (Hud)
 // Nota: Componente «fichas-tiempo» (ADR-0023): solo se registra (Componentes.registra); nadie lo nombra. Montado, publica window.__fichaTiempo (pruebas), la tecla P, la fila del tiempo del panel VR y escucha «prevision:alterna». Lee TiempoVivo si el motor lo expone; si no, un respaldo simulado. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/fichas_tiempo.test.js.
 // ===============================================================================
   // ---------- la previsión del tiempo como lámina en el mundo (doc/sistema/UX-FINCA-JUEGO.md §4.11): lo que en pantalla es la ventana Tiempo, en VR y en el

@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D), 02_mundo (copas, cIn), 02c_componentes (Componentes), 02k_fusiona (fusionaGeometrias), 03_escena (scene, camera, exag),
-//   07_follaje (matSombra, geoSombra), 12_paseo (paseando), 15_tiempo (nivelEn, cur),
-//   16_vida (tVida, enQuad, gFauna, altSuelo, mira, actualizaVida), 17_minimapa (Minimapa)
+// Consume: 01_datos (D), 02_mundo (copas, cIn), 02c_componentes (Componentes), 02k_fusiona (fusionaGeometrias), 03_escena (camera, exag),
+//   07_follaje (matSombra, geoSombra), 12_paseo (paseando, pp), 15_tiempo (nivelEn, cur), 16_vida (tVida, enQuad, gFauna, altSuelo, mira),
+//   17_minimapa (Minimapa)
 // ===============================================================================
 
   // ---------- la fauna del olivar (componente «fauna-olivar», ADR-0023, C10 segunda tanda): las aves (dos bandadas que dan vueltas de día, ocho posadas que se

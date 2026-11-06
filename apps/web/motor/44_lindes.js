@@ -1,8 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 02_mundo (Mundo, suelo), 02c_componentes (Componentes), 02i_materiales (Materiales), 03_escena (lienzo, exag), 08_marcadores (gLinde),
-//   09_camara (elige), 13_parcelas (parcelas), 13b_hazas (Hazas), 14_historia (lista), 15_tiempo (hace, lindes), 17_minimapa (mini, Minimapa),
-//   29_vr (ficha)
+// Consume: 02_mundo (Mundo, suelo), 02c_componentes (Componentes), 02i_materiales (Materiales), 03_escena (exag), 08_marcadores (gLinde),
+//   13b_hazas (Hazas), 17_minimapa (Minimapa)
 // Nota: Componente «lindes-hazas» (A4, ADR-0023; decisiones 12, 13, 95 y 139): la linde de las hazas pegada al relieve, la tuya destacada y las ajenas discretas, con LineSegments2/LineMaterial de three (import() al montarse; 2 llamadas, 6 triángulos por tramo, tope de 8.000 tramos). Solo se registra; nadie lo nombra. También pinta las hazas en el minimapa (A4b, Minimapa.capa, la casilla «Linde» las apaga). ?lindes=0 lo apaga todo. Lee Hazas.lindes() al oír «hazas:cambia»; da su línea de ?debug por «depura:lineas». Publica window.__lindes (pruebas). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/lindes.test.js.
 // ===============================================================================
   // ---------- la linde de las hazas en el mundo (A4, el «3c»; ADR-0014, decisiones 12, 13, 95 y 139): la de las tuyas destacada (ámbar, gruesa, opaca), las de

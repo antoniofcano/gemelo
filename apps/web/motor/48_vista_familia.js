@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D, $), 02c_componentes (Componentes), 03_escena (modo), 13_parcelas (parcelas), 13b_hazas (HazasPuro), 32b_capas (Capas)
+// Consume: 01_datos (D), 02c_componentes (Componentes), 13b_hazas (HazasPuro)
 // Nota: Componente «vista-familia» (U9; petición de Antonio, 2026-11-02): la vista simple para las familias. Solo se registra; nadie lo nombra. Con rol de familia (GET /api/sesion → rol distinto de oficina y admin) o ?vista=familia oculta el selector de modo (queda Gemelo), «Guardados» y «Desfase» de Capas y de Mapa y rotula «Copas del LiDAR» como «Olivos»; oficina, admin y sin sesión lo ven todo; ?vista=completa fuerza la vista completa y ?vista=0 apaga el componente. Presupuesto 0; libera() lo restaura todo. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/vista_familia.test.js.
 // ===============================================================================
   // ---------- la vista simple para las familias (U9; petición de Antonio, 2026-11-02): «Capas y vista» y «Mapa y parcelas» están bien para la oficina, pero una

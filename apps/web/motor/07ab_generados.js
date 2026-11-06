@@ -1,9 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Escalera, Generados
-// Consume: 01_datos (D, VRP, FACTOR_R8_GEN, factorCopaDeConfig), 01a_aparato (Aparato), 02_mundo (suelo, copas), 02c_componentes (Config),
-//   02i_materiales (Materiales), 03_escena (renderer, scene, camera, colorVertSRGB, exag), 06_arboles (gArboles), 08_marcadores (aplica),
-//   09_camara (suelta), 12_paseo (paseando, primera), 14_historia (hist, lista), 15_tiempo (parcheTiempo, nivel, hace), 16_vida (esfera, mira),
-//   29_vr (VR_PERFILES)
+// Consume: 01_datos (D, VRP, FACTOR_R8_GEN, factorCopaDeConfig), 01a_aparato (Aparato), 02_mundo (suelo), 02c_componentes (Config),
+//   02i_materiales (Materiales), 03_escena (renderer, scene, camera, exag), 06_arboles (gArboles), 12_paseo (paseando, pp),
+//   14_historia (hist, lista), 15_tiempo (parcheTiempo, nivel)
 // ===============================================================================
   // ---------- olivos GENERADOS cerca (ADR-0017, decisiones 26-28, 34 y 52), POR DEFECTO (O10a, Antonio 2026-11-02): sin ?olivos=, si la finca trae copas_param y copas_id (y el aparato puede), se comporta como con ?olivos=gen;
   // ?olivos=0 (o =no) lo apaga y el motor dibuja lo de siempre. La decisión es UNA función pura (GeneradosPuro.activo, abajo); si el constructor no está en el build o falla al cargar, lo de siempre sin avisar en consola (se dice en ?debug).

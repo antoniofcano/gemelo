@@ -1,8 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D), 02_mundo (Mundo, suelo), 02b_cola (Cola), 02c_componentes (Componentes),
-//   02g_vr_presupuesto (VrPresupuestoPuro, VrPresupuesto), 02i_materiales (Materiales), 03_escena (scene, exag), 04b_escena3d (Escena3D),
-//   04d_sombreado_tiles (matSuelo), 15_tiempo (lluvia), 90_final (bucle)
+// Consume: 01_datos (D), 02_mundo (Mundo), 02c_componentes (Componentes), 02g_vr_presupuesto (VrPresupuestoPuro, VrPresupuesto),
+//   02i_materiales (Materiales), 03_escena (scene, exag), 04b_escena3d (Escena3D), 04d_sombreado_tiles (matSuelo, UN)
 // ===============================================================================
   // ---------- M6: el suelo de fondo. El mundo es un mosaico de teselas; donde falta una (bordes, esquinas, teselas sin datos) se veía el vacío. Esta malla cubre la caja
   // de la finca más un margen con el relieve GRUESO del índice (8 m, el mismo medido, con menos detalle: regla 5) y el mosaico de 1 m como textura, POR DEBAJO del tileset:

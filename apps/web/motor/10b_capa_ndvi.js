@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos ($, fmt), 02c_componentes (Componentes), 10_ndvi (NDV, ndviIdx, rampa, pintaNdvi)
+// Consume: 01_datos ($, fmt), 02c_componentes (Componentes), 04d_sombreado_tiles (UN), 10_ndvi (NDV, ndviIdx, rampa, pintaNdvi)
 // ===============================================================================
 
   // ---------- la capa de vigor (componente «capa-ndvi», ADR-0023, C10 cuarta tanda): el NDVI de la fecha elegida pintado sobre el terreno, con su leyenda y su gráfica

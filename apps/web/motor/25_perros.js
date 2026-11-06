@@ -1,9 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D), 02_mundo (copas), 02c_componentes (Componentes), 02k_fusiona (fusionaGeometrias), 03_escena (scene, camera, texColor),
-//   04d_sombreado_tiles (hash), 07_follaje (matSombra, geoSombra), 12_paseo (paseando), 15_tiempo (esc),
-//   16_vida (tVida, enQuad, gFauna, esfera, altSuelo, mira, quad, enDron, dron), 17_minimapa (Minimapa), 22_huellas (pendienteRumbo, sueloSeco),
-//   24_pantalla (aterriza)
+// Consume: 01_datos (D), 02_mundo (copas), 02c_componentes (Componentes), 02k_fusiona (fusionaGeometrias), 03_escena (camera, texColor),
+//   04d_sombreado_tiles (hash), 07_follaje (matSombra, geoSombra), 12_paseo (paseando, pp), 15_tiempo (esc),
+//   16_vida (tVida, enQuad, gFauna, altSuelo, enDron), 17_minimapa (Minimapa), 22_huellas (pendienteRumbo, sueloSeco)
 // Nota: Publica además window.__perrosDebug (depuración).
 // ===============================================================================
   // ---------- los perros del paseo: una dálmata adulta y un cruce de dálmata y mastín (rubio y sin manchas). Te siguen, exploran, persiguen conejos y vuelven a tu lado.

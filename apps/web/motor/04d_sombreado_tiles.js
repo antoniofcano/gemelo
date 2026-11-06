@@ -1,8 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: hash, matSuelo, matOrto, UN, SombreadoTiles
-// Consume: 01_datos (D, RES, ANCHO, ALTO), 02_mundo (Mundo, suelo, tinte, copas), 02b_cola (Cola), 03_escena (camera),
-//   04f_suelo_fotos (SueloFotosPuro, SueloFotos), 08_marcadores (aplica), 09_camara (suelta), 12_paseo (primera), 13_parcelas (parcelas),
-//   14_historia (hist), 15_tiempo (lluvia, uSombra, parcheTiempo, hace), 21_suelo (vn2, cubierta), 24_pantalla (suave)
+// Consume: 01_datos (D, RES, yN, ANCHO, ALTO), 02_mundo (Mundo, suelo), 02b_cola (Cola), 03_escena (camera),
+//   04f_suelo_fotos (SueloFotosPuro, SueloFotos), 09_camara (suelta), 14_historia (hist), 15_tiempo (parcheTiempo), 21_suelo (vn2)
 // ===============================================================================
   // ---------- el sombreado del relieve (F1d, T5; T8 fase 2: la única escena es la 3D Tiles)
   // Cada glb del tileset trae su terreno con un material PBR y la ortofoto como baseColorTexture. Al cargarse (evento load-model de 04b_escena3d.js)

@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: Capas
-// Consume: 01_datos ($), 02_mundo (copas), 08_marcadores (capas), 14_historia (lista), 16_vida (quita)
+// Expone: (nada al resto de módulos)
+// Consume: 01_datos ($), 14_historia (lista)
 // ===============================================================================
   // ---------- punto de extensión de las capas del mundo (ADR-0023, C2): Capas.registra(def) pone una casilla en la ventana «Capas y vista», en el grupo
   // «Datos» o «Ambiente», con la pastilla de su procedencia (regla 5 del repo: medido, deducido o ilustrativo; sin ella no se registra) y la llama al

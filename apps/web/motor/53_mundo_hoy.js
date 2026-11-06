@@ -1,8 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D, $), 02c_componentes (Componentes), 03_escena (lienzo), 12_paseo (persona), 13_parcelas (parcelas), 13b_hazas (HazasPuro),
-//   14_historia (marca, lista, aviso), 15_tiempo (lluvia, hace), 29_vr (ficha), 31_hud (Hud)
-// Nota: Componente «mundo-hoy» (EV-3a, contratos/mundo-hoy.md): solo se registra; nadie lo nombra. Con D.base /teselas/… o ?api= pide GET /api/mundo/hoy (mismo origen) al montar y cada 10 min y pinta la tarjeta «Hoy en el campo» en Tiempo y estación → Ahora (textContent) y el primer aviso en el HUD; sin servidor no pide nada. De lo que la derivación cree que consume, solo D, $, Componentes, HazasPuro y Hud son usos: persona, parcelas, marca, lista, aviso, lluvia, hace y ficha son palabras de sus textos. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/mundo_hoy.test.js.
+// Consume: 01_datos (D, $), 02c_componentes (Componentes), 13b_hazas (HazasPuro), 31_hud (Hud)
+// Nota: Componente «mundo-hoy» (EV-3a, contratos/mundo-hoy.md): solo se registra; nadie lo nombra. Con D.base /teselas/… o ?api= pide GET /api/mundo/hoy (mismo origen) al montar y cada 10 min y pinta la tarjeta «Hoy en el campo» en Tiempo y estación → Ahora (textContent) y el primer aviso en el HUD; sin servidor no pide nada. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/mundo_hoy.test.js.
 // ===============================================================================
   // ---------- el mundo de hoy (EV-3a; contratos/mundo-hoy.md, v 1): con servidor, el motor pide GET /api/mundo/hoy (su mismo origen; nunca otro host) al montar
   // y cada 10 minutos, y lo enseña donde ya se consulta el día: la tarjeta «Hoy en el campo» en «Tiempo y estación → Ahora» (el día y la hora de Madrid, los avisos

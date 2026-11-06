@@ -1,9 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: Hud
-// Consume: 01_datos ($), 02_mundo (copas), 02c_componentes (Bus), 03_escena (lienzo, visor, camera, modo), 08_marcadores (capas), 09_camara (orb),
-//   12_paseo (paseando, teclas), 14_historia (FINCA, aviso), 15_tiempo (meta, rumbo, esc, hace),
-//   16_vida (enQuad, quita, quad, ponQuad, enDron, dron, ponDron), 24_pantalla (Menu), 29_vr (VRX, ficha), 32_ventanas (Ventanas),
-//   33_ajustes (Ajustes), 34_movibles (Movibles)
+// Consume: 01_datos ($), 02c_componentes (Bus), 03_escena (lienzo, visor, camera), 09_camara (orb), 12_paseo (paseando, pp), 14_historia (aviso),
+//   15_tiempo (esc), 16_vida (enQuad, ponQuad, enDron, dr, ponDron), 24_pantalla (Menu), 29_vr (VRX), 32_ventanas (Ventanas), 33_ajustes (Ajustes),
+//   34_movibles (Movibles)
 // ===============================================================================
   // ---------- el HUD (doc/sistema/UX-FINCA-JUEGO.md §4.3): estado arriba a la izquierda (brújula, cómo te mueves, el tiempo), barra de iconos arriba a la
   // derecha, avisos arriba en el centro, «Pasear» y la atribución abajo en el centro. Es HTML y CSS: no toca triángulos ni llamadas de dibujo.

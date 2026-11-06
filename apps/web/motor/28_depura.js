@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: dep, depuraCuadro
 // Consume: 01a_aparato (Aparato), 02_mundo (Mundo), 02b_cola (Cola), 02c_componentes (Bus), 02f_xr_perillas (XrPerillas), 02h_render (InfoDibujo),
-//   03_escena (visor, renderer), 07b_arboles (Arboles), 15_tiempo (nivel), 29_vr (vrDebugExtra), 33_ajustes (Ajustes)
+//   03_escena (visor, renderer), 07b_arboles (Arboles), 29_vr (vrDebugExtra), 33_ajustes (Ajustes)
 // ===============================================================================
 
   // ---------- ?debug: un contador en la esquina del visor para medir en el móvil (ms de JS por fotograma, llamadas, triángulos, teselas y olivos por nivel)

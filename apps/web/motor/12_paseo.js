@@ -1,9 +1,9 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: paseando, persona, teclas, primera, pp, camPos, PalancaPuro, ponPalanca, giraPalanca, entraPaseo, salePaseo, actualizaPaseo
-// Consume: 01_datos (D, $), 02_mundo (suelo, copaAlta, copas), 03_escena (lienzo, visor, scene, camera, exag, modo), 06_arboles (tronco),
-//   08_marcadores (aplica, pendiente), 09_camara (sensMirar), 12c_ir_a (IrA), 13_parcelas (fincas, fincaSel, parcelaSel),
-//   16_vida (enQuad, mira, quad, velPaseo, giroPaseo, ponQuad, vidaPaseo, enDron, dron, ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale),
-//   24_pantalla (iniciaTransicion, iniciaSalida), 29_vr (ficha), 33_ajustes (Ajustes)
+// Consume: 01_datos (D, $), 02_mundo (suelo, copaAlta, copas), 03_escena (lienzo, visor, scene, camera, exag), 09_camara (sensMirar),
+//   12c_ir_a (IrA), 13_parcelas (fincas, fincaSel, parcelaSel),
+//   16_vida (enQuad, velPaseo, giroPaseo, ponQuad, vidaPaseo, enDron, ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale),
+//   24_pantalla (TR, iniciaTransicion, iniciaSalida), 33_ajustes (Ajustes)
 // ===============================================================================
 
   // ---------- paseo: una persona que camina por el olivar (flechas o WASD; Mayús corre; V cambia de cámara)

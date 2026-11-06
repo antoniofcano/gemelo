@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: SueloFotosPuro, SueloFotos
-// Consume: 01a_aparato (Aparato), 02_mundo (Mundo, suelo, copas), 02b_cola (Cola), 03_escena (renderer)
+// Consume: 01a_aparato (Aparato), 02_mundo (Mundo, copas), 02b_cola (Cola), 03_escena (renderer)
 // ===============================================================================
   // ---------- EV-1s: el suelo de cerca con texturas de fotos de la finca (?suelo=fotos; APAGADO por defecto y, en VR, apagado salvo ?sueloVR=1)
   // Siete clases de textura repetible (tuberia/suelo/construye.mjs; apps/web/public/suelo/, con su LICENCIA.md) en UNA textura en array (DataArrayTexture:

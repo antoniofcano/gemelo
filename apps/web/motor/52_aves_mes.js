@@ -1,7 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D), 02c_componentes (Componentes), 03_escena (lienzo), 15_tiempo (nivel), 29_vr (panel, PanelVR), 31_hud (Hud),
-//   32_ventanas (Ventanas)
+// Consume: 01_datos (D), 02c_componentes (Componentes), 29_vr (PanelVR), 31_hud (Hud), 32_ventanas (Ventanas)
 // Nota: Componente «aves-mes» (EV-1g «Biodiversidad B0»): ventana «Aves probables este mes» con lo que GBIF registra en 10 km (DEDUCIDO, nivel probable, con atribución y licencias CC0, CC BY y CC BY-SA). Además, la fila «Aves del mes» del panel de VR (pestaña Mundo: 3 especies y «y X más», con «deducido», nota, atribución y licencias; AvesMesPuro.filaVR). Solo se registra; nadie lo nombra. Sin D.base, sin fichero o sin aves de este mes no monta nada (ni fila). Los trozos [puro:…] los evalúa en Node pruebas/guardianes/aves_mes.test.js.
 // ===============================================================================
   // ---------- las aves probables este mes (EV-1g; contratos/biodiversidad.schema.json, v 1): una ventana con las especies de aves que GBIF registra en este

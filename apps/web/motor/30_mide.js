@@ -1,10 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D, $, fmt, DEPURA), 01a_aparato (Aparato), 02_mundo (suelo), 02b_cola (Cola),
-//   02c_componentes (Reparto, Bus, ConfigPuro, Componentes), 02f_xr_perillas (XrPerillas), 02h_render (Render), 02i_materiales (Materiales),
-//   03_escena (visor, renderer, modo, calidad), 04b_escena3d (Escena3D), 04f_suelo_fotos (SueloFotos), 07ab_generados (Generados),
-//   07b_arboles (Arboles), 08_marcadores (listo, capas), 12_paseo (persona), 14_historia (lista, pct, rango), 15_tiempo (nivel, rumbo, hace),
-//   29_vr (VRX, panel, PanelVR, VR_PERFILES), 33_ajustes (Ajustes), 90_final (cuadro, bucle)
+// Consume: 01_datos (D, DEPURA), 01a_aparato (Aparato), 02b_cola (Cola), 02c_componentes (Reparto, ConfigPuro, Componentes),
+//   02f_xr_perillas (XrPerillas), 02h_render (Render), 02i_materiales (Materiales), 03_escena (visor, renderer, modo), 04b_escena3d (Escena3D),
+//   04f_suelo_fotos (SueloFotos), 07ab_generados (Generados), 07b_arboles (Arboles), 29_vr (VRX, PanelVR), 33_ajustes (Ajustes)
 // ===============================================================================
 
   // ---------- medidor de fotogramas para la prueba en el aparato (T7a, doc/sistema/VR.md#medir-con-el-medidor). Componente «medidor-fotogramas» (ADR-0023, C10 tercera tanda; ?medidor=0 lo apaga). Sin &mide ni botón pulsado no hace nada: no escucha «cuadro:fin» y el bucle no paga nada.

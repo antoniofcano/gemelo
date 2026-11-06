@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos ($), 02c_componentes (Componentes), 03_escena (camera), 12_paseo (persona, primera), 15_tiempo (nivel, hace)
+// Consume: 02c_componentes (Componentes)
 // Nota: Componente «red-salas» (ADR-0023, C5): el único que habla con LiveKit (import("livekit-client") la primera vez que alguien se une a una sala). Solo se registra; expone «Red» por n.api: salas por clave, unirse, salir o cambiar, publicar y escuchar por tema, estado y participantes. Emite «red:estado». El trozo [puro:…] lo evalúa en Node pruebas/guardianes/red.test.js con un LiveKit de mentira.
 // ===============================================================================
   // ---------- la red en tiempo real (C5, ADR-0023; doc/sistema/COMPONENTES.md §6): el componente «red-salas» es el ÚNICO que habla con LiveKit (livekit-client,

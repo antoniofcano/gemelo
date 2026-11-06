@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: VrPresupuestoPuro, VrControlPuro, VrPresupuesto
-// Consume: 01a_aparato (Aparato), 02_mundo (suelo), 02b_cola (Cola), 14_historia (hist, tabla), 15_tiempo (nivel), 29_vr (VRX)
+// Consume: 02_mundo (suelo), 15_tiempo (nivel)
 // ===============================================================================
   // ---------- Q0c-a: el escalón de los perfiles de 29_vr manda también en lo que el perfil no tocaba (doc/sistema/VR.md#perfil-de-rendimiento-vr).
   // Medido en un Quest (MEDIDAS.md, 2026-11-04): en el escalón 3, 1,43 M triángulos por fotograma y p95 de 23 ms; el desglose de Hituelo real dice que

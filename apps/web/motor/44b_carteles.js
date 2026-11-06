@@ -1,8 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D), 02_mundo (Mundo, suelo, cIn), 02c_componentes (Componentes), 03_escena (lienzo, scene, camera, texColor, exag),
-//   08_marcadores (gLinde), 12_paseo (primera, entraPaseo), 13_parcelas (parcelas), 13b_hazas (Hazas), 14_historia (hist, lista, aviso),
-//   15_tiempo (hace, lindes), 16_vida (mira), 23_estacion (EST, bbchEn, hoyMadrid), 29_vr (VRX, ficha)
+// Consume: 01_datos (D), 02_mundo (suelo, cIn), 02c_componentes (Componentes), 03_escena (scene, camera, texColor, exag), 08_marcadores (gLinde),
+//   13b_hazas (Hazas), 23_estacion (EST, bbchEn, hoyMadrid), 29_vr (VRX)
 // Nota: Componente «carteles-haza» (EV2-A6, ADR-0023; ADR-0014): como mucho 3 carteles de haza sobre la linde (los más cercanos, con histéresis) y un tablón en la entrada, con un pool de 3+1 mallas y lienzos de 512 × 320; solo nombre y datos medidos de la lista blanca de la ficha, cada uno con su procedencia; ?carteles=0 lo apaga; el trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/carteles.test.js.
 // ===============================================================================
   // ---------- EV2-A6: carteles de haza en la linde y tablón en la entrada (ADR-0014, decisiones 12, 188 y 202; doc/sistema/COMPONENTES.md).

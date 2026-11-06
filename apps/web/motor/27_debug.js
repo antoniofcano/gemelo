@@ -3,7 +3,7 @@
 // Consume: 02_mundo (Mundo, suelo, copas), 02b_cola (Cola), 02h_render (InfoDibujo), 03_escena (renderer, scene, camera, exag, modo),
 //   04b_escena3d (Escena3D), 04c_olivos_tiles (OlivosTiles), 04f_suelo_fotos (SueloFotos), 07a_catalogo (Catalogo), 07ab_generados (Generados),
 //   07ac_lejanos (Lejanos), 07b_arboles (Arboles), 08_marcadores (listo, aplica), 09_camara (objetivo, orb, pon),
-//   12_paseo (paseando, teclas, entraPaseo, salePaseo), 15_tiempo (hace), 90_final (bucle)
+//   12_paseo (paseando, teclas, pp, entraPaseo, salePaseo)
 // Nota: Publica window.__g, el gancho de las pruebas (contrato en doc/sistema/CONTRATOS.md).
 // ===============================================================================
 

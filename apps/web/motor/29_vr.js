@@ -1,14 +1,14 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: VRX, vrRig, vrDebugExtra, vrMano, vrRayoDe, vrFundido, vrAparece, creaLamina, panel, ficha, fichaB, vrBajoRayo, vrRect, vrAj, PanelVR,
-//   vrPintaFicha, vrPulso, vrActualiza, VR_PERFILES, vrFin
-// Consume: 01_datos (D, $, fmt, VRP), 01a_aparato (Aparato), 02_mundo (Mundo, suelo, orto, copas), 02b_cola (Cola),
+// Expone: VRX, vrRig, vrDebugExtra, vrMano, vrRayoDe, vrFundido, vrAparece, creaLamina, panel, ficha, vrBajoRayo, vrRect, vrAj, PanelVR,
+//   vrPintaFicha, vrPulso, vrActualiza, vrFin
+// Consume: 01_datos (D, $, fmt, VRP), 01a_aparato (Aparato), 02_mundo (suelo, copas), 02b_cola (Cola),
 //   02c_componentes (ComponentesPuro, Bus, Config), 02d_laminas (LaminasPuro, Laminas), 02e_entidades (EntidadesPuro, Entidades, Usables),
 //   02f_xr_perillas (XrPerillas), 02g_vr_presupuesto (VrControlPuro, VrPresupuesto), 02h_render (InfoDibujo), 02i_materiales (Materiales),
-//   03_escena (lienzo, visor, renderer, scene, camera, sol, texColor, exag, modo, calidad), 04b_escena3d (Escena3D), 05_nube (nube),
-//   07b_arboles (Arboles), 08_marcadores (capas), 09_camara (pon), 10_ndvi (NDV, ndviIdx, rampa),
-//   12_paseo (paseando, persona, teclas, primera, entraPaseo, salePaseo, actualizaPaseo), 12b_llegada (Llegada), 13_parcelas (parcelas, fincas),
-//   14_historia (hist, tabla, lista, aviso), 15_tiempo (calma, meta, nivel, rumbo, hace, pasoHoraMundo, horaMundoTexto, anuncia),
-//   16_vida (quita, mira, quad, dron), 22_huellas (pendFactor), 24_pantalla (suave), 33_ajustes (Ajustes), 90_final (tamano, cuadro, bucle)
+//   03_escena (renderer, scene, camera, sol, texColor, exag, modo, calidad), 04b_escena3d (Escena3D), 04d_sombreado_tiles (UN),
+//   07b_arboles (Arboles), 09_camara (pon), 10_ndvi (NDV, ndviIdx, rampa),
+//   12_paseo (paseando, persona, teclas, primera, pp, entraPaseo, salePaseo, actualizaPaseo), 12b_llegada (Llegada), 13_parcelas (parcelas, fincas),
+//   15_tiempo (meta, pasoHoraMundo, horaMundoTexto), 22_huellas (pendFactor), 24_pantalla (TR), 33_ajustes (Ajustes),
+//   90_final (tamano, cuadro, bucle)
 // Nota: Publica además window.__vrDebug, __vrOlivo, __vrBotones, __vrVuelo y VR_ESTADO (depuración y pruebas VR).
 // ===============================================================================
   // ---------- modo VR inmersivo (WebXR, Meta Quest Browser): el paseo en primera persona con mandos, un panel flotante y un perfil de rendimiento propio

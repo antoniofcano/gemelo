@@ -1,8 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 02_mundo (suelo), 02c_componentes (Bus, Componentes), 02i_materiales (Materiales), 02j_estaticos (Estaticos),
-//   03_escena (scene, sol, exag), 12_paseo (paseando, teclas), 15_tiempo (nivelEn, cur, nivel), 16_vida (tVida, enQuad, altSuelo, enDron),
-//   22_huellas (sueloSeco), 90_final (bucle)
+// Consume: 02_mundo (suelo), 02c_componentes (Componentes), 02i_materiales (Materiales), 02j_estaticos (Estaticos), 03_escena (scene, exag),
+//   12_paseo (paseando, teclas, pp), 15_tiempo (nivelEn, cur), 16_vida (tVida, enQuad, vq, altSuelo, enDron, dr), 22_huellas (sueloSeco)
 // ===============================================================================
   // ---------- huellas y polvo (componente «huellas-polvo», ADR-0023, C10): las pisadas y rodadas que se desvanecen y las bocanadas de polvo del suelo seco.
   // Antes vivían en 22_huellas.js y las nombraba el bucle; ahora solo se registra. Quien levanta polvo (el aterrizaje del muñequito, los perros) lo pide por el Bus

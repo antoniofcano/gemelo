@@ -1,8 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: SN, S0, V0, vn2, cubierta, recoloreaSuelo, actualizaSuelo
-// Consume: 01_datos (D, $, i16, ANCHO, ALTO, VRP), 02_mundo (suelo), 02i_materiales (Materiales), 02j_estaticos (Estaticos),
-//   03_escena (scene, texColor, colorVertSRGB, exag), 04d_sombreado_tiles (hash), 05_nube (nube), 09_camara (objetivo, orb), 10_ndvi (NDV, ndviIdx),
-//   12_paseo (paseando), 15_tiempo (uViento, uSombra, GLSL_SOMBRA, nivel, num1), 16_vida (esfera, enDron), 18_paisaje (ejeArroyo, distArroyo)
+// Expone: SN, vn2, cubierta, recoloreaSuelo, actualizaSuelo
+// Consume: 01_datos (D, $, i16, yN, ANCHO, ALTO, VRP), 02_mundo (suelo), 02i_materiales (Materiales), 02j_estaticos (Estaticos),
+//   03_escena (scene, texColor, colorVertSRGB, exag), 04d_sombreado_tiles (hash, UN), 09_camara (objetivo, orb), 10_ndvi (NDV, ndviIdx),
+//   12_paseo (paseando, pp), 15_tiempo (uViento, uSombra, GLSL_SOMBRA, num1), 16_vida (enDron, dr), 18_paisaje (ejeArroyo, distArroyo)
 // ===============================================================================
   // ---------- el suelo según el NDVI: dónde hay tierra desnuda y dónde hierba, y cómo de vigorosa
   // El NDVI de 10 m mezcla copa y suelo. Con la fracción de copa de cada celda (LiDAR) se resta la copa: g = NDVI − b·f. De g sale la cubierta (0 = desnudo, 1 = hierba tupida) y su vigor.

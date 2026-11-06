@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos ($), 03_escena (lienzo, visor, modo), 08_marcadores (aplica), 09_camara (sensMirar),
-//   12_paseo (paseando, primera, PalancaPuro, ponPalanca, giraPalanca, actualizaPaseo), 15_tiempo (hace), 16_vida (quad, dron), 33_ajustes (Ajustes)
+// Consume: 01_datos ($), 03_escena (lienzo, visor), 08_marcadores (aplica), 09_camara (sensMirar),
+//   12_paseo (paseando, PalancaPuro, ponPalanca, giraPalanca), 33_ajustes (Ajustes)
 // ===============================================================================
   // ---------- la palanca flotante (EV2-B2, doc/sistema/VIABILIDAD-INTERACCION.md §B): andar con el pulgar, encendida por defecto en pantalla táctil.
   // Nace donde apoyas el dedo (nipplejs 1.0.4, modo «dynamic», MIT; regla 12) en la mitad del pulgar (#palanca en plantilla.html: la izquierda, la derecha con

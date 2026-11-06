@@ -1,12 +1,11 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: tamano, cuadro, bucle
-// Consume: 02_mundo (Mundo, suelo), 02b_cola (Cola), 02c_componentes (Reparto, Bus, Pausa, Componentes), 02d_laminas (Laminas),
-//   02e_entidades (Usables), 02h_render (Render), 03_escena (visor, renderer, scene, camera), 04b_escena3d (Escena3D),
-//   05_nube (nube, actualizaNubeTeselas, actualizaNube), 07b_arboles (Arboles), 08_marcadores (listo, aplica), 09_camara (objetivo, camara),
-//   12_paseo (paseando, actualizaPaseo), 14_historia (marca), 15_tiempo (actualizaTiempo, hace), 16_vida (quita, actualizaVida),
-//   17_minimapa (actualizaMinimapa), 18_paisaje (actualizaPaisaje), 19_balizas (actualizaBalizas), 21_suelo (recoloreaSuelo, actualizaSuelo),
-//   23_estacion (actualizaOlivo), 24_pantalla (transEntrada, transSalida), 28_depura (depuraCuadro), 29_vr (VRX, vrActualiza, vrFin),
-//   33_ajustes (Ajustes)
+// Consume: 02_mundo (Mundo), 02b_cola (Cola), 02c_componentes (Reparto, Bus, Pausa, Componentes), 02d_laminas (Laminas), 02e_entidades (Usables),
+//   02h_render (Render), 03_escena (visor, renderer, scene, camera), 04b_escena3d (Escena3D), 05_nube (actualizaNubeTeselas, actualizaNube),
+//   07b_arboles (Arboles), 08_marcadores (listo, aplica), 09_camara (objetivo, camara), 12_paseo (paseando, actualizaPaseo),
+//   15_tiempo (actualizaTiempo), 16_vida (actualizaVida), 17_minimapa (actualizaMinimapa), 18_paisaje (actualizaPaisaje),
+//   19_balizas (actualizaBalizas), 21_suelo (recoloreaSuelo, actualizaSuelo), 23_estacion (actualizaOlivo), 24_pantalla (transEntrada, transSalida),
+//   28_depura (depuraCuadro), 29_vr (VRX, vrActualiza, vrFin), 33_ajustes (Ajustes)
 // Nota: Arranque y bucle: Mundo.arranca, Componentes.arranca, cuadro() y requestAnimationFrame. Define el orden de las actualizaciones por fotograma: los módulos que aún no son componentes a mano y los componentes por fases (mundo, tarde, trasRender).
 // ===============================================================================
 

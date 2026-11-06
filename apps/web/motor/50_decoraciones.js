@@ -1,9 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 01_datos (D, $, ALTO, FACTOR_R8, FACTOR_R8_GEN), 02_mundo (suelo, copas), 02b_cola (Cola),
-//   02c_componentes (Bus, ConfigPuro, Componentes), 02e_entidades (Entidades), 02j_estaticos (Estaticos), 03_escena (scene, camera, exag),
-//   06_arboles (radioEn), 07ab_generados (Generados), 09_camara (objetivo, camara, suelta, elige), 12_paseo (paseando, primera),
-//   14_historia (lista), 15_tiempo (hace), 16_vida (quita, mira), 29_vr (VRX, ficha)
+// Consume: 01_datos (D, FACTOR_R8, FACTOR_R8_GEN), 02_mundo (suelo, copas), 02c_componentes (Bus, ConfigPuro, Componentes),
+//   02e_entidades (Entidades), 02j_estaticos (Estaticos), 03_escena (scene, camera, exag), 06_arboles (radioEn), 07ab_generados (Generados),
+//   09_camara (objetivo), 12_paseo (paseando), 29_vr (VRX)
 // Nota: Componente «decoraciones-olivo» (P7g D3, decisiones 175-179): la pieza de temporada colgada de los olivos cercanos al foco (flores, cinta, farolillo, cosecha, luces, lazo), ILUSTRATIVA, una InstancedMesh por pieza con mergeGeometries de three (import() al montarse; ≤ 6 llamadas y ≤ 64 piezas). Solo se registra; nadie lo nombra. Sin servidor no crea nada; no habla con la api: la lista le llega por el Bus («decoraciones:cambian», la pide con «decoraciones:pide»). Complementa la ficha del olivo con la fila «Decoración». Publica window.__decoraciones (pruebas). Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/decoraciones.test.js.
 // ===============================================================================
   // ---------- las decoraciones de los olivos (P7g D3; decisiones 175-179; doc/sistema/DECORACIONES.md y contratos/decoraciones.md): la pieza del catálogo de

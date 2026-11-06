@@ -3,9 +3,9 @@
 // Consume: 01_datos (FACTOR_R8), 01a_aparato (Aparato), 02_mundo (Mundo, suelo, copaAlta, kcor, tinte, aviva, copas), 02b_cola (CargaPuro, Cola),
 //   02c_componentes (Config), 02f_xr_perillas (XrPerillas), 02h_render (InfoDibujo), 02j_estaticos (Estaticos), 02l_tope_tiles (TopeTilesPuro),
 //   02m_tope_olivos (TopeOlivos), 03_escena (renderer, camera, exag, modo, calidad), 04c_olivos_tiles (OlivosTiles), 04d_sombreado_tiles (hash),
-//   05_nube (ALTO_MAX, nube), 06_arboles (gArboles, tronco, arbolesG), 07_follaje (follajeG, construyeSombras), 07a_catalogo (Catalogo),
-//   07ab_generados (Escalera, Generados), 07ac_lejanos (Lejanos), 09_camara (objetivo, orb), 10_ndvi (ndviIdx), 12_paseo (paseando),
-//   15_tiempo (nivel, esc, hace), 16_vida (mira), 29_vr (VR_PERFILES), 33_ajustes (Ajustes)
+//   05_nube (ALTO_MAX), 06_arboles (gArboles, arbolesG), 07_follaje (follajeG, construyeSombras), 07a_catalogo (Catalogo),
+//   07ab_generados (Escalera, Generados), 07ac_lejanos (Lejanos), 09_camara (objetivo, orb), 10_ndvi (ndviIdx), 12_paseo (paseando, pp),
+//   15_tiempo (nivel, esc), 33_ajustes (Ajustes)
 // ===============================================================================
   // ---------- los olivos del modo Gemelo con tres niveles de detalle: el coste de dibujo no crece con la superficie de la finca
   // Nivel 0: celdas de 64 m con el modelo completo (copa medida, troncos, hojas, flores y aceitunas) alrededor de lo que se mira (o de quien pasea), hasta MAX0 olivos.

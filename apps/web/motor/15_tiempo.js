@@ -1,12 +1,11 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: TiempoPuro, ahoraMs, TM, calma, nivelEn, texBrillo, lluvia, uViento, uSombra, GLSL_SOMBRA, parcheTiempo, cur, meta, tMundo, ins, nivel,
-//   actualizaTiempo, temaBarrera, colocaBarrera, pintaFondoTiempo, fmtHora, fmtClaveDia, num1, rumbo, esc, hace, objetivoMundoBase, pasoHoraMundo,
-//   horaMundoTexto, aplicaMundo, anuncia, TiempoVivo, lindes
-// Consume: 01_datos (D, $, tinta, FOG0, FOG1), 02_mundo (suelo, copas), 02c_componentes (Bus, Pausa), 02j_estaticos (Estaticos),
-//   03_escena (visor, scene, camera, SRGB, LUZ_SOL, LUZ_CIELO, hemi, sol, texColor, colorVertSRGB, colorCss, exag, modo),
+// Expone: TiempoPuro, ahoraMs, TM, nivelEn, texBrillo, uViento, uSombra, GLSL_SOMBRA, parcheTiempo, cur, meta, tMundo, ins, nivel, actualizaTiempo,
+//   temaBarrera, colocaBarrera, pintaFondoTiempo, fmtHora, fmtClaveDia, num1, rumbo, esc, objetivoMundoBase, pasoHoraMundo, horaMundoTexto,
+//   aplicaMundo, TiempoVivo, lindes
+// Consume: 01_datos (D, $, tinta, FOG0, FOG1), 02_mundo (suelo), 02c_componentes (Bus), 02j_estaticos (Estaticos),
+//   03_escena (scene, camera, SRGB, LUZ_SOL, LUZ_CIELO, hemi, sol, texColor, colorVertSRGB, colorCss, exag),
 //   04d_sombreado_tiles (hash, matSuelo, matOrto), 04f_suelo_fotos (SueloFotos), 05_nube (nube), 07_follaje (matHojaG, matHojaP, matCorteza),
-//   08_marcadores (gLinde), 09_camara (objetivo), 13b_hazas (HazasPuro), 14_historia (marca, tabla, aviso),
-//   16_vida (esfera, mira, quad, temaEstela, dron), 23_estacion (objetivoMundo), 24_pantalla (suave)
+//   08_marcadores (gLinde), 09_camara (objetivo), 13b_hazas (HazasPuro), 14_historia (marca), 16_vida (temaEstela), 23_estacion (objetivoMundo)
 // Nota: Lee /api/tiempo (mismo origen) solo con D.base /teselas/… o ?api=; si no, el conector de claude.ai; si no, el tiempo simulado, dicho. Expone TiempoVivo (contratos/interfaces.json). El trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/tiempo_motor.test.js.
 // ===============================================================================
   // ---------- el tiempo: el mundo del gemelo simula el que publica Vigía

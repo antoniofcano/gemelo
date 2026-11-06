@@ -1,8 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: IrA
-// Consume: 01_datos (D), 02_mundo (suelo, copas), 02e_entidades (Usables), 03_escena (scene, exag), 06_arboles (tronco), 08_marcadores (pendiente),
-//   12_paseo (paseando, persona, teclas, actualizaPaseo), 12b_llegada (LlegadaPuro, Llegada), 14_historia (marca, lista),
-//   15_tiempo (meta, rumbo, hace), 16_vida (enQuad, quad, enDron, dron), 29_vr (VRX, ficha), 33_ajustes (Ajustes)
+// Consume: 01_datos (D), 02_mundo (suelo, copas), 03_escena (scene, exag), 12_paseo (paseando, teclas, pp), 12b_llegada (LlegadaPuro, Llegada),
+//   15_tiempo (meta, rumbo), 16_vida (enQuad, enDron), 29_vr (VRX), 33_ajustes (Ajustes)
 // ===============================================================================
   // ---------- tocar para ir andando (tanda 9): en pantalla (ratón y táctil, no en VR), a pie, un clic o un toque corto en el suelo hace que el paseante camine hasta allí.
   // No salta ni se teletransporta: gira hacia el punto y anda con el avance de siempre (la misma velocidad, pendiente, troncos y borde de la finca de actualizaPaseo, 12_paseo.js),

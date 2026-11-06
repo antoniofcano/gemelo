@@ -1,9 +1,8 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: (nada al resto de módulos)
-// Consume: 02c_componentes (ComponentesPuro, Bus), 02e_entidades (Usables), 03_escena (lienzo, renderer, camera), 08_marcadores (capas),
-//   12_paseo (primera, actualizaPaseo), 12b_llegada (Llegada), 13b_hazas (Hazas), 14_historia (hist), 15_tiempo (horaMundoTexto), 16_vida (mira),
-//   29_vr (VRX, vrRig, vrMano, vrRayoDe, creaLamina, panel, ficha, vrBajoRayo, vrRect, vrAj, PanelVR, vrPintaFicha, vrPulso, vrActualiza),
-//   31b_hud_personal (HudPersonalPuro)
+// Consume: 02c_componentes (ComponentesPuro, Bus), 02e_entidades (Usables), 03_escena (renderer), 12_paseo (pp), 12b_llegada (Llegada),
+//   13b_hazas (Hazas), 15_tiempo (horaMundoTexto),
+//   29_vr (VRX, vrRig, vrMano, vrRayoDe, creaLamina, vrBajoRayo, vrRect, vrAj, PanelVR, vrPintaFicha, vrPulso), 31b_hud_personal (HudPersonalPuro)
 // Nota: EV2-A3: el menú de muñeca en VR («hora · tu haza · hablar · volver», con los textos de HudPersonalPuro de 31b). No es un componente: se engancha a 29_vr por PanelVR.alFotograma y PanelVR.alGatillo; ?xrmuneca=0 y el ajuste vr.muneca lo apagan. Publica además window.__vrMuneca y __vrMunecaPulsa (pruebas VR). El trozo entre [puro:inicio] y [puro:fin] lo evalúa en Node pruebas/guardianes/vr_muneca.test.js.
 // ===============================================================================
   // ---------- EV2-A3: el menú de muñeca en VR (doc/sistema/VIABILIDAD-INTERACCION.md §A.5, paso 4; tanda 9, 2026-11-05). Al girar la muñeca hacia la cara

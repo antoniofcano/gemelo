@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: TopeTilesPuro
-// Consume: 03_escena (renderer), 15_tiempo (nivel, hace), 29_vr (VR_PERFILES)
+// Consume: (nada de otros módulos)
 // ===============================================================================
   // ---------- Q0k: el tileset 3D (04b_escena3d.js) respeta el tope de triángulos de cada nivel de VR (doc/sistema/VR.md#tope-de-triángulos-del-tileset-q0k).
   // Medido en un Quest 3 (MEDIDAS.md, 2026-11-05): en el nivel 3 el perfil relaja el error del tileset (16 → 48 px) pero se dibujan 170-250 k triángulos
