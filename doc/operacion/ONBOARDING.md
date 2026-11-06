@@ -71,6 +71,7 @@
 | 53 | Puente del código nuevo al legado (MU1-5): el texto que genera `genera_motor.mjs` es el de antes más `import * as Nucleo from "@gemelo/nucleo"`; los nombres que expone cada módulo coinciden con la foto; todo `Nucleo.<x>` lo exporta el núcleo; forma de los talones; las dos builds resuelven el alias | `puente.test.js` |
 | 54 | Trinquete del legado (MU1-5): las líneas de `apps/web/motor/*.js`, sin cabeceras, no pasan del tope; si bajan lo avisa y quien fusiona baja el tope | `trinquete_legado.test.js` |
 | 55 | Tipos de TypeScript generados desde los contratos (MU1-11): `apps/web/herramientas/genera_tipos.mjs` (json-schema-to-typescript) escribe `apps/web/src/datos/contratos/<nombre>.ts` desde cada `contratos/*.schema.json`; el guardián regenera en memoria y falla si lo versionado difiere o la salida no es determinista (se salta con aviso sin `npm ci` en `apps/web`) | `tipos_contratos.test.js` |
+| 56 | Escape del índice en la página (L9-04): `</script`, `<!--` y los textos de la cabecera no cierran el bloque `#datos` ni meten marcado; el JSON leído es el original | `genera_motor.test.js` |
 
 En CI la misma puerta corre en GitHub Actions (`.github/workflows/puerta.yml`); no despliega nada.
 

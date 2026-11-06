@@ -28,6 +28,13 @@ export function entradaMotor(sin = []) {
   return IMPORTA_THREE + IMPORTA_NUCLEO + IMPORTA_CSS + concatenaMotor(sin);
 }
 
+/** Escapa un texto para contenido HTML (L9-04): el nombre de la finca y los textos del índice no pueden cerrar etiquetas ni meter marcado */
+export function escapaHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]); }
+
+/** El JSON del índice listo para dentro de <script type="application/json"> (L9-04). En JSON válido, <, >, & y U+2028/U+2029 solo aparecen
+ *  dentro de cadenas, así que escaparlos como \u00XX es JSON válido y da el mismo valor al leerlo. Así ni «</script» ni «<!--» cierran el bloque. */
+export function escapaJsonEnScript(txt) { return txt.replace(/[<>&\u2028\u2029]/g, c => "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0")); }
+
 function argumento(nombre) { const i = process.argv.indexOf("--" + nombre); return i > 0 ? process.argv[i + 1] : undefined; }
 
 /** La concatenación del motor: readdirSync().sort(), el orden alfabético es el orden de montaje. sin = ficheros que se dejan fuera (componentes) */
@@ -43,7 +50,7 @@ export function concatenaMotor(sin = []) {
  *  las hectáreas son «declaradas (OlivarTrack)» (suma de lo declarado, no medida sobre el polígono) y los olivos «detectados» (LiDAR + regla), no «medidos».
  *  Si el índice no trae `textos`, la página queda con la cabecera neutra de la plantilla. */
 export function textosFinca(cab, T) {
-  const n = T.finca, nf = T.fincas || 1, npar = T.parcelas, nol = T.olivos;
+  const n = escapaHtml(T.finca), nf = T.fincas || 1, npar = T.parcelas, nol = T.olivos;   // L9-04: el nombre llega del índice, va escapado al HTML
   const fh = x => (x < 10 ? x.toFixed(1) : x.toFixed(0)).replace(".", ",");
   const dec = fh(T.ha) + " ha declaradas (OlivarTrack)";
   const que = nf === 1 ? "la finca " + n : "las " + nf + " fincas de " + n;
@@ -52,9 +59,9 @@ export function textosFinca(cab, T) {
   cab = cab.replace(/<h1>[\s\S]*?<\/h1>/, () => "<h1>" + n + ", en 3D</h1>");
   cab = cab.replace(/(<h1>[\s\S]*?<\/h1>\s*)<p>[\s\S]*?<\/p>/, (m, a) => a + "<p>Gemelo de " + que + ", con sus " + npar + " parcelas y " + dec + ": la forma sale de los puntos del vuelo LiDAR de 2024 y el color, de la ortofoto del PNOA corregida por la altura de cada copa. Cada tesela de 256 m se carga y se dibuja con más o menos detalle según lo cerca que la mires.</p>");
   cab = cab.replace("Vista 3D de la finca;", () => "Vista 3D de " + (nf === 1 ? "la finca " : "las fincas de ") + n + ";");
-  cab = cab.replace(/<p class="nota sep8" id="notaDesfase">Los puntos guardados[\s\S]*?<\/p>/, () => '<p class="nota sep8" id="notaDesfase">Los puntos guardados en OlivarTrack se marcaron sobre la ortofoto, que muestra las copas desplazadas hacia el este según su altura (' + (T.desfase_txt || "unos 1,5 m, medido en Cerro Velasco") + '); el LiDAR está bien georreferenciado.</p>');
+  cab = cab.replace(/<p class="nota sep8" id="notaDesfase">Los puntos guardados[\s\S]*?<\/p>/, () => '<p class="nota sep8" id="notaDesfase">Los puntos guardados en OlivarTrack se marcaron sobre la ortofoto, que muestra las copas desplazadas hacia el este según su altura (' + escapaHtml(T.desfase_txt || "unos 1,5 m, medido en Cerro Velasco") + '); el LiDAR está bien georreferenciado.</p>');
   cab = cab.replace(/<p class="pie">[\s\S]*?<\/p>/, () => '<p class="pie">Gemelo de ' + que + " (" + npar + " parcelas, " + dec + ", " + nol + " olivos detectados: LiDAR más una regla, no medidos). La copa de cada olivo es medida del LiDAR; sus troncos y ramas son una forma ilustrativa con los 2 o 3 pies habituales, no una medición. Nube PNOA-LiDAR 2024 (3.ª cobertura" + pts + "), MDT de 0,5 m del CNIG y ortofoto PNOA del IGN, licencia CC-BY 4.0. La corrección de la ortofoto es un ajuste medido en Cerro Velasco, no una ortorrectificación. El tendido, los cauces y el último tramo de cada cable están deducidos de la geometría, no medidos. Es un modelo de trabajo, no una medición topográfica.</p>");
-  if (T.intro_historia) cab = cab.replace(/(<p class="nota" id="hIntro">)[\s\S]*?(<\/p>)/, (m, a, b) => a + T.intro_historia + b);
+  if (T.intro_historia) cab = cab.replace(/(<p class="nota" id="hIntro">)[\s\S]*?(<\/p>)/, (m, a, b) => a + escapaHtml(T.intro_historia) + b);
   if (T.sin_historia) cab = cab.replace('id="historia"', () => 'id="historia" data-sin');   // plantilla.css: #historia[data-sin] { display: none !important }
   return cab;
 }
@@ -69,7 +76,7 @@ export function genera(datos, dest, sin = []) {
   let plantilla = fs.readFileSync(path.join(WEB, "plantilla.html"), "utf8");
   if (J.textos) plantilla = textosFinca(plantilla, J.textos);
   const html = '<!doctype html>\n<html lang="es">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n</head>\n<body>\n' +
-    plantilla + '<script type="application/json" id="datos">' + D.trim() + "</script>\n" +
+    plantilla + '<script type="application/json" id="datos">' + escapaJsonEnScript(D.trim()) + "</script>\n" +
     '<script type="module" src="./entrada/motor.generado.js"></script>\n</body>\n</html>\n';
   fs.writeFileSync(path.join(dest, "index.html"), html);
   return dest;
