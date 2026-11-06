@@ -59,9 +59,9 @@ Son tres. Pasados a TSL, desbloquean a casi todos:
 | 20 | `apps/web/src/mundos/exterior/huellas-polvo.ts` (antes `22b_huellas_polvo.js`) | `huella` | `ShaderMaterial` (instanciado) | huellas que se borran con la edad | no | no | no | no | M — **TSL parcial, apagada (MU5-n, A3-5):** `define` con clásico y TSL (`MeshBasicNodeMaterial`); §12 |
 | 21 | `apps/web/src/mundos/exterior/huellas-polvo.ts` (antes `22b_huellas_polvo.js`) | `polvo` | `ShaderMaterial` (puntos) | polvo | no | no | CPU | `uLuz` | M (puntos) — **TSL parcial, apagada (MU5-n, A3-5):** `PointsNodeMaterial`; el tamaño en píxeles no vale en el WebGPURenderer nativo (§12) |
 | 22 | `23_estacion.js` | `fruto-flor` | `ShaderMaterial` (puntos) | flores y aceitunas por BBCH | no | CPU (vigor) | no | `uLuz` | M (puntos) |
-| 23 | `26b_avatares.js` | `vrm-fundido` | MToon + `encadena` | fundido por tramado | sí (MToon) | no | no | no | M-A (`MToonNodeMaterial`) |
+| 23 | `mundos/comun/avatares.ts` (antes `26b_avatares.js`) | `vrm-fundido` | MToon + `encadena` | fundido por tramado | sí (MToon) | no | no | no | M-A (`MToonNodeMaterial`) — **TSL parcial, apagada (MU5-n, A3-6a):** `MeshStandardNodeMaterial` con el tramado por `maskNode`, sin el sombreado toon de MToon (§13) |
 | 24 | `29_vr.js` | `vineta-vr` | `ShaderMaterial` | viñeta de confort | no | no | no | no | B |
-| 25 | `38_presencia_compartida.js` | `nombres-presencia` | `ShaderMaterial` (instanciado) | nombres de un atlas, de cara a la cámara | no | no | no | no | M (de cara a la cámara **por ojo**) |
+| 25 | `mundos/comun/presencia.ts` (antes `38_presencia_compartida.js`) | `nombres-presencia` | `ShaderMaterial` (instanciado) | nombres de un atlas, de cara a la cámara | no | no | no | no | M (de cara a la cámara **por ojo**) — **TSL parcial, apagada (MU5-n, A3-6a):** `MeshBasicNodeMaterial` con el atlas por instancia; falta ponerlo de cara a la cámara por ojo (§13) |
 | 26 | `44_lindes.js` | `lindes-acerca` | `LineMaterial` + parche | lindes acercadas a la cámara | sí | no | no | no | M (`Line2NodeMaterial`) — **hecho (MU5-n, A3-3):** `define("lindes-acerca", { clasico, tsl })`, la TSL apagada y **parcial** (§9.1) |
 | — | `nucleo/materiales.ts` | `ejemplo-tsl` | Basic + parche / `MeshBasicNodeMaterial` | el ejemplo de la ruta (§3): color · `uBrillo` | sí | no | no | no | hecho |
 
@@ -350,3 +350,32 @@ Las tres viven junto a su clásico (una sola fuente), están **apagadas** (solo 
 Ver MUNDOS §2 («Cómo quedó (MU5-n, A3-5)») y COMPONENTES §6. Pruebas de memoria (Vitest, sin GPU: no hay `renderer.info`): tras montar y liberar varias veces no queda viva ninguna geometría, material ni textura propios, ni reloj (`vida.test.ts`, `fauna.test.ts`, `perros.test.ts`, `huellas-polvo.test.ts`, `trabajo-hoy.test.ts`); `aves-mes.test.ts` comprueba que la descarga se corta y que no queda ventana, icono ni fila de VR.
 
 **No probado:** que las TSL se vean como las clásicas (capturas por material: MU6), el aspecto del quad, el dron y la fauna en un navegador, y nada en el Quest ni en iPhone (esta tarea no abrió Chrome ni Docker).
+
+## 13. Lo hecho en A3-6a (2026-11-06): la presencia y la red, de todo mundo
+
+Cinco módulos del legado pasan a `apps/web/src/` como componentes de **todo mundo** (`mundos: "todos"`, COMPONENTES §3.2; MUNDOS §2, «Cómo quedó (MU5-n, A3-6a)»). Qué toca de la receta del §5 a cada uno:
+
+| Módulo | 1.er commit (TS y componente) | 2.º commit (materiales por la fábrica) | 3.er commit (TSL apagada) |
+|---|---|---|---|
+| `37_red.js` → `red/salas.ts` (`red-salas`) | hecho | **no hace falta:** sin dibujo | **no hace falta** |
+| `26_presencia.js` → `red/pose.ts`, `red/sala.ts` y `mundos/comun/muneco.ts` | hecho (no es componente: sin recursos) | **no hace falta:** sin materiales | **no hace falta** |
+| `38_presencia_compartida.js` → `mundos/comun/presencia.ts` (`presencia-compartida`) | hecho (+ el `MutationObserver` del chat y el lienzo del atlas, que no se soltaban) | hecho: los tres Lambert (cuerpo; cabeza, accesorios, manos y ruedas; los vehículos de los demás) son estándar con dueño `presencia-compartida`; `nombres-presencia` pasa de `Materiales.sombreador` a `define` + `crea` (`defNombres`: el mismo `ShaderMaterial` y el mismo GLSL, movidos) | hecho: `MeshBasicNodeMaterial`, **parcial** (§13.1) |
+| `26b_avatares.js` → `mundos/comun/avatares.ts` (`avatares-vrm`) | hecho (+ L2-09: los VRM descargados se sueltan) | hecho: `vrm-fundido` sigue siendo un parche **encadenado** al material que trae el VRM (no es un material propio), ahora con dueño `avatares-vrm` (`Materiales.de(…).encadena`) y con el parche movido a `parcheVrmFundido(uni)`; los materiales que suelta `deepDispose` salen solos de la lista de la fábrica | hecho: `MeshStandardNodeMaterial` con `maskNode`, **parcial** (§13.1) |
+| `31c_muneca.js` → `mundos/comun/muneca.ts` (`muneca-vr`, componente nuevo) | hecho | **no hace falta:** la lámina es `creaLamina` de 29_vr (su `MeshBasicMaterial` es de 29_vr; la muñeca solo lo suelta) | **no hace falta:** sin sombreador propio |
+
+- **Cobertura (`Materiales.cobertura()`):** `nombres-presencia` con clásico y TSL; `vrm-fundido` con TSL (su clásico es el parche encadenado de siempre, que no se registra con `define`).
+- **Fuera de la fábrica:** ninguna fila de `FUERA` que bajar: `nombres-presencia` ya pasaba por `Materiales.sombreador` y `vrm-fundido` por `Materiales.encadena`.
+- **Pruebas:** `presencia.test.ts` y `avatares.test.ts` (Vitest, three de verdad): el dueño en la fábrica y que no guarda nada tras liberar; las TSL con `three/webgpu` y `three/tsl` de verdad (se construyen con sus nodos y la ruta es `tsl` solo con el renderer nuevo).
+
+### 13.1 Las variantes TSL: lo que hacen y lo que les falta
+
+Las dos viven junto a su clásico (una sola fuente), están **apagadas** (solo las daría la fábrica con el `WebGPURenderer`, MU6) y son **parciales**. **No comprobado:** que el grafo compile (sin renderizador en Node) ni que se vean igual (capturas: MU6). **No son equivalentes al clásico.**
+
+- **`nombres-presencia`** (`MeshBasicNodeMaterial`, transparente, sin profundidad ni niebla, `alphaTest` 0,04): la celda del atlas de cada instancia (`aCelda`) del MISMO atlas y la MISMA rejilla (los objetos `{ value }` del componente), y el descarte por alfa. **Falta:** ponerlo de cara a la cámara, con la escala de la instancia, como hace el `vertexShader` del clásico; en VR, **por ojo** (multiview). Sin `vertexNode`, cada nombre sería un plano con la orientación de su `instanceMatrix`.
+- **`vrm-fundido`** (`MeshStandardNodeMaterial`): con el color, el mapa, las caras, la transparencia y el `alphaTest` del material del VRM, y el MISMO tramado por `maskNode` (el ruido de pantalla de `vrm_ign` con `screenCoordinate`), que lee el MISMO `{ value }` del fundido (`userData.vrmFundidoUni`). **Falta:** el sombreado toon de MToon (dos tonos, contorno, rim). La buena es el `MToonNodeMaterial` de `@pixiv/three-vrm-materials-mtoon/nodes`, que importa `three/webgpu` y por eso solo puede entrar con el renderer de MU6 (MUNDOS §1: solo `nucleo/render` y la fábrica importan lo que depende del renderer).
+
+### 13.2 Los ciclos de vida (`libera()`)
+
+Ver MUNDOS §2 («Cómo quedó (MU5-n, A3-6a)»). Pruebas de memoria (Vitest, sin GPU): `presencia.test.ts` (con `?presencia=sim&chat=1`: geometrías, materiales y la textura con su `dispose`, el lienzo del atlas a 0, el panel fuera, el observador desconectado, el tipo «persona» quitado), `avatares.test.ts` (la copia del VRM suelta, el grupo fuera, el gancho quitado, `bufs` a 0), `muneca.test.ts` (la lámina al salir de VR; sus enganches y ganchos con el `libera()` del componente) y `red/salas.test.ts` (cada sala dejada y la red cerrada).
+
+**No probado:** nada de esto en un navegador, en iPhone ni en el Quest (esta tarea no abrió Chrome ni Docker); que las TSL se vean como las clásicas (MU6).
