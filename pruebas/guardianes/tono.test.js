@@ -28,9 +28,10 @@ test("orden de mando: la URL, luego el ajuste «vista.tono», luego neutro", () 
   assert.strictEqual(E("", "rosa").tono, "neutro", "un ajuste raro (localStorage manipulado) se ignora");
   assert.strictEqual(E("?expo=2", "agx").expo, 2, "?expo= solo va en la URL y vale con un tono del ajuste");
   assert.strictEqual(E("?expo=2", undefined).expo, 1);
-  const r = lee("apps/web/motor/02h_render.js");
-  assert.match(r, /function ajusteGuardado\(clave\) \{ try \{ var s = window\.localStorage\.getItem\("gemelo\.ajustes\." \+ clave\)[^}]*\} catch \(e\)/);
-  assert.match(r, /ajusteGuardado\("vista\.tono"\)/);
+  // la lectura del ajuste vive en el núcleo (A1-11): el talón le presta window.localStorage y render.ts lee «gemelo.ajustes.vista.tono» (la prueba de comportamiento, en render.test.ts)
+  assert.match(lee("apps/web/motor/02h_render.js"), /almacen: function \(\) \{ return window\.localStorage; \}/);
+  assert.match(lee("apps/web/src/nucleo/render.ts"), /getItem\("gemelo\.ajustes\." \+ clave\)/);
+  assert.match(lee("apps/web/src/nucleo/render.ts"), /ajusteGuardado\(d\.almacen, "vista\.tono"\)/);
   assert.match(lee("apps/web/motor/33_ajustes.js"), /"vista\.tono": opc\("neutro", \["neutro", "agx", "aces", "neutral"\]\)/);
 });
 

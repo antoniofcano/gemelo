@@ -14,6 +14,7 @@
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   Aparato.enlaza({ vr: function () { return renderer.xr.isPresenting; }, gl: function () { return renderer.getContext(); }, sesion: function () { return renderer.xr.getSession(); } });   // AG-0.3: el aparato mide en este contexto
   var scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(42, 1, 0.5, Math.max(5000, EXT * 4));
+  Render.enlaza({ rd: renderer, escena: scene, camara: camera, camaraXr: function () { return renderer.xr.isPresenting ? renderer.xr.getCamera() : null; } });   // MUNDOS §6: Render.info(), .memoria() y .compila()
   // Color y luz modernos (three r152 y r155, ADR-0016): el motor calcula la luz en sRGB lineal y la salida se codifica en sRGB (outputColorSpace).
   // Convenio del motor: los colores escritos a mano en JS o en GLSL (por vértice, por instancia, literales de los sombreadores, multiplicadores de color)
   // son números «tal como se ven», en sRGB, y se pasan a lineal donde entran en la luz: Color.setRGB(r, g, b, SRGB), texColor(), ot_lin() o sRGBTransferEOTF().

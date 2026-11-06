@@ -312,7 +312,7 @@ Solo lo que ya es puro o casi, y está probado en Node. En este orden, un commit
 | # | De | A `apps/web/src/…` | Talón en el legado | Arreglo de la auditoría que entra |
 |---|---|---|---|---|
 | 1 (hecha, A1-10) | `02b_cola.js` (`CargaPuro`, `Cola`) | `nucleo/cola.ts` | `var CargaPuro = Nucleo.CargaPuro; var Cola = Nucleo.creaCola(…)` | dueño por prefijo (`cancelaTodo`), preparación de `congela` |
-| 2 | `02h_render.js` (`Render`, `InfoDibujo`) | `nucleo/render.ts` | `var Render = …, InfoDibujo = …` | `memoria()` (L1-07, si no entró ya en la tanda 1) |
+| 2 (hecha, A1-11) | `02h_render.js` (`Render`, `InfoDibujo`) | `nucleo/render.ts` | `var Render = …, InfoDibujo = …` | `memoria()` (L1-07, si no entró ya en la tanda 1) |
 | 3 | `02g_vr_presupuesto.js` (`VrPresupuestoPuro`, `VrControlPuro`) | `nucleo/presupuesto.ts` | ídem | L7-03 y L1-03 (perfiles que también suben; «holgado» contra el perfil): con cambio de comportamiento solo en VR, va en commit aparte con su prueba |
 | 4 | `02f_xr_perillas.js` | `nucleo/xr-perillas.ts` | ídem | — |
 | 5 | `02e_entidades.js` (`EntidadesPuro`) | `nucleo/entidades.ts` | ídem | — |
@@ -322,6 +322,8 @@ Solo lo que ya es puro o casi, y está probado en Node. En este orden, un commit
 | 9 | nuevo: tipos de contratos | `datos/tipos/*.ts` generados | — | L4-03, L4-04, L4-05 (salen a la luz los campos fuera de contrato) |
 
 - **Pieza 1, hecha (A1-10 = MU1-6).** `nucleo/cola.ts` exporta `CargaPuro`, `creaCola({ ahora })` y `duenoDe`; `02b_cola.js` es el primer talón (4 líneas) y la Cola sale del núcleo con el mismo orden de trabajo y los mismos presupuestos por fotograma. Lo nuevo, aditivo: el dueño por prefijo (`exterior:N12`; `cancelaDe(dueño)` y `pendientesDe(dueño)`), con lo que `ColaDeMundo.cancelaTodo()` de §6 se escribe encima sin tocar la Cola otra vez. Las pruebas puras de la Cola y de `CargaPuro` se movieron de `carga_sin_tirones.test.js` a `nucleo/cola.test.ts` (Vitest); `contratos/interfaces.json` lleva `fuente` y `fabrica` para que `contratos.test.js` siga vigilando los miembros exactos sobre `creaCola` y que el talón la llame. El motor legado pasó de 19.774 a 19.712 líneas (`TOPE`).
+
+- **Pieza 2, hecha (A1-11 = MU1-7).** `nucleo/render.ts` exporta `RenderPuro`, `InfoDibujo` y `creaRender({ busqueda, build, almacen, consola })`; `02h_render.js` es el talón (`var Render = Nucleo.creaRender({…})`). Con el mismo comportamiento (`?render=`, `?tono=`, `?expo=`, la build, `arranca`) y lo nuevo, aditivo: `Render.enlaza({ rd, escena, camara, camaraXr })` (la llama `03_escena.js`, una línea más en el legado) y con él `Render.info()`, `Render.memoria()` y `Render.compila(obj)` (`compileAsync` con la cámara XR si hay sesión). **Honestidad:** `memoria().bytesEstimados` vale 0 («no estimado») hasta que L1-07 lo alimente con tamaños de textura, que three no da; `compila` con multiview está **no probado** en el Quest. Los guardianes que evalúan `02h` en un vm (`_materiales.js`) le prestan el núcleo de verdad (`Nucleo`, cargado con `require` del `.ts` en Node 22.18+). Las pruebas puras pasaron de `render_f1.test.js` a `nucleo/render.test.ts`; se quedan en el guardián las que cruzan con three y con el legado.
 
 - **Fuera de la fase 1:**
   - `02c_componentes.js`, por tamaño (396 líneas) y porque de él cuelgan 32 componentes: va en la fase 2;

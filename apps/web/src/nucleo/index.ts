@@ -4,3 +4,4 @@
 // Regla: nada de aquí lee globales del legado al cargarse; lo que necesite del legado lo recibe por argumento cuando el talón llama a su fábrica.
 export { partesDeVersion } from "./version.ts";
 export { CargaPuro, creaCola, duenoDe } from "./cola.ts";
+export { RenderPuro, InfoDibujo, creaRender } from "./render.ts";

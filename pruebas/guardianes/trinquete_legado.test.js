@@ -10,7 +10,8 @@ const C = require(path.join(RAIZ, "pruebas", "contrato_modulos.js"));
 
 // 2026-11-06, A1-7 (el puente, sin ningún módulo migrado aún): 92 ficheros, 19.774 líneas sin cabeceras (511 más de cabeceras)
 // 2026-11-06, A1-10 (MU1-6, 02b_cola.js pasa a talón en apps/web/src/nucleo/cola.ts): 19.712 líneas (de 19.774)
-const TOPE = 19712;
+// 2026-11-06, A1-11 (MU1-7, 02h_render.js pasa a talón en apps/web/src/nucleo/render.ts; 03_escena.js +1 línea: Render.enlaza): 19.632 líneas (de 19.712)
+const TOPE = 19632;
 
 /** líneas de un texto (la última sin salto también cuenta) */
 const lineas = s => s === "" ? 0 : s.split("\n").length - (s.endsWith("\n") ? 1 : 0);

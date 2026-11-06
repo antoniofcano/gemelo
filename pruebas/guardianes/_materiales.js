@@ -3,15 +3,18 @@
 // del motor en un vm y necesitan `Materiales` (F1 de doc/sistema/MULTIVIEW.md). Es el código de verdad, no un doble: devuelve lo mismo que en la página.
 //   const { fabrica } = require("./_materiales");  const { Materiales, Render, InfoDibujo, RenderPuro, Estaticos } = fabrica(THREE, { busqueda: "?render=nuevo" });
 const vm = require("vm");
-const { lee } = require("./_util");
+const path = require("path");
+const { lee, RAIZ } = require("./_util");
+// el núcleo de TypeScript (apps/web/src/nucleo/), el mismo que ve la IIFE por «import * as Nucleo» (MUNDOS §9.3): Node 22.18+ lo carga con require, quitando los tipos
+const NUCLEO = require(path.join(RAIZ, "apps/web/src/nucleo/index.ts"));
 
 function fabrica(THREE, o) {
   o = o || {};
-  const g = { THREE, location: { search: o.busqueda || "" }, console: o.console || { warn() {}, error() {} }, Promise };
+  const g = { THREE, Nucleo: NUCLEO, location: { search: o.busqueda || "" }, console: o.console || { warn() {}, error() {} }, Promise };
   if (o.build) g.__GEMELO_BUILD__ = o.build;
   vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/02h_render.js") + lee("apps/web/motor/02i_materiales.js") + lee("apps/web/motor/02j_estaticos.js") + lee("apps/web/motor/02k_fusiona.js") +
-    "\nthis.fusionaGeometrias = fusionaGeometrias; this.Estaticos = Estaticos; this.Materiales = Materiales; this.Render = Render; this.InfoDibujo = InfoDibujo; this.RenderPuro = RenderPuro;", vm.createContext(g), { filename: "02h-02i" });
-  return { Materiales: g.Materiales, Render: g.Render, InfoDibujo: g.InfoDibujo, RenderPuro: g.RenderPuro, Estaticos: g.Estaticos, fusionaGeometrias: g.fusionaGeometrias };
+    "\nthis.fusionaGeometrias = fusionaGeometrias; this.Estaticos = Estaticos; this.Materiales = Materiales; this.Render = Render; this.InfoDibujo = InfoDibujo;", vm.createContext(g), { filename: "02h-02i" });
+  return { Materiales: g.Materiales, Render: g.Render, InfoDibujo: g.InfoDibujo, RenderPuro: NUCLEO.RenderPuro, Estaticos: g.Estaticos, fusionaGeometrias: g.fusionaGeometrias };
 }
 
 /** el contexto g de una prueba (vm o new Function) con la fábrica y el lector de dibujo, si no los trae: con su THREE (de verdad o de mentira) */
