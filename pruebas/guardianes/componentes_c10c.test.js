@@ -90,7 +90,7 @@ test("medidor-fotogramas: manifiesto, sin &mide no escucha el fotograma ni dibuj
   d.libera(); n.suelta();
   assert.strictEqual(m.ventana.__mide, undefined); assert.strictEqual(m.filas.length, 0);
   for (const ev of ["depura:lineas", "medida:estado", "medida:envia", "medida:inicia", "medida:muestra"]) assert.ok(!m.Bus.hay(ev), ev + " suelto");
-  assert.doesNotThrow(() => d.libera(), "liberar dos veces no rompe");
+  assert.doesNotThrow(() => d.libera(api), "liberar dos veces no rompe");
 });
 
 test("medidor-fotogramas: medida:inicia mide con «cuadro:fin», termina, la tarjeta de VR y el contador piden sus datos por el Bus, y liberar lo suelta todo", () => {
@@ -154,11 +154,11 @@ test("suelo-fondo: manifiesto, con la caja del fixture dibuja 1 llamada y 10.824
   assert.strictEqual(d2.presupuesto.triangulos, 128 * 128 * 2);
   const api2 = d2.monta(contexto(bus())); api2.actualiza();
   assert.ok(dibujo(grande.scene).triangulos <= d2.presupuesto.triangulos, "una finca enorme sigue dentro del tope");
-  d2.libera();
+  d2.libera(api2);
   const sp = espiaDispose();
-  try { d.libera(); } finally { sp.quita(); }
+  try { d.libera(api); } finally { sp.quita(); }
   assert.strictEqual(sp.cuenta(), 2, "dispose de la geometría y del material, y de nada más (la textura es de 04d)");
-  assert.strictEqual(m.scene.children.length, 0); assert.doesNotThrow(() => d.libera(), "liberar dos veces no rompe");
+  assert.strictEqual(m.scene.children.length, 0); assert.doesNotThrow(() => d.libera(api), "liberar dos veces no rompe");
 });
 
 test("suelo-fondo: sin escena activa no existe, y 90_final ya no lo nombra", () => {
@@ -166,7 +166,7 @@ test("suelo-fondo: sin escena activa no existe, y 90_final ya no lo nombra", () 
   m.est.v = "cargando"; api.actualiza(); assert.strictEqual(api.malla(), null);
   m.est.v = "activo"; api.actualiza(); assert.ok(api.malla());
   assert.ok(!/SueloFondo|suelo-fondo/.test(sinComentarios(lee("apps/web/motor/90_final.js"))), "el bucle ya no lo llama");
-  d.libera();
+  d.libera(api);
 });
 
 // ---------------------------------------------------------------- marcadores-lidar
@@ -209,7 +209,7 @@ test("marcadores-lidar: manifiesto; mundo:aplica coloca copas, anillos y desfase
   try { d.libera(); n.suelta(); } finally { sp.quita(); }
   assert.ok(sp.cuenta() >= 8, "dispose de mallas, geometrías y materiales: " + sp.cuenta());
   assert.strictEqual(m.scene.children.length, 0, "la escena queda como estaba"); assert.ok(!m.Bus.hay("mundo:aplica") && !m.Bus.hay("capas:cambia"));
-  assert.doesNotThrow(() => d.libera(), "liberar dos veces no rompe");
+  assert.doesNotThrow(() => d.libera(api), "liberar dos veces no rompe");
 });
 
 test("marcadores-lidar: montado tarde (ya estaba listo) coloca al momento; sin montar, aplica() y capas() del núcleo no se rompen", () => {

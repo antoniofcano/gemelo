@@ -104,10 +104,12 @@ function revisaTalon(nombre, texto) {
   let prog;
   try { prog = acorn.parse(cuerpo, { ecmaVersion: "latest", sourceType: "script" }); } catch (e) { return err.concat(nombre + ": no es JavaScript válido: " + e.message); }
   for (const st of prog.body) {
-    if (st.type !== "VariableDeclaration" || st.kind !== "var") { err.push(nombre + ": un talón solo lleva `var X = …Nucleo…;` (hay " + st.type + ")"); continue; }
+    // A3-1b: el talón de un componente del exterior registra el manifiesto que le da apps/web/src/mundos: `Componentes.registra(Mundos.<x>({ … }));`
+    if (st.type === "ExpressionStatement" && /^Componentes\.registra\(Mundos\.[A-Za-z_$][\w$]*\(/.test(cuerpo.slice(st.start, st.end))) continue;
+    if (st.type !== "VariableDeclaration" || st.kind !== "var") { err.push(nombre + ": un talón solo lleva `var X = …Nucleo…;` o `Componentes.registra(Mundos.…)` (hay " + st.type + ")"); continue; }
     for (const dcl of st.declarations) {
       const ini = dcl.init ? cuerpo.slice(dcl.init.start, dcl.init.end) : "";
-      if (!usosNucleo(ini).usos.size) err.push(nombre + ": " + (dcl.id.name || "?") + " no sale del núcleo (Nucleo.<x>)");
+      if (!usosNucleo(ini).usos.size && !/(?<![\w.$])Mundos\.[A-Za-z_$]/.test(ini)) err.push(nombre + ": " + (dcl.id.name || "?") + " no sale del núcleo ni de los mundos (Nucleo.<x>, Mundos.<x>)");
     }
   }
   for (const l of cuerpo.split("\n")) if (/^\s*var\s/.test(l) && !/^  var\s/.test(l)) err.push(nombre + ": `var` con sangría de dos espacios, o contrato_modulos.js no ve lo que expone");

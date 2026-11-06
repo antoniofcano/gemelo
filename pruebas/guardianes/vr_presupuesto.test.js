@@ -77,7 +77,7 @@ test("04e_suelo_fondo: en el escalón 3 la rejilla tiene 64 celdas y baja el dob
   V.ponEscalon(3); api.actualiza(); assert.strictEqual(tri(), 64 * 64 * 2); assert.strictEqual(api.baja(), 3);
   assert.ok(Math.abs(api.malla().geometry.attributes.position.array[1] - 97) < 1e-6, "baja 3 m bajo el relieve grueso");
   V.ponEscalon(0); api.actualiza(); assert.strictEqual(tri(), 128 * 128 * 2); assert.strictEqual(api.baja(), 1.5);
-  defs[0].libera(); assert.ok(!("sueloFondo" in V.estado().fuentes));
+  defs[0].libera(api); assert.ok(!("sueloFondo" in V.estado().fuentes));
 });
 
 test("cableado: 29_vr pone el escalón en vrPerfil, lo quita al salir y avisa de la cabeza cada fotograma; 07_follaje apunta las sombras", () => {
