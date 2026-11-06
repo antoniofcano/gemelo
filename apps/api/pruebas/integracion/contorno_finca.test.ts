@@ -23,7 +23,7 @@ before(async () => {
   for (const [c, rol] of [[ADMIN, "admin"], [OFI, "oficina"]] as const) {
     ids[c] = Number((await bd.dueno.query<{ id: number }>("INSERT INTO hogares (correo, rol) VALUES ($1, $2) RETURNING id", [c, rol])).rows[0]!.id);
   }
-  // 100 olivos medidos en rejilla de 10 m: x, y = 5 … 95 (la caja + 150 m va de -145 a 245)
+  // 100 olivos detectados en rejilla de 10 m: x, y = 5 … 95 (la caja + 150 m va de -145 a 245)
   for (let i = 0; i < 10; i++) for (let j = 0; j < 10; j++) {
     await bd.dueno.query("INSERT INTO olivos (id_estable, geom, fuente) VALUES ($1, ST_SetSRID(ST_MakePoint($2, $3), 25830), 'lidar')",
       ["prueba:" + (i * 10 + j + 1), E0 + 5 + i * 10, N0 + 5 + j * 10]);

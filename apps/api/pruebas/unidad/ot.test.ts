@@ -109,7 +109,7 @@ test("ficha: cumple el contrato, quita duplicados por parcela, pondera el avance
   assert.deepEqual(f.avance, { pct: 80, parcelas_con_dato: 1, parcelas: 2, fecha: "2026-10-28" });
   assert.equal(f.completo, false);
   assert.deepEqual(f.avisos, ["ot_sin_sincronia", "ot_truncado"]);
-  assert.equal(f.olivos.lidar.naturaleza, "medido");
+  assert.equal(f.olivos.lidar.naturaleza, "detectado");
   assert.equal(f.olivos.declarado.n, 21);
 });
 

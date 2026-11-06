@@ -11,7 +11,7 @@ export const CAJA_UTM = { emin: 100_000, emax: 900_000, nmin: 3_900_000, nmax: 4
 export const SOLAPE_TOLERADO_M2 = 0.5;
 /** Superficie mínima de una haza (m²). */
 export const AREA_MINIMA_M2 = 10;
-/** Margen (m) alrededor de los olivos medidos de la finca que cuenta como «dentro de la finca» cuando la finca NO tiene contorno cargado. */
+/** Margen (m) alrededor de los olivos detectados de la finca que cuenta como «dentro de la finca» cuando la finca NO tiene contorno cargado. */
 export const MARGEN_FINCA_M = 150;
 /**
  * Holgura (m) del contorno de la finca (OF3b, migración 0011): una haza vale si cae dentro del contorno ensanchado esta distancia. Absorbe el

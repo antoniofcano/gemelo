@@ -102,7 +102,7 @@ export async function balizasVigentes(bd: Pick<Bd, "query">, finca: string): Pro
 }
 
 /**
- * ¿Cae el punto en la finca? Con contorno vigente (OF3b), dentro de él con su holgura; si no, dentro de la caja de sus olivos medidos + MARGEN_FINCA_M
+ * ¿Cae el punto en la finca? Con contorno vigente (OF3b), dentro de él con su holgura; si no, dentro de la caja de sus olivos detectados + MARGEN_FINCA_M
  * (el mismo límite que el editor de hazas). null si la finca no tiene ni contorno ni olivos (no se sabe dónde está).
  */
 export async function puntoEnFinca(bd: Pick<Bd, "query">, finca: string, x: number, y: number): Promise<boolean | null> {
@@ -213,7 +213,7 @@ export async function rutasOficinaMundo(app: FastifyInstance, ctx: Contexto, mod
     const b = req.body, titulo = limpiaTexto(b.titulo, BALIZA_TITULO_MAX), texto = b.texto === undefined ? null : limpiaTexto(b.texto, BALIZA_TEXTO_MAX);
     if (!titulo) return rep.code(400).send({ error: "titulo_vacio", mensaje: "La baliza necesita un título." });
     const dentro = await puntoEnFinca(bd, b.finca, b.x, b.y);
-    if (dentro === null) return rep.code(400).send({ error: "finca_desconocida", mensaje: "No se sabe dónde está esa finca (ni contorno ni olivos medidos)." });
+    if (dentro === null) return rep.code(400).send({ error: "finca_desconocida", mensaje: "No se sabe dónde está esa finca (ni contorno ni olivos detectados)." });
     if (!dentro) return rep.code(400).send({ error: "fuera_de_finca", mensaje: "Ese punto cae fuera de la finca." });
     const n = (await bd.query<{ n: number }>("SELECT count(*)::int AS n FROM balizas_oficiales WHERE finca = $1 AND retirada_en IS NULL AND hasta > now()", [b.finca])).rows[0]!.n;
     if (n >= BALIZAS_MAX_POR_FINCA) return rep.code(409).send({ error: "demasiadas", mensaje: "Ya hay " + BALIZAS_MAX_POR_FINCA + " balizas oficiales en esta finca: quita alguna antes." });

@@ -1,4 +1,4 @@
-// OF3e: la carga de los olivos medidos desde el indice.json de una finca (tuberia/hazas/carga_hazas.py --olivos-indice) contra
+// OF3e: la carga de los olivos detectados desde el indice.json de una finca (tuberia/hazas/carga_hazas.py --olivos-indice) contra
 // PostGIS en un contenedor. Datos SINTÉTICOS (índice mínimo inventado dentro de las hazas de tuberia/hazas/ejemplo). Comprueba:
 // finca y copas_id puestos, recarga idempotente (ni duplica ni cambia ids), el recuento por haza de la oficina (ST_Intersects)
 // y que la búsqueda por (finca, copas_id) de la personalización (vida/rutas.ts) los encuentra. Sin Docker se SALTA con aviso.

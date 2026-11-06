@@ -126,7 +126,7 @@
       if (!f.es_mia && typeof f.alias === "string" && f.alias) quien += " El hogar se muestra como «" + f.alias + "».";
       if (num(f.superficie_ha)) filas.push({ k: "Superficie", v: n1(f.superficie_ha, 2) + " ha", de: "medida sobre la linde que dibuja la oficina" });
       var ol = f.olivos || {};
-      if (ol.lidar && num(ol.lidar.n)) filas.push({ k: "Olivos contados", v: n1(ol.lidar.n), de: "medido · " + (ol.lidar.fuente || "LiDAR") });
+      if (ol.lidar && num(ol.lidar.n)) filas.push({ k: "Olivos contados", v: n1(ol.lidar.n), de: "detectado (LiDAR + regla) · " + (ol.lidar.fuente || "LiDAR") });
       if (ol.declarado) filas.push({ k: "Olivos declarados", v: num(ol.declarado.n) ? n1(ol.declarado.n) : "sin dato", de: "declarado" + (ol.declarado.fuente ? " · " + ol.declarado.fuente : "") });
       var nd = f.ndvi_relativo;
       filas.push(nd && num(nd.valor) ? { k: "Vigor (NDVI)", v: (nd.valor > 0 ? "+" : "") + n1(nd.valor, 2) + " frente al resto de la finca", de: "relativo, sin calibrar · " + (nd.fuente || "Sentinel-2") + " · " + fecha(nd.fecha) } : { k: "Vigor (NDVI)", v: "sin dato", de: "Sentinel-2" });

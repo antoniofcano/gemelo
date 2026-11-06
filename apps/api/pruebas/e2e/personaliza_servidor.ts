@@ -1,7 +1,7 @@
 // Servidor de pruebas para el recorrido de Chrome de la personalización de los árboles (pruebas/guardianes/personalizacion_e2e.test.js, P7f):
 // la api REAL contra PostGIS en un contenedor (Testcontainers; NO el entorno de la persona), con la carpeta de fotos (GEMELO_MEDIOS) en una
 // carpeta temporal, la página del motor servida en /mundo/ tras la misma guarda que el Caddy (forward_auth a /api/interno/autoriza) y la
-// finca del fixture sintético con sus olivos medidos y cuatro hazas (dos por parcela). Dos familias: Ruiz (H-01) y Olid (H-02), más unas gafas
+// finca del fixture sintético con sus olivos detectados y cuatro hazas (dos por parcela). Dos familias: Ruiz (H-01) y Olid (H-02), más unas gafas
 // vinculadas de Ruiz (sesión de aparato, sin titularidad). Va dentro del turno del banco (lo pide quien lo lanza).
 // Escribe «LISTO {json}» cuando está en marcha.
 //   node pruebas/e2e/personaliza_servidor.ts <carpeta de la página del motor (index.html, indice.json, t/)> <carpeta de la finca del fixture (indice.json)>
@@ -59,7 +59,7 @@ for (const [codigo, nombre] of [["H-01", "La Loma"], ["H-02", "El Pilar"], ["H-0
 }
 await dueno.query("UPDATE hazas SET hogar_id = $1 WHERE codigo = 'H-01'", [await idDe("ruiz@example.com")]);
 await dueno.query("UPDATE hazas SET hogar_id = $1 WHERE codigo = 'H-02'", [await idDe("olid@example.com")]);
-// la finca del fixture: sus copas como olivos medidos y las hazas sobre sus parcelas, cada parcela en dos (como oficina_servidor.ts)
+// la finca del fixture: sus copas como olivos detectados y las hazas sobre sus parcelas, cada parcela en dos (como oficina_servidor.ts)
 const d = JSON.parse(readFileSync(join(finca, "indice.json"), "utf8")) as { centro_utm: [number, number]; finca_id: string; copas: number[][]; copas_id: number[]; parcelas: { linde: number[][] }[] };
 const [cx, cy] = d.centro_utm;
 for (let i = 0; i < d.copas.length; i++) {

@@ -4,7 +4,7 @@
 // Va dentro del turno del banco (lo pide quien lo lanza). Escribe en la salida estándar una línea «LISTO {json}» cuando está en marcha.
 //   node pruebas/e2e/oficina_servidor.ts <carpeta del build de la oficina> [<carpeta de la finca del fixture (indice.json y t/)>]
 // Con la carpeta de la finca (pruebas/guardianes/oficina_hazas.test.js) la sirve en /teselas/hituelo/ tras sesión (como el Caddy), carga sus
-// copas como olivos medidos y pone las cuatro hazas sobre sus dos parcelas (cada una partida en dos), como tuberia/hazas/desde_fixture.py.
+// copas como olivos detectados y pone las cuatro hazas sobre sus dos parcelas (cada una partida en dos), como tuberia/hazas/desde_fixture.py.
 // Rutas de ayuda (solo aquí, nunca en la api): /__prueba/aparato-pendiente?nombre=<nombre> · /__prueba/enlace?para=<correo> · /__prueba/buzon?para=<correo> · /__prueba/hogar?correo=<correo>
 // · /__prueba/caduca-confirmacion. Con `--llave` (OF13) la llave de acceso es obligatoria (pruebas/guardianes/oficina_llave.test.js).
 import { execFileSync } from "node:child_process";
@@ -77,7 +77,7 @@ for (const [correo, interno, haza, normas] of familias) {
     [correo, interno, normas ? interno.split(" ")[0] : null, normas ? 1 : null, normas ? new Date() : null]);
   if (haza) await dueno.query("UPDATE hazas SET hogar_id = $1 WHERE codigo = $2", [await idDe(correo), haza]);
 }
-// la finca del fixture (sintética): sus copas como olivos medidos y las hazas sobre sus parcelas, cada parcela en dos
+// la finca del fixture (sintética): sus copas como olivos detectados y las hazas sobre sus parcelas, cada parcela en dos
 if (finca) {
   const d = JSON.parse(readFileSync(join(finca, "indice.json"), "utf8")) as { centro_utm: [number, number]; finca_id: string; copas: number[][]; copas_id: number[]; parcelas: { linde: number[][] }[] };
   const [cx, cy] = d.centro_utm;

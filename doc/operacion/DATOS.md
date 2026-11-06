@@ -113,7 +113,7 @@ psql -v ON_ERROR_STOP=1 -f <olivos.sql>        # con el dueño; en el VPS, como 
 ## Contorno de la finca (OF3b y OF3c, decisiones 140 y 143)
 
 El contorno de una finca es la **unión de sus parcelas** y limita el editor de hazas de la oficina (migración 0011, tabla `fincas_contorno`;
-sin contorno cargado, el límite sigue siendo la caja de los olivos medidos + 150 m de OF3). Lo saca `tuberia/contorno/contorno_finca.py`:
+sin contorno cargado, el límite sigue siendo la caja de los olivos detectados + 150 m de OF3). Lo saca `tuberia/contorno/contorno_finca.py`:
 
 ```
 pip install -r tuberia/contorno/requirements.txt            # jsonschema, shapely, pyproj (versiones fijadas)

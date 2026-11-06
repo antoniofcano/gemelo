@@ -6,9 +6,9 @@
 // ===============================================================================
   // ---------- EV2-A6: carteles de haza en la linde y tablón en la entrada (ADR-0014, decisiones 12, 188 y 202; doc/sistema/COMPONENTES.md).
   // Sobre la linde de las hazas que tienes cerca cuelga un cartel con el NOMBRE de la haza (y el alias del hogar si lo deja ver) y solo lo que decidió Antonio (2026-11-05, club privado
-  // «La Linde»): superficie y olivos contados con LiDAR (medido), la fenología del momento y, SOLO en recolección (octubre a enero, [SUPUESTO]), el % recogido (los dos de OlivarTrack,
+  // «La Linde»): superficie y olivos contados con LiDAR (detectado: detector más regla, no medido), la fenología del momento y, SOLO en recolección (octubre a enero, [SUPUESTO]), el % recogido (los dos de OlivarTrack,
   // con la procedencia que trae la ficha). Lo demás de la ficha (tratamientos, NDVI, olivos declarados, kilos, personas) no se pinta aunque la api lo mande: lo que no está en
-  // CartelesPuro.contenido no sale. El tablón de la entrada: «Club La Linde», el nombre de la finca, hazas y olivos contados de toda la finca (medido) y la época del olivar hoy
+  // CartelesPuro.contenido no sale. El tablón de la entrada: «Club La Linde», el nombre de la finca, hazas y olivos contados de toda la finca (detectado) y la época del olivar hoy
   // (23_estacion.js: deducido si el calendario se ajusta con lo observado, ilustrativo si es el típico). La línea «Hoy en el olivar» (EV-3c) es el trabajo de la semana agregado por tipo, o el aviso principal del campo, que da /api/mundo/hoy por el evento «mundo:hoy» (53_mundo_hoy.js; esta pieza no pide nada), con su procedencia y «leído hace N h»; sin datos, no se pinta. En el lienzo solo caben dos pares dato + procedencia: prioridad hazas y olivos, hoy, época (la época, ilustrativa o deducida, cede ante un dato de hoy).
   //   · Como mucho MAX = 3 carteles a la vista (más el tablón): los de las hazas más cercanas (distancia a su linde), con histéresis (la que ya está se queda hasta que otra
   //     le gana por más del 20 %) y dentro de RADIO = 30 m (36 m los que ya estaban; más lejos, ni con 5,5 de escala llegaría a 1,5° por línea). Los carteles son un pool de 3 mallas y 3 lienzos de 512 × 320 creados UNA vez; al cambiar de haza se repinta el lienzo
@@ -79,11 +79,11 @@
       var o = { titulo: txt(h && h.nombre, 60) || "Haza", alias: "", es_mia: !!(h && h.es_mia), datos: [] };
       if (!f || typeof f !== "object") return o;
       if (!o.es_mia && typeof f.alias === "string" && txt(f.alias, 20)) o.alias = "Hogar visible como «" + txt(f.alias, 20) + "»";
-      var area = num(f.superficie_ha) ? n1(f.superficie_ha, 2) + " ha" : "", ol = f.olivos && f.olivos.lidar, oli = ol && num(ol.n) && ol.naturaleza === "medido" ? n1(ol.n) + " olivos" : "";
+      var area = num(f.superficie_ha) ? n1(f.superficie_ha, 2) + " ha" : "", ol = f.olivos && f.olivos.lidar, oli = ol && num(ol.n) && ol.naturaleza === "detectado" ? n1(ol.n) + " olivos" : "";
       var fu = oli ? txt(ol.fuente, 40) || "LiDAR" : "";
-      if (area && oli) o.datos.push({ txt: area + " · " + oli, de: "medido · linde y " + fu });
+      if (area && oli) o.datos.push({ txt: area + " · " + oli, de: "detectado (LiDAR + regla) · linde y " + fu });
       else if (area) o.datos.push({ txt: "Superficie: " + area, de: "medida sobre la linde de la oficina" });
-      else if (oli) o.datos.push({ txt: "Olivos contados: " + n1(ol.n), de: "medido · " + fu });
+      else if (oli) o.datos.push({ txt: "Olivos contados: " + n1(ol.n), de: "detectado (LiDAR + regla) · " + fu });
       var fe = ultimo(f.fenologia), av = ctx && recoleccion(ctx.hoy) ? f.avance : null, porc = av && num(av.pct) && av.pct <= 100 ? av.pct : null, partes = [];   // fuera de recolección ni se mira el avance
       if (fe) partes.push(fenologia(fe.bbch));
       if (porc !== null) partes.push(n1(porc) + " % recogido");
@@ -104,7 +104,7 @@
       var aj = /ajustado/.test(String(origen || ""));
       return { txt: est + ": " + fase, de: aj ? "deducido · calendario ajustado" : "ilustrativo · calendario típico" };
     }
-    // el tablón de la entrada. ctx = { hazas, olivos, hoy, bbch, origen }: nº de hazas con linde y olivos contados con LiDAR de toda la finca (medidos; sin dato fiable no se pone) y la época de hoy.
+    // el tablón de la entrada. ctx = { hazas, olivos, hoy, bbch, origen }: nº de hazas con linde y olivos contados con LiDAR de toda la finca (detectados; sin dato fiable no se pone) y la época de hoy.
     // «Hoy en el olivar» (EV-3c): ctx.campo = { txt, de, cuando } (la línea que emite 53_mundo_hoy.js: trabajo de la semana agregado, o el aviso principal) y ctx.ahora (ms). Con datos
     // válidos pasa por delante de la época (solo caben dos pares); sin ellos, hoy queda vacío y no se pinta.
     function haceHoy(iso, ahora) {
@@ -122,8 +122,8 @@
       var t = { titulo: "Club La Linde", alias: nombre, es_mia: false, tablon: true, datos: [], hoy: [] };   // hoy: entradas { txt, de } de «Hoy en el olivar»; vacío = no se muestra
       ctx = ctx || {};
       var nh = ctx.hazas > 0 ? Math.floor(ctx.hazas) : 0, no = ctx.olivos > 0 ? Math.floor(ctx.olivos) : 0;
-      if (nh && no) t.datos.push({ txt: n1(nh) + (nh === 1 ? " haza" : " hazas") + " · " + n1(no) + " olivos", de: "medido · LiDAR 2024 y lindes" });
-      else if (no) t.datos.push({ txt: n1(no) + " olivos contados", de: "medido · LiDAR 2024" });
+      if (nh && no) t.datos.push({ txt: n1(nh) + (nh === 1 ? " haza" : " hazas") + " · " + n1(no) + " olivos", de: "detectado (LiDAR + regla) · LiDAR 2024 y lindes" });
+      else if (no) t.datos.push({ txt: n1(no) + " olivos contados", de: "detectado (LiDAR + regla) · LiDAR 2024" });
       else if (nh) t.datos.push({ txt: n1(nh) + (nh === 1 ? " haza" : " hazas"), de: "lindes de la oficina" });
       var lh = lineaHoy(ctx.campo, ctx.ahora); if (lh) { t.hoy.push(lh); t.datos.push(lh); }
       var ep = epoca(ctx.hoy, ctx.bbch, ctx.origen); if (ep) t.datos.push(ep);

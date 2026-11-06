@@ -151,7 +151,7 @@
   // webgl2}; solo un false explícito las niega: lo que no se sabe de forma síncrona, lo dice después la carga del constructor, que cae a lo de siempre).
   // Devuelve {bandera: "escalera" | "gen" | null, defecto: viene del valor por defecto, motivo: por qué NO, si bandera es null}
   var GeneradosPuro = (function () {
-    function sinDato(d) { return !d || !d.copas || !d.copas.length ? "la finca no trae olivos medidos (copas)" : !d.copas_param || !d.copas_param.length ? "la finca no trae copas_param" : !d.copas_id || !d.copas_id.length ? "la finca no trae copas_id" : ""; }
+    function sinDato(d) { return !d || !d.copas || !d.copas.length ? "la finca no trae olivos detectados (copas)" : !d.copas_param || !d.copas_param.length ? "la finca no trae copas_param" : !d.copas_id || !d.copas_id.length ? "la finca no trae copas_id" : ""; }
     function activo(busqueda, datos, cap) {
       var m = /[?&]olivos=([^&#]*)/.exec(String(busqueda || "")), v = m ? m[1] : null;
       if (v === "escalera" || v === "gen") return { bandera: v, defecto: false, motivo: "" };

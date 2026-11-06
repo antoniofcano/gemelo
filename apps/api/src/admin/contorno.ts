@@ -24,7 +24,7 @@ export interface Limite {
   hazas_fuera: { id: number; codigo: string; m2: number }[];
 }
 
-/** El límite de la finca: su contorno vigente o, si no tiene, la caja de sus olivos medidos con MARGEN_FINCA_M (o nada si tampoco hay olivos). */
+/** El límite de la finca: su contorno vigente o, si no tiene, la caja de sus olivos detectados con MARGEN_FINCA_M (o nada si tampoco hay olivos). */
 export async function leeLimite(bd: Bd, finca: string): Promise<Limite> {
   const base = { finca, srs: "EPSG:25830" as const, holgura_m: CONTORNO_HOLGURA_M };
   const k = (await bd.query<{ geometria: Limite["geometria"]; fuente: string; consultado_en: string; parcelas: number; superficie_ha: number; cargado_en: string; hazas_fuera: Limite["hazas_fuera"] }>(

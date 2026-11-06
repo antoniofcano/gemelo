@@ -26,7 +26,7 @@
           "properties": {
             "n": { "type": "integer", "minimum": 0 },
             "fuente": { "type": "string", "maxLength": 80 },
-            "naturaleza": { "type": "string", "enum": ["medido"] }
+            "naturaleza": { "type": "string", "enum": ["detectado"] }
           }
         },
         "declarado": {

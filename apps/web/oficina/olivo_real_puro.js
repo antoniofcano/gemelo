@@ -29,7 +29,7 @@ export const ESCALONES = [
 export function buscaOlivo(indice, texto, finca) {
   const t = String(texto || "").trim();
   if (!t) return { error: "Escribe el id de un olivo (o «posición N», el número que enseña la ficha)." };
-  if (!indice || !Array.isArray(indice.copas) || !indice.copas.length) return { error: "La finca no trae olivos medidos en su índice." };
+  if (!indice || !Array.isArray(indice.copas) || !indice.copas.length) return { error: "La finca no trae olivos detectados en su índice." };
   // El número de la ficha del mundo («Olivo 2005») es la posición en indice.copas más uno: «posición 2005», «olivo 2005» o «#2005» (OF8c)
   const pos = /^(?:posici[oó]n|olivo|#)\s*#?\s*(\d+)$/i.exec(t);
   if (pos) {

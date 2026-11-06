@@ -44,7 +44,7 @@ export interface HazaOficina {
 }
 
 /**
- * Las hazas tal como las ve la oficina. El recuento es el de la ficha pública (olivos medidos por LiDAR dentro o en la linde);
+ * Las hazas tal como las ve la oficina. El recuento es el de la ficha pública (olivos detectados por LiDAR dentro o en la linde);
  * `olivos_borde`, los de esos a menos de BORDE_M de la linde; `solapes`, las otras hazas de la finca que pisa (más de SOLAPE_TOLERADO_M2).
  */
 export async function leeHazas(bd: Bd | Cliente, filtro: { id?: number; finca?: string | null; geometria: boolean }): Promise<HazaOficina[]> {
@@ -76,7 +76,7 @@ async function motivo(c: Cliente, autor: number, accion: string, nota: string | 
 
 /**
  * Valida en PostGIS una geometría (GeoJSON en EPSG:25830): válida, con superficie, dentro de la finca (su contorno vigente con
- * CONTORNO_HOLGURA_M, ST_CoveredBy; sin contorno, la caja de sus olivos medidos con MARGEN_FINCA_M) y sin pisar otras hazas de la finca
+ * CONTORNO_HOLGURA_M, ST_CoveredBy; sin contorno, la caja de sus olivos detectados con MARGEN_FINCA_M) y sin pisar otras hazas de la finca
  * (salvo las de `excluir`). Lanza un Rechazo si no.
  */
 async function validaEnFinca(c: Cliente, geojson: string, finca: string, excluir: number[]): Promise<void> {
@@ -89,7 +89,7 @@ async function validaEnFinca(c: Cliente, geojson: string, finca: string, excluir
   }
   if (!v!.valida) rechaza(400, "geometria_no_valida", "La linde se cruza consigo misma o tiene un pico: corrígela antes de guardar.", { motivo: v!.motivo });
   if (v!.area < AREA_MINIMA_M2) rechaza(400, "demasiado_pequena", "La haza es demasiado pequeña (menos de " + AREA_MINIMA_M2 + " m²).");
-  // el límite: el contorno vigente de la finca (OF3b, migración 0011) si lo hay; si no, la caja de sus olivos medidos + MARGEN_FINCA_M
+  // el límite: el contorno vigente de la finca (OF3b, migración 0011) si lo hay; si no, la caja de sus olivos detectados + MARGEN_FINCA_M
   const k = (await c.query<{ fuente: string | null; dentro_contorno: boolean | null; fuera_m2: number | null }>(
     `SELECT k.fuente, ST_CoveredBy(x.g, ST_Buffer(k.geom, $3)) AS dentro_contorno,
             round(ST_Area(ST_Difference(x.g, k.geom))::numeric, 1)::float AS fuera_m2
@@ -105,8 +105,8 @@ async function validaEnFinca(c: Cliente, geojson: string, finca: string, excluir
       `SELECT count(*) > 0 AS hay,
               ST_Within(ST_SetSRID(ST_GeomFromGeoJSON($1), 25830), ST_SetSRID(ST_Expand(ST_Extent(geom), $3)::geometry, 25830)) AS dentro
          FROM olivos WHERE finca = $2`, [geojson, finca, MARGEN_FINCA_M])).rows[0]!;
-    if (!f.hay) rechaza(400, "finca_desconocida", "No hay olivos medidos de esa finca en la base ni contorno cargado: sin ellos no se sabe dónde está.");
-    if (!f.dentro) rechaza(400, "fuera_de_finca", "La haza se sale de la finca (más de " + MARGEN_FINCA_M + " m más allá de sus olivos medidos).");
+    if (!f.hay) rechaza(400, "finca_desconocida", "No hay olivos detectados de esa finca en la base ni contorno cargado: sin ellos no se sabe dónde está.");
+    if (!f.dentro) rechaza(400, "fuera_de_finca", "La haza se sale de la finca (más de " + MARGEN_FINCA_M + " m más allá de sus olivos detectados).");
   }
   const s = await c.query<{ id: number; codigo: string; m2: number }>(
     `SELECT h.id::int AS id, h.codigo, round(ST_Area(ST_Intersection(h.geom, x.g))::numeric, 1)::float AS m2

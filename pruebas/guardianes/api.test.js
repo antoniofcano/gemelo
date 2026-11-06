@@ -215,7 +215,7 @@ test("tuberia/hazas: el ejemplo sintético se convierte a SQL idempotente", t =>
   assert.ok(!/hogar_id/.test(sql.split("INSERT INTO haza_parcela")[0].split("INSERT INTO hazas")[1] || ""), "el cargador no debe tocar hogar_id");
 });
 
-test("tuberia/hazas: los olivos medidos se cargan desde el indice.json con finca y copas_id (OF3e)", t => {
+test("tuberia/hazas: los olivos detectados se cargan desde el indice.json con finca y copas_id (OF3e)", t => {
   const py = python();
   if (!py) return t.skip("sin Python 3: la carga de olivos desde el índice NO se ha comprobado");
   const dep = spawnSync(py, ["-c", "import jsonschema"], { encoding: "utf8" });

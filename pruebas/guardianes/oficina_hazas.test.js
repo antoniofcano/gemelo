@@ -245,7 +245,7 @@ test("recorrido: crear, mover un vértice (ratón y teclado), solape, guardar co
     // 5b. límite de la finca (OF3b): sin contorno, la caja de los olivos + 150 m; con un contorno cargado (admin, confirmación reciente),
     //     un vértice de H-02 no sale de él con el teclado y el servidor rechaza guardar fuera (fuera_de_contorno)
     assert.strictEqual((await est()).limite, "caja");
-    assert.match(await pg.textContent("#mLimite"), /caja de los olivos medidos \+ 150 m/);
+    assert.match(await pg.textContent("#mLimite"), /caja de los olivos detectados \+ 150 m/);
     const rectU = (x0, y0, x1, y1) => ({ type: "Polygon", coordinates: [[U(x0, y0), U(x1, y0), U(x1, y1), U(x0, y1), U(x0, y0)]] });
     const carga = await pg.evaluate(async b => { const r = await fetch("/api/admin/fincas/hituelo/contorno", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(b) }); return [r.status, await r.json()]; },
       { geometria: rectU(-140, -400, 400, 400), fuente: "sigpac", consultado_en: "2026-10-30", parcelas: 2 });

@@ -6,7 +6,7 @@
 // ven mientras se edita son ORIENTATIVOS (hazas_puro.js, en el navegador); los que valen los calcula PostGIS al guardar.
 // Datos: /teselas/<finca>/indice.json (mosaico, copas, parcelas) y /teselas/<finca>/t/<kx>_<ky>.jpg, tras la misma sesión (mismo origen).
 // Límite (OF3b): GET /api/admin/fincas/<finca>/limite da el contorno de la finca (unión de sus parcelas SIGPAC o catastrales) o, sin él,
-// la caja de sus olivos medidos + 150 m. No se deja poner un vértice fuera, ni soltar un arrastre, ni guardar; el servidor lo vuelve a
+// la caja de sus olivos detectados + 150 m. No se deja poner un vértice fuera, ni soltar un arrastre, ni guardar; el servidor lo vuelve a
 // comprobar (ST_CoveredBy) y es quien manda.
 import "ol/ol.css";
 import Map from "ol/Map.js";
@@ -132,7 +132,7 @@ export function iniciaHazas({ sesion }) {
   const limiteC = () => (limite && limite.geometria ? limite.geometria.coordinates : null);
   const cabe = c => cabeEn(c, limiteC(), holgura());
   const nombreLimite = () => (limite && limite.tipo === "contorno" ? "contorno de la finca (" + (limite.fuente === "catastro" ? "Catastro" : "SIGPAC") + ")"
-    : "límite de la finca (la caja de sus olivos medidos + " + ((limite && limite.margen_m) || 150) + " m)");
+    : "límite de la finca (la caja de sus olivos detectados + " + ((limite && limite.margen_m) || 150) + " m)");
   function puedePoner(q) {
     if (puntoEnLimite(limiteC(), q[0], q[1], holgura())) return true;
     estadoMapa("Ese punto cae fuera del " + nombreLimite() + ": no se pone.");
@@ -155,7 +155,7 @@ export function iniciaHazas({ sesion }) {
     if (limite && limite.geometria) fuenteLimite.addFeature(new Feature({ geometry: new MultiPolygon(limite.geometria.coordinates) }));
     $("#mLimite").textContent = !limite ? "Límite de la finca: no se pudo leer (lo comprueba el servidor al guardar)"
       : limite.tipo === "contorno" ? "Límite: contorno de " + limite.parcelas + " parcelas " + (limite.fuente === "catastro" ? "© Dirección General del Catastro" : "SIGPAC © FEGA (CC BY 4.0)") + ", consultado el " + limite.consultado_en
-        : limite.tipo === "caja" ? "Límite: caja de los olivos medidos + " + limite.margen_m + " m [SUPUESTO] (sin contorno cargado)"
+        : limite.tipo === "caja" ? "Límite: caja de los olivos detectados + " + limite.margen_m + " m [SUPUESTO] (sin contorno cargado)"
           : "Límite: ninguno (sin olivos ni contorno: el servidor no aceptará hazas)";
   }
 
@@ -476,7 +476,7 @@ export function iniciaHazas({ sesion }) {
   function pideDatosNueva(c) {
     const anillos = redondea([c]);
     const cuentas = cuenta(anillos, puntos, BORDE);
-    pideDatos("Nueva haza", num(area(anillos) / 10000, 2) + " ha y " + num(cuentas.olivos) + " olivos medidos dentro (orientativo; el servidor lo recuenta al guardar).", async (codigo, nombre) => {
+    pideDatos("Nueva haza", num(area(anillos) / 10000, 2) + " ha y " + num(cuentas.olivos) + " olivos detectados dentro (orientativo; el servidor lo recuenta al guardar).", async (codigo, nombre) => {
       const r = await api("POST", "/api/admin/hazas", { codigo, nombre, finca, geometria: { type: "Polygon", coordinates: anillos[0] } });
       if (!r.ok) return mensajeDe(r);
       hazas.push(r.datos.haza); sal(); pintaHazas(); eligeId(r.datos.haza.id, false);
@@ -589,7 +589,7 @@ export function iniciaHazas({ sesion }) {
       h("p", { class: "nota" }, "Versión " + z.version + " · guardada " + fecha(z.actualizada_en) + (s ? " · " : ""), s ? h("b", { class: "p-aviso" }, "cambios sin guardar") : null),
       h("div", { class: "cifras" },
         h("div", null, h("small", null, "Superficie"), h("span", { class: "cifra" }, num(s ? ha : z.superficie_ha, 2)), " ha"),
-        h("div", null, h("small", null, "Olivos ", h("span", { class: "pill p-ok" }, "medido")), h("span", { class: "cifra" }, num(s ? cl.olivos : z.olivos))),
+        h("div", null, h("small", null, "Olivos ", h("span", { class: "pill p-info" }, "detectado (LiDAR + regla)")), h("span", { class: "cifra" }, num(s ? cl.olivos : z.olivos))),
         h("div", null, h("small", null, "Declarados"), z.olivos_declarados !== null ? h("span", { class: "cifra" }, num(z.olivos_declarados)) : h("span", { class: "nota" }, "sin dato"))),
       h("p", { class: "nota" }, s
         ? "Ahora, en tu navegador (orientativo): " + num(ha, 2) + " ha, " + num(cl.olivos) + " olivos. Lo guardado (PostGIS): " + num(z.superficie_ha, 2) + " ha, " + num(z.olivos) + " olivos."

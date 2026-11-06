@@ -17,7 +17,7 @@ const medir = (t, px, neg) => String(t).length * px * (neg ? 0.6 : 0.55);
 const PROHIBIDO = ["TITULAR-SECRETO", "KILOS-SECRETOS", "PERSONA-SECRETA", "GPS-SECRETO", "NOTA-LIBRE", "TRATAMIENTO-SECRETO", "AVANCE-SECRETO", "OT-SECRETO"];
 const ficha = (extra) => Object.assign({
   id: 7, codigo: "H-07", nombre: "La Loma", finca: "hituelo", es_mia: false, alias: "Casa Olmo", superficie_ha: 3.4217,
-  olivos: { lidar: { n: 1234, fuente: "LiDAR PNOA 2024", naturaleza: "medido" }, declarado: { n: 1300, fuente: "declaración PAC", naturaleza: "declarado" } },
+  olivos: { lidar: { n: 1234, fuente: "LiDAR PNOA 2024", naturaleza: "detectado" }, declarado: { n: 1300, fuente: "declaración PAC", naturaleza: "declarado" } },
   tratamientos: [{ fecha: "2026-10-01", componentes: [{ tipo: "fitosanitario", producto: "TRATAMIENTO-SECRETO" }], plazo_seguridad_dias: 7 }],
   fenologia: [{ fecha: "2026-10-01", bbch: 85 }], analiticas: [{ fecha: "2026-09-01", tipo: "suelo" }], avance: { pct: 40, fecha: "2026-10-30", parcelas: 3, parcelas_con_dato: 2, nota: "AVANCE-SECRETO" },
   ndvi_relativo: { valor: 0.12, fuente: "Sentinel-2", fecha: "2026-10-20" }, datos_de: "2026-11-01T10:00:00Z", completo: true, avisos: [],
@@ -62,14 +62,14 @@ test("contenido: nombre, alias público y lo medido (una línea), con su procede
   assert.strictEqual(c.titulo, "La Loma");
   assert.strictEqual(c.alias, "Hogar visible como «Casa Olmo»");
   assert.strictEqual(c.datos.length, 2, JSON.stringify(c.datos));
-  assert.ok(/^3,42 ha · 1\.?234 olivos$/.test(c.datos[0].txt) && /^medido · linde y LiDAR PNOA 2024$/.test(c.datos[0].de), JSON.stringify(c.datos));
+  assert.ok(/^3,42 ha · 1\.?234 olivos$/.test(c.datos[0].txt) && /^detectado \(LiDAR \+ regla\) · linde y LiDAR PNOA 2024$/.test(c.datos[0].de), JSON.stringify(c.datos));
   assert.strictEqual(c.datos[1].txt, "Maduración · 40 % recogido");
   assert.strictEqual(c.datos[1].de, "OlivarTrack · leído 1-nov-2026", "la procedencia que trae la ficha (datos_de)");
   c.datos.forEach(d => assert.ok(d.de.length > 3, "todo dato lleva procedencia"));
   assert.strictEqual(P.contenido({ nombre: "La Loma", es_mia: true }, ficha(), REC).alias, "");
   assert.deepStrictEqual(P.contenido({ nombre: "La Loma", es_mia: true }, null, REC).datos, []);
   const solo = P.contenido({ nombre: "La Loma" }, ficha({ olivos: { lidar: { n: 5, fuente: "x", naturaleza: "declarado" }, declarado: { n: 9, fuente: "y", naturaleza: "declarado" } } }), REC);
-  assert.ok(!/olivos/.test(solo.datos[0].txt) && /^Superficie/.test(solo.datos[0].txt), "un conteo que no es «medido» no entra");
+  assert.ok(!/olivos/.test(solo.datos[0].txt) && /^Superficie/.test(solo.datos[0].txt), "un conteo que no es «detectado» no entra");
   assert.strictEqual(P.contenido({ nombre: "La Loma" }, ficha({ alias: null })).alias, "");
   assert.strictEqual(P.contenido({}, null).titulo, "Haza");
 });
@@ -116,13 +116,13 @@ test("guardián: nada fuera de la lista blanca llega a un cartel, venga lo que v
   assert.strictEqual(P.contenido({ nombre: "A\u0000B\n<b>C" }, null).titulo, "A B <b>C");
 });
 
-test("el tablón: «Club La Linde» y la finca, hazas y olivos medidos, la época con su procedencia; «Hoy en el olivar» solo con datos", () => {
+test("el tablón: «Club La Linde» y la finca, hazas y olivos detectados, la época con su procedencia; «Hoy en el olivar» solo con datos", () => {
   assert.strictEqual(P.nombreFinca(undefined, "hituelo"), "Hituelo"); assert.strictEqual(P.nombreFinca("Mi finca", "hituelo"), "Mi finca"); assert.strictEqual(P.nombreFinca(null, null), "La finca");
   assert.strictEqual(P.nombreFinca(null, "cerro_velasco"), "Cerro velasco");
   const ctx = { hazas: 12, olivos: 4321, hoy: "2026-11-05", bbch: 82, origen: "calendario típico, sin observaciones que lo ajusten" };
   const t = P.tablon("Hituelo", ctx), m = P.maqueta(t, medir), todo = textos(t), pintado = m.bloques.map(b => b.texto).join(" | ");
   assert.strictEqual(t.titulo, "Club La Linde"); assert.strictEqual(t.alias, "Hituelo");
-  assert.ok(/^12 hazas · 4\.?321 olivos$/.test(t.datos[0].txt), t.datos[0].txt); assert.ok(/^medido/.test(t.datos[0].de));
+  assert.ok(/^12 hazas · 4\.?321 olivos$/.test(t.datos[0].txt), t.datos[0].txt); assert.ok(/^detectado \(LiDAR \+ regla\)/.test(t.datos[0].de));
   assert.strictEqual(t.datos[1].txt, "Otoño: empieza el envero"); assert.strictEqual(t.datos[1].de, "ilustrativo · calendario típico");
   assert.strictEqual(P.tablon("H", Object.assign({}, ctx, { origen: "calendario típico ajustado con tu fenología (BBCH 70)" })).datos[1].de, "deducido · calendario ajustado");
   assert.ok(Array.isArray(t.hoy) && t.hoy.length === 0, "sin datos del campo, «Hoy en el olivar» queda vacía y no se pinta");

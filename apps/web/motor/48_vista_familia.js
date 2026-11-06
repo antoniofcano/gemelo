@@ -8,7 +8,7 @@
   // aprendizaje de la familia). Es un COMPONENTE (ADR-0023): se registra y nadie lo nombra; sin él (?vista=0, o genera_motor.mjs --sin) el motor pinta lo mismo
   // que antes. No crea nada: solo OCULTA controles de la plantilla (display:none) y lo deshace todo en libera().
   //  · Para la familia: se oculta el selector de modo (queda «Gemelo», forzado), «Guardados en OlivarTrack» y «Desfase» de «Datos», «Guardados», «Desfase medio»
-  //    y la nota del desfase del mapa; «Copas del LiDAR» se rotula «Olivos» (sigue siendo lo medido, y su pastilla «medido»). Se quedan Linde, NDVI y Ambiente.
+  //    y la nota del desfase del mapa; «Copas del LiDAR» se rotula «Olivos» (la capa dibuja las copas medidas, y su pastilla «medido»; el recuento de olivos es «detectado»). Se quedan Linde, NDVI y Ambiente.
   //  · Oficina y admin lo ven todo como hoy; sin servidor o sin sesión (fixture, pruebas, local), todo como hoy.
   //  · El rol lo da GET /api/sesion (campo «rol»: hogar, guia, corresponsal, oficina, admin; ya existe: no se añade ninguna ruta); mientras no llega, se ve lo de
   //    siempre. ?vista=completa fuerza la vista completa (pruebas) y ?vista=familia la de familia (sin esperar a la sesión).

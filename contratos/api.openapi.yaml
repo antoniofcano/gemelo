@@ -932,7 +932,7 @@ paths:
     get:
       summary: "Las hazas como las ve la oficina: { srs: EPSG:25830, hazas: [{ id, codigo, nombre, finca, hogar_id, hogar_correo, version, superficie_ha, olivos, olivos_borde, olivos_declarados, olivos_declarados_fuente, parcelas [{ id, ha }], solapes [{ id, codigo, m2 }], actualizada_en, geometria? }] }"
       description: >
-        olivos = olivos medidos (LiDAR) dentro o en la linde, el mismo recuento que la ficha pública (PostGIS, ST_Intersects); olivos_borde = de
+        olivos = olivos detectados (LiDAR) dentro o en la linde, el mismo recuento que la ficha pública (PostGIS, ST_Intersects); olivos_borde = de
         ellos, los que están a menos de 1 m de la linde; solapes = otras hazas de la finca que pisa en más de 0,5 m². Con geometria=true trae la
         linde (MultiPolygon en EPSG:25830, al centímetro). Familias la usa sin geometría para elegir haza.
       security: [{ sesion: [] }]
@@ -948,7 +948,7 @@ paths:
       description: >
         PostGIS valida: geometría legible y válida (ST_IsValid; 400 geometria_no_valida con motivo), al menos 10 m² (demasiado_pequena), dentro
         de la finca = su contorno vigente con 1 m de holgura (ST_CoveredBy; 400 fuera_de_contorno con fuera_m2; OF3b) o, si no tiene contorno,
-        la caja de sus olivos medidos con 150 m de margen (fuera_de_finca; sin olivos ni contorno, finca_desconocida) y sin pisar
+        la caja de sus olivos detectados con 150 m de margen (fuera_de_finca; sin olivos ni contorno, finca_desconocida) y sin pisar
         otra haza de la finca en más de 0,5 m² (409 solape, con la lista). Nace sin familia y con su versión 1 (accion crear). Auditoría admin.haza_creada.
       security: [{ sesion: [] }]
       requestBody:
@@ -1124,7 +1124,7 @@ paths:
       summary: "El límite de la finca para el editor de hazas: { finca, srs, tipo (contorno | caja | ninguno), holgura_m, margen_m, geometria (MultiPolygon o null), fuente, consultado_en, parcelas, superficie_ha, cargado_en, hazas_fuera [{ id, codigo, m2 }] }"
       description: >
         Con contorno vigente, tipo contorno (fuente sigpac o catastro, cuántas parcelas, fecha de consulta; hazas_fuera = las hazas de la finca que se
-        salen de él más de holgura_m). Sin él, tipo caja: la caja de los olivos medidos con margen_m (150 m), lo de OF3; sin olivos, tipo ninguno.
+        salen de él más de holgura_m). Sin él, tipo caja: la caja de los olivos detectados con margen_m (150 m), lo de OF3; sin olivos, tipo ninguno.
       security: [{ sesion: [] }]
       parameters:
         - { name: finca, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9_-]{1,32}$" } }
@@ -2361,7 +2361,7 @@ paths:
     post:
       summary: Pone una baliza oficial en el mundo (OF10)
       description: >
-        Solo la oficina. Punto en EPSG:25830 dentro de la finca (su contorno vigente o la caja de sus olivos medidos + 150 m, como el editor de
+        Solo la oficina. Punto en EPSG:25830 dentro de la finca (su contorno vigente o la caja de sus olivos detectados + 150 m, como el editor de
         hazas), título (≤ 60) y texto (≤ 280) limpios como el chat, y caducidad en horas (1-168; 8 por omisión). Como mucho 20 vigentes por finca.
         Avisa a las salas por el tema «balizas» (si LiveKit falla, no pasa nada: el motor las repide). Auditoría: admin.baliza_puesta.
       security: [{ sesion: [] }]

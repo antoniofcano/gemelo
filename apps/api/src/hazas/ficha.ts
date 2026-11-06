@@ -99,7 +99,7 @@ export function construyeFicha(h: FilaHaza, eventos: FilaEvento[], parcelas: Fil
     alias: h.alias,
     superficie_ha: h.superficie_ha,
     olivos: {
-      lidar: { n: h.olivos_lidar, fuente: "LiDAR PNOA (CNIG), vuelo 2024", naturaleza: "medido" as const },
+      lidar: { n: h.olivos_lidar, fuente: "LiDAR PNOA (CNIG), vuelo 2024", naturaleza: "detectado" as const },
       declarado: { n: h.olivos_declarados, fuente: h.olivos_declarados_fuente, naturaleza: "declarado" as const },
     },
     tratamientos: unicos(ord, "tratamiento", (d, fecha) => ({ fecha, componentes: componentes(d["componentes"]), plazo_seguridad_dias: ent(d["plazo_seguridad_dias"]) })).slice(0, 50),

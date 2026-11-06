@@ -81,7 +81,7 @@ export function caja(c) {
 const cajasSeTocan = (a, b, m) => a[0] <= b[2] + m && b[0] <= a[2] + m && a[1] <= b[3] + m && b[1] <= a[3] + m;
 
 /**
- * Olivos (copas medidas, [E, N]) dentro de la haza y, de ellos, los que están a menos de `borde` m de la linde. Orientativo: el servidor
+ * Olivos (copas detectadas, [E, N]) dentro de la haza y, de ellos, los que están a menos de `borde` m de la linde. Orientativo: el servidor
  * cuenta con ST_Intersects sobre la tabla `olivos` (los mismos árboles, con su id congelado).
  */
 export function cuenta(c, puntos, borde = 1) {
