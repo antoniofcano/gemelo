@@ -25,12 +25,15 @@ test.before(async () => {
   THREE = await import(pathToFileURL(THREE_JS).href);
   M = evalua(false); MF = evalua(true);
 });
+// MU5-n (A3-1a): el sombreado vive en apps/web/src/mundos/exterior/terreno.ts y 04d_sombreado_tiles.js lo crea con Mundos.creaSombreadoTiles: se evalúa 04d tal
+// cual (su cableado) con el puente de los mundos de verdad, y uSombra/parcheTiempo de 15_tiempo.js, como antes
+const MUNDOS = require(path.join(RAIZ, "apps", "web", "src", "mundos", "index.ts"));
 function evalua(conFotos) {
   const tie = lee("15_tiempo.js");
   const sombra = /  var uSombra = [\s\S]*?\n(?=  function conTiempo)/.exec(tie), pt = /  function parcheTiempo\(sh, viento\) \{[\s\S]*?\n  \}\n/.exec(tie);
   assert.ok(sombra && pt, "no encuentro uSombra/GLSL_SOMBRA o parcheTiempo en 15_tiempo.js");
-  const cuerpo = "\"use strict\";\nvar uViento = { uT: {}, uAmp: {}, uDir: {} }; function colorVertSRGB() {}\n" + sombra[0] + pt[0] + lee("04d_sombreado_tiles.js") +
-    "\nreturn { UN: UN, uSombra: uSombra, matSuelo: matSuelo, SombreadoTiles: SombreadoTiles };";
+  const tiempo = Function("THREE", "\"use strict\";\nvar uViento = { uT: {}, uAmp: {}, uDir: {} }; function colorVertSRGB() {}\n" + sombra[0] + pt[0] + "\nreturn { uSombra: uSombra, parcheTiempo: parcheTiempo };")(THREE);
+  const cuerpo = "\"use strict\";\n" + lee("04d_sombreado_tiles.js") + "\nreturn { UN: UN, matSuelo: matSuelo, SombreadoTiles: SombreadoTiles, hash: hash };";
   const TS = 256, teselas = {};
   const Mundo = {
     TS, N2: TS + 2, NS2: TS / 2 + 2, SRS: 2, lista: [], mosaico: { img: null },
@@ -39,9 +42,9 @@ function evalua(conFotos) {
   };
   const D = { ts: TS, orto_px: 512, mosaico: { x0: 0, yN: 0, w: 1, h: 1, res: 1 } }, cola = [];
   const sf = sueloFotos(conFotos);
-  const f = Function("THREE", "D", "RES", "ANCHO", "ALTO", "Mundo", "ColaExt", "scene", "camera", "x0", "yN", "suelo", "vn2", "SueloFotosPuro", "SueloFotos", cuerpo);   // MU2-6: la Cola del exterior (ColaExt.pon)
-  const m = f(THREE, D, 1, 1000, 1000, Mundo, { pon: (k, prio, gen, alAcabar) => cola.push({ k, gen, alAcabar }) }, new THREE.Scene(), new THREE.PerspectiveCamera(), 0, 0, () => 0, () => 0, sf.P, sf.S);
-  m.Mundo = Mundo; m.cola = cola; m.SF = sf.S;
+  const f = Function("THREE", "Mundos", "D", "RES", "ANCHO", "ALTO", "Mundo", "ColaExt", "camera", "x0", "yN", "suelo", "vn2", "parcheTiempo", "SueloFotosPuro", "SueloFotos", "performance", cuerpo);   // MU2-6: la Cola del exterior (ColaExt.pon)
+  const m = f(THREE, MUNDOS, D, 1, 1000, 1000, Mundo, { pon: (k, prio, gen, alAcabar) => cola.push({ k, gen, alAcabar }), cancela: () => {} }, new THREE.PerspectiveCamera(), 0, 0, () => 0, () => 0, tiempo.parcheTiempo, sf.P, sf.S, { now: () => 0 });
+  m.uSombra = tiempo.uSombra; m.Mundo = Mundo; m.cola = cola; m.SF = sf.S;
   return m;
 }
 

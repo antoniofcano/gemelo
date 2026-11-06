@@ -1,5 +1,5 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: objetivo, orb, camara, sensMirar, suelta, pon
+// Expone: objetivo, orb, camara, sensMirar, pon
 // Consume: 01_datos ($, fmt, DIST_MAX, DIST_INI), 02_mundo (kcor), 02e_entidades (Usables), 03_escena (lienzo, camera, Estado),
 //   08_marcadores (aplica, capas, aplicaLuego), 12_paseo (paseando), 12c_ir_a (IrA), 13_parcelas (parcelaSel, elegirParcela), 33_ajustes (Ajustes)
 // ===============================================================================

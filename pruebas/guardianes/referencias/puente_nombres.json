@@ -31,7 +31,7 @@
   "07b_arboles.js": ["Arboles"],
   "08_marcadores.js": ["gLinde","tmp","listo","aplica","capas","aplicaLuego"],
   "08b_marcadores_lidar.js": [],
-  "09_camara.js": ["objetivo","orb","camara","sensMirar","suelta","pon"],
+  "09_camara.js": ["objetivo","orb","camara","sensMirar","pon"],
   "10_ndvi.js": ["NDV","ndviIdx","rampa","pintaNdvi","ndviRel"],
   "10b_capa_ndvi.js": [],
   "11_sol.js": [],

@@ -18,3 +18,5 @@ export { LruTilesPuro, RayosPuro, creaEscena3D, limitaAviso, manifiestoEscena3D,
 export type { DepsEscena3D, Escena3D, LimitesLru } from "./exterior/escena-tiles.ts";
 export { creaMundo, RADIO_SUELTA, RADIO_CARGA } from "./exterior/teselas.ts";
 export type { DepsMundo, Mundo, Tesela, DatosMundo, Mosaico, EstadoOrto, EstadoTeselas } from "./exterior/teselas.ts";
+export { creaSombreadoTiles, uniformesTerreno, hash } from "./exterior/terreno.ts";
+export type { DepsTerreno, DepsUniformes, SombreadoTiles, UniformesTerreno, ThreeTerreno, SueloFotosMin, SueloFotosPuroMin } from "./exterior/terreno.ts";

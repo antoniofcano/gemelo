@@ -119,8 +119,8 @@ test("cada material del motor que pasa por la fábrica tiene un nombre literal, 
 
 // ---------------------------------------------------------------- el trinquete
 // [onBeforeCompile, new THREE.ShaderMaterial, motivo]. Cuenta el texto sin comentarios (también las lecturas de onBeforeCompile). Solo puede BAJAR.
+// MU5-n (A3-1a): 04d_sombreado_tiles.js salió de aquí; su parche está en apps/web/src/mundos/exterior/terreno.ts (FUERA_SRC, abajo, hasta su segundo commit)
 const FUERA = {
-  "apps/web/motor/04d_sombreado_tiles.js": [1, 0, "el terreno de 3D Tiles (F4 #1, dificultad alta): otro agente lo está cambiando durante F1; pasa a Materiales.parchea en cuanto se fusione"],
   "apps/web/motor/15_tiempo.js": [1, 3, "parcheTiempo del follaje y los ShaderMaterial de nubes, lluvia y barrera (F4 #0 y #9): otro agente lo está cambiando durante F1"],
   "apps/web/motor/21_suelo.js": [2, 0, "matas y piedras (F4 #6): otro agente lo está cambiando durante F1"],
   "apps/web/olivo/materiales.js": [2, 0, "encadena(), el punto único de la biblioteca de olivos (lee el parche previo y pone el suyo); el motor la reusa por Materiales.encadena (07ab)"]
@@ -161,6 +161,11 @@ function cuentaTs(f) {
   const s = sinComentarios(lee(f));
   return [(s.match(/onBeforeCompile/g) || []).length, (s.match(/new\s+[\w.]*\b(Raw)?ShaderMaterial\b/g) || []).length];
 }
+// MU5-n: el primer commit de un módulo lleva su código a src/ tal cual (sus materiales «siguen saliendo igual», MATERIALES §5) y el segundo los registra con
+// define(). Entre los dos, el fichero va aquí con su cuenta y su motivo; solo puede bajar, y su segundo commit lo quita
+const FUERA_SRC = {
+  "apps/web/src/mundos/exterior/terreno.ts": [2, 0, "el parche del terreno (04d; el tipo MaterialTerreno y el sitio), movido tal cual en el primer commit de su MU5-n (A3-1a); el segundo lo registra con define()"]
+};
 const REGISTRA = /\.define\(\s*["'`A-Z_]/;
 test("trinquete en apps/web/src/: los sombreadores propios solo en la fábrica o en un módulo que los registra con define()", t => {
   const mal = [], vistos = [];
@@ -171,6 +176,7 @@ test("trinquete en apps/web/src/: los sombreadores propios solo en la fábrica o
       if (!/\.ts$/.test(e.name) || /\.test\.ts$/.test(e.name) || f === "apps/web/src/nucleo/materiales.ts") continue;
       const c = cuentaTs(f); if (!c[0] && !c[1]) continue;
       vistos.push(f);
+      const fs2 = FUERA_SRC[f]; if (fs2) { if (c[0] > fs2[0] || c[1] > fs2[1]) mal.push(f + ": " + c.join(" / ") + " y hay anotados " + fs2[0] + " / " + fs2[1] + ": la cuenta solo puede bajar"); continue; }
       if (!REGISTRA.test(sinComentarios(lee(f)))) mal.push(f + ": " + c[0] + " onBeforeCompile y " + c[1] + " ShaderMaterial sin registrarlos en la fábrica (materiales.define(nombre, { clasico, tsl? }))");
     }
   })("apps/web/src");
