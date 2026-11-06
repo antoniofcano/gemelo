@@ -9,7 +9,7 @@
 // Cifras de DISEÑO (contadas en Node, no medidas con el renderizador). Lo de Chrome, iPhone y Quest: NO PROBADO.
 const test = require("node:test"), assert = require("node:assert"), vm = require("vm"), path = require("path"), { pathToFileURL } = require("url");
 const { RAIZ, fs, lee } = require("./_util");
-const Mundos = require("./_mundos"), { fuenteMotor } = require("./_fuente");   // 54 es un talón (MU5-n, A3-5): su código vive en mundos/exterior/trabajo-hoy.ts
+const Mundos = require("./_mundos"), { fuenteMotor } = require("./_fuente"), { conFabrica } = require("./_materiales");   // 54 es un talón (MU5-n, A3-5): su código vive en mundos/exterior/trabajo-hoy.ts
 
 const trozo = (fuente, ini, fin) => { const i = fuente.indexOf(ini), f = fuente.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini); return fuente.slice(i, f); };
 const F53 = lee("apps/web/motor/53_mundo_hoy.js"), F54 = lee("apps/web/motor/54_trabajo_hoy.js"), F54TS = fuenteMotor("54_trabajo_hoy.js");
@@ -100,7 +100,7 @@ function mundo(opts) {
     suelo: (x, y) => 10, Componentes: { registra: d => { g.def = d; return true; } },
     Entidades: { registra: d => { entidades.push(d); return () => quitadas.push(d.tipo); } } };
   g.Estado = { get exag() { return E.exag; } };   // exag vive en Estado (A1-13): se lee de E por un getter
-  const ctx = vm.createContext(g);
+  const ctx = vm.createContext(conFabrica(g));
   vm.runInContext("\"use strict\";\n" + F54, ctx, { filename: "54_trabajo_hoy.js" });
   const escuchas = {};
   const n = { on: (ev, fn) => { (escuchas[ev] = escuchas[ev] || []).push(fn); return fn; }, limpia: fn => fn };

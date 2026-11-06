@@ -7,10 +7,11 @@
 // Si el id de la parcela no está en el índice de la finca, no se pinta (no se inventa el sitio).
 // APAGADO POR DEFECTO (?trabajo=1 lo enciende): OlivarTrack está apagado en el servidor a la espera de un token propio de solo lectura.
 // Presupuesto (regla 6, cifras de DISEÑO, no medidas): una InstancedMesh (1 llamada), hasta 16 tractores de 72 triángulos = 1.152 triángulos, sin texturas, sin sombras.
-// Componente de los mundos ["exterior"] con un libera() que suelta de verdad: la malla, la geometría y el material, la entidad «trabajo» de
+// Componente de los mundos ["exterior"] con un libera() que suelta de verdad: la malla, la geometría y el material (por la fábrica, con dueño «trabajo-hoy»), la entidad «trabajo» de
 // Entidades y la escucha de «mundo:hoy». La ficha (al acercarse o por Usables) lleva el rótulo «deducido».
 // Del legado recibe por argumento lo que necesita (THREE, la escena, las entidades, el suelo y los datos); no lee globales.
 import type { ContextoComponente, Manifiesto } from "../../nucleo/componentes.ts";
+import type { Materiales } from "../../nucleo/materiales.ts";
 
 // three no trae tipos en el repo (como en ambiente.ts y presupuesto.ts): de él solo se toca lo mínimo, sin tiparlo
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -21,6 +22,8 @@ export interface DepsTrabajoHoy {
   scene: { add(o: unknown): void; remove(o: unknown): void };
   /** 02e: el registro de entidades; registra devuelve la función que quita el tipo (null si no valió) */
   Entidades: { registra(d: T3): (() => void) | null };
+  /** la fábrica de materiales (MU5-n): el del tractor sale de ella, con dueño «trabajo-hoy» */
+  Materiales: Materiales;
   suelo(x: number, y: number): number;
   /** Estado.exag (un campo que cambia: se lee en cada colocación) */
   Estado: { exag: number };
@@ -96,6 +99,7 @@ export const TrabajoHoyPuro = (function () {
 export function creaTrabajoHoy(d: DepsTrabajoHoy, n: ContextoComponente) {
   const THREE = d.THREE, scene = d.scene, Entidades = d.Entidades, suelo = d.suelo, Estado = d.Estado, D = d.D;
   const P = TrabajoHoyPuro;
+  const materiales = d.Materiales.de(ID_TRABAJO_HOY);   // lo que cree este componente se libera con su libera()
   let vivo = true, puestos: T3[] = [], cuando: string | null = null, malla: T3 = null, geo: T3 = null, mat: T3 = null, exagHecha = -1, retira: (() => void) | null = null;
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), eje = new THREE.Vector3(0, 1, 0), pv = new THREE.Vector3(), sv = new THREE.Vector3(P.ESCALA, P.ESCALA, P.ESCALA);
   function idEnt(s: T3) { return "trabajo:" + s.id; }
@@ -108,7 +112,7 @@ export function creaTrabajoHoy(d: DepsTrabajoHoy, n: ContextoComponente) {
     const c = new THREE.Color(), lin = new Float32Array(g.color.length);
     for (let i = 0; i < g.color.length; i += 3) { c.setRGB(g.color[i], g.color[i + 1], g.color[i + 2], THREE.SRGBColorSpace); lin[i] = c.r; lin[i + 1] = c.g; lin[i + 2] = c.b; }   // sRGB a lineal (gestión de color de three)
     geo.setAttribute("color", new THREE.BufferAttribute(lin, 3));
-    mat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+    mat = materiales.estandar("MeshLambertMaterial", { vertexColors: true, flatShading: true });   // estándar: sin sombreador propio, no hay variante TSL que escribir
     malla = new THREE.InstancedMesh(geo, mat, P.MAX);
     malla.name = "trabajo de hoy (tractores, deducido)"; malla.count = 0; malla.visible = false; malla.castShadow = malla.receiveShadow = false;
     malla.raycast = function () {};   // se elige por la ficha de Entidades (cercanía), no por la malla
@@ -149,7 +153,7 @@ export function creaTrabajoHoy(d: DepsTrabajoHoy, n: ContextoComponente) {
     quitaOyente();
     if (retira) { retira(); retira = null; }
     if (malla) { scene.remove(malla); if (malla.dispose) malla.dispose(); malla = null; }
-    if (geo) { geo.dispose(); geo = null; } if (mat) { mat.dispose(); mat = null; }
+    if (geo) { geo.dispose(); geo = null; } mat = null; materiales.libera();   // el material, que es de la fábrica
   }
   return { tarde, libera, estado };
 }

@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 import { ID_TRABAJO_HOY, TrabajoHoyPuro, creaTrabajoHoy, manifiestoTrabajoHoy } from "./trabajo-hoy.ts";
 import type { DepsTrabajoHoy } from "./trabajo-hoy.ts";
 import type { ContextoComponente } from "../../nucleo/componentes.ts";
+import { creaMateriales } from "../../nucleo/materiales.ts";
+import type { ThreeMin } from "../../nucleo/materiales.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const THREE: any = await import(/* @vite-ignore */ "three" as string);
@@ -16,7 +18,7 @@ function monta() {
   const scene = new THREE.Scene(), quitadas: string[] = [], registradas: { tipo: string }[] = [], oyentes: Record<string, ((d?: unknown) => void)[]> = {}, quitaOyentes: string[] = [];
   const estado = { exag: 1 };
   const deps: DepsTrabajoHoy = {
-    THREE, scene, Estado: estado, D: { parcelas: PARCELAS }, suelo: () => 10,
+    THREE, scene, Estado: estado, Materiales: creaMateriales({ THREE: THREE as unknown as ThreeMin, busqueda: "" }), D: { parcelas: PARCELAS }, suelo: () => 10,
     Entidades: { registra: (d: { tipo: string }) => { registradas.push(d); return () => { quitadas.push(d.tipo); }; } }
   };
   const n = {
@@ -24,7 +26,7 @@ function monta() {
     on: (ev: string, fn: (d?: unknown) => void) => { (oyentes[ev] = oyentes[ev] || []).push(fn); return () => { quitaOyentes.push(ev); oyentes[ev] = (oyentes[ev] || []).filter((f) => f !== fn); }; }
   } as ContextoComponente;
   const emite = (d: unknown) => (oyentes["mundo:hoy"] || []).slice().forEach((f) => f(d));
-  return { api: creaTrabajoHoy(deps, n), scene, estado, quitadas, registradas, emite, quitaOyentes, oyentes };
+  return { api: creaTrabajoHoy(deps, n), deps, scene, estado, quitadas, registradas, emite, quitaOyentes, oyentes };
 }
 
 describe("trabajo de hoy: lo puro", () => {
@@ -61,6 +63,12 @@ describe("trabajo de hoy: el componente", () => {
     const y = () => { const k = new THREE.Matrix4(); scene.children[0].getMatrixAt(0, k); return new THREE.Vector3().setFromMatrixPosition(k).y; };
     expect(y()).toBe(10); estado.exag = 2; api.tarde(); expect(y()).toBe(20);
   });
+  it("el material sale de la fábrica con su dueño: estándar, con color por vértice y sombreado plano", () => {
+    const { scene, emite, deps } = monta(); emite(CON);
+    const mat = scene.children[0].material;
+    expect(mat.isMeshLambertMaterial).toBe(true); expect(mat.vertexColors).toBe(true); expect(mat.flatShading).toBe(true);
+    expect(deps.Materiales.duenos()["trabajo-hoy"]).toBe(1);
+  });
   it("el manifiesto: apagado por defecto, ?trabajo, del exterior, y su libera() es el del api", () => {
     const m = manifiestoTrabajoHoy({} as DepsTrabajoHoy);
     expect(m.id).toBe("trabajo-hoy"); expect(m.bandera).toEqual({ defecto: false, url: "trabajo" }); expect(m.mundos).toEqual(["exterior"]);
@@ -71,11 +79,12 @@ describe("trabajo de hoy: el componente", () => {
 
 describe("trabajo de hoy: el ciclo de vida", () => {
   it("libera() quita la malla, suelta geometría y material, retira la entidad y la escucha, y se puede llamar dos veces", () => {
-    const { api, scene, quitadas, emite, quitaOyentes } = monta(); emite(CON);
+    const { api, scene, quitadas, emite, quitaOyentes, deps } = monta(); emite(CON);
     const im = scene.children[0], vistos: string[] = [];
     im.geometry.addEventListener("dispose", () => vistos.push("geometria")); im.material.addEventListener("dispose", () => vistos.push("material")); im.addEventListener("dispose", () => vistos.push("malla"));
     api.libera(); api.libera();
     expect(scene.children).toHaveLength(0); expect(vistos.sort()).toEqual(["geometria", "malla", "material"]); expect(quitadas).toEqual(["trabajo"]); expect(quitaOyentes).toEqual(["mundo:hoy"]);
+    expect(deps.Materiales.duenos()["trabajo-hoy"]).toBeUndefined();   // la fábrica ya no guarda nada de este dueño
     emite(CON); expect(scene.children).toHaveLength(0);
   });
   it("memoria: montar y liberar varias veces no deja ninguna geometría ni material vivos", () => {
