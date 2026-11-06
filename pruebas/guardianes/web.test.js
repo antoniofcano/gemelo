@@ -28,7 +28,9 @@ test("cada `#include <trozo>` que el motor parchea o usa existe en los sombreado
   const dir = path.join(WEB, "node_modules", "three", "src", "renderers", "shaders", "ShaderChunk");
   if (!fs.existsSync(dir)) return t.skip("three no instalado (cd apps/web && npm ci): los parches de sombreador NO se han comprobado");
   const hay = new Set(fs.readdirSync(dir).map(f => f.replace(/\.glsl\.js$/, ""))), motor = path.join(WEB, "motor"), usados = new Map();
-  for (const f of fs.readdirSync(motor).filter(f => f.endsWith(".js"))) for (const m of fs.readFileSync(path.join(motor, f), "utf8").matchAll(/#include <(\w+)>/g)) usados.set(m[1], f);
+  const tsDeSrc = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(e => e.isDirectory() ? tsDeSrc(path.join(d, e.name)) : e.name.endsWith(".ts") && !e.name.endsWith(".test.ts") ? [path.join(d, e.name)] : []);
+  for (const f of [...fs.readdirSync(motor).filter(f => f.endsWith(".js")).map(f => path.join(motor, f)), ...tsDeSrc(path.join(WEB, "src"))])   // MU5-n: también lo migrado a src/
+    for (const m of fs.readFileSync(f, "utf8").matchAll(/#include <(\w+)>/g)) usados.set(m[1], path.basename(f));
   assert.ok(usados.size >= 10, "se esperaban más trozos parcheados: " + usados.size);
   const faltan = [...usados].filter(([k]) => !hay.has(k)).map(([k, f]) => k + " (" + f + ")");
   assert.deepStrictEqual(faltan, [], "trozos que ya no existen en three " + VERSION_THREE);

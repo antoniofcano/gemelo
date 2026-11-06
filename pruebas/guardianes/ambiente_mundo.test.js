@@ -93,8 +93,8 @@ test("15_tiempo no toca la escena con el exterior congelado: lo que escribe en e
   // fuera de eso: solo en actualizaTiempo (el paso de cada fotograma, tiempo-paso.ts)
   const fuera = usos.filter(u => u.prop !== "add" && u.prop !== "remove" && u.funciones.indexOf("actualizaTiempo") < 0);
   assert.deepStrictEqual(fuera, [], "el tiempo solo lee o escribe la scene en actualizaTiempo");
-  const escribe = usos.filter(u => u.escribe).map(u => u.prop + "@" + u.funciones.slice(-1)[0] + "@" + u.f);
-  assert.deepStrictEqual([...new Set(escribe)], ["background@actualizaTiempo@tiempo-paso.ts"], "lo que reescribe por fotograma es el fondo (la niebla la mueve en su sitio)");
+  const escribe = usos.filter(u => u.escribe).map(u => u.prop + " en " + u.funciones.slice(-1)[0] + " de " + u.f);
+  assert.deepStrictEqual([...new Set(escribe)], ["background en actualizaTiempo de tiempo-paso.ts"], "lo que reescribe por fotograma es el fondo (la niebla la mueve en su sitio)");
   // lo que corre por un evento (el tema) no toca la scene
   for (const [f, fn] of [["tiempo.ts", "pintaFondoTiempo"], ["tiempo-barrera.ts", "temaBarrera"]]) {
     const src = tsJs(f), i = src.indexOf("function " + fn + "("); assert.ok(i >= 0, fn);

@@ -18,7 +18,9 @@ const SALTO_ST = !fs.existsSync(path.join(SUPER, "build/three.module.js")) ? "su
 const SALTO_VITE = SALTO_ST || (!fs.existsSync(VITE) || !fs.existsSync(path.join(WEB, "node_modules/3d-tiles-renderer/build/index.js")) ? "falta Vite o 3d-tiles-renderer: cd apps/web && npm ci" : null);
 const CHUNKS = d => path.join(d, "src/renderers/shaders/ShaderChunk");
 const MOTOR = path.join(WEB, "motor"), OLIVO = path.join(WEB, "olivo");
-const fuentes = () => [...fs.readdirSync(MOTOR).filter(f => f.endsWith(".js")).map(f => path.join(MOTOR, f)), ...fs.readdirSync(OLIVO).filter(f => f.endsWith(".js")).map(f => path.join(OLIVO, f))];
+/** MU5-n: el código migrado del motor, en apps/web/src/ (los .ts sin las pruebas) */
+function tsDeSrc(dir) { const o = []; for (const e of fs.readdirSync(dir, { withFileTypes: true })) { const p = path.join(dir, e.name); if (e.isDirectory()) o.push(...tsDeSrc(p)); else if (e.name.endsWith(".ts") && !e.name.endsWith(".test.ts")) o.push(p); } return o; }
+const fuentes = () => [...fs.readdirSync(MOTOR).filter(f => f.endsWith(".js")).map(f => path.join(MOTOR, f)), ...fs.readdirSync(OLIVO).filter(f => f.endsWith(".js")).map(f => path.join(OLIVO, f)), ...tsDeSrc(path.join(WEB, "src"))];   // MU5-n: también lo migrado a src/
 
 test("super-three: versión exacta (la de BUILDS.vr), instalada, MIT", async t => {
   if (SALTO_ST) return t.skip(SALTO_ST);
@@ -67,8 +69,8 @@ test("todo THREE.X del motor y todo three/addons/… que importa existen en supe
   if (SALTO_ST) return t.skip(SALTO_ST);
   const S = await import(pathToFileURL(path.join(SUPER, "build/three.module.js")).href);
   const usados = new Set(), addons = new Set();
-  for (const f of fs.readdirSync(MOTOR).filter(f => f.endsWith(".js"))) {
-    const s = fs.readFileSync(path.join(MOTOR, f), "utf8");
+  for (const f of [...fs.readdirSync(MOTOR).filter(f => f.endsWith(".js")).map(f => path.join(MOTOR, f)), ...tsDeSrc(path.join(WEB, "src"))]) {   // MU5-n: también lo migrado a src/
+    const s = fs.readFileSync(f, "utf8");
     for (const m of s.matchAll(/\bTHREE\.([A-Za-z_]\w*)/g)) usados.add(m[1]);
     for (const m of s.matchAll(/["']three\/addons\/([^"']+)["']/g)) addons.add(m[1]);
   }
