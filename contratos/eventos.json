@@ -1016,7 +1016,7 @@
         }
       },
       "emiten": [
-        "37_red"
+        "red/salas"
       ],
       "escuchan": [
         "45_voz"

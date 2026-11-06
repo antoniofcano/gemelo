@@ -1,5 +1,5 @@
 "use strict";
-// El texto de un módulo del motor que ya es un talón de un componente del exterior (A3-1b, MU5-n): el talón de apps/web/motor/ y el .ts de apps/web/src/mundos/exterior/
+// El texto de un módulo del motor que ya es un talón de un componente (A3-1b, MU5-n): el talón de apps/web/motor/ y el .ts de apps/web/src/ (mundos/exterior/, mundos/comun/ o red/)
 // juntos, que es lo que ve el motor. Las pruebas que miran el código de estos módulos con expresiones regulares (el enganche, lo que no reserva por fotograma, las marcas)
 // lo leen de aquí en vez de leer solo el talón.
 //   const { fuenteMotor, TS_DE } = require("./_fuente");   fuenteMotor("04b_escena3d.js")
@@ -25,6 +25,7 @@ const TS_DE = {
   "22b_huellas_polvo.js": "apps/web/src/mundos/exterior/huellas-polvo.ts",   // A3-5
   "52_aves_mes.js": "apps/web/src/mundos/exterior/aves-mes.ts",   // A3-5
   "54_trabajo_hoy.js": "apps/web/src/mundos/exterior/trabajo-hoy.ts",   // A3-5
+  "37_red.js": "apps/web/src/red/salas.ts",   // A3-6a: de todo mundo (red/)
   "05_nube.js": "apps/web/src/mundos/exterior/nube.ts",
   "07a_catalogo.js": "apps/web/src/mundos/exterior/catalogo.ts",
   "18_paisaje.js": "apps/web/src/mundos/exterior/paisaje.ts",

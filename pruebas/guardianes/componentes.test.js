@@ -38,9 +38,9 @@ const COMPONENTES = ficherosMotor().filter(esComponente);
 const MUNDOS_TS = require(path.join(RAIZ, "apps", "web", "src", "mundos", "index.ts"));
 function delegaEn(f) {
   const m = /^  Componentes\.registra\(Mundos\.(\w+)\(/m.exec(fs.readFileSync(path.join(MOTOR, f), "utf8")); if (!m) return null;
-  const dir = path.join(RAIZ, "apps", "web", "src", "mundos");
-  const busca = (d, rel) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (e.isDirectory()) { const r = busca(path.join(d, e.name), rel + e.name + "/"); if (r) return r; } else if (e.name.endsWith(".ts") && !e.name.endsWith(".test.ts") && new RegExp("export function " + m[1] + "\\(").test(fs.readFileSync(path.join(d, e.name), "utf8"))) return "mundos/" + rel + e.name.slice(0, -3); } return null; };
-  return busca(dir, "");
+  const busca = (d, rel) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (e.isDirectory()) { const r = busca(path.join(d, e.name), rel + e.name + "/"); if (r) return r; } else if (e.name.endsWith(".ts") && !e.name.endsWith(".test.ts") && new RegExp("export function " + m[1] + "\\(").test(fs.readFileSync(path.join(d, e.name), "utf8"))) return rel + e.name.slice(0, -3); } return null; };
+  // A3-6a: también la red (apps/web/src/red/), que el legado ve por Mundos (mundos/index.ts la reexporta)
+  return busca(path.join(RAIZ, "apps", "web", "src", "mundos"), "mundos/") || busca(path.join(RAIZ, "apps", "web", "src", "red"), "red/");
 }
 
 function manifiesto(def = {}) {
@@ -207,15 +207,17 @@ function eventosDelCodigo() {
     for (const x of s.matchAll(/\bavisa\(\s*"([^"]+)"/g)) apunta(x[1], true, mod);
   }
   // MU5-n (A3-1a): los módulos del exterior que pasaron a TypeScript (apps/web/src/mundos/**, sin las pruebas), con el nombre «mundos/<ruta>»: bus.emite/bus.on
-  // (el Bus que les presta el legado) y, en un componente, n.emite/n.on
-  (function recorre(d, rel) {
+  // (el Bus que les presta el legado) y, en un componente, n.emite/n.on. A3-6a: también la red (apps/web/src/red/**, «red/<ruta>»), de todo mundo
+  function recorre(d, rel, pre) {
     for (const e of fs.readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-      if (e.isDirectory()) { recorre(path.join(d, e.name), rel + e.name + "/"); continue; }
+      if (e.isDirectory()) { recorre(path.join(d, e.name), rel + e.name + "/", pre); continue; }
       if (!e.name.endsWith(".ts") || e.name.endsWith(".test.ts")) continue;
-      const s = sinComentarios(fs.readFileSync(path.join(d, e.name), "utf8")), mod = "mundos/" + rel + e.name.slice(0, -3);
+      const s = sinComentarios(fs.readFileSync(path.join(d, e.name), "utf8")), mod = pre + rel + e.name.slice(0, -3);
       for (const x of s.matchAll(/\b(?:bus|n)\.(emite|on)\(\s*"([^"]+)"/g)) apunta(x[2], x[1] === "emite", mod);
     }
-  })(path.join(RAIZ, "apps", "web", "src", "mundos"), "");
+  }
+  recorre(path.join(RAIZ, "apps", "web", "src", "mundos"), "", "mundos/");
+  recorre(path.join(RAIZ, "apps", "web", "src", "red"), "", "red/");
   return m;
 }
 

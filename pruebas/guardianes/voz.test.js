@@ -16,11 +16,11 @@ const { lee, path } = require("./_util");
 const contratoModulos = require(path.join(__dirname, "..", "contrato_modulos.js"));
 
 const sinCabecera = s => s.startsWith(contratoModulos.MARCA_I) ? s.slice(s.indexOf(contratoModulos.MARCA_F) + contratoModulos.MARCA_F.length + 1) : s;
-const VOZ = lee("apps/web/motor/45_voz.js"), RED = lee("apps/web/motor/37_red.js");
+const VOZ = lee("apps/web/motor/45_voz.js"), RED = require("./_fuente").fuenteMotor("37_red.js");   // A3-6a: el talón y apps/web/src/red/salas.ts
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return s.slice(i, f); };
 const PURO = trozo(VOZ, "// [puro:inicio]", "// [puro:fin]"), MOTOR = trozo(VOZ, "// [motor:inicio]", "// [motor:fin]");
 const V = new Function("\"use strict\";\n" + PURO + "\nreturn VozPuro;")();
-const RedPuro = new Function("\"use strict\";\n" + trozo(RED, "// [puro:inicio]", "// [puro:fin]") + "\nreturn RedPuro;")();
+const { RedPuro } = require("./_mundos");   // MU5-n (A3-6a): la red vive en apps/web/src/red/salas.ts; 37_red.js es su talón
 const IFACES = JSON.parse(lee("contratos/interfaces.json"));
 const ROLES = JSON.parse(lee("contratos/livekit-roles.json"));
 const espera = (ms = 0) => new Promise(r => setTimeout(r, ms));

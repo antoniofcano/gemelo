@@ -17,7 +17,7 @@ const sinCabecera = s => s.startsWith(contratoModulos.MARCA_I) ? s.slice(s.index
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return s.slice(i, f); };
 const RED = lee("apps/web/motor/37_red.js"), PRES = lee("apps/web/motor/38_presencia_compartida.js"), LIB = lee("apps/web/motor/26_presencia.js"), AVAT = lee("apps/web/motor/26b_avatares.js");
 const NUCLEO = lee("apps/web/motor/02c_componentes.js");
-const RedPuro = new Function("\"use strict\";\n" + trozo(RED, "// [puro:inicio]", "// [puro:fin]") + "\nreturn RedPuro;")();
+const { RedPuro } = require("./_mundos");   // MU5-n (A3-6a): la red vive en apps/web/src/red/salas.ts; 37_red.js es su talón
 const IFACES = JSON.parse(lee("contratos/interfaces.json"));
 const espera = (ms = 0) => new Promise(r => setTimeout(r, ms));
 // F2b: el reintento de la presencia (30 s o más) no debe mantener vivo el proceso de la prueba: los temporizadores largos se sueltan (unref)

@@ -79,3 +79,6 @@ export { ID_PERROS, angCorto, creaPerros, manifiestoPerros } from "./exterior/pe
 export type { DepsPerros, Perros } from "./exterior/perros.ts";
 export { ID_VIDA, creaVida } from "./exterior/vida.ts";
 export type { DepsVida, EstadoVida, Vida } from "./exterior/vida.ts";
+// A3-6a (MU5-n): la red, la presencia y los avatares, componentes de TODO mundo (mundos: "todos", COMPONENTES §3.2). Lo que es red (sin three) vive en red/ y entra aquí
+// para que el legado lo vea como Mundos.<nombre>; lo que dibuja, en mundos/comun/ (no es un mundo: lo usan todos y no importa de ninguno).
+export * from "../red/index.ts";
