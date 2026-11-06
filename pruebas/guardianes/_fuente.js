@@ -28,6 +28,7 @@ const TS_DE = {
   "37_red.js": "apps/web/src/red/salas.ts",   // A3-6a: de todo mundo (red/)
   "26_presencia.js": ["apps/web/src/red/pose.ts", "apps/web/src/red/sala.ts", "apps/web/src/mundos/comun/muneco.ts"],   // A3-6a
   "38_presencia_compartida.js": "apps/web/src/mundos/comun/presencia.ts",   // A3-6a
+  "26b_avatares.js": "apps/web/src/mundos/comun/avatares.ts",   // A3-6a
   "05_nube.js": "apps/web/src/mundos/exterior/nube.ts",
   "07a_catalogo.js": "apps/web/src/mundos/exterior/catalogo.ts",
   "18_paisaje.js": "apps/web/src/mundos/exterior/paisaje.ts",

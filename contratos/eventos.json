@@ -969,7 +969,7 @@
         "mundos/comun/presencia"
       ],
       "escuchan": [
-        "26b_avatares"
+        "mundos/comun/avatares"
       ]
     },
     "prevision:alterna": {
@@ -1322,7 +1322,7 @@
         "45_voz"
       ],
       "escuchan": [
-        "26b_avatares",
+        "mundos/comun/avatares",
         "47b_corro"
       ]
     },

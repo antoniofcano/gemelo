@@ -88,3 +88,6 @@ export type { DepsSitioJunto } from "./comun/muneco.ts";
 // A3-6a: la presencia compartida (antes 38_presencia_compartida.js), de todo mundo.
 export { ID_PRESENCIA, creaPresencia, manifiestoPresencia } from "./comun/presencia.ts";
 export type { DepsPresencia, Presencia } from "./comun/presencia.ts";
+// A3-6a: los avatares VRM (antes 26b_avatares.js), de todo mundo.
+export { AvataresPuro, ID_AVATARES, creaAvatares, manifiestoAvatares } from "./comun/avatares.ts";
+export type { DepsAvatares } from "./comun/avatares.ts";

@@ -15,7 +15,7 @@ function trozo(fich, devuelve) {
   assert.ok(i >= 0 && f > i, fich + " debe marcar su trozo puro");
   return new Function("\"use strict\";\n" + s.slice(i, f) + "\nreturn " + devuelve + ";")();
 }
-const AP = trozo("apps/web/motor/26b_avatares.js", "AvataresPuro");
+const AP = require("./_mundos").AvataresPuro;   // A3-6a: en apps/web/src/mundos/comun/avatares.ts
 const { Aspecto, SalaPose } = require("./_mundos");   // MU5-n (A3-6a): la lógica pura de 26_presencia.js vive en apps/web/src/red/ (pose.ts, sala.ts) y mundos/comun/muneco.ts; el legado la ve como Mundos.<nombre>
 const imp = f => import(pathToFileURL(path.join(RAIZ, f)).href);
 const hex = n => "#" + n.toString(16).padStart(6, "0");
@@ -159,7 +159,7 @@ test("motor: con silla de ruedas el VRM va sentado como en el quad (muslos adela
 });
 
 test("motor: los cuerpos sin huesos de ojos no gastan VRMLookAt (mirada «ninguna»: la mirada va con la cabeza); la escala de un cuerpo es la de verdad × la altura de la receta", () => {
-  const b = lee("apps/web/motor/26b_avatares.js");
+  const b = require("./_fuente").fuenteMotorJs("26b_avatares.js");   // A3-6a: el talón y apps/web/src/mundos/comun/avatares.ts (sin las anotaciones de tipos)
   assert.match(b, /conMirada: !e\.cuerpo \|\| e\.mirada !== "ninguna"/); assert.match(b, /if \(vrm\.lookAt && inst\.conMirada\)/);
   assert.match(b, /var s = e\.cuerpo \? 1 : 1\.5 \/ Math\.max\(0\.3, yCab\)/); assert.match(b, /var s = v\.fa \|\| 1; inst\.giro\.scale\.setScalar\(s\)/);
   assert.match(b, /userData\.name/, "las piezas se buscan por el nombre original del nodo");
