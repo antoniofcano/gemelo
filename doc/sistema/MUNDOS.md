@@ -22,6 +22,7 @@ apps/web/motor/   el legado (IIFE), que encoge en su sitio: no se renombra (ADR-
   - `red` no sabe qué hay dentro de un mundo: solo conoce salas, identidades y temas.
   - Un mundo no importa a otro mundo.
   - Solo `nucleo/render` y la fábrica de materiales importan algo de `three` que dependa del renderer: `three/webgpu`, TSL, `WebGLRenderer`.
+    - Desde MU5-0, la fábrica es `nucleo/materiales.ts` ([MATERIALES](MATERIALES.md)). Hoy no importa ninguno de los dos: recibe `three/webgpu` y `three/tsl` por argumento (`nodos()`), y en MU6 se los cargará `nucleo/render` con `import()` solo con `?renderer=webgpu`.
   - Los mundos importan `three` solo para geometría, materiales estándar, `Group` y `AnimationMixer`.
 - **Guardián:** `dependency-cruiser`, con versión fijada (regla 12: una librería mantenida en vez de un comprobador casero). Las reglas van en `apps/web/.dependency-cruiser.cjs` y corre en la puerta rápida.
 - **Resuelve:**
