@@ -53,11 +53,11 @@ Son tres. Pasados a TSL, desbloquean a casi todos:
 | 14 | `mundos/exterior/lejanos.ts` (antes `07ac_lejanos.js`) | `impostor-lejano` | Lambert + parche (recorte alfa) | impostores de 4 variantes, normales del atlas, luz y fundido de `Generados` | sí | no | no | nubes, helada | **A** |
 | 15 | `mundos/exterior/lejanos.ts` (antes `07ac_lejanos.js`) | `impostor-sustituto` | Lambert + parche | sustituto por variante y vista (con silueta, `texelFetch`) | sí | no | no | no | **A** |
 | 16 | `14_historia.js` | `resalte-parcela` | Basic + parche | resalte que sigue `uExag` (`UN.uExag`) | sí | no | no | no | B |
-| 17 | `apps/web/src/mundos/exterior/vida.ts` (antes `16_vida.js`) | `estela` | `ShaderMaterial` | estela del quad y del dron por edad (`uNow`) | no | no | no | no | B — **TSL apagada (MU5-n, A3-5):** `define("estela", { clasico, tsl })` (`MeshBasicNodeMaterial`); §10 |
+| 17 | `apps/web/src/mundos/exterior/vida.ts` (antes `16_vida.js`) | `estela` | `ShaderMaterial` | estela del quad y del dron por edad (`uNow`) | no | no | no | no | B — **TSL apagada (MU5-n, A3-5):** `define("estela", { clasico, tsl })` (`MeshBasicNodeMaterial`); §12 |
 | 18 | `18_paisaje.js` | `arroyo` | `ShaderMaterial` | agua del arroyo cuando llueve | no | no | no | `uT`, `uLuz` | B |
 | 19 | `19_balizas.js` | `baliza` | `ShaderMaterial` (uno por baliza) | columna con pulso | no | no | no | `uT` | B |
-| 20 | `apps/web/src/mundos/exterior/huellas-polvo.ts` (antes `22b_huellas_polvo.js`) | `huella` | `ShaderMaterial` (instanciado) | huellas que se borran con la edad | no | no | no | no | M — **TSL parcial, apagada (MU5-n, A3-5):** `define` con clásico y TSL (`MeshBasicNodeMaterial`); §10 |
-| 21 | `apps/web/src/mundos/exterior/huellas-polvo.ts` (antes `22b_huellas_polvo.js`) | `polvo` | `ShaderMaterial` (puntos) | polvo | no | no | CPU | `uLuz` | M (puntos) — **TSL parcial, apagada (MU5-n, A3-5):** `PointsNodeMaterial`; el tamaño en píxeles no vale en el WebGPURenderer nativo (§10) |
+| 20 | `apps/web/src/mundos/exterior/huellas-polvo.ts` (antes `22b_huellas_polvo.js`) | `huella` | `ShaderMaterial` (instanciado) | huellas que se borran con la edad | no | no | no | no | M — **TSL parcial, apagada (MU5-n, A3-5):** `define` con clásico y TSL (`MeshBasicNodeMaterial`); §12 |
+| 21 | `apps/web/src/mundos/exterior/huellas-polvo.ts` (antes `22b_huellas_polvo.js`) | `polvo` | `ShaderMaterial` (puntos) | polvo | no | no | CPU | `uLuz` | M (puntos) — **TSL parcial, apagada (MU5-n, A3-5):** `PointsNodeMaterial`; el tamaño en píxeles no vale en el WebGPURenderer nativo (§12) |
 | 22 | `23_estacion.js` | `fruto-flor` | `ShaderMaterial` (puntos) | flores y aceitunas por BBCH | no | CPU (vigor) | no | `uLuz` | M (puntos) |
 | 23 | `26b_avatares.js` | `vrm-fundido` | MToon + `encadena` | fundido por tramado | sí (MToon) | no | no | no | M-A (`MToonNodeMaterial`) |
 | 24 | `29_vr.js` | `vineta-vr` | `ShaderMaterial` | viñeta de confort | no | no | no | no | B |
@@ -276,16 +276,16 @@ Siete módulos del legado pasan a `apps/web/src/mundos/exterior/` (MUNDOS §2, �
 - **Pruebas:** un `.test.ts` por módulo (con el three de verdad) y, para las variantes TSL, `arboles-l0.test.ts`. `pruebas/guardianes/materiales_f1.test.js` cuenta también los `define` de `src/mundos`.
 - **No probado:** que la TSL de `copa-l0` y `tronco-l0` se vea igual que la clásica (capturas por material: MU6), ni nada en el Quest. Tampoco el color de los troncos del nivel 0 tras L5-01 (§ MUNDOS), que cambia a propósito.
 
-## 10. Lo hecho en A3-5 (2026-11-06): la vida del olivar
+## 12. Lo hecho en A3-5 (2026-11-06): la vida del olivar
 
 Siete módulos del legado pasan a `apps/web/src/mundos/exterior/` (MUNDOS §2, «Cómo quedó (MU5-n, A3-5)»). Qué toca de la receta del §5 a cada uno:
 
 | Módulo | 1.er commit (TS y componente) | 2.º commit (materiales por la fábrica) | 3.er commit (TSL apagada) |
 |---|---|---|---|
-| `16_vida.js` → `vida.ts` (componente `vida`) | hecho (+ L2-05, L2-11) | hecho: `estela` pasa de `Materiales.sombreador` a `define` + `Materiales.de("vida").crea` (mismo GLSL y mismas opciones, movidos); los Lambert, Basic y Sprite del quad, el dron y el anillo son estándar (`.estandar`) | hecho: `MeshBasicNodeMaterial` (§10.1) |
+| `16_vida.js` → `vida.ts` (componente `vida`) | hecho (+ L2-05, L2-11) | hecho: `estela` pasa de `Materiales.sombreador` a `define` + `Materiales.de("vida").crea` (mismo GLSL y mismas opciones, movidos); los Lambert, Basic y Sprite del quad, el dron y el anillo son estándar (`.estandar`) | hecho: `MeshBasicNodeMaterial` (§12.1) |
 | `16b_fauna.js` → `fauna.ts` (`fauna-olivar`) | hecho | hecho: los tres Lambert (aves, alas y conejos) son estándar, con dueño `fauna-olivar` | **no hace falta:** sin sombreador propio |
 | `22_huellas.js` → `huellas.ts` | hecho (sin recursos: no es componente) | **no hace falta:** sin materiales | **no hace falta** |
-| `22b_huellas_polvo.js` → `huellas-polvo.ts` (`huellas-polvo`) | hecho | hecho: `huella` y `polvo` pasan de `Materiales.sombreador` a `define` + `Materiales.de("huellas-polvo").crea` | hecho: `MeshBasicNodeMaterial` y `PointsNodeMaterial` (§10.1) |
+| `22b_huellas_polvo.js` → `huellas-polvo.ts` (`huellas-polvo`) | hecho | hecho: `huella` y `polvo` pasan de `Materiales.sombreador` a `define` + `Materiales.de("huellas-polvo").crea` | hecho: `MeshBasicNodeMaterial` y `PointsNodeMaterial` (§12.1) |
 | `25_perros.js` → `perros.ts` (`perros-paseo`) | hecho | hecho: el Lambert de cada perro y los dos `SpriteMaterial` de los rótulos son estándar, con dueño `perros-paseo` | **no hace falta:** sin sombreador propio |
 | `52_aves_mes.js` → `aves-mes.ts` (`aves-mes`) | hecho (+ la descarga se corta al liberar) | **no hace falta:** DOM, sin materiales | **no hace falta** |
 | `54_trabajo_hoy.js` → `trabajo-hoy.ts` (`trabajo-hoy`) | hecho | hecho: el Lambert de vértices del tractor es estándar, con dueño `trabajo-hoy` | **no hace falta:** sin sombreador propio |
@@ -294,7 +294,7 @@ Siete módulos del legado pasan a `apps/web/src/mundos/exterior/` (MUNDOS §2, �
 - **Fuera de la fábrica:** ninguna fila de `FUERA` que bajar: los tres `ShaderMaterial` ya pasaban por `Materiales.sombreador`. `materiales_f1.test.js` los cuenta ahora por sus `define` de `src/mundos`, y cuenta cada fichero de `src/mundos` una sola vez (antes, un fichero con `Materiales.sombreador` en su primer commit de MU5-n contaba doble).
 - **Pruebas:** un `.test.ts` por módulo (con el three de verdad), con la de memoria y, para las TSL, `huellas-polvo.test.ts` y `vida.test.ts` con `three/webgpu` y `three/tsl` de verdad.
 
-### 10.1 Las variantes TSL: lo que hacen y lo que les falta
+### 12.1 Las variantes TSL: lo que hacen y lo que les falta
 
 Las tres viven junto a su clásico (una sola fuente), están **apagadas** (solo las daría la fábrica con el `WebGPURenderer`, MU6) y son **parciales**. Probadas en Vitest con `three/webgpu` y `three/tsl` de verdad: se construyen con sus nodos y la ruta es `tsl` solo con el renderizador nuevo. **No comprobado:** que el grafo compile (sin renderizador en Node) ni que se vea igual (capturas: MU6). **No son equivalentes al clásico.**
 
@@ -303,7 +303,7 @@ Las tres viven junto a su clásico (una sola fuente), están **apagadas** (solo 
 - **`polvo`** (`PointsNodeMaterial`): lleva el disco suave (`pointUV`), la luz del día (`uLuz`), el borrado con la edad y el tamaño (`sizeNode`). **Falta:** en el `WebGPURenderer` nativo un punto mide siempre 1 px (§5, «Los puntos»): el tamaño solo valdría con el backend WebGL del `WebGPURenderer`; con el nativo, el polvo pasa a sprites instanciados, y eso se mide en el banco (MU6).
 - **`smoothstep` con los bordes al revés:** el GLSL escribe `smoothstep(0.5, 0.34, x)`; WGSL exige borde menor < borde mayor, así que la TSL escribe `1 − smoothstep(0.34, 0.5, x)`, que es lo mismo.
 
-### 10.2 Los ciclos de vida (`libera()`)
+### 12.2 Los ciclos de vida (`libera()`)
 
 Ver MUNDOS §2 («Cómo quedó (MU5-n, A3-5)») y COMPONENTES §6. Pruebas de memoria (Vitest, sin GPU: no hay `renderer.info`): tras montar y liberar varias veces no queda viva ninguna geometría, material ni textura propios, ni reloj (`vida.test.ts`, `fauna.test.ts`, `perros.test.ts`, `huellas-polvo.test.ts`, `trabajo-hoy.test.ts`); `aves-mes.test.ts` comprueba que la descarga se corta y que no queda ventana, icono ni fila de VR.
 
