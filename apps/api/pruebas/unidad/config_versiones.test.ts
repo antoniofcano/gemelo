@@ -42,8 +42,8 @@ test("límites de la escalera (decisión 111): fuera de rango se rechaza, en el 
   assert.deepEqual(validaConfig(bordes), []);
 });
 
-test("las gafas solo bajan: un perfil por encima del código (29_vr.js VR_PERFILES) se rechaza", () => {
-  const codigo = [...readFileSync(RAIZ + "apps/web/motor/29_vr.js", "utf8").match(/var VR_PERFILES = \[(.*?)\];/)![1]!.matchAll(/tri: (\d+)/g)].map(m => Number(m[1]));
+test("las gafas solo bajan: un perfil por encima del código (VR_PERFILES, que desde A3-6c vive en apps/web/src/mundos/comun/vr-sesion.ts) se rechaza", () => {
+  const codigo = [...readFileSync(RAIZ + "apps/web/src/mundos/comun/vr-sesion.ts", "utf8").match(/var VR_PERFILES = \[(.*?)\];/)![1]!.matchAll(/tri: (\d+)/g)].map(m => Number(m[1]));
   assert.equal(codigo.length, 4);
   assert.deepEqual(validaConfig(con(c => { c.escalera.triangulos.gafas = codigo; })), [], "igual que el código vale");
   for (let i = 0; i < 4; i++) {
