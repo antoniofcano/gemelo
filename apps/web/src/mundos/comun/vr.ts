@@ -45,6 +45,20 @@ export function defVineta(): DefMaterial<OpcVineta> {
         vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
         fragmentShader: "uniform float uK; uniform float uA; varying vec2 vUv; void main(){ float r = length(vUv - 0.5) * 2.0; float a = smoothstep(uA, uA + 0.34, r) * uK; gl_FragColor = vec4(0.0, 0.0, 0.0, a); }"
       });
+    },
+    // MU5-n, tercer commit: la variante TSL, APAGADA (solo con el WebGPURenderer, que hasta MU6 no existe; nadie la usa hoy). Un MeshBasicNodeMaterial con el estado de dibujo del clásico
+    // (transparente, sin probar ni escribir profundidad; sin niebla, como el ShaderMaterial, que nace con fog false) y el mismo cálculo: r = |uv − 0,5| · 2 y la opacidad
+    // smoothstep(uA, uA + 0,34, r) · uK sobre negro, con los MISMOS { value } de uK y uA que mueve vrActualiza (releídos en cada objeto, onObjectUpdate).
+    // FALTA: nada conocido del dibujo; NO VERIFICADO que el grafo compile ni que se vea igual por ojo con multiview (capturas por material: MU6; el Quest sigue en super-three, MULTIVIEW §4.1).
+    tsl: function (opc, c) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const Tn = c.TSL as any, M = c.THREE["MeshBasicNodeMaterial"] as new (o: unknown) => MaterialMin;
+      const u = opc.uniforms as Record<string, { value: number }>;
+      const uK = Tn.uniform(u["uK"]!.value).onObjectUpdate(function () { return u["uK"]!.value; }), uA = Tn.uniform(u["uA"]!.value).onObjectUpdate(function () { return u["uA"]!.value; });
+      const r = Tn.length(Tn.uv().sub(0.5)).mul(2.0), a = Tn.smoothstep(uA, uA.add(0.34), r).mul(uK);
+      const m = new M({ transparent: true, depthTest: false, depthWrite: false, fog: false }) as MaterialMin & { colorNode: unknown; opacityNode: unknown };
+      m.colorNode = Tn.vec3(0.0, 0.0, 0.0); m.opacityNode = a;
+      return m;
     }
   };
 }

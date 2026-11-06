@@ -8,7 +8,7 @@
 // HONESTIDAD: aquí no hay renderer.info (sin GPU) ni WebXR de verdad; lo que se cuenta son las creaciones y los «dispose» de three. La medida en el navegador es memoria_vr_chrome.test.js
 // (banco, WebXR simulado); en el Quest, NO probado.
 import { describe, expect, it } from "vitest";
-import { creaVr } from "./vr.ts";
+import { MATERIAL_VINETA, creaVr, defVineta } from "./vr.ts";
 import type { DepsVr } from "./vr-tipos.ts";
 import { creaMateriales } from "../../nucleo/materiales.ts";
 import type { ThreeMin } from "../../nucleo/materiales.ts";
@@ -215,6 +215,20 @@ describe("VR: libera() suelta de verdad", () => {
     expect(v.customProgramCacheKey()).toBe(a.customProgramCacheKey());
     expect(Object.keys(v.uniforms)).toEqual(["uK", "uA"]);
     expect(m.d.Materiales.ruta("vineta-vr")).toBe("clasico");
+  });
+  it("la variante TSL de la viñeta (apagada): con three/webgpu y three/tsl de verdad, un MeshBasicNodeMaterial con su opacityNode, el estado del clásico, y solo con el renderer nuevo", async () => {
+    const rutaW = "three/webgpu", rutaT = "three/tsl";   // por variable: three no trae tipos (y así tampoco entra en el grafo de dependency-cruiser)
+    const W = await import(/* @vite-ignore */ rutaW), Tn = await import(/* @vite-ignore */ rutaT);
+    const nuevo = creaMateriales({ THREE: T0 as unknown as ThreeMin, render: { tipo: "nuevo", pedido: "nuevo" }, nodos: () => ({ THREE: W, TSL: Tn }) });
+    const clasico = creaMateriales({ THREE: T0 as unknown as ThreeMin, busqueda: "" });
+    for (const M of [nuevo, clasico]) M.define(MATERIAL_VINETA, defVineta());
+    expect(nuevo.ruta(MATERIAL_VINETA)).toBe("tsl"); expect(clasico.ruta(MATERIAL_VINETA)).toBe("clasico");
+    const u = { uK: { value: 0 }, uA: { value: 0.4 } };
+    const m = nuevo.crea(MATERIAL_VINETA, { uniforms: u }) as A;
+    expect(m.isNodeMaterial).toBe(true); expect(m.type).toBe("MeshBasicNodeMaterial"); expect(m.opacityNode).toBeTruthy(); expect(m.colorNode).toBeTruthy();
+    expect(m.transparent).toBe(true); expect(m.depthTest).toBe(false); expect(m.depthWrite).toBe(false); expect(m.fog).toBe(false);
+    expect(clasico.crea(MATERIAL_VINETA, { uniforms: u })).toMatchObject({ type: "ShaderMaterial" });
+    expect(nuevo.cobertura()[MATERIAL_VINETA]).toMatchObject({ clasico: true, tsl: true });
   });
   it("el componente es de todos los mundos y solo de ciclo de vida", () => {
     const m = monta(), c = m.vr.componente;
