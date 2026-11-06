@@ -7,6 +7,7 @@
 // valida contra contratos/indice.schema.json. Ningún dato real.
 const test = require("node:test"), assert = require("node:assert");
 const { propia, python, ejecuta, lee, fs, path } = require("./_util");
+const { erroresTesela, enHuella } = require("./_tesela");
 const Ajv2020 = require("ajv/dist/2020").default;   // el mismo validador y las mismas opciones que contratos.test.js
 
 const py = python();
@@ -93,6 +94,22 @@ test("hituelo_conv.py sobre 1 tesela sintética: columnas del contrato, índice 
   compruebaCenso(I, esperado().hituelo, "hituelo");
   assert.deepStrictEqual(I.marcados.map(m => m[2]), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, -1], "marcados: índice de la copa emparejada (uno a uno)");
   for (const k of Object.keys(I.teselas)) for (const ext of [".json", ".jpg"]) assert.ok(fs.existsSync(path.join(BASE, "hituelo_a", "t", k + ext)), "falta t/" + k + ext);
+});
+
+// L4-04: las teselas que escriben los exportadores de verdad (sintéticas, 1 tesela cada una) cumplen tesela.schema.json y sus tamaños, y su v cae en la huella
+test("las teselas de hituelo_conv.py y de construye() (Cerro) cumplen tesela.schema.json, sus tamaños y la huella de v", t => {
+  if (SIN_DEPS) return t.skip(SIN_DEPS + ": las teselas de los exportadores NO se han comprobado");
+  assert.ifError(FALLO);
+  for (const d of ["hituelo_a", "cerro"]) {
+    const I = indice(d), [cx, cy] = I.centro_utm;
+    assert.ok(Object.keys(I.teselas).length > 0, d + ": sin teselas");
+    for (const [k, meta] of Object.entries(I.teselas)) {
+      const T = JSON.parse(fs.readFileSync(path.join(BASE, d, "t", k + ".json"), "utf8"));
+      assert.deepStrictEqual(erroresTesela(T).slice(0, 10), [], d + " t/" + k);
+      assert.strictEqual(T.np, meta.np, d + " t/" + k + ": np distinto del índice");
+      assert.ok(enHuella(meta.v, meta.kx, meta.ky, [cx, cy]), d + " t/" + k + ": v fuera de la huella de su tesela");
+    }
+  }
 });
 
 test("hituelo_conv.py: dos exportaciones de los mismos datos dan los mismos ids; con los árboles en otro orden, el mismo id por posición", t => {

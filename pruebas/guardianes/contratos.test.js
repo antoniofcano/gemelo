@@ -1,6 +1,7 @@
 "use strict";
 const test = require("node:test"), assert = require("node:assert");
 const { RAIZ, fixture, lee, fs, path } = require("./_util");
+const { erroresTesela, enHuella } = require("./_tesela");
 const Ajv2020 = require("ajv/dist/2020").default;
 const contratoModulos = require(path.join(RAIZ, "pruebas", "contrato_modulos.js"));
 
@@ -51,27 +52,17 @@ for (const finca of ["hituelo", "cerro"]) {
     for (const [k, t] of Object.entries(I.teselas)) {
       assert.strictEqual(k, t.kx + "_" + t.ky);
       assert.ok(t.v[0] >= I.ext[0] && t.v[2] <= I.ext[2] && t.v[1] >= I.ext[3] && t.v[3] <= I.ext[1], "tesela " + k + " fuera de ext");
-      assert.strictEqual(t.v[0], t.kx * 256 - cx, "v[0] debe ser kx·256 − centro (alineada a múltiplos de 256)");
-      assert.strictEqual(t.v[1], t.ky * 256 - cy);
+      // L4-03: v es el rectángulo con dato, dentro de la huella de la tesela; no tiene que estar alineado (Cerro recorta a la ventana)
+      assert.ok(enHuella(t.v, t.kx, t.ky, I.centro_utm), "tesela " + k + ": v fuera de su huella (kx·256 − cx … +256)");
     }
   });
 
   test("[" + finca + "] cada tesela cumple tesela.schema.json y tiene los tamaños del contrato", () => {
-    const I = cargaIndice(), N2 = 258, N = 256, NS2 = 130;
-    const tesela = k => jsonFx(finca, "t", k + ".json");
+    const I = cargaIndice();
     for (const k of Object.keys(I.teselas)) {
-      const t = tesela(k);
-      assert.deepStrictEqual(valida(V_TESELA, t).slice(0, 10), [], "tesela " + k);
-      assert.strictEqual(bytes(t.dtm).length, N2 * N2 * 2, k + ": dtm = 258² Int16");
-      assert.strictEqual(bytes(t.chm).length, N * N, k + ": chm = 256² u8");
-      assert.strictEqual(bytes(t.suelo).length, NS2 * NS2 * 3, k + ": suelo = 130² × 3 u8");
-      const np = t.pts ? bytes(t.pts).length / 6 : 0;
-      assert.strictEqual(np, t.np, k + ": np debe ser el nº de puntos de pts");
+      const t = jsonFx(finca, "t", k + ".json");
+      assert.deepStrictEqual(erroresTesela(t).slice(0, 10), [], "tesela " + k);
       assert.strictEqual(I.teselas[k].np, t.np, k + ": el índice y la tesela dicen distinto np");
-      if (t.pts) {                                   // x, y dentro de la tesela (cm sobre su esquina SO)
-        const v = new Int16Array(bytes(t.pts).buffer.slice(bytes(t.pts).byteOffset, bytes(t.pts).byteOffset + bytes(t.pts).length));
-        for (let i = 0; i < v.length; i += 3) { assert.ok(v[i] >= 0 && v[i] < 25600 && v[i + 1] >= 0 && v[i + 1] < 25600, "punto fuera de la tesela"); }
-      }
       assert.ok(esJpeg(fs.readFileSync(fx(finca, "t", k + ".jpg"))), k + ": .jpg no es JPEG");
     }
   });
@@ -103,6 +94,27 @@ test("los esquemas rechazan lo que deben (arrays posicionales de otra longitud, 
   const t = jsonFx("hituelo", "t", k0 + ".json");
   assert.notDeepStrictEqual(valida(V_TESELA, Object.assign({}, t, { dtm: "no*base64" })), [], "tesela con dtm que no es base64");
   assert.notDeepStrictEqual(valida(V_TESELA, Object.assign({}, t, { np: -1 })), [], "tesela con np negativo");
+});
+
+// L4-04: una tesela de tamaño distinto a 258² (o de chm/suelo distinto) debe fallar; se hace con copias en un directorio temporal, sin tocar el fixture
+test("una tesela de tamaño distinto falla (copia en un directorio temporal; el fixture no se toca)", () => {
+  const base = jsonFx("hituelo", "t", Object.keys(jsonFx("hituelo", "indice.json").teselas)[0] + ".json");
+  assert.deepStrictEqual(erroresTesela(base), [], "la tesela del fixture debe pasar antes de romperla");
+  const tmp = fs.mkdtempSync(path.join(require("os").tmpdir(), "gemelo-tesela-"));
+  try {
+    const malas = {
+      "dtm 257²": Object.assign({}, base, { dtm: Buffer.alloc(257 * 257 * 2).toString("base64") }),
+      "chm 255²": Object.assign({}, base, { chm: Buffer.alloc(255 * 255).toString("base64") }),
+      "suelo 129²": Object.assign({}, base, { suelo: Buffer.alloc(129 * 129 * 3).toString("base64") }),
+      "np que no cuadra con pts": Object.assign({}, base, { np: base.np + 1 }),
+    };
+    for (const [n, t] of Object.entries(malas)) {
+      const f = path.join(tmp, n.replace(/[^\w]+/g, "_") + ".json");
+      fs.writeFileSync(f, JSON.stringify(t));
+      const leida = JSON.parse(fs.readFileSync(f, "utf8"));
+      assert.notDeepStrictEqual(erroresTesela(leida), [], "una tesela con " + n + " debería fallar");
+    }
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 });
 
 test("el fixture ejercita la calidad Base: hay una tesela sin nube (ADR-0003)", () => {
