@@ -92,6 +92,11 @@ describe("presencia-compartida: de todo mundo y con libera() de verdad (A3-6a)",
     expect(lienzo.width).toBeGreaterThan(0);
     expect(r.visor.children.map((c: El) => c.attrs.id)).toEqual(["presenciaGente", "presenciaBurbuja"]);   // el chat y su burbuja, con sus ids de siempre
     expect(r.observadores.map(o => o.conectado)).toEqual([true]);
+    // segundo commit de la receta: los materiales salen de la fábrica con dueño; los nombres, por define + crea con el GLSL de siempre
+    expect(r.deps.Materiales.duenos()[ID_PRESENCIA]).toBe(m.length);
+    const matN = m.find((x: any) => x.isShaderMaterial);
+    expect(matN).toMatchObject({ transparent: true, depthWrite: false, fog: false }); expect(matN.vertexShader).toMatch(/attribute float aCelda/);
+    expect(r.deps.Materiales.ruta("nombres-presencia")).toBe("clasico");
     r.api.libera();
     expect(r.scene.children).toHaveLength(0);
     for (const x of [...g, ...m, ...t]) expect(sueltos.has(x), "sin dispose: " + (x.type || x.constructor.name)).toBe(true);
@@ -99,6 +104,7 @@ describe("presencia-compartida: de todo mundo y con libera() de verdad (A3-6a)",
     expect(r.visor.children).toHaveLength(0);
     expect(r.observadores.map(o => o.conectado)).toEqual([false]);   // el hallazgo de A3-6a: el observador del chat seguía vivo
     expect(r.quitados).toEqual(["persona"]);
+    expect(r.deps.Materiales.duenos()[ID_PRESENCIA]).toBeUndefined();   // la fábrica ya no guarda nada suyo
     expect(r.window.__presencia().activo).toBe(false);   // el gancho sigue contestando, como antes de C5
     r.api.libera();   // dos veces: no falla ni suelta dos veces
     expect(r.quitados).toEqual(["persona"]);

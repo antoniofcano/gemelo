@@ -29,6 +29,23 @@ export interface DepsPresencia {
 }
 export const ID_PRESENCIA = "presencia-compartida";
 
+/** MU5-n (A3-6a, segundo commit): el material de los nombres por la fábrica (MATERIALES §5). El clásico es el ShaderMaterial de siempre, movido sin tocar: un plano
+ *  instanciado vuelto hacia la cámara en el sombreador y su celda del atlas por instancia (aCelda). Los uniformes (el atlas y la rejilla) llegan en opc.uniforms. */
+export const MATERIAL_NOMBRES = "nombres-presencia";
+export function defNombres() {
+  return {
+    clasico: function (opc: { uniforms: Record<string, { value: unknown }> }, c: { THREE: any }) {
+      return new c.THREE.ShaderMaterial({
+        uniforms: opc.uniforms, transparent: true, depthWrite: false, fog: false,
+        vertexShader: "attribute float aCelda; uniform vec2 uRej; varying vec2 vUv;\n" +
+          "void main(){ vec4 c = modelViewMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0); float e = length(instanceMatrix[0].xyz); c.xy += position.xy * e; gl_Position = projectionMatrix * c;\n" +
+          " float col = mod(aCelda, uRej.x), fila = floor(aCelda / uRej.x); vUv = vec2((col + uv.x) / uRej.x, 1.0 - (fila + 1.0 - uv.y) / uRej.y); }",
+        fragmentShader: "uniform sampler2D uMapa; varying vec2 vUv;\nvoid main(){ vec4 t = texture2D(uMapa, vUv); if (t.a < 0.04) discard; gl_FragColor = t;\n#include <colorspace_fragment>\n}"
+      });
+    }
+  };
+}
+
 // ---------- presencia compartida (F2, contratos/presencia.md), componente «presencia-compartida» (C5, ADR-0023): los demás visitantes como muñecos instanciados,
 // su pose por el códec del contrato, su interpolación y, en la sala de verdad, el apartado Gente y el chat. La lógica pura (códec, búfer, SalaPose, chat,
 // aspecto, muñeco, Encuentro) vive en 26_presencia.js; la conexión, en el componente de la red (37_red.js): esta pieza no sabe nada de LiveKit.
@@ -49,6 +66,8 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
   const Estado = dp.Estado, quad = dp.quad, dron = dp.dron, Materiales = dp.Materiales, Entidades = dp.Entidades;
   const Componentes = dp.Componentes, visor = dp.visor, sitioJunto = dp.sitioJunto;
   var observa: any = null;   // A3-6a: el MutationObserver del chat en móvil vertical, para desconectarlo al liberar
+  Materiales.define(MATERIAL_NOMBRES, defNombres());   // (aquí y no al cargar: el manifiesto se pide sin dependencias para medirlo)
+  const materiales = Materiales.de(ID_PRESENCIA);     // MU5-n (A3-6a): lo que cree este componente se libera con su libera()
   var vrmG: any = null;   // el gancho de los avatares VRM (26b_avatares.js), si están montados
   var variante: any = (/[?&]presencia=(sim|red)\b/.exec(location.search) || [])[1] || "", activo: any = !!variante, N: any = 0;
   // F2b: sin ?presencia= y con api, la presencia en red arranca sola si el servidor tiene LiveKit (GET /api/presencia -> { red: true }) y la casilla de Ajustes está marcada
@@ -125,7 +144,7 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
     // (camisa en cuerpo y brazos, pantalón en las piernas). La cabeza, una bola baja (icosaedro: 20 triángulos)
     var gC: any = new THREE.BoxGeometry(1, 1, 1); gC.translate(0, -0.5, 0);
     var gCab: any = new THREE.IcosahedronGeometry(0.135, 0), gSom: any = new THREE.BoxGeometry(1, 1, 1), gMano: any = new THREE.BoxGeometry(0.08, 0.08, 0.13), gNom: any = new THREE.PlaneGeometry(1.6, 0.3);
-    var matC: any = new THREE.MeshLambertMaterial({ flatShading: true }), matL: any = new THREE.MeshLambertMaterial({ flatShading: true });
+    var matC: any = materiales.estandar("MeshLambertMaterial", { flatShading: true }), matL: any = materiales.estandar("MeshLambertMaterial", { flatShading: true });
     var gRueda: any = new THREE.CylinderGeometry(0.3, 0.3, 0.05, 10); gRueda.rotateZ(Math.PI / 2);   // la rueda de la silla, con el eje en x (10 lados: 40 triángulos)
     geos = [gC, gCab, gSom, gMano, gNom, gRueda]; mats = [matC, matL];
     mCuerpo = new THREE.InstancedMesh(gC, matC, nCuerpos * NP); mCabeza = new THREE.InstancedMesh(gCab, matL, nCuerpos); mSombrero = new THREE.InstancedMesh(gSom, matL, nSom); mManos = new THREE.InstancedMesh(gMano, matL, nManos);
@@ -139,13 +158,7 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
     texNombres = texColor(new THREE.CanvasTexture(cv)); texNombres.minFilter = THREE.LinearFilter; texNombres.generateMipmaps = false;
     var celda: any = new Float32Array(nCuerpos); for (var q: any = 0; q < nCuerpos; q++) celda[q] = q;
     gNom.setAttribute("aCelda", new THREE.InstancedBufferAttribute(celda, 1));
-    var matN: any = Materiales.sombreador("nombres-presencia", {
-      uniforms: { uMapa: { value: texNombres }, uRej: { value: new THREE.Vector2(cNom, fNom) } }, transparent: true, depthWrite: false, fog: false,
-      vertexShader: "attribute float aCelda; uniform vec2 uRej; varying vec2 vUv;\n" +
-        "void main(){ vec4 c = modelViewMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0); float e = length(instanceMatrix[0].xyz); c.xy += position.xy * e; gl_Position = projectionMatrix * c;\n" +
-        " float col = mod(aCelda, uRej.x), fila = floor(aCelda / uRej.x); vUv = vec2((col + uv.x) / uRej.x, 1.0 - (fila + 1.0 - uv.y) / uRej.y); }",
-      fragmentShader: "uniform sampler2D uMapa; varying vec2 vUv;\nvoid main(){ vec4 t = texture2D(uMapa, vUv); if (t.a < 0.04) discard; gl_FragColor = t;\n#include <colorspace_fragment>\n}"
-    });
+    var matN: any = materiales.crea(MATERIAL_NOMBRES, { uniforms: { uMapa: { value: texNombres }, uRej: { value: new THREE.Vector2(cNom, fNom) } } });   // el clásico es el de siempre (defNombres)
     mats.push(matN);
     mNombres = new THREE.InstancedMesh(gNom, matN, nCuerpos); mNombres.renderOrder = 5;
     mallasInst = [mCuerpo, mCabeza, mSombrero, mManos, mNombres, mRuedas];   // las que se marcan cada fotograma, ya en su lista (AG-1.4)
@@ -178,7 +191,7 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
   }
   function instanciaVehiculo(geo?: any, n?: any) {
     if (!geo) return null;
-    var mat: any = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }), im: any = new THREE.InstancedMesh(geo, mat, n);
+    var mat: any = materiales.estandar("MeshLambertMaterial", { vertexColors: true, flatShading: true }), im: any = new THREE.InstancedMesh(geo, mat, n);
     geos.push(geo); mats.push(mat);
     for (var i: any = 0; i < n; i++) im.setMatrixAt(i, m4.makeScale(0, 0, 0));
     im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.visible = false; grupo.add(im);
@@ -825,7 +838,7 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
     if (vrmG) vrmG.libera();
     if (ui) { ui.raiz.remove(); ui.burbuja.remove(); ui.gSeccion.remove(); ui = null; }
     scene.remove(grupo); [mCuerpo, mCabeza, mSombrero, mManos, mNombres, mRuedas, mQuad, mDron].forEach(function (m?: any) { if (m) m.dispose(); }); mQuad = null; mDron = null;
-    geos.forEach(function (g?: any) { g.dispose(); }); mats.forEach(function (m?: any) { m.dispose(); }); if (texNombres) texNombres.dispose();
+    geos.forEach(function (g?: any) { g.dispose(); }); mats.forEach(function (m?: any) { m.dispose(); }); materiales.libera(); if (texNombres) texNombres.dispose();
     try { if (cxNom && cxNom.canvas) cxNom.canvas.width = cxNom.canvas.height = 0; } catch (e: any) {}   // A3-6a: el lienzo del atlas de nombres (1024 × 624) se suelta
     texNombres = null; cxNom = null; geos = []; mats = [];
     grupo = null; mallasInst = []; V = []; redSim = []; porId = Object.create(null); mensajes = [];
