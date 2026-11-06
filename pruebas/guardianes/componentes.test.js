@@ -399,7 +399,8 @@ test("C9a en Node: anfitrión y juego se encuentran por el Bus en cualquier orde
   assert.doesNotThrow(() => r.Componentes.actualiza("pausa", 0.016, 0));
   r.Componentes.configura({ juegos: { activo: false } });
   const fin = sinComentarios(lee("apps/web/motor/90_final.js"));
-  assert.ok(fin.includes('if (Pausa.activa() && !VRX.on) { Componentes.actualiza("pausa", dt, t); depuraCuadro(t); Bus.emite("cuadro:fin", FIN); return; }'), "en pausa, el bucle solo corre la fase «pausa» (ni render, ni Cola, ni módulos)");
+  // A1-14: el bucle es nucleo/bucle.ts; que en pausa solo corran la fase «pausa» y el fin lo prueba nucleo/bucle.test.ts (Vitest). Aquí, lo que le da 90_final:
+  assert.ok(fin.includes('enPausa: function () { return Pausa.activa() && !VRX.on; }, pausa: function (dt, t) { Componentes.actualiza("pausa", dt, t); depuraCuadro(t); }'), "en pausa, el bucle solo corre la fase «pausa» (ni render, ni Cola, ni módulos)");
   assert.ok(fin.indexOf("Pausa.activa()") < fin.indexOf("actualizaTiempo("), "y lo mira antes que nada del mundo");
   // ?cosecha=0: el anfitrión sin juegos; ?juegos=0: sin anfitrión; sin el fichero del juego: anfitrión vacío
   let q = arranca("?cosecha=0", H + "\n" + J); assert.deepStrictEqual(q.ventana.__juegos().juegos, []); q.Componentes.configura({ juegos: { activo: false } });

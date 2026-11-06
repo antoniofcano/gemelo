@@ -143,6 +143,25 @@ async function mantenEjes(mano, x, y, n) { await pg.evaluate(a => window.__mockX
   // 10) otra vez dentro y fuera (sin fugas ni errores)
   await p.click("#btnVR"); await dormir(2500); let dr = await p.evaluate(() => window.__vrDebug()); ok("se puede volver a entrar", dr.on && dr.sesionesN === 2);
   await p.evaluate(() => window.__mockXR.sesion.end()); await dormir(1500); dr = await p.evaluate(() => window.__vrDebug()); ok("y salir con el fin de sesión del sistema (botón del casco)", !dr.on);
+  // 11) A1-14 (L7-01, L7-02): el bucle del núcleo (apps/web/src/nucleo/bucle.ts) ante lo que va mal. Los fallos se inyectan en un paso del legado (Arboles.actualiza, por window.__g)
+  await p.click("#btnVR"); await dormir(2500); dr = await p.evaluate(() => window.__vrDebug()); ok("se entra una tercera vez", dr.on && dr.sesionesN === 3);
+  await p.evaluate(() => { window.__mockXR.cabeza = [0.6, 1.6, -0.4]; window.__mockXR.dirCabeza = [0.5, 0, -1]; }); await fot(4);
+  const cR0 = (await p.evaluate(() => window.__vrDebug())).cabeza; await p.evaluate(() => window.__mockXR.recentra()); await fot(4);
+  const cR1 = (await p.evaluate(() => window.__vrDebug())).cabeza, bR = await p.evaluate(() => window.__bucle()), saltoR = Math.hypot(cR1[0] - cR0[0], cR1[2] - cR0[2]);
+  ok("reset del espacio de referencia (recentrar): la cabeza no salta", bR.reinicios === 1 && saltoR < 0.05, { reinicios: bR.reinicios, salto: +saltoR.toFixed(3) });
+  await p.evaluate(() => { window.__mockXR.cabeza = [0, 1.6, 0]; window.__mockXR.dirCabeza = null; });
+  await p.evaluate(() => window.__mockXR.visibilidad("visible-blurred")); await fot(3); const bO = await p.evaluate(() => window.__bucle());
+  await p.evaluate(() => window.__mockXR.visibilidad("visible")); await fot(3); const bV = await p.evaluate(() => window.__bucle());
+  ok("menú del sistema (sesión «visible-blurred»): el bucle lo ve y vuelve, sin salir de VR", bO.oculto && !bV.oculto && (await p.evaluate(() => window.__vrDebug().on)), { oculto: bO.oculto, vuelve: !bV.oculto });
+  await p.evaluate(() => { const A = window.__g.Arboles; A.__act = A.actualiza; A.actualiza = function () { throw new Error("[prueba] fallo inyectado"); }; });
+  await dormir(3000);
+  await p.evaluate(() => { const A = window.__g.Arboles; A.actualiza = A.__act; delete A.__act; });
+  const bF = await p.evaluate(() => window.__bucle()), dF = await p.evaluate(() => window.__vrDebug()), avF = await p.evaluate(() => (document.getElementById("hudAvisos") || {}).textContent || "");
+  ok("tres fallos seguidos en VR: sale limpio de la sesión y lo avisa", !dF.on && bF.salidasVr === 1 && bF.fallos >= 3 && /sesión de VR se ha cerrado/.test(avF), { on: dF.on, salidasVr: bF.salidasVr, fallos: bF.fallos, aviso: avF.slice(0, 80) });
+  await p.evaluate(() => { const A = window.__g.Arboles, o = A.actualiza; A.actualiza = function () { A.actualiza = o; throw new Error("[prueba] fallo inyectado"); }; });
+  const gF1 = await p.evaluate(() => window.__vrDebug().frames); await dormir(3000); const gF2 = await p.evaluate(() => window.__vrDebug().frames), bP = await p.evaluate(() => window.__bucle());
+  ok("en pantalla, un fallo en el fotograma no para el bucle", gF2 > gF1 && bP.fallos === bF.fallos + 1, { f1: gF1, f2: gF2, fallos: bP.fallos });
+  err.splice(0, err.length, ...err.filter(e => !/fallo inyectado/.test(e)));   // los fallos inyectados se registran (limitados) a propósito
   console.log("ERRORES", err.length, err.slice(0, 6)); ok("sin errores de página ni de consola", err.length === 0);
   console.log("FALLOS", fallos); await b.close(); process.exit(fallos ? 1 : 0);
 })().catch(e => { console.log("EXCEPCIÓN", e); process.exit(2); });

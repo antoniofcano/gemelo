@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: VRX, vrRig, vrDebugExtra, vrMano, vrRayoDe, vrFundido, vrAparece, creaLamina, panel, ficha, vrBajoRayo, vrRect, vrAj, PanelVR,
-//   vrPintaFicha, vrPulso, vrActualiza, vrFin
+//   vrPintaFicha, vrRecoloca, vrPulso, vrActualiza, vrFin
 // Consume: 01_datos (D, $, fmt, VRP), 01a_aparato (Aparato), 02_mundo (suelo, copas), 02b_cola (Cola),
 //   02c_componentes (ComponentesPuro, Bus, Config), 02d_laminas (LaminasPuro, Laminas), 02e_entidades (EntidadesPuro, Entidades, Usables),
 //   02f_xr_perillas (XrPerillas), 02g_vr_presupuesto (VrControlPuro, VrPresupuesto), 02h_render (InfoDibujo), 02i_materiales (Materiales),
@@ -514,6 +514,12 @@
     if (vp && vp.transform) { if (vp.transform.orientation) q = vp.transform.orientation; else if (vp.transform.matrix) q = vrQCab.setFromRotationMatrix(vrM4Cab.fromArray(vp.transform.matrix)); }
     VRX.mira = LaminasPuro.miradaH(q, r.yaw);
     return VRX.cab;
+  }
+  // L7-02: tras el «reset» del espacio de referencia (recentrar en el casco), el rig se recoloca para que la cabeza siga en el mismo sitio y mirando a lo mismo (BuclePuro.recoloca; lo llama nucleo/bucle.ts)
+  function vrRecoloca() {
+    var vp = null; try { vp = VRX.frame && VRX.base ? VRX.frame.getViewerPose(VRX.base) : null; } catch (e) { vp = null; } var tf = vp && vp.transform, p = tf && tf.position, q = tf && tf.orientation; if (!tf) return;
+    if (!p || !q) { vrM4Cab.fromArray(tf.matrix).decompose(vrV3, vrQ, vrV2); p = vrV3; q = vrQ; }
+    var n = Nucleo.BuclePuro.recoloca(VRX.rig, { p: camera.position, q: camera.quaternion }, { p: p, q: q }); VRX.rig.x = n.x; VRX.rig.z = n.z; VRX.rig.yaw = n.yaw; camera.position.set(p.x, p.y, p.z); camera.quaternion.set(q.x, q.y, q.z, q.w); vrAplicaRig(); VRX.sucio = true;
   }
   function vrIrA(px, py) {   // lleva la cabeza a (px, py) del mundo (py hacia el norte), sin cambiar la dirección de la mirada
     var h = vrCabeza(); VRX.rig.x += px - h.x; VRX.rig.z += -py - h.z; VRX.rig.y = suelo(px, py) * Estado.exag + vrBaseY(); VRX.salto = true;   // salto: con ?ui=capas el panel nace delante (EV2-A2)

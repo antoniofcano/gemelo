@@ -13,13 +13,14 @@
     return new Float32Array([xx, xy, xz, 0, yx, yy, yz, 0, zx, zy, zz, 0, pos[0], pos[1], pos[2], 1]);
   }
   window.XRRigidTransform = function (p, q) { p = p || { x: 0, y: 0, z: 0, w: 1 }; q = q || { x: 0, y: 0, z: 0, w: 1 }; this.position = p; this.orientation = q; this.matrix = fromPQ(p, q); };
-  function Espacio(off) { this.off = off || null; this.mat = off ? off.matrix : I(); }
+  // A1-14 (L7-02): el espacio emite «reset» (M.recentra) como el del casco al recentrar
+  function Espacio(off) { this.off = off || null; this.mat = off ? off.matrix : I(); var et = new EventTarget(); this.addEventListener = et.addEventListener.bind(et); this.removeEventListener = et.removeEventListener.bind(et); this.dispatchEvent = et.dispatchEvent.bind(et); }
   Espacio.prototype.getOffsetReferenceSpace = function (tr) { return new Espacio(tr); };
   window.XRWebGLLayer = function (ses, gl, o) { this.framebuffer = null; this.framebufferWidth = gl.drawingBufferWidth; this.framebufferHeight = gl.drawingBufferHeight; this.fixedFoveation = 0; this.getViewport = function (v) { var w = gl.drawingBufferWidth, h = gl.drawingBufferHeight; return v.eye === "left" ? { x: 0, y: 0, width: w / 2, height: h } : { x: w / 2, y: 0, width: w / 2, height: h }; }; };
   [window.WebGLRenderingContext, window.WebGL2RenderingContext].forEach(function (C) { if (C) C.prototype.makeXRCompatible = function () { return Promise.resolve(); }; });
 
   // perfiles que anuncia cada mando (I6): el izquierdo, lo que se espera de un Quest 3; el derecho, uno que el gemelo no copia (cae en el genérico)
-  var M = window.__mockXR = { perfiles: { left: ["meta-quest-touch-plus", "oculus-touch-v3", "oculus-touch-v2", "oculus-touch", "generic-trigger-squeeze-thumbstick"], right: ["oculus-touch"] }, sesion: null, cabeza: [0, 1.6, 0], mandos: {}, fotogramas: 0, tope: 0, bloqueadoMarco: false, soporta: true, soloLocal: false, registro: [] };
+  var M = window.__mockXR = { perfiles: { left: ["meta-quest-touch-plus", "oculus-touch-v3", "oculus-touch-v2", "oculus-touch", "generic-trigger-squeeze-thumbstick"], right: ["oculus-touch"] }, sesion: null, cabeza: [0, 1.6, 0], mandos: {}, fotogramas: 0, tope: 0, bloqueadoMarco: false, soporta: true, soloLocal: false, registro: [], espacios: [] };
   function mando(mano) {
     var x = mano === "left" ? -0.25 : 0.25, pos = [x, 1.2, -0.3];
     return { handedness: mano, targetRayMode: "tracked-pointer", profiles: (M.perfiles && M.perfiles[mano]) || ["oculus-touch"], hand: null, pos: pos, dir: [0, 0, -1],
@@ -27,9 +28,9 @@
       gamepad: { axes: [0, 0, 0, 0], buttons: [0, 1, 2, 3, 4, 5].map(function () { return { pressed: false, touched: false, value: 0 }; }), hapticActuators: [{ pulse: function () { M.registro.push("pulso"); return Promise.resolve(true); } }] } };
   }
   function nuevaSesion() {
-    var s = new EventTarget(); s.renderState = { baseLayer: null, depthNear: 0.1, depthFar: 1000 }; s.inputSources = []; s.supportedFrameRates = [72, 90]; s.fin = false;
+    var s = new EventTarget(); s.visibilityState = "visible"; s.renderState = { baseLayer: null, depthNear: 0.1, depthFar: 1000 }; s.inputSources = []; s.supportedFrameRates = [72, 90]; s.fin = false;
     s.updateRenderState = function (o) { Object.keys(o).forEach(function (k) { s.renderState[k] = o[k]; }); };
-    s.requestReferenceSpace = function (t) { if (t === "local-floor" && M.soloLocal) return Promise.reject(new Error("no local-floor")); return Promise.resolve(new Espacio()); };
+    s.requestReferenceSpace = function (t) { if (t === "local-floor" && M.soloLocal) return Promise.reject(new Error("no local-floor")); var e = new Espacio(); M.espacios.push(e); return Promise.resolve(e); };
     s.updateTargetFrameRate = function (f) { M.registro.push("fps " + f); return Promise.resolve(); };
     s.requestAnimationFrame = function (cb) { return setTimeout(function () { if (s.fin) return; M.fotogramas++; cb(performance.now(), frame(s)); }, 14); };
     s.cancelAnimationFrame = function (id) { clearTimeout(id); };
@@ -56,5 +57,8 @@
   M.ejes = function (mano, x, y) { var g = M.mandos[mano].gamepad; g.axes[2] = x; g.axes[3] = y; };
   M.boton = function (mano, k, v) { var b = M.mandos[mano].gamepad.buttons[k]; b.pressed = !!v; b.value = v ? 1 : 0; };
   M.apunta = function (mano, p) { var m = M.mandos[mano]; m.dir = [p[0] - m.pos[0], p[1] - m.pos[1], p[2] - m.pos[2]]; };
+  // A1-14 (L7-02): el menú del sistema (la sesión pasa a «visible-blurred» o «hidden» y vuelve a «visible») y recentrar (el origen pasa a donde está la cabeza, mirando adonde mira)
+  M.visibilidad = function (v) { var s = M.sesion; if (!s) return; s.visibilityState = v; s.dispatchEvent(new Event("visibilitychange")); };
+  M.recentra = function () { var c = M.cabeza, d = M.dirCabeza || [0, 0, -1], m = lookMat([c[0], 0, c[2]], [d[0], 0, d[2]]); M.espacios.forEach(function (e) { e.mat = m; e.dispatchEvent(new Event("reset")); }); };
   M.gatillo = function (mano) { var s = M.sesion, m = M.mandos[mano]; ["selectstart", "select", "selectend"].forEach(function (t) { var ev = new Event(t); ev.inputSource = m; ev.frame = frame(s); s.dispatchEvent(ev); }); };
 })();

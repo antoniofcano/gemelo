@@ -449,12 +449,13 @@ test("Q0i: sin reparto (medida de antes) no viaja ni reparto ni otros_p95_ms", (
   assert.ok(c && !("reparto" in c) && !("otros_p95_ms" in c));
 });
 test("Q0h: coste cero sin medir: ni una lectura de reloj nueva en el bucle fuera de lo guardado por «rp», y cero reservas en lo que corre midiendo", () => {
-  const fin = lee("apps/web/motor/90_final.js"), cuerpo = fin.slice(fin.indexOf("function cuadro(t)"), fin.indexOf("var tAhorro"));
-  // las únicas lecturas de reloj sin guarda son las dos de siempre: el ms de renderer.render() y vrFin
-  const sinGuarda = cuerpo.split("\n").map(l => l.replace(/if \(rp\) [^;]*;?/g, "").replace(/var q = rp \? [^;]*;/, "")).filter(l => /performance\.now\(\)/.test(l));
-  assert.strictEqual(sinGuarda.length, 2, sinGuarda.join("\n"));
-  assert.ok(sinGuarda.some(l => /renderer\.render/.test(l)) && sinGuarda.some(l => /vrFin/.test(l)));
-  assert.ok(/var rp = Reparto\.on, q = rp \? Reparto\.ini\(t\) : 0;/.test(cuerpo), "rp se lee una vez por fotograma");
+  // A1-14: el bucle es apps/web/src/nucleo/bucle.ts; que sin medir solo lea el reloj en bucle() y en el render lo cuenta nucleo/bucle.test.ts (Vitest).
+  // En la lista de pasos de 90_final, el reloj solo lo da el `ahora` del bucle y lo lee vrFin, como siempre
+  const fin = lee("apps/web/motor/90_final.js"), cuerpo = fin.slice(fin.indexOf("Nucleo.creaBucle("), fin.indexOf("var cuadro = Bucle.cuadro"));
+  const lecturas = cuerpo.split("\n").filter(l => /performance\.now\(\)/.test(l));
+  assert.strictEqual(lecturas.length, 2, lecturas.join("\n"));
+  assert.ok(lecturas.some(l => /ahora: function \(\) \{ return performance\.now\(\); \}/.test(l)) && lecturas.some(l => /vrFin\(dt, performance\.now\(\) - t\)/.test(l)));
+  assert.ok(/const R = deps\.reparto, rp = !!\(R && R\.on\);/.test(lee("apps/web/src/nucleo/bucle.ts")), "rp se lee una vez por fotograma");
   const c2 = lee("apps/web/motor/02c_componentes.js"), act = c2.slice(c2.indexOf("function actualiza(fase, dt, t)"), c2.indexOf("function api(id)"));
   assert.ok(/if \(Reparto\.on\) \{[^\n]*performance\.now\(\)[^\n]*Reparto\.pasa\(c\.rp, q\); continue; \}/.test(act), "cada componente se mide solo si Reparto.on");
   assert.strictEqual((act.match(/performance\.now\(\)/g) || []).length, 1, "una sola lectura de reloj en Componentes.actualiza, dentro de la rama de medir");

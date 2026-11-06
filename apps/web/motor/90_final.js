@@ -5,8 +5,8 @@
 //   07b_arboles (Arboles), 08_marcadores (listo, aplica), 09_camara (objetivo, camara), 12_paseo (paseando, actualizaPaseo),
 //   15_tiempo (actualizaTiempo), 16_vida (actualizaVida), 17_minimapa (actualizaMinimapa), 18_paisaje (actualizaPaisaje),
 //   19_balizas (actualizaBalizas), 21_suelo (recoloreaSuelo, actualizaSuelo), 23_estacion (actualizaOlivo), 24_pantalla (transEntrada, transSalida),
-//   28_depura (depuraCuadro), 29_vr (VRX, vrActualiza, vrFin), 33_ajustes (Ajustes)
-// Nota: Arranque y bucle: Mundo.arranca, Componentes.arranca, cuadro() y requestAnimationFrame. Define el orden de las actualizaciones por fotograma: los módulos que aún no son componentes a mano y los componentes por fases (mundo, tarde, trasRender).
+//   28_depura (depuraCuadro), 29_vr (VRX, vrRecoloca, vrActualiza, vrFin), 31_hud (Hud), 33_ajustes (Ajustes)
+// Nota: Arranque y bucle: Mundo.arranca, Componentes.arranca y la lista de pasos del fotograma que recorre el Bucle del núcleo (apps/web/src/nucleo/bucle.ts: try/catch por fotograma, página oculta, reset del espacio XR, contexto perdido). Define el orden de las actualizaciones por fotograma: los módulos que aún no son componentes a mano y los componentes por fases (mundo, tarde, trasRender).
 // ===============================================================================
 
   function tamano() { if (renderer.xr.isPresenting) return; var w = visor.clientWidth, h = visor.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / Math.max(h, 1); camera.updateProjectionMatrix(); }
@@ -16,49 +16,32 @@
   var tCarga = 0;
   var tOrto = 0;
   function actualizaCarga(dt) { tCarga += dt; if (tCarga < 0.2) return; tCarga = 0; Mundo.actualiza(camera.position.x, camera.position.y, camera.position.z); if (!paseando) Mundo.actualiza(objetivo.x, objetivo.y, objetivo.z); tOrto += 0.2; if (tOrto > 3) { tOrto = 0; Mundo.liberaOrtoLejos(camera.position.x, camera.position.y, camera.position.z); } }
-  var tAnt = performance.now();
-  // un fotograma: lo hace el bucle de la ventana o, en una sesión de realidad virtual, el de las gafas (29_vr.js: vrActualiza coloca la cabeza donde está el usuario y mueve el «paseo»)
-  // Los componentes registrados (02c_componentes.js, ADR-0023) van por fases sin nombrarlos: «mundo» tras la cámara, «tarde» antes de la Cola y «trasRender»;
-  // con el mundo en pausa (Pausa), solo «pausa».
-  // Los módulos que aún no son componentes siguen llamándose aquí a mano (migración incremental: cada uno que se convierte quita su llamada).
-  var FIN = { t: 0, r: 0 };   // «cuadro:fin»: el fotograma acabó (lo escucha el medidor de fotogramas solo mientras mide); el mismo objeto cada vez, sin crear nada
-  // Q0h: bloques del reparto del JS (Reparto, 02c). Se dan de alta una vez; sin medir (Reparto.on falso) no se lee el reloj: rp se lee una vez por fotograma y cada medición es «if (rp) q = Reparto.pasa(bloque, q)».
-  var BL = { entrada: Reparto.reg("cámara/paseo/VR"), usables: Reparto.reg("entidades"), tiempo: Reparto.reg("tiempo"), olivo: Reparto.reg("olivo (estación)"), vida: Reparto.reg("vida (fauna y perros)"), minimapa: Reparto.reg("minimapa"),
-    paisaje: Reparto.reg("paisaje"), balizas: Reparto.reg("balizas"), suelo: Reparto.reg("suelo"), nube: Reparto.reg("nube"), arboles: Reparto.reg("árboles (niveles)"), carga: Reparto.reg("carga de teselas"),
-    laminas: Reparto.reg("láminas"), cola: Reparto.reg("Cola"), escena3d: Reparto.reg("Escena3D.actualiza"), depura: Reparto.reg("depura/vrFin") };
-  function cuadro(t) {
-    FIN.t = t;
-    var dt = Math.min(0.1, (t - tAnt) / 1000); tAnt = t;
-    // el mundo en pausa (02c Pausa: un juego a pantalla completa): ni cámara, ni módulos, ni Cola, ni render; solo la fase «pausa» y el contador de ?debug
-    if (Pausa.activa() && !VRX.on) { Componentes.actualiza("pausa", dt, t); depuraCuadro(t); Bus.emite("cuadro:fin", FIN); return; }
-    var rp = Reparto.on, q = rp ? Reparto.ini(t) : 0;
-    if (VRX.on) vrActualiza(dt, t); else if (paseando) { actualizaPaseo(dt); transEntrada(dt); } else { camara(); transSalida(dt); }
-    if (rp) q = Reparto.pasa(BL.entrada, q);
-    Usables.actualiza(dt);   // la cercanía (02e_entidades.js): antes que las balizas, que la leen
-    if (rp) q = Reparto.pasa(BL.usables, q);
-    actualizaTiempo(dt, t); if (rp) q = Reparto.pasa(BL.tiempo, q);
-    actualizaOlivo(dt); if (rp) q = Reparto.pasa(BL.olivo, q);
-    actualizaVida(dt); if (rp) q = Reparto.pasa(BL.vida, q);
-    actualizaMinimapa(dt); if (rp) q = Reparto.pasa(BL.minimapa, q);
-    actualizaPaisaje(dt); if (rp) q = Reparto.pasa(BL.paisaje, q);
-    actualizaBalizas(dt); if (rp) q = Reparto.pasa(BL.balizas, q);
-    actualizaSuelo(dt); if (rp) q = Reparto.pasa(BL.suelo, q);
-    actualizaNube(dt); if (rp) q = Reparto.pasa(BL.nube, q);
-    Componentes.actualiza("mundo", dt, t); if (rp) q = performance.now();   // cada componente se mide dentro de Componentes.actualiza (c:id); aquí solo se rehace la marca
-    Arboles.actualiza(dt); if (rp) q = Reparto.pasa(BL.arboles, q);
-    actualizaCarga(dt); if (rp) q = Reparto.pasa(BL.carga, q);
-    Componentes.actualiza("tarde", dt, t); if (rp) q = performance.now();
-    Laminas.revisa(dt); if (rp) q = Reparto.pasa(BL.laminas, q);
-    Cola.corre(Arboles.presupuesto()); if (rp) q = Reparto.pasa(BL.cola, q);
-    Escena3D.actualiza(); if (rp) q = Reparto.pasa(BL.escena3d, q);
-    var tR = performance.now(); renderer.render(scene, camera); FIN.r = performance.now() - tR;   // F0: ms de renderer.render() (lo lee el medidor)
-    if (rp) q = performance.now();
-    Componentes.actualiza("trasRender", dt, t); if (rp) q = performance.now();
-    depuraCuadro(t); if (VRX.on) vrFin(dt, performance.now() - t); if (rp) Reparto.pasa(BL.depura, q);
-    Bus.emite("cuadro:fin", FIN);
-  }
-  var tAhorro = 0;   // Configuración → Gráficos → Ahorro de batería: salta los fotogramas que llegan antes de ~25 ms (unos 30 por segundo)
-  function bucle() { if (VRX.on) return; var ahora = performance.now(); if (Ajustes.lee("graficos.ahorro") && ahora - tAhorro < 25) { requestAnimationFrame(bucle); return; } tAhorro = ahora; cuadro(ahora); requestAnimationFrame(bucle); }
+  // un fotograma: lo hace el bucle de la ventana o, en VR, el de las gafas (29_vr.js: vrActualiza coloca la cabeza y mueve el «paseo»). A1-14 (MU1-10, MUNDOS §9.4 fila 8): el bucle vive en
+  // apps/web/src/nucleo/bucle.ts (dt, pausa, reparto, ms del render, ahorro de batería, «cuadro:fin»; y lo que falla: L7-01, L7-02, L7-10); aquí queda la LISTA de pasos, en el orden de siempre.
+  // Los componentes (02c, ADR-0023) van por fases sin nombrarlos («mundo», «tarde», «trasRender»; en pausa, solo «pausa»). bloque: el del reparto (Q0h, 02c Reparto); null = se mide dentro (c:id).
+  var Bucle = Nucleo.creaBucle({
+    ahora: function () { return performance.now(); }, pideCuadro: function (fn) { requestAnimationFrame(fn); }, reparto: Reparto,
+    enPausa: function () { return Pausa.activa() && !VRX.on; }, pausa: function (dt, t) { Componentes.actualiza("pausa", dt, t); depuraCuadro(t); },   // en pausa: ni cámara, ni módulos, ni Cola, ni render
+    alFin: function (FIN) { Bus.emite("cuadro:fin", FIN); }, ahorro: function () { return Ajustes.lee("graficos.ahorro"); },   // FIN.r: ms de renderer.render() (F0, lo lee el medidor)
+    xr: { activa: function () { return VRX.on; }, sesion: function () { return VRX.sesion; }, base: function () { return VRX.base; }, recoloca: vrRecoloca },
+    aviso: function (s, ms) { if (Hud) Hud.aviso(s, ms); }, consola: console, documento: document, lienzo: renderer.domElement, temporizador: function (fn, ms) { return setTimeout(fn, ms); },
+    pasos: [
+      { bloque: Reparto.reg("cámara/paseo/VR"), fn: function (dt, t) { if (VRX.on) vrActualiza(dt, t); else if (paseando) { actualizaPaseo(dt); transEntrada(dt); } else { camara(); transSalida(dt); } } },
+      { bloque: Reparto.reg("entidades"), fn: function (dt) { Usables.actualiza(dt); } },   // la cercanía (02e_entidades.js): antes que las balizas, que la leen
+      { bloque: Reparto.reg("tiempo"), fn: function (dt, t) { actualizaTiempo(dt, t); } }, { bloque: Reparto.reg("olivo (estación)"), fn: function (dt) { actualizaOlivo(dt); } },
+      { bloque: Reparto.reg("vida (fauna y perros)"), fn: function (dt) { actualizaVida(dt); } }, { bloque: Reparto.reg("minimapa"), fn: function (dt) { actualizaMinimapa(dt); } },
+      { bloque: Reparto.reg("paisaje"), fn: function (dt) { actualizaPaisaje(dt); } }, { bloque: Reparto.reg("balizas"), fn: function (dt) { actualizaBalizas(dt); } },
+      { bloque: Reparto.reg("suelo"), fn: function (dt) { actualizaSuelo(dt); } }, { bloque: Reparto.reg("nube"), fn: function (dt) { actualizaNube(dt); } },
+      { bloque: null, fn: function (dt, t) { Componentes.actualiza("mundo", dt, t); } }, { bloque: Reparto.reg("árboles (niveles)"), fn: function (dt) { Arboles.actualiza(dt); } },
+      { bloque: Reparto.reg("carga de teselas"), caro: true, fn: actualizaCarga },   // caro: con la página o la sesión XR oculta no corre (ni la Cola ni la escena 3D Tiles)
+      { bloque: null, fn: function (dt, t) { Componentes.actualiza("tarde", dt, t); } }, { bloque: Reparto.reg("láminas"), fn: function (dt) { Laminas.revisa(dt); } },
+      { bloque: Reparto.reg("Cola"), caro: true, fn: function () { Cola.corre(Arboles.presupuesto()); } }, { bloque: Reparto.reg("Escena3D.actualiza"), caro: true, fn: function () { Escena3D.actualiza(); } },
+      { render: true, fn: function () { renderer.render(scene, camera); } }, { bloque: null, fn: function (dt, t) { Componentes.actualiza("trasRender", dt, t); } },
+      { bloque: Reparto.reg("depura/vrFin"), fn: function (dt, t) { depuraCuadro(t); if (VRX.on) vrFin(dt, performance.now() - t); } }
+    ]
+  });
+  var cuadro = Bucle.cuadro, bucle = Bucle.bucle;
+  window.__bucle = Bucle.estado;   // fallos, salidas de VR, oculto, contexto perdido (pruebas/prueba_vr.js y ?debug)
   Componentes.arranca();   // tras montar todos los ficheros: URL > configuración del servidor > defecto de cada manifiesto
   Render.arranca(renderer, bucle);   // el primer fotograma: hoy en el acto (el clásico no tiene init()); con el renderizador nuevo, tras su init() (02h_render, F1)
 
