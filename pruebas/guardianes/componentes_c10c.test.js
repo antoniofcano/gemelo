@@ -231,5 +231,5 @@ test("marcadores-lidar: montado tarde (ya estaba listo) coloca al momento; sin m
 test("marcadores-lidar: 08_marcadores.js ya no dibuja copas, anillos ni desfase; avisa por el Bus", () => {
   const f = sinComentarios(require("./_fuente").fuenteMotor("08_marcadores.js"));   // A3-2b: talón + marcadores.ts
   assert.ok(!/mCopas|mMarc|desfGeo|gCopas|gMarc|gDesf|InstancedMesh/.test(f), "08_marcadores.js sigue dibujando los marcadores");
-  assert.match(f, /Bus\.emite\("mundo:aplica"\)/); assert.match(f, /Bus\.emite\("capas:cambia"\)/);
+  assert.match(f, /[Bb]us\.emite\("mundo:aplica"\)/); assert.match(f, /[Bb]us\.emite\("capas:cambia"\)/);   // A3-2b: en marcadores.ts el Bus se llama bus
 });
