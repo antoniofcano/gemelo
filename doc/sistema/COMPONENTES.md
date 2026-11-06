@@ -524,3 +524,11 @@ Sustituye, no suma: el presentador del componente se queda con las fichas de oli
 
 - **Presupuesto (regla 6):** 0 llamadas y 0 triángulos (DOM: una tarjeta). Una petición cada 10 min.
 - **Comprobado en Node:** `mundo_hoy.test.js` (contrato, líneas con procedencia y frescura, fuentes apagadas, sin totales si está truncado, DOM de mentira con textos «que dan órdenes», HUD una vez, `libera()`, el día real). **No probado** en Chrome, iPhone ni Quest.
+
+### A3-6c (MU5-n) · la VR y la locomoción, componentes de todo mundo
+
+Siete componentes nuevos o migrados, todos con `mundos: TODO_MUNDO` (`apps/web/src/mundos/comun/tipos.ts`: la lista entera de `ComponentesPuro.MUNDOS`, forma provisional hasta igualarla con la de A3-6a) y solo de ciclo de vida (sin fases: los mueve el bucle, como siempre): `vr` (`29_vr.js`; lo registra `90_final.js` con `Vr.componente`), `mandos-vr` (`36_mandos.js`, el de C10 ahora en TypeScript), `paseo` (`12_paseo.js`; lo registra `90_final.js` con `Paseo.componente`), `anillo-llegada` (`12b_llegada.js`), `ir-a` (`12c_ir_a.js`), `camara-orbital` (`09_camara.js`) y `palanca-tactil` (`34b_palanca.js`), estos cuatro con `Componentes.registra(Mundos.manifiesto…(…))` en su talón. Qué suelta cada `libera()`: MUNDOS §2, «Cómo quedó (MU5-n, A3-6c)». `PanelVR` sigue siendo el punto de extensión de siempre (mismos miembros; su fábrica, `creaPanelVR`, en `contratos/interfaces.json`). Los eventos de la VR los emiten y escuchan ahora `mundos/comun/vr-sesion` y `mundos/comun/vr-panel` (`contratos/eventos.json`), y los de los mandos, `mundos/comun/mandos`.
+
+#### Nota de comodidad (regla 11)
+
+Sin cambio de interacción: el código de los gestos, los mandos (Y panel, X viñeta, A vuelo, B mirador, grip correr y agarrar, gatillo), el giro por saltos (30° por defecto), el teletransporte (arco a pie, rayo desde el aire), el fundido (~0,3 s; saltos > 5 m), la viñeta (sus puntos y sus tiempos), las velocidades (1,4 / 3,0 / 8 / 20 m/s), la altura de la vista y los radios de los troncos se movieron tal cual, y los guardianes de siempre (`vr`, `vr_confort`, `vr_control`, `xr_perillas`, `llegada`, `ir_a`, `palanca`, `mandos`, `movibles`, `locomocion_mundo`, `ux_teclas`…) siguen en verde sobre ese mismo código. **No probado** en el Quest ni en el iPhone, ni en un navegador (esta tarea no abrió Chrome).
