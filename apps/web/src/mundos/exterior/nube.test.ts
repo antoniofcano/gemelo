@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { ComponentesPuro } from "../../nucleo/componentes.ts";
 import { creaMateriales } from "../../nucleo/materiales.ts";
 import type { ThreeMin } from "../../nucleo/materiales.ts";
-import { CARGA_NUBE_M, LIBERA_NUBE_M, MIN_PUNTOS, NIV_NUBE, NubePuro, PRESUPUESTO_NUBE, SUELTA_FUERA_S, creaNube, manifiestoNube } from "./nube.ts";
+import { CARGA_NUBE_M, DEF_NUBE, LIBERA_NUBE_M, MATERIAL_NUBE, MIN_PUNTOS, NIV_NUBE, NubePuro, PRESUPUESTO_NUBE, SUELTA_FUERA_S, creaNube, manifiestoNube } from "./nube.ts";
 import type { DepsNube } from "./nube.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -152,13 +152,24 @@ describe("nube LiDAR (componente del exterior)", () => {
     api.actualizaNubeTeselas(0, 0, 0); expect(vivas.n).toBe(0);
   });
 
-  it("sus 4 materiales (uno por nivel) salen de la fábrica con el nombre de la tabla de MATERIALES y llevan el parche de 15_tiempo; comparten el color del maestro", () => {
+  it("sus 4 materiales (uno por nivel) salen de la fábrica por define + crea con dueño y el nombre de la tabla de MATERIALES; el clásico es el de siempre (mismo parche, sin clave propia) y comparten el color del maestro", () => {
     const { api, Materiales, tiempo } = monta([]);
-    expect(Materiales.cobertura()["nube-lidar"]).toMatchObject({ clasico: true, usado: 4 });
+    expect(MATERIAL_NUBE).toBe("nube-lidar");
+    expect(Materiales.cobertura()["nube-lidar"]).toEqual({ clasico: true, tsl: false, usado: 4 });
+    expect(Materiales.inventario()).toMatchObject({ "nube-lidar": { tipo: "define", n: 4 } }); expect(Materiales.duenos()).toEqual({ "nube-lidar": 4 }); expect(Materiales.ruta("nube-lidar")).toBe("clasico");
     const mats = api.matsNube(); expect(mats).toHaveLength(NIV_NUBE.length);
-    mats.forEach((m: { color: unknown; onBeforeCompile(sh: unknown): void; isPointsMaterial: boolean }) => { expect(m.color).toBe(api.nube.material.color); expect(m.isPointsMaterial).toBe(true); });
+    mats.forEach((m: { color: unknown; onBeforeCompile(sh: unknown): void; isPointsMaterial: boolean; sizeAttenuation: boolean; vertexColors: boolean; customProgramCacheKey(): string }) => {
+      expect(m.color).toBe(api.nube.material.color); expect(m.isPointsMaterial).toBe(true); expect(m.sizeAttenuation).toBe(true); expect(m.vertexColors).toBe(true);
+      expect(m.customProgramCacheKey()).toBe(m.onBeforeCompile.toString());   // sin clave propia: la de three, el texto del parche
+    });
     const sh = {}; mats[0].onBeforeCompile(sh); expect(tiempo).toEqual([sh]);
-    expect(mats.map((m: { size: number }) => m.size)).toEqual([0.6, 0.6 / Math.sqrt(0.5), 3 * 0 + Math.min(3, 0.6 / Math.sqrt(0.18)), Math.min(3, 0.6 / Math.sqrt(0.045))]);
+    expect(mats.map((m: { size: number }) => m.size)).toEqual([0.6, 0.6 / Math.sqrt(0.5), Math.min(3, 0.6 / Math.sqrt(0.18)), Math.min(3, 0.6 / Math.sqrt(0.045))]);
+    // el clásico a mano: lo mismo que pide la fábrica
+    const a = DEF_NUBE.clasico!({ size: 1, color: api.nube.material.color, parche: () => { /* sin efecto */ } }, { THREE, nombre: "nube-lidar" }) as { size: number };
+    expect(a.size).toBe(1);
+    // libera() los suelta (y deja la lista de la fábrica vacía)
+    let liberados = 0; mats.forEach((m: { addEventListener(n: string, f: () => void): void }) => m.addEventListener("dispose", () => { liberados++; }));
+    api.libera(); expect(liberados).toBe(4); expect(Materiales.duenos()).toEqual({});
   });
 
   it("el manifiesto vale, es de los mundos [exterior], y su libera suelta de verdad", () => {

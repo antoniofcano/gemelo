@@ -16,7 +16,7 @@
 // 10_ndvi reescriben (kcor, tinte, ndviIdx: primitivas del legado) entra como funciones que lo leen en cada uso.
 // Presupuesto (regla 6): una llamada por tesela con nube a la vista y, como mucho, PRESUPUESTO_NUBE puntos dibujados.
 import type { Manifiesto } from "../../nucleo/componentes.ts";
-import type { Materiales } from "../../nucleo/materiales.ts";
+import type { DefMaterial, Materiales, MaterialMin } from "../../nucleo/materiales.ts";
 import { RADIO_CARGA } from "./teselas.ts";
 
 // three no trae tipos en el repo (como en suelo-fondo.ts): de él solo se toca lo mínimo, sin tiparlo
@@ -33,6 +33,21 @@ export const LIBERA_NUBE_M = RADIO_CARGA * 1.2;   // L2-02: ni se conserva más 
 export const ID_NUBE = "nube-lidar";
 /** el nombre del material en la fábrica (MATERIALES §1, fila 9): también es la clave de su variante TSL */
 export const MATERIAL_NUBE = "nube-lidar";
+
+// ---------------------------------------------------------------- el material (MU5-n: por la fábrica, con su nombre de la tabla de MATERIALES §1, fila 9)
+/** lo que pide el material: el tamaño del punto de su nivel, el color del maestro (el MISMO objeto: el ciclo del día lo tiñe) y el parche de la luz (15_tiempo: nubes, helada) */
+export interface OpcNube { size: number; color: unknown; parche(sh: unknown): void }
+/** el material de un nivel de la nube: puntos con color por vértice, el color compartido y el parche de 15_tiempo asignado tal cual (la misma función, sin clave propia: three usa su texto como clave del programa) */
+export const DEF_NUBE: DefMaterial<OpcNube> = {
+  clasico: function (o, c) {
+    const Puntos = c.THREE["PointsMaterial"] as new (opc: unknown) => MaterialMin & { color: unknown };
+    const m = new Puntos({ size: o.size, sizeAttenuation: true, vertexColors: true });
+    m.color = o.color;
+    m.onBeforeCompile = o.parche;
+    m.needsUpdate = true;
+    return m;
+  }
+};
 
 /** Lo puro: el nivel de detalle por distancia y el reparto del presupuesto de puntos. */
 export const NubePuro = {
@@ -98,6 +113,7 @@ export interface DepsNube {
 
 export function creaNube(d: DepsNube) {
   const THREE = d.THREE, Mundo = d.Mundo, ColaExt = d.ColaExt, Estado = d.Estado, Estaticos = d.Estaticos;
+  d.Materiales.define(MATERIAL_NUBE, DEF_NUBE);
   const materiales = d.Materiales.de(ID_NUBE);   // lo que cree este componente se libera con su libera()
   // «maestro»: el ciclo del día le pone el color; los niveles comparten ese color. Nunca se dibuja: solo lleva el color y el parche de 15_tiempo (conTiempo)
   const nubeMat: T3 = new THREE.PointsMaterial({ size: 0.6, sizeAttenuation: true, vertexColors: true });
@@ -107,11 +123,7 @@ export function creaNube(d: DepsNube) {
 
   function creaMats(): T3[] {
     return NIV_NUBE.map(function (nv) {
-      let m: T3 = new THREE.PointsMaterial({ size: Math.min(3, 0.6 / Math.sqrt(nv.f)), sizeAttenuation: true, vertexColors: true });
-      m.color = nubeMat.color;
-      m = materiales.parchea(m, MATERIAL_NUBE, function (sh: unknown) { d.parcheTiempo(sh, false); });
-      m.needsUpdate = true;
-      return m;
+      return materiales.crea(MATERIAL_NUBE, { size: Math.min(3, 0.6 / Math.sqrt(nv.f)), color: nubeMat.color, parche: function (sh: unknown) { d.parcheTiempo(sh, false); } } as OpcNube) as T3;
     });
   }
   /** pone la nube en la escena (y los materiales de los niveles, si se soltaron); idempotente. El componente lo llama al montarse. */
