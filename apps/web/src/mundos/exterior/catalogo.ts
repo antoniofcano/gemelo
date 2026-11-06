@@ -6,7 +6,7 @@
 // a árbol con la copa medida (06_arboles.js). Los modelos de un catálogo glb se registran con instala(desc, cargador, base), que nadie llama todavía.
 // Del legado recibe por argumento lo que necesita (THREE, hash de 04d, parcheTiempo de 15_tiempo y la fábrica de materiales); no lee globales.
 import type { Manifiesto } from "../../nucleo/componentes.ts";
-import type { Materiales } from "../../nucleo/materiales.ts";
+import type { DefMaterial, Materiales, MaterialMin } from "../../nucleo/materiales.ts";
 
 // three no trae tipos en el repo (como en ambiente.ts y presupuesto.ts): de él solo se toca lo mínimo, sin tiparlo
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -27,6 +27,23 @@ export interface Pieza { pieza: "copa" | "tronco"; geo: T3; mat: T3 }
 export type Cargador = (url: string, THREE: T3) => Promise<{ nombre?: string; geometria: T3 }[]> | { nombre?: string; geometria: T3 }[];
 
 export const ID_CATALOGO = "catalogo-olivos";
+
+// ---------------------------------------------------------------- los materiales (MU5-n: por la fábrica, con sus nombres de la tabla de MATERIALES §1, fila 11)
+/** los nombres de los dos materiales en la fábrica: son también las claves de sus variantes TSL */
+export const MATERIAL_COPA_L1 = "copa-l1";
+export const MATERIAL_TRONCO_L1 = "tronco-l1";
+/** lo que pide cada uno: su parche de siempre (parcheCopa o parcheInst de creaCatalogo, que cierran sobre el parcheTiempo de 15_tiempo) */
+export interface OpcCatalogo { parche: (sh: unknown) => void }
+/** el clásico de los dos: el Lambert blanco con color por vértice y el parche asignado tal cual (la MISMA función: three usa su texto como clave del programa) */
+function clasicoInstanciado(o: OpcCatalogo, c: { THREE: Record<string, unknown> }): MaterialMin {
+  const Lambert = c.THREE["MeshLambertMaterial"] as new (opc: unknown) => MaterialMin;
+  const m = new Lambert({ color: 0xffffff, vertexColors: true });
+  m.onBeforeCompile = o.parche;
+  m.needsUpdate = true;
+  return m;
+}
+export const DEF_COPA_L1: DefMaterial<OpcCatalogo> = { clasico: clasicoInstanciado };
+export const DEF_TRONCO_L1: DefMaterial<OpcCatalogo> = { clasico: clasicoInstanciado };
 
 export function creaCatalogo(d: DepsCatalogo) {
   const THREE = d.THREE, hash = d.hash, parcheTiempo = d.parcheTiempo, Materiales = d.Materiales;
@@ -80,8 +97,10 @@ export function creaCatalogo(d: DepsCatalogo) {
     sh.fragmentShader = sh.fragmentShader.replace("void main() {", "varying vec3 vLoc; varying float vSeed; varying float vRim;\nfloat ot_h3(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }\nvoid main() {")
       .replace("#include <color_fragment>", "#include <color_fragment>\n float nz = ot_h3(floor(vLoc * 7.0 + vSeed * 31.0)); float nz2 = ot_h3(floor(vLoc * 15.0 + vSeed * 17.0));\n if (nz < (vRim - 0.72) * 2.8) discard;\n diffuseColor.rgb *= 0.74 + 0.50 * nz2;\n diffuseColor.rgb = mix(diffuseColor.rgb, sRGBTransferEOTF(vec4(0.64, 0.70, 0.56, 1.0)).rgb,smoothstep(0.45, 1.0, vRim) * 0.40 * (0.45 + nz));");
   }
-  var matCopaI = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true }), matTroncoI = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true });
-  Materiales.parchea(matCopaI, "copa-l1", parcheCopa); Materiales.parchea(matTroncoI, "tronco-l1", parcheInst); matCopaI.needsUpdate = true; matTroncoI.needsUpdate = true;
+  // MU5-n: los dos materiales salen de la fábrica (define + crea con dueño «catalogo-olivos»): lo que cree este componente se libera con su libera()
+  Materiales.define(MATERIAL_COPA_L1, DEF_COPA_L1); Materiales.define(MATERIAL_TRONCO_L1, DEF_TRONCO_L1);
+  var materiales = Materiales.de(ID_CATALOGO);
+  var matCopaI: T3 = materiales.crea(MATERIAL_COPA_L1, { parche: parcheCopa }), matTroncoI: T3 = materiales.crea(MATERIAL_TRONCO_L1, { parche: parcheInst });
 
   // las piezas por procedimiento, creadas al pedirlas y guardadas (07b_arboles.js las pide al montarse, en el orden de antes)
   function procedural(nivel: number, v: number): Pieza[] {
@@ -151,11 +170,10 @@ export function creaCatalogo(d: DepsCatalogo) {
     Object.keys(proc).forEach(function (k) { (proc[k] as Pieza[]).forEach(function (p) { p.geo.dispose(); n++; }); delete proc[k]; });
     var habia = Object.keys(modelos).length > 0;
     Object.keys(modelos).forEach(function (t) { modelos[t].niveles.forEach(function (ps: Pieza[]) { ps.forEach(function (p) { p.geo.dispose(); n++; }); }); delete modelos[t]; });
-    if (!liberados) { matCopaI.dispose(); matTroncoI.dispose(); liberados = true; }
+    materiales.libera();   // los dos materiales instanciados (la fábrica no suelta dos veces)
     if (habia) avisa();
     return n;
   }
-  var liberados = false;
   return { SIN: SIN, PRES_TRI: PRES_TRI, tipos: tipos, tiene: tiene, variantes: variantes, geometria: geometria, triangulos: triangulos, info: info, instala: instala, retira: retira, alCambiar: alCambiar, avisos: function () { return avisos.slice(); }, libera: libera };
 }
 export type Catalogo = ReturnType<typeof creaCatalogo>;

@@ -46,6 +46,12 @@ describe("catálogo de olivos-tipo (componente del exterior)", () => {
     copa.onBeforeCompile(sh);
     expect(parches).toEqual(["tiempo"]); expect(sh.vertexShader).toContain("ot_sombra((instanceMatrix * vec4(transformed, 1.0)).xz)"); expect(sh.fragmentShader).toContain("if (nz < (vRim - 0.72) * 2.8) discard;");
     const st = { vertexShader: "vSomb = ot_sombra(position.xz);", fragmentShader: "" }; tronco.onBeforeCompile(st); expect(st.vertexShader).toContain("instanceMatrix");
+    // MU5-n (2.º commit): por define + crea con dueño; el clásico es el de siempre (Lambert blanco con color por vértice, el parche asignado tal cual, sin clave propia)
+    expect(F.inventario()).toMatchObject({ "copa-l1": { tipo: "define", n: 1 }, "tronco-l1": { tipo: "define", n: 1 } });
+    expect(F.duenos()).toEqual({ "catalogo-olivos": 2 }); expect(F.ruta("copa-l1")).toBe("clasico");
+    expect(copa.color.getHex()).toBe(0xffffff); expect(copa.customProgramCacheKey()).toBe(copa.onBeforeCompile.toString());
+    expect(copa.onBeforeCompile).not.toBe(tronco.onBeforeCompile);
+    C.libera(); expect(F.duenos()).toEqual({});
   });
 
   it("instala un catálogo glb con un cargador inyectado (lineal → sRGB, caja) y rechaza el que se pasa de presupuesto; retira avisa", async () => {
