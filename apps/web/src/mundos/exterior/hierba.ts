@@ -8,6 +8,7 @@
 // colocar matas, huellas y polvo. Las matas y las piedras son ilustrativas: se reparten por ruido a partir de esa cubierta (deducida).
 // Del legado recibe por argumento lo que necesita; lo que cambia (la fecha del NDVI, quien pasea, el dron, el arroyo) se lee en cada uso, por función.
 import type { Manifiesto } from "../../nucleo/componentes.ts";
+import type { DefMaterial } from "../../nucleo/materiales.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type A = any;
@@ -35,6 +36,30 @@ export interface DepsHierba {
 }
 
 export const ID_HIERBA = "hierba-suelo";
+
+// ---------------------------------------------------------------- los materiales por la fábrica (MU5-n: MATERIALES §1, filas 6 y 7)
+/** los nombres de los dos materiales en la fábrica: son también las claves de sus variantes TSL */
+export const MATERIAL_MATAS = "matas";
+export const MATERIAL_PIEDRAS = "piedras";
+/** lo que pide cada uno: su parche de siempre (parcheMata o parchePiedra de creaHierba, que cierran sobre los uniformes del viento y de la sombra) y, las matas, el atlas */
+export interface OpcMatas { map: A; parche: (sh: A) => void }
+export interface OpcPiedras { parche: (sh: A) => void }
+/** el clásico de siempre, movido: el Lambert del atlas con su recorte alfa y las dos caras, y el parche asignado tal cual (three usa su texto como clave del programa) */
+export const DEF_MATAS: DefMaterial<OpcMatas> = {
+  clasico: function (o, c) {
+    var THREE = c.THREE as A, m = new THREE.MeshLambertMaterial({ map: o.map, alphaTest: 0.42, side: THREE.DoubleSide });
+    m.onBeforeCompile = o.parche; m.needsUpdate = true;
+    return m;
+  }
+};
+/** el clásico de siempre, movido: el Lambert blanco (el color, por instancia) con su parche */
+export const DEF_PIEDRAS: DefMaterial<OpcPiedras> = {
+  clasico: function (o, c) {
+    var m = new (c.THREE as A).MeshLambertMaterial({ color: 0xffffff });
+    m.onBeforeCompile = o.parche; m.needsUpdate = true;
+    return m;
+  }
+};
 
 export function creaHierba(d: DepsHierba) {
   var THREE = d.THREE, D = d.D, $ = d.$, hash = d.hash, UN = d.UN, Materiales = d.Materiales, Estaticos = d.Estaticos, scene = d.scene, Estado = d.Estado, texColor = d.texColor;
@@ -125,15 +150,19 @@ export function creaHierba(d: DepsHierba) {
     var c = d.lienzo(); c.width = c.height = 64; var g = c.getContext("2d"), gr = g.createRadialGradient(32, 32, 4, 32, 32, 31);
     gr.addColorStop(0, "rgba(0,0,0,0.62)"); gr.addColorStop(0.55, "rgba(0,0,0,0.28)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return texColor(new THREE.CanvasTexture(c));
   }
-  var NTUFT = 16000, NSTONE = 2600, texHierba = atlasHierba(), matMata = Materiales.recorte(new THREE.MeshLambertMaterial({ map: texHierba, alphaTest: 0.42, side: THREE.DoubleSide })), matPiedra = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  // MU5-n: los dos materiales salen de la fábrica (define + crea con dueño «hierba-suelo») y el de los contactos, como estándar: lo que cree este componente se
+  // libera con su libera() (también sale de la lista de recortes alfa)
+  Materiales.define(MATERIAL_MATAS, DEF_MATAS); Materiales.define(MATERIAL_PIEDRAS, DEF_PIEDRAS);
+  var materiales = Materiales.de(ID_HIERBA);
+  var NTUFT = 16000, NSTONE = 2600, texHierba = atlasHierba(), matMata = Materiales.recorte(materiales.crea(MATERIAL_MATAS, { map: texHierba, parche: parcheMata })), matPiedra = materiales.crea(MATERIAL_PIEDRAS, { parche: parchePiedra });
   var iMata = new THREE.InstancedMesh(geoMata(), matMata, NTUFT), iPiedra = new THREE.InstancedMesh(geoPiedra(), matPiedra, NSTONE), tileMata = new THREE.InstancedBufferAttribute(new Float32Array(NTUFT), 1);
   var geoCont = new THREE.PlaneGeometry(1, 1); geoCont.rotateX(-Math.PI / 2);
-  var texCont = texContacto(), matCont = new THREE.MeshBasicMaterial({ map: texCont, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), iCont = new THREE.InstancedMesh(geoCont, matCont, NSTONE);
+  var texCont = texContacto(), matCont = materiales.estandar("MeshBasicMaterial", { map: texCont, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), iCont = new THREE.InstancedMesh(geoCont, matCont, NSTONE);
   iMata.geometry.setAttribute("aTile", tileMata);
   iMata.setColorAt(0, new THREE.Color(1, 1, 1)); iPiedra.setColorAt(0, new THREE.Color(1, 1, 1));   // el color por instancia tiene que existir antes del primer dibujo
   iMata.frustumCulled = false; iPiedra.frustumCulled = false; iCont.frustumCulled = false; iMata.count = 0; iPiedra.count = 0; iCont.count = 0; iCont.renderOrder = 2; [iMata, iPiedra, iCont].forEach(function (m) { Estaticos.congela(m); }); scene.add(iMata); scene.add(iPiedra);   // AG-1.15: matas, piedras y contactos solo viven en sus matrices de instancia scene.add(iCont);
-  (function () {   // el viento mueve las matas (más arriba, más), y comparten sombra de nubes y escarcha con el resto
-    matMata.onBeforeCompile = function (sh: A) {
+  // el viento mueve las matas (más arriba, más), y comparten sombra de nubes y escarcha con el resto (funciones declaradas: la fábrica las pide arriba)
+    function parcheMata(sh: A): void {
       colorVertSRGB(sh);   // el color por instancia está escrito en sRGB (03_escena)
       sh.uniforms.uDrift = uSombra.uDrift; sh.uniforms.uCov = uSombra.uCov; sh.uniforms.uSomb = uSombra.uSomb; sh.uniforms.uHielo = uSombra.uHielo; sh.uniforms.uT = uViento.uT; sh.uniforms.uAmp = uViento.uAmp; sh.uniforms.uDir = uViento.uDir;
       sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nuniform float uT; uniform float uAmp; uniform vec2 uDir; attribute float aTile; varying vec3 vVPz;\n" + GLSL_SOMBRA)
@@ -144,18 +173,15 @@ export function creaHierba(d: DepsHierba) {
       sh.fragmentShader = sh.fragmentShader.replace("void main() {", "varying float vSomb; uniform float uHielo; varying vec3 vVPz;\n#define vViewPosition vVPz\nvoid main() {")
         .replace("#include <map_fragment>", "#include <map_fragment>\n float dd = length(vViewPosition), ign = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));\n if (smoothstep(34.0, 58.0, dd) > ign || smoothstep(0.9, 0.2, dd) > ign) discard;\n diffuseColor.rgb *= 0.5 + 0.5 * smoothstep(0.0, 0.55, vMapUv.y);")
         .replace("#include <dithering_fragment>", "gl_FragColor.rgb *= vSomb; gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.88, 0.94, 1.0), uHielo * 0.6);\n#include <dithering_fragment>");
-    };
-    matMata.needsUpdate = true;
-    matPiedra.onBeforeCompile = function (sh: A) {   // canto con granos, vetas y manchas de liquen (ruido por la posición local, sin textura)
+    }
+    function parchePiedra(sh: A): void {   // canto con granos, vetas y manchas de liquen (ruido por la posición local, sin textura)
       colorVertSRGB(sh);
       sh.uniforms.uDrift = uSombra.uDrift; sh.uniforms.uCov = uSombra.uCov; sh.uniforms.uSomb = uSombra.uSomb;
       sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vP; varying float vSeed;\n" + GLSL_SOMBRA).replace("#include <begin_vertex>", "#include <begin_vertex>\n vP = position; vSeed = fract(instanceMatrix[3].x * 0.137 + instanceMatrix[3].z * 0.311); vSomb = ot_sombra((instanceMatrix * vec4(transformed, 1.0)).xz);");
       sh.fragmentShader = sh.fragmentShader.replace("void main() {", "varying float vSomb; varying vec3 vP; varying float vSeed;\nfloat sh3(vec3 p){ return fract(sin(dot(floor(p), vec3(12.9898, 78.233, 37.719))) * 43758.5453); }\nvoid main() {")
         .replace("#include <color_fragment>", "#include <color_fragment>\n float n1 = sh3(vP * 5.0 + vSeed * 40.0), n2 = sh3(vP * 13.0 + vSeed * 17.0), veta = 0.5 + 0.5 * sin((vP.x * 2.1 + vP.y * 3.4 + vSeed * 9.0) * 3.0 + n1 * 1.5);\n diffuseColor.rgb *= 0.74 + 0.16 * n1 + 0.1 * n2 + 0.12 * veta;\n diffuseColor.rgb = mix(diffuseColor.rgb, sRGBTransferEOTF(vec4(vec3(0.46, 0.5, 0.3) * 0.8, 1.0)).rgb,step(0.86, n1) * 0.4 * smoothstep(-0.2, 0.9, vP.y));")
         .replace("#include <dithering_fragment>", "gl_FragColor.rgb *= vSomb;\n#include <dithering_fragment>");
-    };
-    matPiedra.needsUpdate = true;
-  })();
+    }
   var tmpM = new THREE.Object3D(), colM = new THREE.Color();
   function repartePlantas(cx: number, cy: number): void {
     var ndviIdx = d.ndviIdx(), paseando = d.paseando(), ejeArroyo = d.ejeArroyo(), distArroyo = d.distArroyo;
@@ -223,7 +249,8 @@ export function creaHierba(d: DepsHierba) {
     suelto = true;
     var n = 0;
     [iMata, iPiedra, iCont].forEach(function (m: A) { scene.remove(m); m.dispose(); n++; });
-    [iMata.geometry, iPiedra.geometry, geoCont, matMata, matPiedra, matCont, texHierba, texCont].forEach(function (x: A) { x.dispose(); n++; });
+    [iMata.geometry, iPiedra.geometry, geoCont, texHierba, texCont].forEach(function (x: A) { x.dispose(); n++; });
+    n += materiales.libera();   // las matas, las piedras y los contactos (y las matas salen de la lista de recortes alfa)
     if (Gtex) { if (UN.uG.value === Gtex) UN.uG.value = null; Gtex.dispose(); Gtex = null; n++; }
     bajas.splice(0).forEach(function (f) { f(); n++; });
     return n;

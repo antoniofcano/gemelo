@@ -195,8 +195,7 @@ function cuentaTs(f) {
 const FUERA_SRC = {
   // (el terreno, 04d, ya registra «terreno» con define() desde su segundo commit de MU5-n, A3-1a)
   // (y 15_tiempo, A3-4, registra «parche-tiempo», «nubes», «lluvia» y «barrera» con define() desde su segundo commit)
-  // A3-4, primer commit de 21_suelo: el código, tal cual, en src/ (los parches de las matas y las piedras); el segundo los registra con define()
-  "apps/web/src/mundos/exterior/hierba.ts": [2, 0, "matas y piedras (F4 #6): pasan a define en el segundo commit de A3-4"]
+  // (y 21_suelo, A3-4, registra «matas» y «piedras» con define() desde su segundo commit)
 };
 const REGISTRA = /\.define\(\s*["'`A-Z_]/;
 test("trinquete en apps/web/src/: los sombreadores propios solo en la fábrica o en un módulo que los registra con define()", t => {

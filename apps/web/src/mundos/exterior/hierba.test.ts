@@ -79,6 +79,15 @@ describe("la hierba y las piedras del exterior", () => {
     expect(H.libera()).toBe(0);   // dos veces no libera dos veces
     H.actualizaSuelo(0.3); expect(scene.children.length).toBe(0);   // y ya no hace nada
   });
+  it("MU5-n (2.º commit): sus materiales salen de la fábrica con su nombre y su dueño; las matas, con su recorte alfa; libera() las saca de los recortes", () => {
+    const { H, F } = monta();
+    expect(F.inventario()).toMatchObject({ matas: { tipo: "define", n: 1 }, piedras: { tipo: "define", n: 1 } });
+    expect(F.duenos()).toEqual({ "hierba-suelo": 3 }); expect(F.a2c.n).toBe(1); expect(F.ruta("matas")).toBe("clasico");
+    const { iMata, iPiedra } = H.mallas();
+    expect(iMata.material.isMeshLambertMaterial && iMata.material.alphaTest === 0.42 && iMata.material.side === THREE.DoubleSide).toBe(true);
+    expect(iMata.material.customProgramCacheKey()).toBe(iMata.material.onBeforeCompile.toString()); expect(iPiedra.material.color.getHex()).toBe(0xffffff);
+    H.libera(); expect(F.duenos()).toEqual({}); expect(F.a2c.n).toBe(0);
+  });
   it("el manifiesto vale, es de los mundos [exterior], monta el mismo objeto y su libera lo suelta", () => {
     const { H, scene } = monta(), man = manifiestoHierba(H);
     expect(ComponentesPuro.valida(man)).toEqual([]); expect(man.id).toBe("hierba-suelo"); expect(man.mundos).toEqual(["exterior"]);
