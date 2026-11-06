@@ -70,7 +70,7 @@ test("el generador del catálogo sintético es determinista: da los mismos bytes
 });
 
 test("el motor usa el mismo presupuesto de triángulos que el esquema (07a_catalogo.js, PRES_TRI y TOLERANCIA)", () => {
-  const s = lee("apps/web/motor/07a_catalogo.js");
+  const s = require("./_fuente").fuenteMotor("07a_catalogo.js");   // A3-2a: talón + catalogo.ts
   assert.match(s, new RegExp("PRES_TRI = \\[" + ["L0", "L1", "L2"].map(n => PRES.objetivo[n]).join(", ") + "\\], TOLERANCIA = " + PRES.tolerancia));
 });
 

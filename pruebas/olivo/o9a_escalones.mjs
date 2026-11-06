@@ -10,7 +10,6 @@
 //   node pruebas/olivo/o9a_escalones.mjs   → una línea JSON por stdout (el resumen legible, por stderr)
 import fs from "node:fs";
 import path from "node:path";
-import vm from "node:vm";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -71,10 +70,8 @@ say("propio E2 (copa_m de copas_param 4,3): copa " + prop.medidas.copa_m + " m, 
 salida.variante.forEach(v => say("variante " + v.semilla + " estirada a 2 × r8 × " + FACTOR_R8 + ": copa " + v.copa_dibujada_m + " m (k " + v.k_horizontal + " × " + v.k_vertical + "), ramitas " + v.areaRamitas + " m², aspecto " + v.aspecto_tarjeta));
 
 // ---- 3. el paseo con el reparto real
-const src = fs.readFileSync(path.join(RAIZ, "apps", "web", "motor", "07ab_generados.js"), "utf8");
-const puro = src.slice(src.indexOf("// [puro:inicio]"), src.indexOf("// [puro:fin]"));
-const ctx = { Math, Object }; vm.createContext(ctx); vm.runInContext(puro + "\nthis.Escalera = Escalera;", ctx);
-const E = ctx.Escalera;
+// A3-2a: la escalera pura vive en apps/web/src/mundos/exterior/generados-escalera.ts (Node la lee tal cual, quitando los tipos)
+const { Escalera: E } = await import(pathToFileURL(path.join(RAIZ, "apps", "web", "src", "mundos", "exterior", "generados-escalera.ts")).href);
 const med = salida.recetas[2].niveles, TRI = { E0: med.E0.tri, E1: med.E1.tri, E2: med.E2.tri, E2VR: med.E2VR.tri };   // el olivo «medido» (lo que pinta el motor)
 const PERFILES = [
   { n: "escritorio", tope: E.tope({ base: 550000, escala: 1, triLejanos: 2 * 5882 }), vr: null },

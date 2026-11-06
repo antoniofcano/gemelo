@@ -46,7 +46,8 @@ export function contexto(busqueda, reloj, extra) {
     Config: { listo: Promise.resolve(null), al: f => f(null), param: (r, c, u) => (u !== undefined && u !== null ? u : c), umbrales: (c, u) => u || c, tablaEpocas: () => null, epocaDeFecha: () => null }, factorCopaDeConfig: () => 1,
     suelo: () => 0, camera: { position: new THREE.Vector3(0, 10, 0) },
     Cola: { add: () => { throw new Error("los generados no deben usar la Cola compartida"); }, hay: () => false },
-    ColaExt: { pon: () => { throw new Error("los generados no deben usar la Cola compartida"); }, hay: () => false }, cola   // MU2-6: la del exterior (02b_cola)
+    ColaExt: { pon: () => { throw new Error("los generados no deben usar la Cola compartida"); }, hay: () => false }, cola,   // MU2-6: la del exterior (02b_cola)
+    Componentes: { registra: () => true }   // A3-2a: 07ab es un talón que registra el componente «olivos-generados» (su fábrica, Mundos.creaGenerados, la da conFabrica)
   }, extra || {});
   vm.createContext(conFabrica(ctx));   // Materiales (02i, F1): 07ab encadena sus parches por la fábrica
   vm.runInContext(piezas + "\n" + A01 + "\n" + G07 + "\n;this.__G = Generados; this.__uSombra = uSombra;", ctx, { filename: "07ab_generados.js" });

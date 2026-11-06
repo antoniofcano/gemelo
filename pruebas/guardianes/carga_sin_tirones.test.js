@@ -12,14 +12,17 @@ const { RAIZ, fs, path } = require("./_util");
 const { modulo } = require("./_aparato");
 
 const MOTOR = path.join(RAIZ, "apps", "web", "motor"), lee = f => fs.readFileSync(path.join(MOTOR, f), "utf8");
-const G07 = lee("07ab_generados.js"), B04 = require("./_fuente").fuenteMotor("04b_escena3d.js")   /* A3-1b: talón + escena-tiles.ts */, A07 = require("./_fuente").fuenteMotor("07b_arboles.js");   // A3-2b: talón + arboles.ts
+const G07 = require("./_fuente").fuenteMotor("07ab_generados.js")   /* A3-2a: talón + generados*.ts */, B04 = require("./_fuente").fuenteMotor("04b_escena3d.js")   /* A3-1b: talón + escena-tiles.ts */, A07 = require("./_fuente").fuenteMotor("07b_arboles.js");   // A3-2b: talón + arboles.ts
 const { AparatoPuro } = modulo({});
 
 const { pathToFileURL } = require("url");
 
 // CargaPuro vive ahora en apps/web/src/nucleo/cola.ts (A1-10); node lo importa tal cual (TypeScript sin tipos, sin paso de compilación)
-let CargaPuro;
-test.before(async () => { ({ CargaPuro } = await import(pathToFileURL(path.join(RAIZ, "apps", "web", "src", "nucleo", "cola.ts")).href)); });
+let CargaPuro, ColaGen;
+test.before(async () => {
+  ({ CargaPuro } = await import(pathToFileURL(path.join(RAIZ, "apps", "web", "src", "nucleo", "cola.ts")).href));
+  ColaGen = await import(pathToFileURL(path.join(RAIZ, "apps", "web", "src", "mundos", "exterior", "generados-cola.ts")).href);   // A3-2a: la cola propia de los generados
+});
 // la regla de siempre de 07b_arboles.presupuestoBase (antes de AG-1.5)
 const baseAntes = o => { const justo = o.emaDt > 0.034; if (o.faltan > 0 && !justo) return o.paseando ? 8 : 12; return justo ? (o.paseando ? 3 : 4.5) : (o.paseando ? 3.5 : 6); };
 
@@ -36,13 +39,10 @@ test("CargaPuro.base con la política real del Aparato: escritorio, lo de siempr
   assert.match(A07, /oBase\.vr = Aparato\.vr\(\); oBase\.deuda = Cola\.deuda\(\)/, "con la VR del Aparato y la deuda de la Cola");
 });
 
-// ---- la cola propia de los generados: corre y compiladoG sacados de 07ab tal cual
-function trozoFun(src, ini) { const a = src.indexOf(ini); assert.ok(a >= 0, "no está " + ini); const b = src.indexOf("\n    }\n", a); return src.slice(a, b + 6); }
+// ---- la cola propia de los generados: corre y compiladoG de apps/web/src/mundos/exterior/generados-cola.ts (A3-2a; antes, sacados del texto de 07ab tal cual)
 function colaGenerados(reloj, renderer) {
-  const cuerpo = "var trabajos = [], gastado = 0;\n" + trozoFun(G07, "    function corre(ms) {") + "\n" + trozoFun(G07, "    function* compiladoG(gen) {") +
-    "\nfunction encola(clave, prio, gen, fin) { trabajos.push({ clave: clave, prio: prio, gen: gen, fin: fin }); }" +
-    "\nreturn { corre: corre, compiladoG: compiladoG, encola: encola, trabajos: trabajos, gastado: function () { return gastado; } };";
-  return new Function("performance", "renderer", "camera", "scene", "\"use strict\";\n" + cuerpo)(reloj, renderer, {}, {});
+  const cola = ColaGen.creaColaPropia(reloj), entorno = () => ({ renderer, camara: {}, escena: {} });
+  return { corre: cola.corre, compiladoG: g => ColaGen.compiladoG(g, entorno), encola: cola.encola, trabajos: { get length() { return cola.cuantos(); } }, gastado: cola.gastado };
 }
 function* construye(reloj, g, n) { for (let i = 0; i < n; i++) { reloj.t += 1; yield; } return g; }
 
@@ -75,7 +75,7 @@ test("generados: sin renderer (Node) el lote sale en el mismo next(); con compil
   G = colaGenerados(reloj, { compileAsync() { return Promise.reject(new Error("no")); } }); sale = null;
   G.encola("Glote", -1, G.compiladoG(construye(reloj, lote, 1)), v => { sale = v; }); G.corre(5); await new Promise(r => setTimeout(r, 0)); G.corre(5);
   assert.strictEqual(sale, lote);
-  assert.strictEqual((G07.match(/seguro\(compiladoG\(construyeG\(items\)\)\)/g) || []).length, 2, "los dos sitios que montan el lote pasan por compiladoG");
+  assert.strictEqual((G07.match(/seguro\(compiladoG\(LT\.construyeG\(items\)\)\)/g) || []).length, 2, "los dos sitios que montan el lote pasan por compiladoG");
 });
 
 test("tileset: teselas analizadas a la vez por aparato y VR, y 04b usa CargaPuro", () => {

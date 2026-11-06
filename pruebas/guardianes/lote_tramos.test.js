@@ -17,7 +17,7 @@ const FX = path.join(RAIZ, "pruebas", "salida", "fixture", "hituelo", "indice.js
 const SALTO = !fs.existsSync(path.join(MODS, "three-r186", "package.json")) ? "apps/web/olivo sin instalar (cd apps/web/olivo && npm i): los tramos del lote NO se han comprobado"
   : !fs.existsSync(FX) ? "sin el fixture (npm run fixture): los tramos del lote NO se han comprobado" : null;
 // el del módulo; si desaparece de él, el tope sigue siendo el de AG-1.5a (60 000)
-const mObra = /OBRA_GEO = (\d+)/.exec(fs.readFileSync(path.join(RAIZ, "apps", "web", "motor", "07ab_generados.js"), "utf8")), OBRA_GEO = mObra ? Number(mObra[1]) : 60000;
+const mObra = /OBRA_GEO = (\d+)/.exec(require("./_fuente").fuenteMotor("07ab_generados.js")), OBRA_GEO = mObra ? Number(mObra[1]) : 60000;
 // instancias por tramo: el generador cede cada 512 de una pieza y al acabar cada árbol; con el fixture, ≤ 1 020 (2 048 deja holgura sin dejar
 // pasar que se quite el reparto). Bytes por tramo: la primera geometría de una malla por lotes reserva su búfer entero (hasta ≈ 7,4 MB con el
 // fixture, atómico en three); 16 MB deja el doble de holgura.

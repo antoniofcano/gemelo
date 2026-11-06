@@ -43,3 +43,9 @@ export type { DepsLejanos, Lejanos } from "./exterior/lejanos.ts";
 // A3-2b (MU5-n): los olivos del motor con tres niveles de detalle (07b_arboles.js).
 export { ID_ARBOLES, creaArboles } from "./exterior/arboles.ts";
 export type { Arboles, DepsArboles } from "./exterior/arboles.ts";
+// A3-2a (MU5-n): el catálogo de olivos-tipo y los olivos generados, componentes del exterior con su libera() de verdad.
+export { creaCatalogo, manifiestoCatalogo, ID_CATALOGO } from "./exterior/catalogo.ts";
+export type { Catalogo, DepsCatalogo, Pieza as PiezaCatalogo } from "./exterior/catalogo.ts";
+export { Escalera, GeneradosPuro } from "./exterior/generados-escalera.ts";
+export { creaGenerados, manifiestoGenerados, ID_GENERADOS } from "./exterior/generados.ts";
+export type { DepsGenerados, Generados } from "./exterior/generados.ts";

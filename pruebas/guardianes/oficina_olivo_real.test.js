@@ -85,7 +85,7 @@ test("la entrada del generador es la del motor: mismo semillaDeCopa, mismo param
   const P = await importa("olivo_real_puro.js"), C = await importa("../olivo/copas.js");
   const factor = /FACTOR_R8 = 0\.5, FACTOR_R8_GEN = (\d+(?:\.\d+)?)/.exec(lee("apps/web/motor/01_datos.js"));
   assert.ok(factor && Number(factor[1]) === P.FACTOR_R8_GEN, "FACTOR_R8_GEN de la oficina = el de 01_datos.js");
-  assert.match(lee("apps/web/motor/07ab_generados.js"), new RegExp('M\\.parametrosDeCopa\\(raw, D\\.copas_param \\? D\\.copas_param\\[c\\.i\\] : null, "' + P.TIPO_MOTOR + '"'), "el tipo del motor es el de la oficina");
+  assert.match(require("./_fuente").fuenteMotor("07ab_generados.js") /* A3-2a */, new RegExp('M\\.parametrosDeCopa\\(raw, D\\.copas_param \\? D\\.copas_param\\[c\\.i\\] : null, "' + P.TIPO_MOTOR + '"'), "el tipo del motor es el de la oficina");
   for (const i of [0, 1, 2]) {
     const e = P.entradaDeOlivo(INDICE, i, "envero"), s = C.semillaDeCopa(INDICE.copas[i], INDICE.copas_id[i], INDICE.centro_utm, undefined);
     const p = C.parametrosDeCopa(INDICE.copas[i], INDICE.copas_param[i], P.TIPO_MOTOR, { factorR8: P.FACTOR_R8_GEN });
