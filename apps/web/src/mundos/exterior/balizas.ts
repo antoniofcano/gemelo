@@ -43,6 +43,22 @@ export const DEF_BALIZA: DefMaterial<OpcBaliza> = {
   clasico: function (o, c) {
     const Sombreador = c.THREE["ShaderMaterial"] as new (opc: unknown) => MaterialMin;
     return new Sombreador({ ...o, vertexShader: VS_BALIZA, fragmentShader: FS_BALIZA });
+  },
+  // MU5-n, tercer commit: la variante TSL, APAGADA (solo con el WebGPURenderer, que hasta MU6 no existe; nadie la usa hoy). El mismo cálculo que el fragmento (la columna que se
+  // apaga hacia arriba, el latido con uT y el pulso de la alerta) escrito en nodos, con los MISMOS uniformes que mueve actualizaBalizas (se releen en cada objeto, como el
+  // ejemplo de la fábrica; el color es el mismo objeto que tiñe el rombo y el anillo), la altura de la columna de positionLocal.y y el estado de dibujo del clásico (aditivo,
+  // transparente, dos caras, sin profundidad, sin niebla ni tonemapping). NO se ha comparado con el clásico dibujado (las capturas son de MU6): es la misma cuenta, no una equivalencia comprobada
+  tsl: function (o, c) {
+    const Basico = c.THREE["MeshBasicNodeMaterial"] as new (opc: unknown) => MaterialMin & { colorNode: unknown };
+    const { uniform, vec4, sin, clamp, positionLocal } = c.TSL as Record<string, any>;   // eslint-disable-line @typescript-eslint/no-explicit-any
+    const u = o.uniforms;
+    const uT = uniform(0).onObjectUpdate(function () { return u.uT.value; }), uPulso = uniform(0).onObjectUpdate(function () { return u.uPulso.value; });
+    const uColor = uniform(u.uColor.value).onObjectUpdate(function () { return u.uColor.value; });
+    const t = clamp(positionLocal.y.div(26.0).add(0.5), 0.0, 1.0);
+    const a = t.oneMinus().mul(0.42).add(0.04).mul(uT.mul(3.0).add(uPulso.mul(6.0).mul(t)).sin().mul(0.2).add(0.8)).mul(uPulso.mul(0.5).mul(sin(uT.mul(7.0))).add(1.0));
+    const m = new Basico({ transparent: o.transparent, depthWrite: o.depthWrite, side: o.side, blending: o.blending, fog: false, toneMapped: false });
+    m.colorNode = vec4(uColor, clamp(a, 0.0, 0.7));
+    return m;
   }
 };
 

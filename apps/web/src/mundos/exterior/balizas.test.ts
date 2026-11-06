@@ -165,7 +165,7 @@ describe("balizas (componente del exterior)", () => {
   it("la columna sale de la fábrica por define + crea («baliza»: el ShaderMaterial de siempre, con los uniformes por referencia y el mismo uT compartido); rombo y anillo, como estándar", () => {
     const { api, deps } = monta(), F = deps.Materiales;
     expect(MATERIAL_BALIZA).toBe("baliza");
-    expect(F.cobertura()["baliza"]).toEqual({ clasico: true, tsl: false, usado: 3 }); expect(F.inventario()["baliza"]).toEqual({ tipo: "define", n: 3 }); expect(F.ruta("baliza")).toBe("clasico");
+    expect(F.cobertura()["baliza"]).toEqual({ clasico: true, tsl: true, usado: 3 }); expect(F.inventario()["baliza"]).toEqual({ tipo: "define", n: 3 }); expect(F.ruta("baliza")).toBe("clasico");
     const col = api.balizas()[0].children[0].material;
     expect(col.isShaderMaterial).toBe(true); expect(col.uniforms).toBe(api.balizas()[0].userData.uni); expect(col.uniforms.uT).toBe(api.uBaliza.uT);
     expect(col.blending).toBe(THREE.AdditiveBlending); expect(col.fog).toBe(false); expect(col.depthWrite).toBe(false); expect(col.transparent).toBe(true); expect(col.side).toBe(THREE.DoubleSide);
@@ -179,6 +179,26 @@ describe("balizas (componente del exterior)", () => {
     const rombo = api.balizas()[0].children[1].material, anillo = api.balizas()[0].children[2].material;
     expect(rombo.isMeshBasicMaterial && anillo.isMeshBasicMaterial).toBe(true); expect(anillo.transparent && anillo.forceSinglePass && anillo.opacity === 0.8).toBe(true); expect(rombo.fog).toBe(false);
     api.actualizaBalizas(0.1); expect(api.uBaliza.uT.value).toBe(0);
+  });
+
+  it("la variante TSL de la columna (apagada): solo con el renderizador nuevo; con three/webgpu y three/tsl de verdad se construye un MeshBasicNodeMaterial aditivo con el estado de dibujo del clásico y su colorNode", async () => {
+    const rutaW = "three/webgpu", rutaT = "three/tsl";   // por variable: three no trae tipos
+    const W = await import(/* @vite-ignore */ rutaW as string), TSL = await import(/* @vite-ignore */ rutaT as string);
+    const nuevo = { tipo: "nuevo", pedido: "nuevo" }, clasico = { tipo: "clasico", pedido: "" };
+    const uni = { uT: { value: 2 }, uColor: { value: new W.Color(0xff4d3d) }, uPulso: { value: 1 } };
+    const opc = { uniforms: uni, transparent: true, depthWrite: false, side: W.DoubleSide, blending: W.AdditiveBlending, fog: false };
+    // sin renderizador nuevo (hoy, siempre): el clásico, aunque haya nodos
+    const hoy = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: clasico, nodos: () => ({ THREE: W, TSL }) });
+    hoy.define(MATERIAL_BALIZA, DEF_BALIZA);
+    expect(hoy.ruta(MATERIAL_BALIZA)).toBe("clasico"); expect((hoy.crea(MATERIAL_BALIZA, opc) as { isShaderMaterial?: boolean }).isShaderMaterial).toBe(true);
+    // con él y la variante: el TSL
+    const F = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: nuevo, nodos: () => ({ THREE: W, TSL }) });
+    F.define(MATERIAL_BALIZA, DEF_BALIZA);
+    expect(F.ruta(MATERIAL_BALIZA)).toBe("tsl"); expect(F.cobertura()[MATERIAL_BALIZA]).toMatchObject({ clasico: true, tsl: true });
+    const m = F.crea(MATERIAL_BALIZA, opc) as { isNodeMaterial: boolean; isMeshBasicNodeMaterial: boolean; colorNode: { isNode?: boolean }; transparent: boolean; depthWrite: boolean; side: number; blending: number; fog: boolean; toneMapped: boolean; uniforms?: unknown };
+    expect(m.isNodeMaterial).toBe(true); expect(m.isMeshBasicNodeMaterial).toBe(true); expect(m.colorNode.isNode).toBe(true);
+    expect(m.transparent).toBe(true); expect(m.depthWrite).toBe(false); expect(m.side).toBe(W.DoubleSide); expect(m.blending).toBe(W.AdditiveBlending); expect(m.fog).toBe(false); expect(m.toneMapped).toBe(false);
+    expect(m.uniforms).toBeUndefined();   // no es un ShaderMaterial: los uniformes que mueve actualizaBalizas (opc.uniforms) los relee el nodo en cada objeto
   });
 
   it("el manifiesto vale, es de los mundos [exterior], emite «sonido:baliza» y su libera suelta de verdad", () => {
