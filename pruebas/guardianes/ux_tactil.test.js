@@ -56,5 +56,5 @@ test("CSS: solo en táctil y al pasear; izquierda/derecha y al revés con mano z
 
 test("los botones de los pulgares no seleccionan texto ni abren el menú de pulsación larga", () => {
   assert.match(css, /\.pad-mov button, \.pad-acc button \{[^}]*touch-action: none;[^}]*user-select: none;[^}]*-webkit-touch-callout: none/);
-  assert.match(lee("apps/web/motor/12_paseo.js"), /\["pointerup", "pointercancel", "lostpointercapture"\]/, "soltar en todos los casos (12_paseo.js)");
+  assert.match(require("./_fuente").fuenteMotor("12_paseo.js"), /\["pointerup", "pointercancel", "lostpointercapture"\]/, "soltar en todos los casos (12_paseo.js)");
 });

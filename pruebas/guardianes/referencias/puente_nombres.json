@@ -35,7 +35,7 @@
   "10_ndvi.js": ["Ndvi","NDV","rampa","pintaNdvi","ndviRel","ndviIdx"],
   "10b_capa_ndvi.js": [],
   "11_sol.js": [],
-  "12_paseo.js": ["paseando","persona","teclas","primera","pp","camPos","PalancaPuro","ponPalanca","giraPalanca","entraPaseo","salePaseo","actualizaPaseo"],
+  "12_paseo.js": ["paseando","persona","teclas","primera","Paseo","pp","camPos","PalancaPuro","ponPalanca","giraPalanca","entraPaseo","salePaseo","actualizaPaseo"],
   "12b_llegada.js": ["Llegada"],
   "12c_ir_a.js": ["IrA"],
   "13_parcelas.js": ["parcelas","fincas","fincaSel","parcelaSel","claseUsda","elegirParcela","elegirFinca"],

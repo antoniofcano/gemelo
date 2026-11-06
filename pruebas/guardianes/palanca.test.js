@@ -5,7 +5,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
-const PASEO = lee("apps/web/motor/12_paseo.js"), MOD = lee("apps/web/motor/34b_palanca.js"), PL = lee("apps/web/plantilla.html"), css = lee("apps/web/plantilla.css");
+const PASEO = require("./_fuente").fuenteMotor("12_paseo.js"), MOD = lee("apps/web/motor/34b_palanca.js"), PL = lee("apps/web/plantilla.html"), css = lee("apps/web/plantilla.css");
 function puro() {
   const i = PASEO.indexOf("// [puro:inicio]"), f = PASEO.indexOf("// [puro:fin]");
   assert.ok(i >= 0 && f > i, "12_paseo.js debe marcar el trozo puro de la palanca con // [puro:inicio] y // [puro:fin]");
@@ -82,7 +82,7 @@ test("la CSP (style-src 'self'): el módulo no escribe style= ni <style>; solo e
 test("el paseo la suma por el camino que ya hay (sin duplicar la física) y el ajuste existe", () => {
   assert.match(PASEO, /av = Math\.max\(-1, Math\.min\(1, av \+ mandoPalanca\.av\)\)/, "se suma al avance del teclado y la cruceta");
   assert.match(PASEO, /var vel = velPaseo\(av, dt\)/, "la velocidad sigue saliendo de velPaseo (quad, pendiente, correr)");
-  assert.match(PASEO, /if \(enQuad \|\| enDron\) gi = /, "en quad y dron el lado gira, como la cruceta");
+  assert.match(PASEO, /if \(enQuad(\(\))? \|\| enDron(\(\))?\) gi = /, "en quad y dron el lado gira, como la cruceta");
   assert.match(PASEO, /ponPalanca\(0, 0\)/, "se suelta al salir del paseo y al perder el foco");
   assert.match(lee("apps/web/motor/33_ajustes.js"), /"controles\.palanca": bool\(true\)/, "el ajuste vale sí por defecto");
 });

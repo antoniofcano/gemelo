@@ -263,7 +263,7 @@ test("en el código: P por Teclas (que filtra campos, Ctrl/Alt/Cmd y repetición
   assert.ok(!/setInterval|setTimeout/.test(codigo), "su reloj es la fase «tarde» del bucle");
   assert.ok(!/document\.addEventListener|window\.addEventListener/.test(codigo), "ni eventos propios en document ni teclado propio");
   assert.match(lee("apps/web/motor/15_tiempo.js"), /Bus\.emite\("prevision:alterna"\)/);
-  assert.ok(!/KeyP/.test(lee("apps/web/motor/12_paseo.js") + lee("apps/web/motor/31_hud.js")), "la P no la usa nadie más");
+  assert.ok(!/KeyP/.test(require("./_fuente").fuenteMotor("12_paseo.js") + lee("apps/web/motor/31_hud.js")), "la P no la usa nadie más");
   assert.ok(!/KeyP/.test(lee("apps/web/motor/02c_componentes.js")), "ni está reservada");
 });
 

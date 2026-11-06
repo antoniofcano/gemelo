@@ -93,3 +93,5 @@ export { ID_IR_A, creaIrA, manifiestoIrA } from "./comun/ir-a.ts";
 export type { DepsIrA, IrA } from "./comun/ir-a.ts";
 export { ID_LLEGADA, creaLlegada, manifiestoLlegada } from "./comun/llegada.ts";
 export type { DepsLlegada, Llegada } from "./comun/llegada.ts";
+export { ID_PASEO, PalancaPuro, creaPaseo, manifiestoPaseo } from "./comun/paseo.ts";
+export type { DepsPaseo, Paseo } from "./comun/paseo.ts";

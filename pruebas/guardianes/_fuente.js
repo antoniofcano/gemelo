@@ -37,6 +37,7 @@ const TS_DE = {
   "36_mandos.js": "apps/web/src/mundos/comun/mandos.ts",
   "12c_ir_a.js": "apps/web/src/mundos/comun/ir-a.ts",
   "12b_llegada.js": "apps/web/src/mundos/comun/llegada.ts",
+  "12_paseo.js": "apps/web/src/mundos/comun/paseo.ts",
   "29_vr.js": ["vr.ts", "vr-rig.ts", "vr-teletransporte.ts", "vr-panel.ts", "vr-sesion.ts", "vr-puros.ts"].map(f => "apps/web/src/mundos/comun/" + f),
   "07ab_generados.js": ["generados.ts", "generados-escalera.ts", "generados-horneado.ts", "generados-cola.ts", "generados-sombreado.ts", "generados-lote.ts"].map(f => "apps/web/src/mundos/exterior/" + f),
 };

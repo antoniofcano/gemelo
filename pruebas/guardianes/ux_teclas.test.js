@@ -43,7 +43,7 @@ test("Esc como en un juego: cierra lo último abierto y, si no hay nada, abre el
   assert.strictEqual(E({ ventana: true, recorrido: true }), "ventana");
   assert.strictEqual(E({ recorrido: true }), "recorrido");
   assert.strictEqual(E({}), "menu");
-  assert.doesNotMatch(lee("apps/web/motor/12_paseo.js"), /e\.code === "Escape"\) \{ salePaseo/, "Esc ya no sale del paseo");
+  assert.doesNotMatch(require("./_fuente").fuenteMotor("12_paseo.js"), /e\.code === "Escape"\) \{ salePaseo/, "Esc ya no sale del paseo");
 });
 
 test("pantalla completa: Fullscreen API sobre la página con gesto, Keyboard Lock para Esc y aviso en el iPhone", () => {

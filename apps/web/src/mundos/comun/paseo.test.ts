@@ -1,0 +1,63 @@
+// El paseo (A3-6c, MU5-n; antes 12_paseo.js). Con el three de verdad (sin GPU) y dobles del DOM y del legado: entrar y salir del paseo espejan el estado (paseando, persona, teclas) al
+// legado; con «arriba» se anda hacia donde mira, a la velocidad que da la vida (velPaseo), y el mundo activo aparta del tronco (gm.obstaculo); la palanca suma al teclado; y libera() quita
+// al muñequito (sus geometrías y sus materiales, con sus «dispose») y todas sus escuchas. HONESTIDAD: nada se dibuja aquí; en el iPhone y el Quest, NO probado.
+import { describe, expect, it } from "vitest";
+import { ID_PASEO, PalancaPuro, creaPaseo } from "./paseo.ts";
+import type { DepsPaseo } from "./paseo.ts";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type A = any;
+const THREE: A = await import(/* @vite-ignore */ "three" as string);
+
+function el(extra?: A) {
+  const o: A = Object.assign({ n: 0, hidden: false, style: {}, classList: { add() { /* doble */ }, remove() { /* doble */ } }, setAttribute() { /* doble */ }, focus() { /* doble */ } }, extra || {});
+  o.addEventListener = () => { o.n++; }; o.removeEventListener = () => { o.n--; }; return o;
+}
+function monta() {
+  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(), ventana = el(), documento = el(), elementos: Record<string, A> = {};
+  const $ = (id: string) => (elementos[id] = elementos[id] || el());
+  const legado: A = { primera: false, espejos: 0 }, dron = { on: false };
+  const d: DepsPaseo = {
+    THREE, scene, camera, Estado: { exag: 1 }, Materiales: null, D: { parcelas: [{ centro: [10, 26] }] }, $, lienzo: el({ tabIndex: 0 }), visor: el(), copaAlta: () => 0, sensMirar: () => ({ k: 1, y: 1 }),
+    primera: () => legado.primera, ponPrimera: (v: boolean) => { legado.primera = v; }, parcelaSel: () => 0, fincaSel: () => -1, fincas: () => [],
+    vida: { velPaseo: (av: number) => av * 1.7, giroPaseo: () => 1, ponQuad() { /* doble */ }, ponDron() { /* doble */ }, vidaPaseo() { /* doble */ }, cicloVista() { /* doble */ },
+      dronMando() { /* doble */ }, camaraDron: () => false, vidaEntra() { /* doble */ }, vidaSale() { /* doble */ } },
+    enQuad: () => false, enDron: () => dron.on, TR: () => ({ act: false }), iniciaTransicion() { /* doble */ }, iniciaSalida() { /* doble */ }, Ajustes: () => null,
+    IrA: () => ({ paso: () => null, cancela() { /* doble */ } }), gm: () => ({ suelo: () => 0, obstaculo: (x: number, y: number, r: number) => (Math.hypot(x - 10, y - 21) < r ? { x: 10 + r, y: 21 } : null) }),
+    espeja: (e: A) => { legado.paseando = e.paseando; legado.persona = e.persona; legado.teclas = e.teclas; legado.espejos++; }, documento, ventana
+  };
+  return { api: creaPaseo(d), d, legado, scene, ventana, documento, elementos };
+}
+
+describe("paseo", () => {
+  it("al cargar, el muñequito ya está en la escena (oculto) y el legado lo tiene; entrar y salir espejan paseando y teclas", () => {
+    const m = monta();
+    expect(m.legado.persona).toBeTruthy(); expect(m.scene.children).toContain(m.legado.persona); expect(m.legado.persona.visible).toBe(false);
+    m.api.entraPaseo();
+    expect(m.legado.paseando).toBe(true); expect(m.api.pp).toMatchObject({ x: 10, y: 20, ang: 0 }); expect(m.legado.primera).toBe(false);
+    const t0 = m.legado.teclas; m.api.salePaseo();
+    expect(m.legado.paseando).toBe(false); expect(m.legado.teclas).not.toBe(t0);   // salir crea teclas nuevas, como siempre, y el legado las ve
+  });
+  it("con «arriba» se anda hacia donde mira y el mundo activo aparta del tronco; la palanca suma al teclado", () => {
+    const m = monta(); m.api.entraPaseo();
+    m.legado.teclas.up = true; m.api.actualizaPaseo(0.5);   // de (10, 20) hacia el norte 0,85 m: cae a 0,15 m del tronco de (10, 21)…
+    expect(m.api.pp.x).toBeCloseTo(10.55); expect(m.api.pp.y).toBeCloseTo(21);   // …y el mundo activo lo aparta a 0,55 m
+    m.legado.teclas.up = false; m.api.pp.x = 0; m.api.pp.y = 0; m.api.ponPalanca(1, 0); m.api.actualizaPaseo(0.1);   // la palanca adelante, lejos de troncos
+    expect(m.api.pp.x).toBeCloseTo(0); expect(m.api.pp.y).toBeCloseTo(0.17);   // 1,7 m/s (velPaseo) · 0,1 s
+    expect(PalancaPuro.lee(0, 0.1)).toEqual({ fuerza: 0, av: 0, lat: 0 });
+  });
+  it("libera() quita al muñequito (sus geometrías y sus materiales) y todas las escuchas; dos veces no rompe", () => {
+    const m = monta(), sueltos = { n: 0 };
+    let mallas = 0; m.legado.persona.traverse((o: A) => { if (o.isMesh) { mallas++; o.geometry.addEventListener("dispose", () => sueltos.n++); o.material.addEventListener("dispose", () => sueltos.n++); } });
+    const escuchas = () => m.ventana.n + m.documento.n + Object.values(m.elementos).reduce((s: number, e: A) => s + e.n, 0);
+    expect(escuchas()).toBeGreaterThan(0);
+    m.api.libera();
+    expect(m.scene.children).not.toContain(m.legado.persona); expect(escuchas()).toBe(0);
+    expect(sueltos.n).toBeGreaterThanOrEqual(mallas * 2 - 4);   // los materiales se comparten entre piezas: cada uno avisa una vez por pieza que lo suelta
+    expect(() => m.api.libera()).not.toThrow();
+  });
+  it("el componente es de todos los mundos y solo de ciclo de vida", () => {
+    const c = monta().api.componente!;
+    expect(c.id).toBe(ID_PASEO); expect(c.mundos).toEqual(["exterior", "molino", "bodega", "vacio"]); expect(c.fases).toEqual({});
+  });
+});
