@@ -1,5 +1,5 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: gLinde, tmp, listo, aplica, capas, aplicaLuego
+// Expone: gLinde, listo, aplica, capas, aplicaLuego
 // Consume: 01_datos (D, $), 02c_componentes (Bus), 02j_estaticos (Estaticos), 03_escena (scene, Estado), 04d_sombreado_tiles (UN),
 //   05_nube (nube, pintaNube), 06_arboles (gArboles, gFollaje, gSombras), 07b_arboles (Arboles), 15_tiempo (colocaBarrera),
 //   18_paisaje (colocaPaisaje), 19_balizas (colocaBalizas), 21_suelo (recoloreaSuelo)

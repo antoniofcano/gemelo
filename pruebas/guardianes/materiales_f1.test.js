@@ -111,8 +111,25 @@ test("cada material del motor que pasa por la fábrica tiene un nombre literal, 
       (visto[arg] = visto[arg] || []).push(f);
     }
   }
-  // el mismo nombre en más de un sitio solo si es el mismo material (los dos de profundidad de 07ab)
-  const repetidos = Object.entries(visto).filter(([n, fs2]) => fs2.length > 1 && !(n === '"gen-profundidad"' && fs2.every(x => x === "07ab_generados.js")));
+  // MU5-n (A3-2a): los módulos que pasaron a TypeScript llevan sus sitios a apps/web/src/mundos/: Materiales.parchea|encadena|sombreador como en el motor, o
+  // .define(nombre, …) con un literal o una constante del mismo fichero (`const MATERIAL_X = "nombre"`); cuentan igual, con el mismo nombre literal
+  (function recorre(d) {
+    for (const e of fs.readdirSync(path.join(RAIZ, d), { withFileTypes: true })) {
+      const f = d + "/" + e.name;
+      if (e.isDirectory()) { recorre(f); continue; }
+      if (!/\.ts$/.test(e.name) || /\.test\.ts$/.test(e.name)) continue;
+      const s = sinComentarios(lee(f)), cte = n => { const m = new RegExp("const " + n + " = (\"[^\"]*\")").exec(s); return m ? m[1] : n; };
+      const re = /Materiales\.(parchea|encadena|sombreador)\(([^,)]*)|\.define\(\s*("[^"]*"|[A-Z_][A-Z0-9_]*)\s*,/g;
+      let m;
+      while ((m = re.exec(s))) {
+        const arg = m[3] ? cte(m[3]) : m[1] === "sombreador" ? cte(m[2].trim()) : cte(((s.slice(m.index).match(/^Materiales\.\w+\([^,]+,\s*("[^"]*"|[^,]+)/) || [])[1] || "").trim());
+        assert.match(arg || "", /^"[a-z0-9]+(-[a-z0-9]+)*"$/, f + ": el nombre del material debe ser un literal o una constante literal (es la clave de su versión TSL): " + arg);
+        if (!(visto[arg] || []).includes(f) || !m[3]) (visto[arg] = visto[arg] || []).push(f);
+      }
+    }
+  })("apps/web/src/mundos");
+  // el mismo nombre en más de un sitio solo si es el mismo material (los dos de profundidad de los olivos generados, en su fichero)
+  const repetidos = Object.entries(visto).filter(([n, fs2]) => fs2.length > 1 && !(n === '"gen-profundidad"' && fs2.every(x => x === fs2[0])));
   assert.deepStrictEqual(repetidos, [], "nombres repetidos en la fábrica");
   assert.ok(Object.keys(visto).length >= 20, "pasan por la fábrica " + Object.keys(visto).length + " materiales");
 });

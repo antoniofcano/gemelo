@@ -22,7 +22,8 @@ test("los manifiestos salen del código del motor, con su bandera y su presupues
   assert.deepStrictEqual([f.url, f.defecto, f.presupuesto.llamadas], ["fondo", true, 1]);
   // A3-1b: tres componentes del exterior son solo ciclo de vida (0 llamadas y 0 triángulos propios; lo que dibujan lo cuenta el tileset) y no se apagan desde la URL:
   // la escena 3D Tiles es la única escena (decisión 79), los olivos del tileset van con ella, y el suelo de fotos tiene su propia bandera (?suelo=fotos, que enciende)
-  const SIN_BANDERA = ["escena-tiles", "olivos-tiles", "suelo-fotos"];
+  // A3-2a: el catálogo de olivos-tipo tampoco dibuja (da las formas que instancia 07b, que las cuenta en su TOPE_TRI) y 07b lo necesita siempre
+  const SIN_BANDERA = ["escena-tiles", "olivos-tiles", "suelo-fotos", "catalogo-olivos"];
   for (const c of ms) { if (SIN_BANDERA.includes(c.id)) { assert.ok(!c.url && c.presupuesto.llamadas === 0 && c.presupuesto.triangulos === 0, c.id + ": solo ciclo de vida"); continue; } assert.ok(c.url, c.id + " tiene bandera de URL (si no, no se puede medir con y sin)"); }
   for (const id of SIN_BANDERA) assert.ok(ms.some(c => c.id === id), id + " está entre los manifiestos");
 });
