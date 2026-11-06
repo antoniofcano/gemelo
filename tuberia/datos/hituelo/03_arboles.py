@@ -1,6 +1,6 @@
 """Paso 3: copas de olivo de Hituelo desde el CHM de 0,5 m de las teselas. Mismo detector que producción (functions/logic.js, ADR-0110):
 CHM suavizado con σ = 2 m, máximos locales (3x3), supresión de no-máximos con separación = clamp(0,35 × marco, 3, 5) m, altura suavizada entre 0,8 y 9 m,
-centroide ponderado por altura y, además, las 8 radios de cada copa (cuenca de la copa + umbral, como en el gemelo de Cerro Velasco).
+centroide ponderado por altura y, además, las 8 radios de cada copa (cuenca de la copa + umbral).
 Salida: arboles.json (olivos dentro de las lindes) y arboles_resumen.json (por parcela: detectados vs declarados) + CHM en mosaico para el paso 4."""
 import sys, os, json, time, glob
 import numpy as np
@@ -71,7 +71,7 @@ print("picos aceptados:", len(cj), "%.0f s" % (time.time() - t0))
 # ---- centroide ponderado por altura en la ventana de radio sepPx, sobre el CHM ligeramente suavizado (1 px) y por encima de max(0,8; 0,5 v)
 ch1 = ndi.gaussian_filter(chm, 1.0, mode="nearest")
 cx_ = np.empty(len(cj)); cy_ = np.empty(len(cj)); h_ = np.empty(len(cj))
-mxh = ndi.maximum_filter(chm, size=7)                  # altura real de la copa = máximo del CHM en ±1,5 m (como en Cerro)
+mxh = ndi.maximum_filter(chm, size=7)                  # altura real de la copa = máximo del CHM en ±1,5 m
 for n in range(len(cj)):
     r = int(np.ceil(sep[ck[n]] / 0.5)); j, i = cj[n], ci[n]
     j0, j1, i0, i1 = max(0, j - r), min(NY, j + r + 1), max(0, i - r), min(NX, i + r + 1)

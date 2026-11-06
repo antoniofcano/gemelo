@@ -3,7 +3,7 @@
 // está emparejada con una marca que lo trae (tolerando el desfase de ~1,5 m de la ortofoto), y si no, uno provisional (>= 2^31) por posición UTM
 // (tuberia/ids_copas.py).
 // Siempre: la función de ids sobre entradas sintéticas (Python puro). Si hay numpy, scipy y pillow: el exportador de Hituelo (hituelo_conv.py) y el de
-// Cerro (construye() de finca_8_teselas.py) de verdad sobre un mini conjunto SINTÉTICO de 1 tesela (pruebas/exportadores_sinteticos.py), y su índice
+// construye() de finca_8_teselas.py (el exportador genérico de rejillas) de verdad sobre un mini conjunto SINTÉTICO de 1 tesela (pruebas/exportadores_sinteticos.py), y su índice
 // valida contra contratos/indice.schema.json. Ningún dato real.
 const test = require("node:test"), assert = require("node:assert");
 const { propia, python, ejecuta, lee, fs, path } = require("./_util");
@@ -97,10 +97,10 @@ test("hituelo_conv.py sobre 1 tesela sintética: columnas del contrato, índice 
 });
 
 // L4-04: las teselas que escriben los exportadores de verdad (sintéticas, 1 tesela cada una) cumplen tesela.schema.json y sus tamaños, y su v cae en la huella
-test("las teselas de hituelo_conv.py y de construye() (Cerro) cumplen tesela.schema.json, sus tamaños y la huella de v", t => {
+test("las teselas de hituelo_conv.py y de construye() (rejillas) cumplen tesela.schema.json, sus tamaños y la huella de v", t => {
   if (SIN_DEPS) return t.skip(SIN_DEPS + ": las teselas de los exportadores NO se han comprobado");
   assert.ifError(FALLO);
-  for (const d of ["hituelo_a", "cerro"]) {
+  for (const d of ["hituelo_a", "rejillas"]) {
     const I = indice(d), [cx, cy] = I.centro_utm;
     assert.ok(Object.keys(I.teselas).length > 0, d + ": sin teselas");
     for (const [k, meta] of Object.entries(I.teselas)) {
@@ -122,15 +122,15 @@ test("hituelo_conv.py: dos exportaciones de los mismos datos dan los mismos ids;
   assert.deepStrictEqual(porPosicion(c), porPosicion(a), "con otro orden de árboles, un mismo árbol cambió de id");
 });
 
-test("finca_8_teselas.py construye() (Cerro) sobre 1 tesela sintética: columnas del contrato, id del censo desde marcados_id, índice válido; mismo id provisional que Hituelo en la misma posición UTM", t => {
-  if (SIN_DEPS) return t.skip(SIN_DEPS + ": el exportador de Cerro NO se ha ejecutado");
+test("finca_8_teselas.py construye() (rejillas) sobre 1 tesela sintética: columnas del contrato, id del censo desde marcados_id, índice válido; mismo id provisional que Hituelo en la misma posición UTM", t => {
+  if (SIN_DEPS) return t.skip(SIN_DEPS + ": construye() NO se ha ejecutado");
   assert.ifError(FALLO);
-  const C = indice("cerro"), H = indice("hituelo_a");
-  compruebaColumnas(C, "cerro");
-  compruebaCenso(C, esperado().cerro, "cerro (marcados_id del intermedio)");
+  const C = indice("rejillas"), H = indice("hituelo_a");
+  compruebaColumnas(C, "rejillas");
+  compruebaCenso(C, esperado().rejillas, "rejillas (marcados_id del intermedio)");
   const pc = porPosicion(C), ph = porPosicion(H);
-  for (const [pos, k] of pc) if (k >= PROV && ph.get(pos) >= PROV) assert.strictEqual(ph.get(pos), k, "el id provisional de " + pos + " difiere entre Cerro y Hituelo");
-  for (const k of Object.keys(C.teselas)) for (const ext of [".json", ".jpg"]) assert.ok(fs.existsSync(path.join(BASE, "cerro", "t", k + ext)), "Cerro: falta t/" + k + ext + " (se sirve con ficheros, como Hituelo; T8 fase 2)");
+  for (const [pos, k] of pc) if (k >= PROV && ph.get(pos) >= PROV) assert.strictEqual(ph.get(pos), k, "el id provisional de " + pos + " difiere entre construye() y Hituelo");
+  for (const k of Object.keys(C.teselas)) for (const ext of [".json", ".jpg"]) assert.ok(fs.existsSync(path.join(BASE, "rejillas", "t", k + ext)), "construye(): falta t/" + k + ext + " (se sirve con ficheros, como Hituelo; T8 fase 2)");
 });
 
 // copas_semilla dentro de los exportadores (ADR-0017, decisión 50, tuberia/semillas_copas.py): sin índice anterior, semilla = copas_id; con él (por
@@ -139,7 +139,7 @@ test("finca_8_teselas.py construye() (Cerro) sobre 1 tesela sintética: columnas
 test("exportadores: copas_semilla = copas_id sin índice anterior; heredada del anterior por argumento, variable o salida existente", t => {
   if (SIN_DEPS) return t.skip(SIN_DEPS + ": copas_semilla en los exportadores NO se ha comprobado");
   assert.ifError(FALLO);
-  for (const d of ["hituelo_a", "hituelo_c", "cerro", "cerro_prov"]) {
+  for (const d of ["hituelo_a", "hituelo_c", "rejillas", "rejillas_prov"]) {
     const I = indice(d);
     assert.deepStrictEqual(I.copas_semilla, I.copas_id, d + ": sin índice anterior, la semilla es el copas_id");
   }
@@ -151,8 +151,8 @@ test("exportadores: copas_semilla = copas_id sin índice anterior; heredada del 
   }
   const D = indice("hituelo_d"); compruebaColumnas(D, "hituelo_d");
   assert.deepStrictEqual(semPos(D), semPos(A), "con otro orden de árboles, un mismo árbol cambió de semilla");
-  const P = indice("cerro_prov"), C = indice("cerro_censo"), pos = Object.keys(esperado().cerro)[0];
-  compruebaColumnas(C, "cerro_censo");
+  const P = indice("rejillas_prov"), C = indice("rejillas_censo"), pos = Object.keys(esperado().rejillas)[0];
+  compruebaColumnas(C, "rejillas_censo");
   const iC = C.copas.findIndex(c => c[0] + "," + c[1] === pos), iP = P.copas.findIndex(c => c[0] + "," + c[1] === pos);
   assert.strictEqual(C.copas_id[iC], 7000, "la copa del censo lleva su id");
   assert.ok(P.copas_id[iP] >= PROV, "antes del censo su id era provisional");

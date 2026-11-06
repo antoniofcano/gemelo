@@ -123,7 +123,7 @@ def clave(fuente, p):
 
 
 def slug(nombre):
-    """«Hituelo» → «hituelo», «Cerro Velasco» → «cerro-velasco»: el nombre de finca del fichero de parcelas como id de finca."""
+    """«Hituelo» → «hituelo», «Los Llanos Altos» → «los-llanos-altos»: el nombre de finca del fichero de parcelas como id de finca."""
     t = unicodedata.normalize("NFKD", (nombre or "").replace("\ufffd", "i")).encode("ascii", "ignore").decode()
     return re.sub(r"[^a-z0-9]+", "-", t.lower()).strip("-")
 

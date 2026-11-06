@@ -104,7 +104,7 @@ test("sin ids internos de OlivarTrack en lo versionado", () => {
 });
 
 // Decisión 219 (Antonio, 2026-11-06; L9-01, L9-02): las referencias de parcela y las coordenadas exactas de las fincas no se versionan.
-// Viven en GEMELO_DATOS (cerro_privado.json; ejemplo inventado en tuberia/datos/cerro/cerro_privado.ejemplo.json). Los datos sintéticos
+// Viven en GEMELO_DATOS, fuera del repo (Hituelo, el único mundo: decisiones 22 y 229). Los datos sintéticos
 // usan cajas de 500000, 4100000 o de 430000, 4180000 y el polígono 9 (la forma de los ids de OlivarTrack en las grabaciones: «loma-(polígono-9-parcela-8)»). Patrones construidos por partes para no marcarse a sí mismos.
 const EXPLOTACION = [
   ["referencia de polígono y parcela", new RegExp("pol(?:[ií]gono|\\.)[-_\\s]*(?!9\\D)\\d+[-_\\s,.]*parc(?:ela|\\.)?[-_\\s]*\\d+", "i")],

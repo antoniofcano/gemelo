@@ -6,10 +6,10 @@ pruebas/guardianes/exportadores.test.js. Deterministas (semilla fija).
         datos/                 entradas de Hituelo inventadas: 1 tesela (1000_16000), 1 parcela, 13 copas (dos en la misma celda de 1 m) y 11 marcas de OlivarTrack (9 con id del censo, desplazadas ~1,5 m)
         hituelo_a/, hituelo_b/ dos exportaciones de los mismos datos
         hituelo_c/             los mismos árboles en otro orden en arboles.json
-        cerro/                 construye() de finca_8_teselas.py (Cerro) con unas rejillas inventadas de 1 tesela
+        rejillas/              construye() de finca_8_teselas.py (el exportador genérico de rejillas) con unas rejillas inventadas de 1 tesela
         semillas: anterior.json (hituelo_a con semillas inventadas) y anterior_desplazado.json (lo mismo con otro centro_utm); hituelo_d/ (otro orden,
         --anterior), hituelo_e/ (GEMELO_INDICE_ANTERIOR), hituelo_f/ (el indice.json que ya había en la salida), hituelo_g/ (anterior con otro centro);
-        cerro_prov/ (sin ids del censo) y cerro_censo/ (con el id 7000 del censo y cerro_prov como anterior: hereda la semilla provisional)"""
+        rejillas_prov/ (sin ids del censo) y rejillas_censo/ (con el id 7000 del censo y rejillas_prov como anterior: hereda la semilla provisional)"""
 import json, os, random, sys
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
@@ -101,7 +101,7 @@ def datos_hituelo(D, orden_arboles=None):
                                                              utm=[[E0 + 50, N0 + 70], [E0 + 90, N0 + 70], [E0 + 90, N0 + 100], [E0 + 50, N0 + 100]])]))
 
 
-def cerro(salida, censo=True, anterior=None):
+def rejillas(salida, censo=True, anterior=None):
     import numpy as np
     import finca_8_teselas as F8
     cx, cy = E0 + 128, N0 + 128; W = H = TS
@@ -110,7 +110,7 @@ def cerro(salida, censo=True, anterior=None):
              copas=copas, marcados=[[copas[0][0], copas[0][1], 0, 0], [copas[1][0], copas[1][1], 1, 0]], marcados_id=[7000, None] if censo else None, ot=dict(fuente="instantanea", fecha_consulta="2026-01-01", parcelas={"sintetica-1": dict(tareas=[], fenologia=[])}), avance={})
     yy, xx = np.mgrid[0:H, 0:W]
     Fd = dict(D=D, cx=cx, cy=cy, ux0=E0, uyN=N0 + H, W=W, H=H, dtm=(100 + xx + yy).astype("<i2"), chm=np.zeros((H, W), "<i2"), suelo=np.full((H // 2, W // 2, 3), 120, "u1"), srs=2,
-              orto=np.full((H, W, 3), 110, "u1"), pts=np.zeros((10, 3), "<i2"))
+              orto=np.full((H, W, 3), 110, "u1"), pts=np.zeros((10, 3), "<i2"), finca_id="rejillas", finca="Finca sintética")
     F8.construye(Fd, salida, anterior)
 
 
@@ -126,7 +126,7 @@ def exporta(base):
     d2 = os.path.join(base, "datos_c"); datos_hituelo(d2, orden)
     hituelo_conv.HD = d2; hituelo_conv.PARC = os.path.join(d2, "parcelas.json")
     hituelo_conv.hituelo(os.path.join(base, "hituelo_c"))
-    cerro(os.path.join(base, "cerro"))
+    rejillas(os.path.join(base, "rejillas"))
     # copas_semilla (decisión 50): un índice anterior con semillas inventadas, y las tres formas de pasarlo
     I = json.load(open(os.path.join(base, "hituelo_a", "indice.json"), encoding="utf-8"))
     I["copas_semilla"] = [900000 + i for i in range(len(I["copas"]))]; escribe(os.path.join(base, "anterior.json"), I)
@@ -140,11 +140,11 @@ def exporta(base):
     os.makedirs(os.path.join(base, "hituelo_f"), exist_ok=True); escribe(os.path.join(base, "hituelo_f", "indice.json"), I)
     hituelo_conv.hituelo(os.path.join(base, "hituelo_f"))
     hituelo_conv.hituelo(os.path.join(base, "hituelo_g"), os.path.join(base, "anterior_desplazado.json"))
-    cerro(os.path.join(base, "cerro_prov"), censo=False)
-    cerro(os.path.join(base, "cerro_censo"), anterior=os.path.join(base, "cerro_prov", "indice.json"))
+    rejillas(os.path.join(base, "rejillas_prov"), censo=False)
+    rejillas(os.path.join(base, "rejillas_censo"), anterior=os.path.join(base, "rejillas_prov", "indice.json"))
     cx, cy = E0 + 128, N0 + 128; A = arboles(); _, esp = marcas_censo()
     escribe(os.path.join(base, "esperado.json"), dict(hituelo={"%s,%s" % (round(A[n]["x"] - cx, 2), round(A[n]["y"] - cy, 2)): k for n, k in esp.items()},
-                                                    cerro={"%s,%s" % (round(A[0]["x"] - cx, 2), round(A[0]["y"] - cy, 2)): 7000}))
+                                                    rejillas={"%s,%s" % (round(A[0]["x"] - cx, 2), round(A[0]["y"] - cy, 2)): 7000}))
 
 
 if __name__ == "__main__":

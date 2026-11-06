@@ -85,7 +85,7 @@ def hituelo(salida=None, anterior=None):
         ofile = os.path.join(IM, "ort", "%s.jpg" % k)
         if os.path.exists(ofile): oim = np.asarray(Image.open(ofile).convert("RGB")); jpgb = open(ofile, "rb").read()
         else: oim = np.full((512, 512, 3), 128, "u1"); jpgb = jpg_bytes(oim)
-        # color del suelo a 2 m: la ortofoto sin la copa (mismo método que en Cerro Velasco), con una celda de margen
+        # color del suelo a 2 m: la ortofoto sin la copa, con una celda de margen
         s2 = oim.reshape(128, 4, 128, 4, 3).mean(axis=(1, 3))[::-1]                                                 # 128×128, filas sur->norte
         ch2 = np.maximum.reduce([c1[0:256:2, 0:256:2], c1[0:256:2, 1:256:2], c1[1:256:2, 0:256:2], c1[1:256:2, 1:256:2]]) / 100.0
         mask = ndi.binary_dilation(ch2 > 0.4, iterations=2)

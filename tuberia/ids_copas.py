@@ -1,5 +1,5 @@
 """Columnas paralelas del registro de árboles (ADR-0012, CONTRATOS §1.1): `copas_id` (id estable) y `copas_tipo` (olivo-tipo).
-Python puro, sin numpy: lo usan los exportadores (finca_8_teselas.py para Cerro y la réplica, hituelo_conv.py) y lo prueba
+Python puro, sin numpy: lo usan los exportadores (hituelo_conv.py y construye() de finca_8_teselas.py) y lo prueba
 pruebas/guardianes/exportadores.test.js sin datos reales.
 
 De dónde sale el id (decisión de Antonio, 2026-10-29)
@@ -7,7 +7,7 @@ De dónde sale el id (decisión de Antonio, 2026-10-29)
 **La identidad la da el censo de OlivarTrack; la geometría, el LiDAR.** El id es además la semilla del generador de olivos.
 
 1. **id del censo** — si la copa LiDAR está emparejada con un olivo marcado en OlivarTrack que trae id, `copas_id` = ese id.
-   Rango: [0, 2^31). Hoy las marcas de OlivarTrack que llegan a los exportadores NO traen id (Hituelo: `[E, N]`; Cerro: `{lng, lat}`),
+   Rango: [0, 2^31). Hoy las marcas de OlivarTrack que llegan a los exportadores NO traen id (Hituelo: `[E, N]`),
    así que hoy no sale ninguno: falta el campo (ver CONTRATOS §1.1, «id del censo»).
 2. **id provisional** — si no hay marca con id: un id de reserva sacado de la POSICIÓN UTM ABSOLUTA de la copa,
    en el rango [2^31, 2^32) para que nunca choque con uno del censo (id >= 2^31 ⇔ provisional):
@@ -24,7 +24,7 @@ De dónde sale el id (decisión de Antonio, 2026-10-29)
 Emparejamiento marca ↔ copa: las marcas se pusieron sobre la ortofoto, que va desplazada ~1,1-1,5 m respecto al LiDAR (ADR-0006).
 Primero se estima ese desfase (mediana de los vectores marca → copa más cercana, dentro del umbral) y se corrige; luego se empareja
 UNO A UNO por distancia creciente (voraz, determinista: pares ordenados por (distancia, marca, copa)) hasta UMBRAL m. Voraz y no el
-óptimo húngaro (`scipy.optimize.linear_sum_assignment`, que usa Cerro en finca_3_datos.py) para que esto siga siendo Python puro y
+óptimo húngaro (`scipy.optimize.linear_sum_assignment`) para que esto siga siendo Python puro y
 probable sin numpy; con marcos de plantación de 6-10 m y un umbral de 4 m los dos dan lo mismo salvo en casos patológicos.
 
 Límite honesto: el id provisional es estable ante reexportaciones de los MISMOS datos; si un vuelo nuevo mueve una copa de celda, cambia.

@@ -1,7 +1,10 @@
 """Exporta una finca a teselas de 256 m para el motor v2 del gemelo.
 
-Uso:  python finca_8_teselas.py --finca cerro            (desde datos_cerro_embebido.json, los intermedios de hoy)
-      python finca_8_teselas.py --finca hituelo          (desde hituelo_datos/: ver LEEME.md; pendiente de cablear con los datos finales)
+Uso:  python finca_8_teselas.py --finca hituelo          (desde hituelo_datos/: ver LEEME.md; lo hace hituelo_conv.py)
+
+construye() es el exportador genérico de unas rejillas UTM ya hechas (relieve, copa, suelo, ortofoto y nube en memoria) a teselas; hoy solo
+lo ejercita la prueba sintética (pruebas/exportadores_sinteticos.py). Hituelo, el único mundo (decisión 22; la otra finca salió con la 229),
+se exporta con hituelo_conv.py, que reutiliza de aquí las constantes y b64/jpg_bytes.
 
 Salida en salida/<finca>/ :
   indice.json            lo global (va en la página): extensión, parcelas, copas, NDVI, paisaje, mosaico, relieve grueso, índice de teselas
@@ -15,7 +18,7 @@ import argparse, base64, io, json, math, os, sys
 import numpy as np
 from PIL import Image
 from scipy.ndimage import map_coordinates
-from ids_copas import columnas, PROV   # copas_id (censo de OlivarTrack o provisional por posición) y copas_tipo: ADR-0012
+from ids_copas import columnas   # copas_id (censo de OlivarTrack o provisional por posición) y copas_tipo: ADR-0012
 from semillas_copas import asigna as asigna_semillas   # copas_semilla (ADR-0017, decisión 50): heredada del índice anterior o = copas_id
 
 R = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # raíz del repo: salida/ y los intermedios se leen y escriben desde ahí
@@ -27,28 +30,12 @@ NS = TS // RS
 ORTO_PX = 768     # píxeles por lado de la ortofoto de una tesela (0,33 m/px)
 
 def b64(a): return base64.b64encode(np.ascontiguousarray(a).tobytes()).decode()
-def deb64(s, dt): return np.frombuffer(base64.b64decode(s), dtype=dt)
 
 def jpg_bytes(arr, q=80):
     b = io.BytesIO(); Image.fromarray(arr).save(b, "JPEG", quality=q, optimize=True); return b.getvalue()
 
-def cerro():
-    """Lee los intermedios de Cerro Velasco (el JSON embebido del gemelo de hoy) y los devuelve como rejillas UTM."""
-    D = json.load(open(os.path.join(R, "datos_cerro_embebido.json"), encoding="utf-8"))
-    cx, cy = D["centro_utm"]
-    W, H = D["W"], D["H"]
-    ux0 = cx + D["ext"][0]; uyN = cy + D["ext"][1]           # esquina NO de la ventana en UTM (enteros)
-    assert ux0 == int(ux0) and uyN == int(uyN)
-    ux0 = int(ux0); uyN = int(uyN)
-    dtm = deb64(D["dtm"]["b64"], "<i2").reshape(H, W)         # fila 0 = norte
-    chm = deb64(D["chm"]["b64"], "<i2").reshape(H, W)
-    sw, sh = D["suelo"]["w"], D["suelo"]["h"]
-    suelo = deb64(D["suelo"]["b64"], "u1").reshape(sh, sw, 3)
-    ortoimg = np.asarray(Image.open(io.BytesIO(base64.b64decode(D["orto"]["jpg"].split(",", 1)[1]))).convert("RGB"))
-    pts = deb64(D["puntos"]["b64"], "<i2").reshape(-1, 3)
-    return dict(D=D, cx=cx, cy=cy, ux0=ux0, uyN=uyN, W=W, H=H, dtm=dtm, chm=chm, suelo=suelo, srs=D["suelo"]["res"], orto=ortoimg, pts=pts)
-
 def construye(F, salida, anterior=None):
+    """F: rejillas UTM y el intermedio D (ver pruebas/exportadores_sinteticos.py), más finca_id y finca (el nombre que va en la cabecera)."""
     D = F["D"]; cx, cy, ux0, uyN, W, H = F["cx"], F["cy"], F["ux0"], F["uyN"], F["W"], F["H"]
     os.makedirs(os.path.join(salida, "t"), exist_ok=True)
     # teselas que tocan la ventana
@@ -112,8 +99,8 @@ def construye(F, salida, anterior=None):
     mosaico = dict(jpg="data:image/jpeg;base64," + base64.b64encode(b.getvalue()).decode(), w=W, h=H, x0=D["ext"][0], yN=D["ext"][1], res=1.0)
     # lo global: todo menos las rejillas y la nube, que ahora van en las teselas
     I = {k: v for k, v in D.items() if k not in ("dtm", "chm", "suelo", "orto", "puntos")}
-    I.update(v=2, ts=TS, res=RES, srs=RS, orto_px=ORTO_PX, teselas=teselas, grueso=grueso, mosaico=mosaico, finca_id="cerro")
-    # columnas paralelas de copas (CONTRATOS §1.1). Las marcas de Cerro (finca_cerro_velasco.json → marcados) no traen id del censo:
+    I.update(v=2, ts=TS, res=RES, srs=RS, orto_px=ORTO_PX, teselas=teselas, grueso=grueso, mosaico=mosaico, finca_id=F["finca_id"])
+    # columnas paralelas de copas (CONTRATOS §1.1). Las marcas pueden no traer id del censo:
     # si el intermedio trae `marcados_id` (paralelo a marcados; None = sin id), la copa emparejada toma ese id; si no, todas provisionales.
     mid = D.get("marcados_id") or []
     censo = {m[2]: mid[i] for i, m in enumerate(D["marcados"]) if i < len(mid) and mid[i] is not None and m[2] >= 0}
@@ -123,84 +110,20 @@ def construye(F, salida, anterior=None):
     # los olivos, los detectados (decisión 220: len(copas)); el desfase, el rango de las parcelas. Hituelo escribe los suyos en hituelo_conv.py.
     hs = [math.hypot(*p["desfase"]) for p in I["parcelas"] if p.get("desfase")]
     ds = (("entre %.1f y %.1f m al este" % (min(hs), max(hs))) if round(min(hs), 1) != round(max(hs), 1) else ("unos %.1f m al este" % min(hs))).replace(".", ",") if hs else None
-    I["textos"] = dict(sin_historia=False, finca="Cerro Velasco", fincas=1, parcelas=len(I["parcelas"]), ha=round(sum(p["ha"] for p in I["parcelas"]), 1), olivos=len(I["copas"]))
+    I["textos"] = dict(sin_historia=False, finca=F["finca"], fincas=1, parcelas=len(I["parcelas"]), ha=round(sum(p["ha"] for p in I["parcelas"]), 1), olivos=len(I["copas"]))
     if ds: I["textos"]["desfase_txt"] = ds
     asigna_semillas(I, salida, anterior)   # antes de escribir: el indice.json que haya en salida es la exportación anterior
     json.dump(I, open(os.path.join(salida, "indice.json"), "w"))
     print("teselas:", len(teselas), "| indice %.0f KB" % (os.path.getsize(os.path.join(salida, "indice.json")) / 1024))
 
 
-# ---------------------------------------------------------------------------------------------------------------------------
-# Banco de pruebas de presupuesto: Cerro Velasco replicado nx × ny veces en el espacio (mismos datos desplazados un número entero de teselas) para comprobar
-# que el coste de dibujo, la memoria y la carga NO crecen con la superficie. Solo modo ficheros. Uso: python finca_8_teselas.py --replica 3x3
-def replica(nx, ny, origen="cerro"):
-    import shutil
-    src = os.path.join(R, "salida", origen); dst = os.path.join(R, "salida", "%s_x%d" % (origen, nx * ny))
-    os.makedirs(os.path.join(dst, "t"), exist_ok=True)
-    I = json.load(open(os.path.join(src, "indice.json"), encoding="utf-8"))
-    kxs = [d["kx"] for d in I["teselas"].values()]; kys = [d["ky"] for d in I["teselas"].values()]
-    ax = max(kxs) - min(kxs) + 1; ay = max(kys) - min(kys) + 1; DX, DY = ax * TS, ay * TS       # desplazamiento de una réplica a la siguiente (m)
-    ext = I["ext"]; cx0, cy0 = I["centro_utm"]
-    O = dict(I); O["teselas"] = {}; O["parcelas"] = []; O["copas"] = []; O["marcados"] = []; O["ot"] = json.loads(json.dumps(I["ot"])); O["ot"]["parcelas"] = {}
-    npar = len(I["parcelas"]); ncop = len(I["copas"]); k = 0
-    for b in range(ny):
-        for a in range(nx):
-            for key, d in I["teselas"].items():
-                nk = "%d_%d" % (d["kx"] + a * ax, d["ky"] + b * ay)
-                v = d["v"]; O["teselas"][nk] = dict(kx=d["kx"] + a * ax, ky=d["ky"] + b * ay, v=[v[0] + a * DX, v[1] + b * DY, v[2] + a * DX, v[3] + b * DY], np=d["np"])
-                for ext_ in (".json", ".jpg"): shutil.copy(os.path.join(src, "t", key + ext_), os.path.join(dst, "t", nk + ext_))
-            for pr in I["parcelas"]:
-                q = json.loads(json.dumps(pr)); q["id"] = "%s#%d_%d" % (pr["id"], a, b); q["nombre"] = pr["nombre"] + " (%d,%d)" % (a, b)
-                q["linde"] = [[x + a * DX, y + b * DY] for x, y in pr["linde"]]; q["centro"] = [pr["centro"][0] + a * DX, pr["centro"][1] + b * DY]; O["parcelas"].append(q)
-                if pr["id"] in I["ot"]["parcelas"]: O["ot"]["parcelas"][q["id"]] = I["ot"]["parcelas"][pr["id"]]
-            for c in I["copas"]:
-                O["copas"].append([c[0] + a * DX, c[1] + b * DY, c[2], c[3], (c[4] + k * npar) if c[4] > 0 else 0])
-            for m in I["marcados"]:
-                O["marcados"].append([m[0] + a * DX, m[1] + b * DY, (m[2] + k * ncop) if m[2] >= 0 else -1, m[3] + k * npar])
-            k += 1
-    # id estable de cada copia (su posición UTM es otra, así que su id también) y el mismo olivo-tipo que el árbol de origen
-    # la copia (0, 0) conserva los ids del censo del origen; las demás copias son otros árboles: provisionales por su posición
-    tipos = I.get("copas_tipo"); ids0 = I.get("copas_id") or []
-    censo = {i: k for i, k in enumerate(ids0) if k < PROV} if len(ids0) == ncop else {}
-    col, _ = columnas(O["copas"], (cx0, cy0), censo, tipos * (nx * ny) if tipos is not None and len(tipos) == ncop else None); O.update(col)
-    asigna_semillas(O, dst)
-    # caja, relieve grueso y mosaico: las réplicas se pegan en su sitio (8 m y 1 m caben exactos en un desplazamiento de teselas enteras)
-    O["ext"] = [ext[0], ext[1] + (ny - 1) * DY, ext[2] + (nx - 1) * DX, ext[3]]
-    g = I["grueso"]; gw, gh = g["w"], g["h"]; GW, GH = int(math.ceil((O["ext"][2] - O["ext"][0]) / g["res"])), int(math.ceil((O["ext"][1] - O["ext"][3]) / g["res"]))
-    base = deb64(g["b64"], "<i2").reshape(gh, gw); big = np.zeros((GH, GW), "<i2")
-    for b in range(ny):
-        for a in range(nx):
-            r0 = (ny - 1 - b) * DY // g["res"]; c0 = a * DX // g["res"]; big[int(r0):int(r0) + gh, int(c0):int(c0) + gw] = base
-    O["grueso"] = dict(x0=O["ext"][0], yN=O["ext"][1], res=g["res"], w=GW, h=GH, b64=b64(big))
-    m0 = Image.open(io.BytesIO(base64.b64decode(I["mosaico"]["jpg"].split(",", 1)[1]))).convert("RGB"); mw, mh = m0.size
-    MW, MH = int(O["ext"][2] - O["ext"][0]), int(O["ext"][1] - O["ext"][3]); mos = Image.new("RGB", (MW, MH), (140, 134, 104))
-    for b in range(ny):
-        for a in range(nx): mos.paste(m0, (a * DX, (ny - 1 - b) * DY))
-    bb = io.BytesIO(); mos.save(bb, "JPEG", quality=70); O["mosaico"] = dict(jpg="data:image/jpeg;base64," + base64.b64encode(bb.getvalue()).decode(), w=MW, h=MH, x0=O["ext"][0], yN=O["ext"][1], res=1.0)
-    # NDVI y suelo-NDVI: rejilla de ~10 m; cada réplica en su sitio redondeado a celda, el resto sin dato
-    nd = I["ndvi"]; w, h = nd["w"], nd["h"]; nf = len(nd["fechas"]); cel = (ext[2] - ext[0]) / w
-    W2, H2 = int(math.ceil((O["ext"][2] - O["ext"][0]) / cel)), int(math.ceil((O["ext"][1] - O["ext"][3]) / (I["ext"][1] - I["ext"][3]) * h))
-    q = deb64(nd["b64"], "<i2").reshape(nf, h, w); q2 = np.full((nf, H2, W2), -32768, "<i2")
-    sn = I["suelo_ndvi"]; f = deb64(sn["f"], "<i2").reshape(h, w); f2 = np.zeros((H2, W2), "<i2")
-    for b in range(ny):
-        for a in range(nx):
-            r0 = int(round((ny - 1 - b) * DY / ((ext[1] - ext[3]) / h))); c0 = int(round(a * DX / cel))
-            q2[:, r0:r0 + h, c0:c0 + w] = q; f2[r0:r0 + h, c0:c0 + w] = f
-    O["ndvi"] = dict(nd); O["ndvi"].update(w=W2, h=H2, b64=b64(q2)); O["suelo_ndvi"] = dict(sn); O["suelo_ndvi"]["f"] = b64(f2)
-    json.dump(O, open(os.path.join(dst, "indice.json"), "w"))
-    print("réplica %dx%d: %d teselas, %d olivos (copas), caja %s m, ext ndvi %dx%d" % (nx, ny, len(O["teselas"]), len(O["copas"]), O["ext"], W2, H2))
-
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser(); ap.add_argument("--finca", choices=["cerro", "hituelo"]); ap.add_argument("--replica", help="NxM: Cerro Velasco replicado en el espacio (banco de pruebas de presupuesto)")
+    ap = argparse.ArgumentParser(); ap.add_argument("--finca", choices=["hituelo"])
     ap.add_argument("--salida", help="carpeta de salida (por defecto salida/<finca> en la raíz del repo)")
     ap.add_argument("--anterior", help="indice.json de la exportación anterior, del que se heredan las semillas (copas_semilla); por defecto $GEMELO_INDICE_ANTERIOR o el indice.json que ya haya en la salida")
     a = ap.parse_args()
-    if a.replica:
-        n, m = a.replica.split("x"); replica(int(n), int(m))
-    elif a.finca == "cerro":
-        construye(cerro(), a.salida or os.path.join(R, "salida", "cerro"), a.anterior)
-    elif a.finca == "hituelo":
+    if a.finca == "hituelo":
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); from hituelo_conv import hituelo
         hituelo(a.salida, a.anterior)
     else:
-        sys.exit("falta --finca cerro|hituelo (o --replica 3x3)")
+        sys.exit("falta --finca hituelo")

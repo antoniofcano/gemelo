@@ -1,4 +1,4 @@
-"""Desmezcla del NDVI de 10 m en suelo y copa, igual que Cerro Velasco (suelo_2_export.py): por fecha, NDVI = a + b·f, con f la fracción de copa de la celda;
+"""Desmezcla del NDVI de 10 m en suelo y copa, el mismo método que se usó en la primera finca del gemelo: por fecha, NDVI = a + b·f, con f la fracción de copa de la celda;
 a es el suelo (hierba o desnudo) y b lo que añade la copa. Escribe suelo_ndvi_hituelo.json con la misma forma que suelo_ndvi.json.
 f PROVISIONAL: fracción de píxeles de 2,5 m con altura de vegetación > 1,2 m (MDS normalizado del IGN). Cuando haya LiDAR de 3.ª cobertura se rehace con
    python -I suelo_ndvi.py --f f_lidar.npy      (npy float32 H x W de la misma rejilla, norte arriba, valores 0..1: puntos de vegetación > 1,2 m / puntos de la celda)."""

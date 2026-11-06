@@ -1,5 +1,5 @@
 """Paso 4c: paisaje.json de Hituelo = edificios (clase 6, medidos), tendido (deducido, 04b), cauces (deducidos del relieve) y árboles que no son olivos (picos del CHM).
-Coordenadas UTM30 absolutas (x, y) y cotas absolutas (z): el motor las re-centra. Mismos nombres de campo que el paisaje de Cerro Velasco."""
+Coordenadas UTM30 absolutas (x, y) y cotas absolutas (z): el motor las re-centra. Los nombres de campo son los del paisaje del índice (CONTRATOS)."""
 import sys, os, json, glob, heapq, time
 import numpy as np
 from scipy import ndimage as ndi

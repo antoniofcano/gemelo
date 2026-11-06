@@ -22,24 +22,24 @@
 
 ## Nomenclatura de hojas
 - **LiDAR**: `PNOA_2024_AND_<E>-<N>_H30_NPC01.laz`, hojas de 1×1 km. **En el nombre, la segunda cifra (`N`, «Y») es el borde NORTE de la hoja**, no el sur (`hoja_de()` en `tuberia/datos/hituelo/comun.py`).
-- **MDT 0,5 m**: `MDT50CM-ETRS89-H30-<hoja MTN50>-COB3-V1.tif`. Cerro usa la hoja `0946`. La hoja de Hituelo **[SUPUESTO]** no está anotada en el repo; consultarla en el CNIG.
+- **MDT 0,5 m**: `MDT50CM-ETRS89-H30-<hoja MTN50>-COB3-V1.tif`. La hoja de Hituelo **[SUPUESTO]** no está anotada en el repo; consultarla en el CNIG.
 - Teselas del motor: `kx = floor(E/256)`, `ky = floor(N/256)`, origen suroeste de la tesela = `(kx·256, ky·256)`. Rejillas por nodos, fila 0 = borde sur.
 
 ## Hojas por finca
 | Finca | Hojas LiDAR |
 |---|---|
-| Cerro Velasco | 410-4177 y 411-4177 (las dos hojas `PNOA_2024_AND_4*-4177`) |
 | Hituelo | Las que tocan el cuadro de las copas (± 10 m), medido con `tuberia/puntos_copas.py` sobre las cabeceras de las hojas: 405-4180 y 406-4180 (con N = borde norte, el 92 % de las 5.882 copas: 4.189 y 1.213), 404-4178, 404-4179, 404-4180, 405-4178, 405-4179, 405-4181, 406-4178 y 406-4179. **Faltan 404-4181 y 406-4181** → tres teselas del borde norte con cobertura incompleta. La lista anterior de este fichero («405-4179 y 406-4179, ≈92 %», con 405-4177 y sin 404-4180 ni 405-4181) parece contada con N como borde sur: 405-4177 no toca el cuadro |
 
 (Cifras de superficie por hoja: [histórico](../historico/DISENO-2026-10.md), §9.)
 
 ## Cómo regenerar una finca
+**Hituelo es el único mundo** (decisión 22). Cerro Velasco salió del mundo el 2026-11-06 (decisión 229: sus datos estaban desactualizados y la finca ya no es de la explotación): su tubería (`tuberia/datos/cerro/`), la rama `--finca cerro` del exportador y su réplica de banco se borraron. El fixture sintético que aún se llama «cerro» (`pruebas/genera_fixture.py`) no es esa finca.
+
 Detalle paso a paso y comprobaciones: [skill `datos-finca`](../../.claude/skills/datos-finca/SKILL.md). Resumen:
 
 1. Descargar las hojas y el MDT (`GEMELO_DESCARGAS`) y tener las parcelas en UTM (`GEMELO_PARCELAS`).
 2. **Hituelo**: `tuberia/datos/hituelo/01_particiona.py` → `02_tesela.py` → `03_arboles.py` → `04a_candidatos` → `04b_tendido` → `04c_paisaje` → `05_validacion`; imagen en `tuberia/datos/hituelo/imagen/` (`orto`, `ndvi`, `suelo_ndvi`, `suelo_parcelas`). Luego `python tuberia/finca_8_teselas.py --finca hituelo` (delega en `tuberia/hituelo_conv.py`).
-3. **Cerro**: `tuberia/datos/cerro/finca_1…finca_6`, `ndvi_sentinel`, `paisaje_1…6`, `suelo_1…2`. `finca_8_teselas.py --finca cerro` lee `datos_cerro_embebido.json`, **un intermedio que ningún script del repo produce** (pendiente D5); ya no hay un `embebido.json` de salida. `finca_1_ventana_orto.py`, `paisaje_5_arroyo.py` y `paisaje_6_extrae.py` leen además `cerro_privado.json` de `GEMELO_DATOS`: orden, ids y nombres de las parcelas, recorte del arroyo y correcciones de campo (decisión 219: no se versionan). La forma, con valores inventados, en [cerro_privado.ejemplo.json](../../tuberia/datos/cerro/cerro_privado.ejemplo.json).
-4. Generar el tileset: `node tuberia/tiles3d/genera.mjs --salida <carpeta>` ([TILES3D](../sistema/TILES3D.md)) y servir con el entorno local o construir la web con Vite ([DESARROLLO-LOCAL](DESARROLLO-LOCAL.md)).
+3. Generar el tileset: `node tuberia/tiles3d/genera.mjs --salida <carpeta>` ([TILES3D](../sistema/TILES3D.md)) y servir con el entorno local o construir la web con Vite ([DESARROLLO-LOCAL](DESARROLLO-LOCAL.md)).
 
 ### Parámetros de cada olivo (`copas_param`, ADR-0017)
 La columna opcional `copas_param` del índice ([contrato](../../contratos/olivo-generado.md#3-copas_param-columna-paralela-opcional-del-índice)) sale de las hojas LiDAR en dos pasos, después de exportar la finca (hace falta su `indice.json` y sus `t/*.json`). Necesita `laspy` y `lazrs` (`requirements.txt`).
@@ -64,7 +64,7 @@ Qué cambia respecto a la salida anterior (medido, comparando ficheros): `copas`
 Comprobación: `contratos/indice.schema.json` y `tesela.schema.json` con ajv (como `pruebas/guardianes/contratos.test.js`), y el tileset generado desde esta salida con `node tuberia/tiles3d/comprueba.mjs --entrada <salida nueva> --tileset <tileset>`.
 
 ### Semilla de cada olivo (`copas_semilla`, ADR-0017)
-La columna `copas_semilla` ([contrato](../../contratos/olivo-generado.md#12-la-semilla-se-guarda)) la ponen **los propios exportadores** (`finca_8_teselas.py --finca cerro|hituelo`, `hituelo_conv.py`, y la réplica), después de `copas_id`, con `asigna()` de `tuberia/semillas_copas.py` (decisión 50). Para heredar las semillas, el exportador busca el **índice anterior** por este orden:
+La columna `copas_semilla` ([contrato](../../contratos/olivo-generado.md#12-la-semilla-se-guarda)) la ponen **los propios exportadores** (`hituelo_conv.py`, que llama `finca_8_teselas.py --finca hituelo`, y `construye()` del mismo fichero), después de `copas_id`, con `asigna()` de `tuberia/semillas_copas.py` (decisión 50). Para heredar las semillas, el exportador busca el **índice anterior** por este orden:
 
 1. `--anterior <indice.json>` (argumento de `finca_8_teselas.py`);
 2. la variable `GEMELO_INDICE_ANTERIOR`;
@@ -127,8 +127,8 @@ GEMELO_CONTORNO_PARCELAS=<parcelas.json> GEMELO_CONTORNO=<contorno.geojson> pyth
 
 - **Fuente por defecto, «parcelas del gemelo» (OF3c, decisión 143):** las parcelas de OlivarTrack ya traen su polígono y su límite SIGPAC, y
   son las mismas que dan las teselas. Lee el mismo fichero que `tuberia/hituelo_conv.py` (`GEMELO_PARCELAS`: `{"parcelas": [{id, nombre,
-  finca, ha, olivos, utm: [[E, N], …]}]}`, UTM 30N), se queda con las de `--finca` (el nombre de finca del fichero pasado a id: «Cerro
-  Velasco» → `cerro-velasco`) y las junta igual que las otras fuentes. Sin red. **El dato es de OlivarTrack, con origen SIGPAC (FEGA, CC BY
+  finca, ha, olivos, utm: [[E, N], …]}]}`, UTM 30N), se queda con las de `--finca` (el nombre de finca del fichero pasado a id: «Los
+  Llanos Altos» → `los-llanos-altos`) y las junta igual que las otras fuentes. Sin red. **El dato es de OlivarTrack, con origen SIGPAC (FEGA, CC BY
   4.0)**; la salida lleva `fuente: "gemelo"` y su atribución, y en la base se guarda como `sigpac` (su origen; la tabla solo admite
   `sigpac | catastro`). No lleva las referencias.
 - **Holgura:** el editor admite hazas hasta **1 m** fuera del contorno (`CONTORNO_HOLGURA_M`, decisión 143); no es de la tubería.
