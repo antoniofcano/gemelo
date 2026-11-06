@@ -8,7 +8,7 @@
 // Medido / deducido / ilustrativo (regla 5): la copa es medida (LiDAR 2024); el tronco y las ramas son ilustrativos (2-3 pies habituales, no medidos).
 // Del legado recibe por argumento lo que necesita (THREE, la escena, el mundo, las entidades y los datos); no lee globales.
 import type { Manifiesto } from "../../nucleo/componentes.ts";
-import type { Materiales } from "../../nucleo/materiales.ts";
+import type { DefMaterial, Materiales, MaterialMin } from "../../nucleo/materiales.ts";
 
 // three no trae tipos en el repo (como en ambiente.ts y presupuesto.ts): de él solo se toca lo mínimo, sin tiparlo; el motor son números y arrays
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -42,13 +42,29 @@ export interface DepsArbolesL0 {
 
 export const ID_ARBOLES_L0 = "arboles-l0";
 
+// ---------------------------------------------------------------- los materiales (MU5-n: por la fábrica, con sus nombres de la tabla de MATERIALES §1, fila 10)
+/** los nombres de los materiales en la fábrica: son también la clave de su variante TSL */
+export const MATERIAL_COPA_L0 = "copa-l0", MATERIAL_TRONCO_L0 = "tronco-l0";
+/** Lambert con el color por vértice (escrito en sRGB: el parche lo pasa a lineal al leerlo, `colorVertSRGB` de 03_escena). La copa se ve por las dos caras. */
+function defLambertVertice(parche: (sh: unknown) => void, dosCaras: boolean): DefMaterial<void> {
+  return {
+    clasico: function (_o, c) {
+      const Lambert = c.THREE["MeshLambertMaterial"] as new (opc: unknown) => MaterialMin;
+      const m = new Lambert(dosCaras ? { vertexColors: true, side: c.THREE["DoubleSide"] } : { vertexColors: true });
+      m.onBeforeCompile = parche;   // la MISMA función: three usa su texto como clave del programa (sin clave propia, como con parchea)
+      return m;
+    }
+  };
+}
+
 export function creaArbolesL0(d: DepsArbolesL0) {
   const THREE = d.THREE, scene = d.scene, camera = d.camera, Estaticos = d.Estaticos, Materiales = d.Materiales, Entidades = d.Entidades, Estado = d.Estado, D = d.D, fmt = d.fmt;
   const FACTOR_R8 = d.FACTOR_R8, ESC_R8 = d.ESC_R8, suelo = d.suelo, aviva = d.aviva, colorEn = d.colorEn, hash = d.hash, copas = d.copas, marc = d.marc, colorVertSRGB = d.colorVertSRGB;
   // ---------- los olivos del modo Gemelo: copa con la forma real medida (8 radios) y tronco debajo (nivel 0, por celdas de 64 m; ver Arboles)
   const gArboles = new THREE.Group(), gFollaje = gArboles, gSombras = new THREE.Group(); gArboles.name = "arboles"; gSombras.name = "sombras-olivos"; Estaticos.congela(gArboles); Estaticos.congela(gSombras); scene.add(gArboles); scene.add(gSombras);   // AG-1.15: los grupos no se mueven; lo que cuelga se congela al crearlo (07b celdas, 07 sombras)   // gFollaje es el mismo grupo: las celdas de nivel 0 llevan copa, tronco, hojas y frutos
-  const matCopa = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), matTroncoL0 = new THREE.MeshLambertMaterial({ vertexColors: true });
-  Materiales.parchea(matCopa, "copa-l0", colorVertSRGB); Materiales.parchea(matTroncoL0, "tronco-l0", colorVertSRGB);   // el color por vértice está escrito en sRGB (03_escena)
+  Materiales.define(MATERIAL_COPA_L0, defLambertVertice(colorVertSRGB, true)); Materiales.define(MATERIAL_TRONCO_L0, defLambertVertice(colorVertSRGB, false));   // el color por vértice está escrito en sRGB (03_escena)
+  const materiales = Materiales.de(ID_ARBOLES_L0);   // lo que cree este componente se libera con su libera()
+  const matCopa = materiales.crea(MATERIAL_COPA_L0) as MaterialMin & T3, matTroncoL0 = materiales.crea(MATERIAL_TRONCO_L0) as MaterialMin & T3;
   var KSEG = 20, RING = 9;
   function radioEn(perfil: any, ang: any) { // ang en rad (0 = este, antihorario); interpolación circular
     var f = ((ang % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) / (2 * Math.PI) * 8, i0 = Math.floor(f) % 8, i1 = (i0 + 1) % 8, t = f - Math.floor(f);
@@ -182,7 +198,7 @@ export function creaArbolesL0(d: DepsArbolesL0) {
     if (suelto) return; suelto = true;
     scene.remove(gArboles); scene.remove(gSombras);
     if (quitaEntidad) quitaEntidad();
-    matCopa.dispose(); matTroncoL0.dispose();
+    materiales.libera();   // copa-l0 y tronco-l0
   }
   /** el componente (ADR-0023): el ciclo de vida de los grupos de olivos, sus dos materiales y la entidad «olivo». Solo ciclo de vida: lo que dibuja lo cuentan las celdas
    *  de 07b; no se apaga desde la URL (sin los olivos no hay modo Gemelo). Lo registra 90_final.js (el objeto lo usa el legado desde el primer fotograma). */
@@ -197,7 +213,7 @@ export function creaArbolesL0(d: DepsArbolesL0) {
     monta: function () { return api; },
     libera: function () { libera(); }
   };
-  const api = { gArboles, gFollaje, gSombras, matCopa, matTroncoL0, radioEn, arbolesG, libera, componente };
+  const api = { gArboles, gFollaje, gSombras, matCopa, matTroncoL0, materiales, radioEn, arbolesG, libera, componente };
   return api;
 }
 export type ArbolesL0 = ReturnType<typeof creaArbolesL0>;
