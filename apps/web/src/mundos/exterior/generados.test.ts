@@ -134,6 +134,34 @@ describe("olivos generados (componente del exterior)", () => {
     m.G.libera(); expect(F.duenos()).toEqual({});
   });
 
+  it("las variantes TSL (apagadas y PARCIALES): solo con el renderizador nuevo; con three/webgpu y three/tsl de verdad, el NodeMaterial de su clase con el fundido de las instanciadas", async () => {
+    const W: A = await import(/* @vite-ignore */ "three/webgpu" as string), TSL: A = await import(/* @vite-ignore */ "three/tsl" as string);
+    const { DEF_GEN_OLIVO, DEF_GEN_PROFUNDIDAD, uniformesFundido } = await import("./generados-sombreado.ts");
+    const UF = uniformesFundido(THREE), nuevo = { tipo: "nuevo", pedido: "nuevo" }, parche = () => {};
+    const hoy = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: { tipo: "clasico", pedido: "" }, nodos: () => ({ THREE: W, TSL }) });
+    hoy.define("gen-olivo", DEF_GEN_OLIVO); expect(hoy.ruta("gen-olivo")).toBe("clasico");
+    const F = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: nuevo, nodos: () => ({ THREE: W, TSL }) });
+    F.define("gen-olivo", DEF_GEN_OLIVO); F.define("gen-profundidad", DEF_GEN_PROFUNDIDAD);
+    expect(F.ruta("gen-olivo")).toBe("tsl"); expect(F.cobertura()["gen-profundidad"]).toMatchObject({ clasico: true, tsl: true });
+    const hoja = new THREE.MeshStandardMaterial({ alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.85 }), color = hoja.color;
+    const h: A = F.crea("gen-olivo", { material: hoja, parche, uniformes: UF, pieza: "ramita0" });
+    expect(h.isMeshStandardNodeMaterial).toBe(true); expect(h.color).toBe(color); expect(h.alphaTest).toBe(0.45); expect(h.side).toBe(THREE.DoubleSide); expect(h.roughness).toBe(0.85);
+    expect(h.maskNode).toBeTruthy(); expect(h.maskShadowNode).toBe(h.maskNode);
+    const c: A = F.crea("gen-olivo", { material: new THREE.MeshStandardMaterial(), parche, uniformes: UF, pieza: "pies" });
+    expect(c.isNodeMaterial).toBe(true); expect(c.maskNode).toBeFalsy();   // FALTA: el fundido de las mallas por lotes
+    const p: A = F.crea("gen-olivo", { material: new THREE.PointsMaterial({ size: 0.045, vertexColors: true }), parche, uniformes: UF, pieza: "puntos" });
+    expect(p.isPointsNodeMaterial).toBe(true); expect(p.size).toBe(0.045); expect(p.maskNode).toBeTruthy();
+    const s: A = F.crea("gen-profundidad", { material: new THREE.MeshDepthMaterial({ alphaTest: 0.5 }), fundido: parche, uniformes: UF });
+    expect(s.isNodeMaterial && s.colorWrite === false && s.alphaTest === 0.5).toBe(true); expect(s.maskShadowNode).toBeTruthy();
+    expect((F.crea("gen-profundidad", { material: null, fundido: parche, uniformes: UF }) as A).maskNode).toBeFalsy();
+    // en Generados con el renderizador nuevo: los materiales del constructor se cambian por los TSL (la biblioteca no recoge lo que devuelve su parche)
+    const m = monta("?olivos=gen", { Materiales: F }); m.llega(); for (let k = 0; k < 20 && m.G.estado() === "cargando"; k++) await espera();
+    const lm = m.G._prueba.mats();
+    expect(lm.ramita0.isNodeMaterial && lm.pies.isNodeMaterial && lm.puntos.isPointsNodeMaterial && lm.relleno_sombra.isNodeMaterial).toBe(true);
+    expect(m.G._prueba.prof().corteza.isNodeMaterial).toBe(true);
+    m.G.libera(); expect(F.duenos()).toEqual({});
+  });
+
   it("sin la bandera (?olivos=0): apagado desde el principio, sin grupo; libera no rompe", () => {
     const m = monta("?olivos=0");
     expect(m.G.estado()).toBe("apagado"); expect(m.gArboles.children).toHaveLength(0); expect(m.G.libera()).toBe(true);

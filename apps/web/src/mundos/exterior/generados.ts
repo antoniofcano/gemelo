@@ -178,7 +178,7 @@ export function creaGenerados(d: DepsGenerados) {
     if (m.isMeshDepthMaterial) { anota(n, m, propios.crea(MATERIAL_GEN_PROFUNDIDAD, { material: m, fundido: parcheFundido, propia: M.encadena, uniformes: UF })); return; }
     if (m.color) m.color.convertSRGBToLinear();   // el número de la referencia es un color «tal como se ve» (sRGB): el convenio del motor
     Materiales.recorte(m);   // AG-2.1: relleno, ramitas y tarjetas (alphaTest > 0) a alphaToCoverage; la corteza no tiene recorte y no cambia
-    anota(n, m, propios.crea(MATERIAL_GEN_OLIVO, { material: m, parche: luzFundido, propia: M.encadena, uniformes: UF }));
+    anota(n, m, propios.crea(MATERIAL_GEN_OLIVO, { material: m, parche: luzFundido, propia: M.encadena, uniformes: UF, pieza: n }));
   }
   function anota(n: A, m: A, r: A) { if (n !== undefined && r !== m) reemplazos[n] = r; }
   function profundidad() { return propios.crea(MATERIAL_GEN_PROFUNDIDAD, { material: null, fundido: parcheFundido, propia: M.encadena, uniformes: UF }); }

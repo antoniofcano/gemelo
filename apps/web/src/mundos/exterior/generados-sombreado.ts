@@ -54,12 +54,51 @@ type Encadena = (m: A, fn: (sh: A) => void, clave?: string) => A;
 export interface OpcGenOlivo { material: A; parche: (sh: A) => void; propia?: Encadena | null; uniformes?: { uFun: A; uBanda: A } }
 /** gen-profundidad: material = el MeshDepthMaterial del constructor (las sombras de las hojas) o null para uno nuevo (el de las mallas por lotes); fundido = el parche del fundido */
 export interface OpcGenProfundidad { material: A | null; fundido: (sh: A) => void; propia?: Encadena | null; uniformes?: { uFun: A; uBanda: A } }
-export const DEF_GEN_OLIVO: DefMaterial<OpcGenOlivo> = {
-  clasico: function (o) { return (o.propia || MaterialesPuro.encadenaPropia)(o.material, o.parche, "gen-luz-fundido"); }
+// MU5-n, tercer commit: las variantes TSL, APAGADAS (solo con el WebGPURenderer, que hasta MU6 no existe; nadie las usa hoy) y PARCIALES. NO son equivalentes: las
+// capturas de clásico frente a TSL son de MU6. Lo que hacen y lo que les falta está en MATERIALES §8:
+//   · hacen: el NodeMaterial de la misma clase (Standard o Points) con las propiedades del clásico (el MISMO objeto de color, el mapa, el recorte, la cara…) y el
+//     FUNDIDO por tramado de las piezas instanciadas y de los puntos (el código del atributo aFun: rol y ranura; f = uFun o el peso de uBanda[ranura]; el ruido de
+//     gradiente entrelazado de pantalla), como maskNode y maskShadowNode, con los MISMOS uFun y uBanda que mueve Generados;
+//   · FALTA: (1) el fundido en las mallas por lotes (corteza, madera muerta, olivas: el código va en el alfa del color por instancia, que el GLSL lee con
+//     getBatchingColor(gl_DrawID)); sin él, esas piezas entran y salen de golpe; (2) la luz del motor (parcheLuz: la sombra de nubes y la helada de parcheTiempo,
+//     fila 2, aún sin TSL, y el color por lote leído en sRGB); (3) gen-profundidad: no se sabe [NO VERIFICADO] si el WebGPURenderer usa customDepthMaterial; la
+//     variante es un NodeMaterial con el mismo maskShadowNode, y lo seguro es el maskShadowNode del material principal, que ya lleva gen-olivo. El motor no enciende
+//     las sombras (L5-12), así que hoy la profundidad no se dibuja en ninguna de las dos rutas.
+// las piezas que van en mallas por lotes (BatchedMesh): sin fundido en la TSL todavía (FALTA 1)
+export const PIEZAS_POR_LOTES = ["pies", "corteza", "musgo", "muerta", "raiz", "corte", "tutor", "oliva"];
+/** el fundido como nodo booleano (true = se dibuja): rol 0 siempre; rol 1 donde el ruido < f; rol 2 donde ≥ f. f = uFun en la ranura 0 o uBanda[ranura] en las demás */
+export function fundidoTsl(T: A, u: { uFun: A; uBanda: A }): A {
+  var uFun = u.uFun, uBanda = u.uBanda;
+  var codigo = T.attribute("aFun", "float"), ranura = T.floor(codigo.div(3).add(0.01)), rol = codigo.sub(ranura.mul(3));
+  var fun = T.uniform(uFun.value).onObjectUpdate(function () { return uFun.value; });
+  var bandas = T.uniformArray(uBanda.value, "vec4"), ri = T.int(ranura.add(0.5)), v = bandas.element(ri.div(4)), comp = ri.sub(ri.div(4).mul(4));
+  var peso = T.select(comp.equal(0), v.x, T.select(comp.equal(1), v.y, T.select(comp.equal(2), v.z, v.w)));
+  var f = T.select(ri.equal(0), fun, peso);
+  var p = T.screenCoordinate.xy, ruido = T.fract(T.fract(T.dot(p, T.vec2(0.06711056, 0.00583715))).mul(52.9829189));   // ot_ign(gl_FragCoord.xy)
+  return rol.lessThan(0.5).or(rol.lessThan(1.5).and(ruido.lessThan(f))).or(rol.greaterThanEqual(1.5).and(ruido.greaterThanEqual(f)));
+}
+var COPIA = ["name", "map", "alphaMap", "alphaTest", "alphaToCoverage", "transparent", "opacity", "side", "roughness", "metalness", "vertexColors", "size", "sizeAttenuation", "depthWrite", "depthTest", "fog"];
+export const DEF_GEN_OLIVO: DefMaterial<OpcGenOlivo & { pieza?: string }> = {
+  clasico: function (o) { return (o.propia || MaterialesPuro.encadenaPropia)(o.material, o.parche, "gen-luz-fundido"); },
+  tsl: function (o, c) {
+    var b = o.material, T = c.TSL as A, Clase = c.THREE[b && b.isPointsMaterial ? "PointsNodeMaterial" : "MeshStandardNodeMaterial"] as new () => A, m = new Clase();
+    COPIA.forEach(function (k) { if (b && b[k] !== undefined) m[k] = b[k]; });
+    if (b && b.color) m.color = b.color;   // el MISMO objeto (la calibración de la luz lineal lo multiplica después)
+    if (o.uniformes && PIEZAS_POR_LOTES.indexOf(o.pieza || "") < 0) { var vis = fundidoTsl(T, o.uniformes); m.maskNode = vis; m.maskShadowNode = vis; }
+    return m;
+  }
 };
 export const DEF_GEN_PROFUNDIDAD: DefMaterial<OpcGenProfundidad> = {
   clasico: function (o, c) {
     var dm = o.material || new (c.THREE["MeshDepthMaterial"] as new (p: unknown) => A)({ depthPacking: c.THREE["RGBADepthPacking"] });
     return (o.propia || MaterialesPuro.encadenaPropia)(dm, o.fundido, "gen-fundido");
+  },
+  tsl: function (o, c) {
+    var b = o.material, m = new (c.THREE["MeshBasicNodeMaterial"] as new () => A)();
+    ["map", "alphaMap", "alphaTest", "side"].forEach(function (k) { if (b && b[k] !== undefined) m[k] = b[k]; });
+    m.colorWrite = false;
+    // las de las mallas por lotes (material null) no tienen aFun: sin fundido (FALTA 1); las de las hojas, el mismo tramado
+    if (o.uniformes && b) m.maskShadowNode = m.maskNode = fundidoTsl(c.TSL as A, o.uniformes);
+    return m;
   }
 };
