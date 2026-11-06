@@ -181,8 +181,10 @@ function mundoEstacion(fechas) {
     SRGB: THREE.SRGBColorSpace, gFollaje: new THREE.Group(), window: {}, setTimeout, clearTimeout, fmtClaveDia: { format: () => "2026-11-04" }, fmtHora: { format: () => "12:00" },
     TM: {}, TiempoPuro: {}, esc: s => s, num1: x => String(x), objetivoMundoBase: () => ({}), aplicaMundo: null, lluvia: null, Estado: { exag: 1, modo: "gem", calidad: 1 }, Event: function () {}
   };
-  vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/23_estacion.js"), vm.createContext(conFabrica(g)), { filename: "23_estacion.js" });
-  return g;
+  // MU5-n (A3-4): 23_estacion es una extracción parcial; el código de verdad, apps/web/src/mundos/exterior/estacion.ts (creaEstacion), con lo mismo que el motor le da
+  conFabrica(g);
+  const E = require("./_mundos").creaEstacion(Object.assign({}, g, { ndviIdx: () => g.ndviIdx, aplicaMundo: () => {}, ventana: g.window, temporizador: { setTimeout, clearTimeout }, Evento: g.Event }));
+  return Object.assign(g, { construyeFrutosLista: E.construyeFrutosLista, frutosVisibles: E.frutosVisibles, actualizaOlivo: E.actualizaOlivo });
 }
 test("23_estacion: las flores y aceitunas se recortan con su esfera (1 m más por lo que las acerca el sombreador) y la contiene", () => {
   const g = mundoEstacion(null), grupo = new THREE.Group(), pos = [];
@@ -192,11 +194,11 @@ test("23_estacion: las flores y aceitunas se recortan con su esfera (1 m más po
   g.construyeFrutosLista(grupo);
   const p = grupo.children.find(o => o.isPoints);
   assert.ok(p && p.frustumCulled, "los puntos de los frutos, recortados");
-  assert.match(sinComentarios(lee("apps/web/motor/23_estacion.js")), /mv\.z \+= 1\.0;/, "el sombreador las acerca 1 m (lo que suma la esfera)");
+  assert.match(sinComentarios(require("./_fuente").fuenteMotor("23_estacion.js")), /mv\.z \+= 1\.0;/, "el sombreador las acerca 1 m (lo que suma la esfera)");
   contiene(p, "flores y aceitunas", 1);
 });
 test("23_estacion: fuera del BBCH que pinta el sombreador (b = BBCH ± 3,5 entre 58 y 91) los frutos no se dibujan; dentro, sí", () => {
-  const F = sinComentarios(lee("apps/web/motor/23_estacion.js"));
+  const F = sinComentarios(require("./_fuente").fuenteMotor("23_estacion.js"));   // A3-4: con estacion.ts
   // las cifras del sombreador de las que sale el rango: si cambian, esta prueba lo dice
   for (const t of ["float b = uBBCH + (aR - 0.5) * 7.0;", "if (b >= 58.0 && b < 70.5)", "smoothstep(58.0, 62.0, b)", "else if (b >= 70.5 && b < 91.0)", "if (aS < 0.55)"]) assert.ok(F.includes(t), "el sombreador de los frutos: falta «" + t + "»");
   // la última fecha es «hoy» (EV-3a: en la imagen más reciente la estación es la del día real); las cuatro de antes, la de su imagen

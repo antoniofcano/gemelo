@@ -24,6 +24,7 @@ const TS_DE = {
   // A3-4: 15_tiempo es una extracción parcial; el tiempo vive en ocho ficheros (el módulo, lo puro, el parche, el cielo, la lluvia, la barrera, el paso y las fichas)
   "21_suelo.js": "apps/web/src/mundos/exterior/hierba.ts",   // A3-4
   "20_sonido.js": "apps/web/src/mundos/exterior/sonido.ts",   // A3-4
+  "23_estacion.js": "apps/web/src/mundos/exterior/estacion.ts",   // A3-4
   "15_tiempo.js": ["tiempo.ts", "tiempo-puro.ts", "tiempo-parche.ts", "tiempo-cielo.ts", "tiempo-lluvia.ts", "tiempo-barrera.ts", "tiempo-paso.ts", "tiempo-fichas.ts"].map(f => "apps/web/src/mundos/exterior/" + f),
 };
 /** el talón y el .ts juntos (o solo el fichero del motor, si no es de los migrados) */

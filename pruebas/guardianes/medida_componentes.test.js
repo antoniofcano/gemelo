@@ -24,8 +24,8 @@ test("los manifiestos salen del código del motor, con su bandera y su presupues
   // la escena 3D Tiles es la única escena (decisión 79), los olivos del tileset van con ella, y el suelo de fotos tiene su propia bandera (?suelo=fotos, que enciende)
   // A3-2a: el catálogo de olivos-tipo tampoco dibuja (da las formas que instancia 07b, que las cuenta en su TOPE_TRI) y 07b lo necesita siempre
   // y los olivos generados: ?olivos=0 es su bandera propia (GeneradosPuro.activo), no la del componente, y lo que dibujan va en el reparto de 07b (TOPE_TRI)
-  // A3-4: el tiempo del exterior y la hierba tampoco (la casilla «Hierba» la esconde), ni el sol de reserva (no dibuja: mueve el sol de 03 una vez): otros módulos leen sus nombres al montarse, y lo que dibuja (cielo, lluvia, barreras) lo cuentan los topes de presupuesto.json
-  const SIN_BANDERA = ["escena-tiles", "olivos-tiles", "suelo-fotos", "catalogo-olivos", "olivos-generados", "tiempo-mundo", "hierba-suelo", "sol-reserva"];
+  // A3-4: el tiempo del exterior y la hierba tampoco (la casilla «Hierba» la esconde), ni el sol de reserva (no dibuja: mueve el sol de 03 una vez), ni la estación del olivo (sus puntos van con el follaje): otros módulos leen sus nombres al montarse, y lo que dibuja (cielo, lluvia, barreras) lo cuentan los topes de presupuesto.json
+  const SIN_BANDERA = ["escena-tiles", "olivos-tiles", "suelo-fotos", "catalogo-olivos", "olivos-generados", "tiempo-mundo", "hierba-suelo", "sol-reserva", "estacion-olivo"];
   for (const c of ms) { if (SIN_BANDERA.includes(c.id)) { assert.ok(!c.url && c.presupuesto.llamadas === 0 && c.presupuesto.triangulos === 0, c.id + ": solo ciclo de vida"); continue; } assert.ok(c.url, c.id + " tiene bandera de URL (si no, no se puede medir con y sin)"); }
   for (const id of SIN_BANDERA) assert.ok(ms.some(c => c.id === id), id + " está entre los manifiestos");
 });

@@ -166,9 +166,9 @@ test("el registro: componente «mundo-hoy», bandera ?mundohoy=, presupuesto 0, 
 
 test("el día real: la estación del olivo arranca hoy y ?fecha=AAAA-MM-DD mueve el reloj del mundo", () => {
   // MU5-n (A3-4): el reloj del mundo vive en apps/web/src/mundos/exterior/tiempo-puro.ts (creaReloj); se evalúa el de verdad, con el reloj de la máquina inyectado
-  const est = lee("apps/web/motor/23_estacion.js"), tie = lee("apps/web/src/mundos/exterior/tiempo-puro.ts"), { creaReloj } = require("./_mundos");
-  assert.match(est, /function hoyMadrid\(\) \{ return fmtClaveDia\.format\(new Date\(ahoraMs\(\)\)\); \}/);
-  assert.match(est, /function fechaEstacion\(\) \{ return NDV && ndviIdx !== NDV\.fechas\.length - 1 \? NDV\.fechas\[ndviIdx\] : hoyMadrid\(\); \}/);
+  const est = require("./_fuente").fuenteMotor("23_estacion.js"), tie = lee("apps/web/src/mundos/exterior/tiempo-puro.ts"), { creaReloj } = require("./_mundos");
+  assert.match(est, /function hoyMadrid\(\)(: string)? \{ return fmtClaveDia\.format\(new Date\(ahoraMs\(\)\)\); \}/);
+  assert.match(est, /function fechaEstacion\(\)(: string)? \{ var ndviIdx = d\.ndviIdx\(\); return NDV && ndviIdx !== NDV\.fechas\.length - 1 \? NDV\.fechas\[ndviIdx\] : hoyMadrid\(\); \}/);
   assert.match(tie, /\[\?&\]fecha=\(\\d\{4\}-\\d\{2\}-\\d\{2\}\)/);
   // ahoraMs con ?fecha=: el mismo reloj, corrido días enteros
   const fmt = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Madrid" });

@@ -66,3 +66,5 @@ export { creaSonido, manifiestoSonido, ID_SONIDO } from "./exterior/sonido.ts";
 export type { DepsSonido, Sonido } from "./exterior/sonido.ts";
 export { creaSolReserva, manifiestoSolReserva, ID_SOL_RESERVA } from "./exterior/sol-reserva.ts";
 export type { DepsSolReserva, SolReserva } from "./exterior/sol-reserva.ts";
+export { creaEstacion, manifiestoEstacion, ID_ESTACION } from "./exterior/estacion.ts";
+export type { DepsEstacion, Estacion } from "./exterior/estacion.ts";

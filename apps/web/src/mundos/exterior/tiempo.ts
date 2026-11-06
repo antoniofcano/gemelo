@@ -130,8 +130,8 @@ export function creaTiempo(d: DepsTiempo) {
     return m;
   }
   function horaMundoTexto(): string { return fmtHora.format(new Date(meta.ms)); }   // la hora (de la zona de la finca) a la que tiende el mundo
-  // con la estación de otra fecha (23_estacion.js, que va después en el montaje) manda su objetivoMundo; sin ella, el de siempre
-  function objetivoMundo(): A { return typeof d.objetivoMundo === "function" ? d.objetivoMundo() : objetivoMundoBase(); }
+  // con la estación de otra fecha (23_estacion.js, que va después en el montaje) manda su objetivoMundo; sin ella (o si aún no está: null), el de siempre
+  function objetivoMundo(): A { var m = typeof d.objetivoMundo === "function" ? d.objetivoMundo() : null; return m || objetivoMundoBase(); }
   function aplicaMundo(): void { var m = objetivoMundo(); Object.keys(m).forEach(function (c) { meta[c] = m[c]; }); }
 
   var TiempoVivo = creaTiempoVivo(TM, ahoraMs);

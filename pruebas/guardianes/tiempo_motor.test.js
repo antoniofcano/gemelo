@@ -64,10 +64,10 @@ test("histórico semanal de /api/tiempo/historico: misma origen, rango en la con
 
 test("sin conector de claude.ai (decisión 79): ningún módulo del motor usa window.claude, callTool ni TM.mcp", () => {
   for (const f of ["14_historia.js", "15_tiempo.js", "23_estacion.js"]) {
-    const s = lee("apps/web/motor/" + f).replace(/^\s*\/\/.*$/gm, "");
+    const s = require("./_fuente").fuenteMotor(f).replace(/^\s*\/\/.*$/gm, "");   // MU5-n: con el .ts de los migrados
     assert.ok(!/window\.claude|callTool|TM\.mcp|\bmcp\./.test(s), f + " no habla con el conector");
   }
-  assert.match(lee("apps/web/motor/23_estacion.js"), /TiempoPuro\.leeHistorico\(/, "el histórico semanal sale de la api");
+  assert.match(require("./_fuente").fuenteMotor("23_estacion.js"), /TiempoPuro\.leeHistorico\(/, "el histórico semanal sale de la api");
 });
 
 test("la caída a lo simulado:si la lectura falla, el código pasa a tiempoSimulado y lo dice (chip y ventana)", () => {

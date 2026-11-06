@@ -250,7 +250,7 @@ test("window.__g (gancho de las pruebas) publica los miembros del contrato", () 
 test("los ganchos window.__* de depuración existen donde dice el contrato", () => {
   for (const [n, def] of Object.entries(IFACES.ganchos_window)) {
     if (def.tipo !== "function") continue;
-    assert.match(lee("apps/web/motor/" + def.modulo), new RegExp("window\\." + n + " = function"), n + " no está en " + def.modulo);
+    assert.match(require("./_fuente").fuenteMotor(def.modulo) /* MU5-n: con el .ts de los migrados */, new RegExp("window\\." + n + " = function"), n + " no está en " + def.modulo);
   }
 });
 
