@@ -71,14 +71,15 @@ describe("follaje y sombras de los olivos (componente del exterior)", () => {
 
   it("montar y liberar (varias veces) quita la malla y suelta geometría, materiales y texturas una sola vez; olvida la fuente de VR", () => {
     for (let v = 0; v < 3; v++) {
-      const { api, gSombras, estado } = monta(5);
+      const { api, gSombras, estado, deps } = monta(5);
+      expect(deps.Materiales.duenos()).toEqual({ [ID_FOLLAJE]: 4 });   // los cuatro, de la fábrica y con dueño
       api.construyeSombras(); const m = api.sombras();
       const c = { malla: escuchaDispose(m), geo: escuchaDispose(api.geoSombra), sombra: escuchaDispose(api.matSombra), g: escuchaDispose(api.matHojaG), p: escuchaDispose(api.matHojaP), co: escuchaDispose(api.matCorteza),
         texS: escuchaDispose(api.matSombra.map), texH: escuchaDispose(api.texHojas) };
       api.libera(); api.libera();
       expect(gSombras.children).toHaveLength(0); expect(estado.olvidadas).toEqual(["sombras"]);
       expect(Object.values(c).map((x) => x.n)).toEqual([1, 1, 1, 1, 1, 1, 1, 1]);
-      expect(estado.inst).toBeNull();
+      expect(estado.inst).toBeNull(); expect(deps.Materiales.duenos()).toEqual({});
     }
   });
 

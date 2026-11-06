@@ -49,6 +49,7 @@ export function creaFollaje(d: DepsFollaje) {
   const THREE = d.THREE, texColor = d.texColor, Materiales = d.Materiales, Estaticos = d.Estaticos, gSombras = d.gSombras, Estado = d.Estado, ESC_R8 = d.ESC_R8;
   const suelo = d.suelo, copaAlta = d.copaAlta, aviva = d.aviva, colorEn = d.colorEn, hash = d.hash, copas = d.copas, radioEn = d.radioEn, construyeFrutosLista = d.construyeFrutosLista;
   const sombrasSol = d.sombrasSol, VrPresupuesto = d.VrPresupuesto || null, lienzo = d.lienzo;
+  const materiales = Materiales.de(ID_FOLLAJE);   // MU5-n: los cuatro materiales (estándar: sin sombreador propio) se piden con dueño «follaje» y se liberan con su libera()
   // follaje: cada punto LiDAR de copa es un montoncito de hojas plateadas (sprites con textura propia)
   function texturaHojas() {
     var cv = lienzo(128); var x = cv.getContext("2d"), seed = 11;
@@ -71,14 +72,14 @@ export function creaFollaje(d: DepsFollaje) {
     var tex = texColor(new THREE.CanvasTexture(cv)); tex.generateMipmaps = true; return tex;
   }
   var texHojas = texturaHojas();
-  var matHojaG = Materiales.recorte(new THREE.PointsMaterial({ size: 3.1, map: texHojas, alphaTest: 0.4, vertexColors: true, sizeAttenuation: true, transparent: false }));   // AG-2.1: alphaToCoverage con MSAA (?a2c=0 lo quita)
-  var matHojaP = Materiales.recorte(new THREE.PointsMaterial({ size: 1.7, map: texHojas, alphaTest: 0.4, vertexColors: true, sizeAttenuation: true, transparent: false }));
-  var matCorteza = new THREE.PointsMaterial({ size: 0.5, vertexColors: true, sizeAttenuation: true });
+  var matHojaG: T3 = Materiales.recorte(materiales.estandar("PointsMaterial", { size: 3.1, map: texHojas, alphaTest: 0.4, vertexColors: true, sizeAttenuation: true, transparent: false }));   // AG-2.1: alphaToCoverage con MSAA (?a2c=0 lo quita)
+  var matHojaP: T3 = Materiales.recorte(materiales.estandar("PointsMaterial", { size: 1.7, map: texHojas, alphaTest: 0.4, vertexColors: true, sizeAttenuation: true, transparent: false }));
+  var matCorteza: T3 = materiales.estandar("PointsMaterial", { size: 0.5, vertexColors: true, sizeAttenuation: true });
   function texturaSombra() {
     var cv = lienzo(64); var x = cv.getContext("2d"), g = x.createRadialGradient(32, 32, 4, 32, 32, 32);
     g.addColorStop(0, "rgba(20,18,10,0.55)"); g.addColorStop(0.65, "rgba(20,18,10,0.32)"); g.addColorStop(1, "rgba(20,18,10,0)"); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return texColor(new THREE.CanvasTexture(cv));
   }
-  var matSombra = new THREE.MeshBasicMaterial({ map: texturaSombra(), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  var matSombra: T3 = materiales.estandar("MeshBasicMaterial", { map: texturaSombra(), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   var geoSombra = new THREE.PlaneGeometry(1, 1); geoSombra.rotateX(-Math.PI / 2);
   // Q0c-a: en VR, desde el escalón 2 las manchas de sombra (ilustrativas) no se dibujan (02g_vr_presupuesto); sombrasSol sigue poniendo su opacidad
   if (VrPresupuesto) VrPresupuesto.fuente("sombras", function (v: any) { matSombra.visible = v !== false; });
@@ -142,8 +143,8 @@ export function creaFollaje(d: DepsFollaje) {
     if (suelto) return; suelto = true;
     quitaSombras();
     if (VrPresupuesto) VrPresupuesto.olvida("sombras");
-    geoSombra.dispose(); matSombra.dispose(); matSombra.map.dispose(); texHojas.dispose();
-    matHojaG.dispose(); matHojaP.dispose(); matCorteza.dispose();
+    geoSombra.dispose(); matSombra.map.dispose(); texHojas.dispose();
+    materiales.libera();   // matHojaG, matHojaP, matCorteza y matSombra (y los saca de la lista de los recortes alfa)
   }
   /** el componente (ADR-0023): el ciclo de vida del follaje (texturas, materiales y la malla de sombras). Solo ciclo de vida: las hojas las dibujan las celdas de 07b;
    *  no se apaga desde la URL. Lo registra 90_final.js (el objeto lo usa el legado desde el primer fotograma). */
@@ -158,7 +159,7 @@ export function creaFollaje(d: DepsFollaje) {
     monta: function () { return api; },
     libera: function () { libera(); }
   };
-  const api = { texHojas, matHojaG, matHojaP, matCorteza, matSombra, geoSombra, follajeG, construyeSombras, libera, sombras: function () { return inst; }, componente };
+  const api = { texHojas, matHojaG, matHojaP, matCorteza, matSombra, geoSombra, follajeG, construyeSombras, libera, materiales, sombras: function () { return inst; }, componente };
   return api;
 }
 export type Follaje = ReturnType<typeof creaFollaje>;
