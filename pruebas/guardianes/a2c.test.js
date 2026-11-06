@@ -72,7 +72,7 @@ for (const b of ["pantalla", "vr"]) {
 }
 
 test("cada material de recorte alfa del motor pasa por Materiales.recorte (y la corteza, la sombra y las láminas no)", () => {
-  const f = n => lee("apps/web/motor/" + n);
+  const f = n => require("./_fuente").fuenteMotor(n);   // A3-2b: lo migrado, junto a su talón
   assert.strictEqual((f("07_follaje.js").match(/Materiales\.recorte\(new THREE\.PointsMaterial\(\{[^}]*alphaTest/g) || []).length, 2, "hoja grande y pequeña");
   assert.match(f("21_suelo.js"), /matMata = Materiales\.recorte\(new THREE\.MeshLambertMaterial\(\{ map: texHierba, alphaTest/);
   assert.strictEqual((f("07ac_lejanos.js").match(/Materiales\.recorte\(new THREE\.MeshLambertMaterial\(\{[^}]*alphaTest: 0\.5/g) || []).length, 2, "impostor lejano y sustituto");

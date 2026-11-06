@@ -84,7 +84,7 @@ test("cableado: 29_vr pone el escalón en vrPerfil, lo quita al salir y avisa de
   assert.match(VR, /function vrPerfil\(n\) \{[^\n]*VrPresupuesto\.ponEscalon\(n\);/);
   assert.match(VR, /Arboles\.perfil\(null\); Escena3D\.perfil\(null\); VrPresupuesto\.ponEscalon\(null\);/);
   assert.match(VR, /vrAplicaRig\(\);\n\s*VrPresupuesto\.mueve\(nx, nz\);/);
-  assert.match(lee("apps/web/motor/07_follaje.js"), /VrPresupuesto\.fuente\("sombras", function \(v\) \{ matSombra\.visible = v !== false; \}\)/);
+  assert.match(require("./_fuente").fuenteMotor("07_follaje.js"), /VrPresupuesto\.fuente\("sombras", function \(v(: any)?\) \{ matSombra\.visible = v !== false; \}\)/);   // A3-2b: el código vive en follaje.ts
   const todo = require("fs").readdirSync(path.join(RAIZ, "apps/web/motor")).filter(f => f.endsWith(".js") && f !== "02g_vr_presupuesto.js").map(f => lee("apps/web/motor/" + f)).join("\n");
   assert.strictEqual((todo.match(/VrPresupuesto\.ponEscalon\(/g) || []).length, 2, "solo 29_vr pone el escalón (al cambiar de perfil y al salir)");
 });

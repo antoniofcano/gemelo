@@ -24,7 +24,7 @@
   "04f_suelo_fotos.js": ["SueloFotosPuro","SueloFotos"],
   "05_nube.js": ["ALTO_MAX","nube","pintaNube","actualizaNubeTeselas","actualizaNube"],
   "06_arboles.js": ["Arboles0","gArboles","gFollaje","gSombras","radioEn","arbolesG"],
-  "07_follaje.js": ["matHojaG","matHojaP","matCorteza","matSombra","geoSombra","follajeG","construyeSombras"],
+  "07_follaje.js": ["Follaje","matHojaG","matHojaP","matCorteza","matSombra","geoSombra","follajeG","construyeSombras"],
   "07a_catalogo.js": ["Catalogo"],
   "07ab_generados.js": ["Escalera","Generados"],
   "07ac_lejanos.js": ["Lejanos"],

@@ -34,3 +34,6 @@ export type { DepsMarcadores, Marcadores } from "./exterior/marcadores.ts";
 // A3-2b (MU5-n): los olivos de nivel 0 (06_arboles.js).
 export { ID_ARBOLES_L0, creaArbolesL0 } from "./exterior/arboles-l0.ts";
 export type { ArbolesL0, DepsArbolesL0 } from "./exterior/arboles-l0.ts";
+// A3-2b (MU5-n): el follaje y las sombras de los olivos (07_follaje.js).
+export { ID_FOLLAJE, creaFollaje } from "./exterior/follaje.ts";
+export type { DepsFollaje, Follaje } from "./exterior/follaje.ts";
