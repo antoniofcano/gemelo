@@ -10,6 +10,7 @@
 const test = require("node:test"), assert = require("node:assert"), vm = require("vm"), path = require("path"), { pathToFileURL } = require("url");
 const { lee, RAIZ, fs } = require("./_util");
 const { conFabrica } = require("./_materiales");
+const { fuenteMotor } = require("./_fuente");   // A3-3: lo que ya es un talón se lee con su .ts
 
 let THREE;
 test.before(async () => { THREE = await import(pathToFileURL(path.join(RAIZ, "apps/web/node_modules/three/build/three.module.js")).href); });
@@ -66,7 +67,7 @@ function mundoPaisaje(Estaticos) {
     THREE, Estaticos, D: { paisaje: JSON.parse(JSON.stringify(PAISAJE)) }, $: () => ({ checked: true, addEventListener() {} }), ESC_R8: 1,
     suelo: (x, y) => 80 + 0.2 * x + 0.1 * y, desp: () => 0, copas: [], scene: new THREE.Scene(), SRGB: THREE.SRGBColorSpace, sol: {}, Estado: { exag: 1 }, hash,
     gSombras: new THREE.Group(), tronco: null, matSombra: new THREE.MeshBasicMaterial({ transparent: true }), geoSombra: new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
-    pon() {}, lista: [], lluvia: null, cur: { ms: 0, nub: 0, lluvia: 0, dir: 0, viento: 0 }, tMundo: 0, nivel: () => ({ s: { alt: 0.8, az: 0.4 }, d: 1 }), esfera: null, EST: { activa: false }
+    pon() {}, lista: [], lluvia: null, cur: { ms: 0, nub: 0, lluvia: 0, dir: 0, viento: 0 }, tMundo: 0, nivel: () => ({ s: { alt: 0.8, az: 0.4 }, d: 1 }), esfera: null, EST: { activa: false }, nivelEn: (ms, s) => { s.s.alt = 0.8; s.s.az = 0.4; s.d = 1; return s; }, Componentes: { registra() { return true; } }
   };
   g.scene.add(g.gSombras);
   vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/18_paisaje.js"), vm.createContext(conFabrica(g)), { filename: "18_paisaje.js" });
@@ -120,25 +121,27 @@ test("39_oficina_mundo: las balizas oficiales (grupo y dos mallas congeladas) da
 
 // ---------------------------------------------------------------- 19_balizas: lo que late se queda en automático dentro del grupo congelado
 test("19_balizas: la baliza (grupo y columna) se congela con colocaBalizas; el rombo y el anillo siguen en automático y siguen su movimiento", () => {
-  const F = lee("apps/web/motor/19_balizas.js"), T = trozo(F, "  function congelaBalizas()", "  var PILL_TXT");
-  assert.match(sinComentarios(F), /function colocaBalizas\(\) \{[^}]*\}[^}]*congelaBalizas\(\); refrescaBalizas\(\);/s, "colocaBalizas congela justo después de colocar");
-  const E = estaticosReal(), gBal = new THREE.Group(), escena = new THREE.Scene(); escena.add(gBal);
-  const BAL = [0, 1, 2].map(k => {
-    const g = new THREE.Group(), col = new THREE.Mesh(new THREE.CylinderGeometry(), new THREE.MeshBasicMaterial()), rombo = new THREE.Mesh(new THREE.OctahedronGeometry(), new THREE.MeshBasicMaterial()), anillo = new THREE.Mesh(new THREE.RingGeometry(1, 2), new THREE.MeshBasicMaterial());
-    g.add(col, rombo, anillo); g.userData = { k, rombo, anillo }; gBal.add(g); return g;
+  // A3-3: 19_balizas es un talón; el código está en apps/web/src/mundos/exterior/balizas.ts y aquí corre EL DE VERDAD (Mundos.creaBalizas con tres parcelas y el Estaticos de verdad)
+  const F = fuenteMotor("19_balizas.js");
+  assert.match(sinComentarios(F), /function colocaBalizas\(\)(?:: void)? \{[\s\S]*?\}\); congelaBalizas\(\); refrescaBalizas\(\);/, "colocaBalizas congela justo después de colocar");
+  const escena = new THREE.Scene(), Estado = { exag: 1 }, parcelas = [0, 1, 2].map(k => ({ id: "p" + k, nombre: "P" + k, ha: 1, centro: [10 * k, 5], linde: [] }));
+  const api = require("./_mundos").creaBalizas({
+    THREE, $: () => ({ addEventListener() {}, removeEventListener() {} }), suelo: () => 3, bus: { emite() { return 0; } }, Entidades: { registra: () => () => {}, lista: () => null }, Usables: { cercano: () => null },
+    Materiales: conFabrica({ THREE }).Materiales, Estaticos: estaticosReal(), visor: null, scene: escena, camera: {}, Estado, objetivo: { x: 0, z: 0 }, paseando: () => false, pp: { x: 0, y: 0 },
+    Llegada: { ve: () => true }, parcelas, HazasPuro: {}, D: { ot: null }, OT: () => null, VIVO: () => null, num1: String, esc: String, tVida: () => 0, enQuad: () => false,
+    TR: () => ({ act: false, t: 0, tCae: 1 }), Encuentro: () => ({}), sitioJunto: () => ({}), VRX: () => ({ on: false }), documento: {}, ventana: {}
   });
-  const colocar = e => BAL.forEach(g => g.position.set(10 * g.userData.k, 3 * e, -5));
-  const f = new Function("Estaticos", "gBal", "BAL", "\"use strict\";\n" + T + "\nreturn congelaBalizas;")(E, gBal, BAL);
-  colocar(1); f(); render(escena);
+  const gBal = api.grupo(), BAL = api.balizas();
+  Estado.exag = 1; api.colocaBalizas(); render(escena);
   assert.ok(!gBal.matrixAutoUpdate && BAL.every(g => !g.matrixAutoUpdate && !g.children[0].matrixAutoUpdate && g.userData.rombo.matrixAutoUpdate && g.userData.anillo.matrixAutoUpdate));
   for (const e of EXAG) {
-    colocar(e); f();
+    Estado.exag = e; api.colocaBalizas();
     BAL.forEach((g, i) => { g.userData.rombo.rotation.y += 0.7; g.userData.rombo.position.y = 27.5 + Math.sin(i + e); g.userData.anillo.scale.setScalar(1 + 0.12 * Math.sin(i * 2)); });
     render(escena);
     BAL.forEach((g, i) => {
       assert.ok(Math.abs(g.userData.rombo.matrixWorld.elements[13] - (3 * e + 27.5 + Math.sin(i + e))) < 1e-9, "el rombo sube y baja sobre su baliza, exag " + e);
       assert.ok(Math.abs(g.userData.anillo.matrixWorld.elements[0] - (1 + 0.12 * Math.sin(i * 2))) < 1e-9, "el anillo late");
-      assert.ok(Math.abs(g.children[0].matrixWorld.elements[12] - 10 * i) < 1e-9 && Math.abs(g.children[0].matrixWorld.elements[13] - 3 * e) < 1e-9, "la columna sigue a la baliza");
+      assert.ok(Math.abs(g.children[0].matrixWorld.elements[12] - 10 * i) < 1e-9 && Math.abs(g.children[0].matrixWorld.elements[13] - (3 * e + 13)) < 1e-9, "la columna (a 13 m de su pie) sigue a la baliza");
     });
   }
 });
@@ -186,23 +189,23 @@ const motores = () => fs.readdirSync(MOTOR).filter(f => f.endsWith(".js"));
 test("inventario: congelan exactamente los ficheros registrados aquí (uno nuevo hay que añadirlo, con su motivo) y cada uno recoloca con congela tras colocar", () => {
   const usan = motores().filter(f => f !== "02j_estaticos.js" && /Estaticos\.congela\(/.test(sinComentarios(require("./_fuente").fuenteMotor(f)))).sort();
   assert.deepStrictEqual(usan, Object.keys(CONGELAN).sort());
-  const S = f => sinComentarios(lee("apps/web/motor/" + f));
+  const S = f => sinComentarios(fuenteMotor(f));
   assert.match(S("18_paisaje.js"), /Estaticos\.congela\(gPaisaje\);[\s\S]{0,200}sombrasSol\(true\)/, "colocaPaisaje congela el paisaje antes de las sombras");
   assert.ok(S("18_paisaje.js").indexOf("Estaticos.congela(gPaisaje)") > S("18_paisaje.js").indexOf("esferaSegura(geoCable)"), "después de escribir vértices e instancias");
-  assert.match(S("05_nube.js"), /function exagNube\(\) \{[^}]*Estaticos\.congela\(m\)/, "exagNube recoloca y congela de nuevo");
-  assert.match(S("19_balizas.js"), /function colocaBalizas\(\) \{[\s\S]{0,260}\}\); congelaBalizas\(\); refrescaBalizas\(\)/, "colocaBalizas congela tras colocar");
+  assert.match(S("05_nube.js"), /function exagNube\(\)(?:: void)? \{[^}]*Estaticos\.congela\(m\)/, "exagNube recoloca y congela de nuevo");
+  assert.match(S("19_balizas.js"), /function colocaBalizas\(\)(?:: void)? \{[\s\S]{0,400}\}\); congelaBalizas\(\); refrescaBalizas\(\)/, "colocaBalizas congela tras colocar");
 });
 
 test("inventario: lo que ya iba congelado a mano sigue así, y lo que se queda en automático existe y no se congela", () => {
   // A3-1b: 04e es un talón; su malla vive en apps/web/src/mundos/exterior/suelo-fondo.ts
-  const MIGRADOS = { "04b_escena3d.js": "apps/web/src/mundos/exterior/escena-tiles.ts", "04e_suelo_fondo.js": "apps/web/src/mundos/exterior/suelo-fondo.ts" };
+  const MIGRADOS = { "04b_escena3d.js": "apps/web/src/mundos/exterior/escena-tiles.ts", "04e_suelo_fondo.js": "apps/web/src/mundos/exterior/suelo-fondo.ts", "44_lindes.js": "apps/web/src/mundos/exterior/lindes.ts" };   // A3-3: 44 también
   for (const f of Object.keys(YA_ESTATICOS)) assert.match(sinComentarios(lee(MIGRADOS[f] || "apps/web/motor/" + f)), /matrixAutoUpdate = false/, f + ": sigue con matrixAutoUpdate = false");
   for (const k of Object.keys(AUTOMATICO)) {
     const f = k.split("#")[0]; assert.ok(fs.existsSync(path.join(MOTOR, f)), f + ": existe");
-    if (!(f in CONGELAN)) assert.ok(!/Estaticos\.congela\(|matrixAutoUpdate = false/.test(sinComentarios(lee("apps/web/motor/" + f))), f + ": se queda en automático, no se congela");
+    if (!(f in CONGELAN)) assert.ok(!/Estaticos\.congela\(|matrixAutoUpdate = false/.test(sinComentarios(fuenteMotor(f))), f + ": se queda en automático, no se congela");
   }
   // nada de lo que se mueve se congela por descuido: el rombo y el anillo de las balizas van en la lista de excepciones
-  assert.match(sinComentarios(lee("apps/web/motor/19_balizas.js")), /mov\.push\(g\.userData\.rombo, g\.userData\.anillo\)/);
+  assert.match(sinComentarios(fuenteMotor("19_balizas.js")), /mov\.push\(g\.userData\.rombo, g\.userData\.anillo\)/);
   // lo que 3d-tiles-renderer gestiona no se toca desde Estaticos
   assert.ok(!/Estaticos\.congela\([^)]*tiles/.test(sinComentarios(require("./_fuente").fuenteMotor("04b_escena3d.js"))));
 });

@@ -45,7 +45,7 @@ export const MATERIAL_PIEDRAS = "piedras";
 /** lo que pide cada uno: su parche de siempre (parcheMata o parchePiedra de creaHierba, que cierran sobre los uniformes del viento y de la sombra) y, las matas, el atlas */
 export interface OpcMatas { map: A; parche: (sh: A) => void; u?: { uSombra: A; uViento: A } }
 export interface OpcPiedras { parche: (sh: A) => void; u?: { uSombra: A; uViento: A } }
-// MU5-n, tercer commit: las variantes TSL, APAGADAS (solo con el WebGPURenderer, MU6) y PARCIALES (MATERIALES §10). Construyen su NodeMaterial con sus nodos (lo
+// MU5-n, tercer commit: las variantes TSL, APAGADAS (solo con el WebGPURenderer, MU6) y PARCIALES (MATERIALES §11). Construyen su NodeMaterial con sus nodos (lo
 // prueba Vitest con three/webgpu de verdad); NO se han compilado ni dibujado y NO son equivalentes: las capturas son de MU6. Los uniformes, los MISMOS objetos.
 //   · matas: el atlas por instancia (aTile), el pie más oscuro, el fundido por trama con la distancia (maskNode), el recorte alfa del atlas, el vaivén del viento
 //     (positionNode) y la sombra de nubes y la escarcha tras la luz (los nodos de parcheTiempo, en la posición del mundo);

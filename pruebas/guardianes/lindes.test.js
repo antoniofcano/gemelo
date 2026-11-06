@@ -13,10 +13,9 @@ const fc = require("fast-check");
 const { RAIZ, fs, path, lee } = require("./_util");
 const { conFabrica } = require("./_materiales");   // Materiales e InfoDibujo (02h/02i, F1) en el contexto del módulo
 
-const FUENTE = lee("apps/web/motor/44_lindes.js");
-const trozo = (ini, fin) => { const i = FUENTE.indexOf(ini), f = FUENTE.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini); return FUENTE.slice(i, f); };
-const PURO = trozo("// [puro:inicio]", "// [puro:fin]"), MOTOR = trozo("// [motor:inicio]", "// [motor:fin]");
-const P = new Function("\"use strict\";\n" + PURO + "\nreturn LindesPuro;")();
+// A3-3: 44_lindes es un talón; LindesPuro y el componente viven en apps/web/src/mundos/exterior/lindes.ts y aquí corre ESE código (Mundos, de _mundos.js), no un trozo de texto
+const Mundos = require("./_mundos"), { fuenteMotor } = require("./_fuente");
+const FUENTE = fuenteMotor("44_lindes.js"), P = Mundos.LindesPuro;
 
 const TS = 256;
 const cuadro = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]];
@@ -177,10 +176,9 @@ function entorno({ hazas = [], falla = false } = {}) {
     Componentes: { libera: id => reg.libera.push(id) }, window: {}, console: { log: (...a) => reg.consola.push(a), warn: (...a) => reg.consola.push(a), error: (...a) => reg.consola.push(a) },
   };
   conFabrica(env);
-  const nombres = Object.keys(env);
-  const crea = new Function(...nombres, "\"use strict\";\n" + PURO + MOTOR + "\nreturn { LindesMotor: LindesMotor, pon: function (k, v) { eval(k + ' = v'); } };");
   // exag es un campo de Estado que cambia el deslizador (A1-13): pon("Estado.exag", v) lo cambia
-  const fuera = crea(...nombres.map(n => env[n]));
+  const motor = Mundos.creaLindes({ THREE, Mundo: env.Mundo, suelo: env.suelo, Estado: env.Estado, gLinde: env.gLinde, Materiales: env.Materiales, Hazas: env.Hazas, Minimapa: env.Minimapa, Componentes: env.Componentes, ventana: env.window });
+  const fuera = { LindesMotor: motor.LindesMotor, pon: (k, v) => { if (k !== "Estado.exag") throw new Error(k); env.Estado.exag = v; } };
   const limpia = [], n = { on: (ev, fn) => { (reg.oyentes[ev] = reg.oyentes[ev] || []).push(fn); return () => {}; }, limpia: fn => { limpia.push(fn); return fn; } };
   const api = fuera.LindesMotor(n, () => lib);
   return { api, reg, env, n, limpia, carga: async () => { resuelve(); await new Promise(r => setTimeout(r, 5)); }, emite: (ev, d) => (reg.oyentes[ev] || []).forEach(fn => fn(d)), pon: fuera.pon };

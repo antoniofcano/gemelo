@@ -74,14 +74,14 @@ const BUCLE = {
   "src/mundos/exterior/arboles.ts": [["muestraTopeOlivos", "function muestraTopeOlivos("]],   // A3-2b: 07b es un talón de este módulo
   "30_mide.js": [["causasDelFotograma", "function causasDelFotograma("], ["bits", "function bits("], ["apuntaReparto", "function apuntaReparto("]],   // Q0g: la autopsia de los fotogramas lentos, cada fotograma medido
   "17_minimapa.js": [["actualizaRastro", "function actualizaRastro("]],
-  "19_balizas.js": [["firmaCambia", "function firmaCambia("]],
+  "src/mundos/exterior/balizas.ts": [["firmaCambia", "function firmaCambia("]],   // A3-3: 19_balizas es un talón de este módulo
   "25_perros.js": [["amenazaEn", "function amenazaEn("], ["actualizaPerros", "function actualizaPerros("], ["empacaPerros", "function empacaPerros("]],
   "02c_componentes.js": [["Bus.emite", "function emite(ev, datos)"], ["Reparto.pasa", "function pasa(i, q)"], ["Reparto.ini", "function ini(t)"]],   // Q0h: el reparto del JS por bloque, cada fotograma medido
   "src/nucleo/presupuesto.ts": [["VrPresupuesto.mueve", "function mueve("], ["VrControlPuro.decide", "function decide("], ["VrControlPuro.holgura", "function holgura("], ["VrControlPuro.escalaVr", "function escalaVr("], ["completa", "function completa("], ["nSube", "function nSube("]],   // Q0c-a y A1-12: cada fotograma en VR (antes en 02g_vr_presupuesto.js)
   "src/nucleo/mundos.ts": [["WorldManager.actualiza", "function actualiza("]],   // MU2-3: el gestor llama al mundo activo cada fotograma
   "src/mundos/exterior.ts": [["Exterior.actualiza", "actualiza(dt: number, t: number): void"]],   // MU2-3: el exterior recorre sus pasos cada fotograma
   "src/nucleo/bucle.ts": [["Bucle.corre", "function corre("], ["Bucle.recorre", "function recorre("]],   // MU2-3: la sublista de pasos del mundo activo, cada fotograma
-  "18_paisaje.js": [["distArroyo", "function distArroyo("], ["celdaArroyoDist", "function celdaArroyoDist("]],
+  "src/mundos/exterior/paisaje.ts": [["distArroyo", "function distArroyo("], ["celdaArroyoDist", "function celdaArroyoDist("]],   // A3-3: 18_paisaje es un talón de este módulo
   "16_vida.js": [["velPaseo", "function velPaseo("], ["giroPaseo", "function giroPaseo("], ["vidaPaseo", "function vidaPaseo("], ["dronMando", "function dronMando("],
     ["camaraDron", "function camaraDron("], ["vidaDron", "function vidaDron("], ["actualizaVida", "function actualizaVida("], ["emiteEstela", "e.emite = function"], ["angDifRad", "function angDifRad("]],
   // MU5-n (A3-4): lo de 15_tiempo.js vive en apps/web/src/mundos/exterior/tiempo-*.ts. `nivel(ms)` sí reserva su resultado (es la de siempre, para lo que no corre por fotograma): no está en la lista

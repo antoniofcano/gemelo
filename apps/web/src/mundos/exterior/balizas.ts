@@ -1,0 +1,363 @@
+// Las balizas del exterior (C7, I4; MU5-n, A3-3; antes apps/web/motor/19_balizas.js, que queda como talón): una por parcela, con lo que OlivarTrack sabe de ella; en el paseo, al
+// acercarte, sale su ficha. Componente «balizas-parcela» de los mundos ["exterior"], con un libera() que suelta de verdad. Mismo comportamiento que antes, sin cambio visible.
+// Los datos son los de la historia (la instantánea D.ot o, si la api responde, lo de hoy que lee el servidor: GET /api/ot/hoy).
+// Registra el tipo «baliza» en Entidades (C7; su dueño sigue llamándose «19_balizas», que es lo que ven el catálogo de entidades y sus pruebas) y publica window.__vrBalizas
+// (pruebas de VR: el pie de cada columna de luz). El texto de las fichas son datos de OlivarTrack y de otras personas (alias): nunca HTML sin escapar (esc) y el aviso del
+// minimapa va con textContent.
+//
+// Lo que cambia respecto a 19_balizas.js (hallazgo L2-05 de la auditoría de noviembre de 2026; el resto es el código de antes, movido):
+//   · libera(): quita el grupo de la escena y suelta de verdad las geometrías (columna, rombo, anillo de cada baliza) y los materiales (tres por baliza), quita el tipo «baliza»
+//     de Entidades, el oyente de la ficha, el aviso del minimapa (su DOM) y window.__vrBalizas, y esconde la ficha. monta() lo vuelve a poner todo, ya colocado, si el exterior
+//     reentra (las visitas se conservan: son de la sesión).
+// Del legado recibe por argumento lo que necesita (THREE, la parcela, el módulo de entidades, el Bus, el DOM…); no lee globales. Lo que otros módulos reescriben en el legado
+// (OT, VIVO, paseando, enQuad, tVida) entra como funciones que lo leen en cada uso.
+// Presupuesto (regla 6): una llamada por pieza (columna, rombo, anillo) y baliza; las cifras, de pruebas/presupuesto.json (las balizas de la finca).
+import type { Manifiesto } from "../../nucleo/componentes.ts";
+import type { DefMaterial, Materiales, MaterialMin } from "../../nucleo/materiales.ts";
+
+// three no trae tipos en el repo (como en suelo-fondo.ts): de él solo se toca lo mínimo, sin tiparlo
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type T3 = any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Cualquiera = any;
+
+export const ID_BALIZAS = "balizas-parcela";
+/** el color de cada estado de la baliza (hex sRGB): el que ve el rombo, el anillo, la columna y el minimapa */
+export const COLB: Record<string, number> = { alerta: 0xff4d3d, abierta: 0xffb02e, hecha: 0x35d07f, nada: 0x9aa4ad };
+export const PILL_TXT: Record<string, string> = { alerta: "Vigía pide una mirada", abierta: "Hay tareas abiertas", hecha: "Sin tareas abiertas", nada: "Sin datos de tareas" };
+export const BBCH_TXT: Record<number, string> = { 7: "desarrollo del fruto", 8: "maduración del fruto", 6: "floración", 5: "aparición de la inflorescencia", 1: "desarrollo de las hojas", 0: "reposo y brotación", 9: "senescencia y reposo" };
+
+export interface ParcelaBal { id: string; nombre: string; ha: number; centro: number[]; linde: unknown }
+// ---------------------------------------------------------------- el material de la columna (MU5-n: por la fábrica, con su nombre de la tabla de MATERIALES §1, fila 18)
+/** el nombre del material en la fábrica: es también la clave de su variante TSL */
+export const MATERIAL_BALIZA = "baliza";
+/** los uniformes de una columna: el reloj de la vida (compartido por todas), el color de su estado (el MISMO objeto que tiñe el rombo y el anillo) y si pulsa (alerta de Vigía) */
+export interface UniformesBaliza { uT: { value: number }; uColor: { value: unknown }; uPulso: { value: number } }
+export const VS_BALIZA = "varying float vY; void main(){ vY = position.y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }";
+export const FS_BALIZA = "uniform float uT; uniform vec3 uColor; uniform float uPulso; varying float vY;\n" +
+  "void main(){ float t = clamp(vY / 26.0 + 0.5, 0.0, 1.0); float a = (0.42 * (1.0 - t) + 0.04) * (0.8 + 0.2 * sin(uT * 3.0 + uPulso * 6.0 * t)) * (1.0 + uPulso * 0.5 * sin(uT * 7.0)); gl_FragColor = vec4(uColor, clamp(a, 0.0, 0.7));\n#include <colorspace_fragment>\n}";
+/** lo que pide el material: los uniformes (los MISMOS objetos que mueve actualizaBalizas) y el estado de dibujo; los sombreadores van fijos */
+export interface OpcBaliza { uniforms: UniformesBaliza; transparent: boolean; depthWrite: boolean; side: number; blending: number; fog: boolean }
+/** el ShaderMaterial de siempre: aditivo, transparente, de dos caras, sin escribir profundidad ni niebla */
+export const DEF_BALIZA: DefMaterial<OpcBaliza> = {
+  clasico: function (o, c) {
+    const Sombreador = c.THREE["ShaderMaterial"] as new (opc: unknown) => MaterialMin;
+    return new Sombreador({ ...o, vertexShader: VS_BALIZA, fragmentShader: FS_BALIZA });
+  },
+  // MU5-n, tercer commit: la variante TSL, APAGADA (solo con el WebGPURenderer, que hasta MU6 no existe; nadie la usa hoy). El mismo cálculo que el fragmento (la columna que se
+  // apaga hacia arriba, el latido con uT y el pulso de la alerta) escrito en nodos, con los MISMOS uniformes que mueve actualizaBalizas (se releen en cada objeto, como el
+  // ejemplo de la fábrica; el color es el mismo objeto que tiñe el rombo y el anillo), la altura de la columna de positionLocal.y y el estado de dibujo del clásico (aditivo,
+  // transparente, dos caras, sin profundidad, sin niebla ni tonemapping). NO se ha comparado con el clásico dibujado (las capturas son de MU6): es la misma cuenta, no una equivalencia comprobada
+  tsl: function (o, c) {
+    const Basico = c.THREE["MeshBasicNodeMaterial"] as new (opc: unknown) => MaterialMin & { colorNode: unknown };
+    const { uniform, vec4, sin, clamp, positionLocal } = c.TSL as Record<string, any>;   // eslint-disable-line @typescript-eslint/no-explicit-any
+    const u = o.uniforms;
+    const uT = uniform(0).onObjectUpdate(function () { return u.uT.value; }), uPulso = uniform(0).onObjectUpdate(function () { return u.uPulso.value; });
+    const uColor = uniform(u.uColor.value).onObjectUpdate(function () { return u.uColor.value; });
+    const t = clamp(positionLocal.y.div(26.0).add(0.5), 0.0, 1.0);
+    const a = t.oneMinus().mul(0.42).add(0.04).mul(uT.mul(3.0).add(uPulso.mul(6.0).mul(t)).sin().mul(0.2).add(0.8)).mul(uPulso.mul(0.5).mul(sin(uT.mul(7.0))).add(1.0));
+    const m = new Basico({ transparent: o.transparent, depthWrite: o.depthWrite, side: o.side, blending: o.blending, fog: false, toneMapped: false });
+    m.colorNode = vec4(uColor, clamp(a, 0.0, 0.7));
+    return m;
+  }
+};
+
+export interface DepsBalizas {
+  THREE: T3;
+  /** 01_datos: el elemento por id (la ficha #baliza) */
+  $(id: string): Cualquiera;
+  suelo(x: number, y: number): number;
+  bus: { emite(ev: string, datos?: unknown): number };
+  /** 02e_entidades: el registro de entidades y la cercanía de lo usable */
+  Entidades: { registra(def: Cualquiera): (() => void) | null; lista(tipo: string): unknown };
+  Usables: { cercano(): { id: string } | null | undefined };
+  Materiales: Materiales;
+  Estaticos: { congela(o: unknown, ...resto: unknown[]): void };
+  /** 03_escena: el visor (donde cuelga el aviso del minimapa), la escena, la cámara y la exageración */
+  visor: { appendChild(e: unknown): void } | null;
+  scene: { add(o: unknown): void; remove(o: unknown): void };
+  camera: Cualquiera;
+  Estado: { exag: number };
+  /** 09_camara: el objetivo de la órbita */
+  objetivo: { x: number; z: number };
+  /** 12_paseo: paseando (una primitiva que reescribe) y pp (la posición de quien pasea) */
+  paseando(): boolean;
+  pp: { x: number; y: number };
+  Llegada: { ve(x: number, y: number, ang: number): boolean };
+  /** 13_parcelas y 13b_hazas */
+  parcelas: ParcelaBal[];
+  HazasPuro: { dentroPoligono: unknown };
+  /** 14_historia: OT (la instantánea o lo de hoy; se reasigna) y VIVO (lo que lee la api) */
+  OT(): Cualquiera;
+  VIVO(): Cualquiera;
+  /** el origen de la instantánea de fábrica: D.ot */
+  D: { ot?: unknown };
+  /** 15_tiempo: formato de un número y escape de HTML; 16_vida: el reloj de la vida y si va en quad; 24_pantalla: el aterrizaje; 26_presencia; 29_vr */
+  num1(v: number, d: number): string;
+  esc(s: unknown): string;
+  tVida(): number;
+  enQuad(): boolean;
+  /** 24_pantalla (TR), 26_presencia (Encuentro, sitioJunto) y 29_vr (VRX) se montan DESPUÉS de este módulo: entran como funciones que los piden en cada uso */
+  TR(): { act: boolean; t: number; tCae: number };
+  Encuentro(): { enParcela(gente: unknown, linde: unknown, dentro: unknown): string[] | null; BALIZA: unknown };
+  sitioJunto(c: { x: number; y: number }, desde: { x: number; y: number }, r: unknown, d: number): { x: number; y: number; ang: number };
+  VRX(): { on: boolean };
+  /** el documento (para el aviso del minimapa) y la ventana (para window.__vrBalizas) */
+  documento: Cualquiera;
+  ventana: Record<string, unknown>;
+}
+
+export function creaBalizas(d: DepsBalizas) {
+  const THREE = d.THREE, Estado = d.Estado, suelo = d.suelo, $ = d.$, parcelas = d.parcelas, esc = d.esc, num1 = d.num1, ventana = d.ventana;
+  d.Materiales.define(MATERIAL_BALIZA, DEF_BALIZA);
+  const materiales = d.Materiales.de(ID_BALIZAS);   // lo que cree este componente se libera con su libera()
+  const uBaliza = { uT: { value: 0 } };   // el reloj de las columnas: el MISMO objeto en los uniformes de todas
+  let gBal: T3 = null, BAL: T3[] = [], montado = false, colocado = false, quitaEnt: (() => void) | null = null, alClick: ((e: Cualquiera) => void) | null = null;
+  let balCerca = -1, balVisitas = 0, balCerrada = -1, balForzada = -1, balSigOk = false, balSigF: unknown, balSigI = false, balSigV: unknown = "";   // cerrada: la × la quitó hasta alejarse; forzada: abierta al tocarla
+  let avisoB: Cualquiera = null, tBal = 0, ultFicha = -2;
+  const balV1 = new THREE.Vector3(), balV2 = new THREE.Vector3(), balW0 = new THREE.Vector3();
+
+  /** crea las balizas (una por parcela) y las pone en la escena; idempotente. El componente lo llama al montarse. */
+  function monta(): void {
+    if (montado) return;
+    montado = true;
+    gBal = new THREE.Group(); gBal.name = "balizas"; d.scene.add(gBal);
+    BAL = parcelas.map(function (_pr, k) {
+      const col = new THREE.Color(COLB["nada"]), g = new THREE.Group();
+      const uni: UniformesBaliza = { uT: uBaliza.uT, uColor: { value: col }, uPulso: { value: 0 } };
+      const mat = materiales.crea(MATERIAL_BALIZA, { uniforms: uni, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false } as OpcBaliza) as T3;
+      const col3 = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.8, 26, 14, 1, true), mat); col3.position.y = 13; g.add(col3);
+      const rombo = new THREE.Mesh(new THREE.OctahedronGeometry(1.05), materiales.estandar("MeshBasicMaterial", { color: col, fog: false })); rombo.position.y = 27.5; g.add(rombo);
+      const anillo = new THREE.Mesh(new THREE.RingGeometry(1.7, 2.2, 36), materiales.estandar("MeshBasicMaterial", { color: col, transparent: true, forceSinglePass: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false, fog: false })); anillo.rotation.x = -Math.PI / 2; anillo.position.y = 0.2; g.add(anillo);   // forceSinglePass: desde r150 lo transparente de dos caras se dibuja en dos pasadas (una llamada más); un anillo plano no lo necesita
+      g.userData = { k: k, mat: mat, uni: uni, col: col, rombo: rombo, anillo: anillo, estado: "nada", visita: false };
+      gBal.add(g); return g;
+    });
+    // la × de la ficha y tocar una baliza: cerrarla la esconde hasta alejarse; tocar la columna de luz la vuelve a abrir (en el paseo y en la órbita)
+    alClick = function (e: Cualquiera): void {
+      const ib = e.target.closest && e.target.closest(".ir-baliza");
+      if (ib) { irABaliza(Number(ib.getAttribute("data-k"))); return; }
+      if (!e.target.closest || !e.target.closest(".cerrar-baliza")) return;
+      cierraBaliza();
+    };
+    $("baliza").addEventListener("click", alClick);
+    registraEntidad();
+    ventana["__vrBalizas"] = function () { return BAL.map(function (g) { return g.position.toArray(); }); };   // el pie de cada columna de luz (pruebas, I5)
+    if (colocado) colocaBalizas();   // un monta() posterior a liberar: vuelve a su sitio sin esperar a que cambie la exageración
+  }
+
+  function nombreParcelaIA(x: unknown): string { return String(x || "").toLowerCase(); }
+  function vigiaMarca(pr: ParcelaBal): Cualquiera {
+    const VIVO = d.VIVO(), v = VIVO && VIVO.vigia; if (!v) return null; const m = nombreParcelaIA(pr.nombre);
+    const r = v.filter(function (x: Cualquiera) { const n = nombreParcelaIA(x.parcela); return n && (n === m || n.indexOf(m) >= 0 || m.indexOf(n) >= 0); }); return r.length ? r[0] : null;
+  }
+  function datosBal(k: number): Cualquiera {
+    const pr = parcelas[k]!, OT = d.OT(), dd = (OT && OT.parcelas && OT.parcelas[pr.id]) || { tareas: [], fenologia: [] }, vg = vigiaMarca(pr);
+    const abiertas = (dd.tareas || []).filter(function (t: Cualquiera) { return t.estado !== "completado" && t.estado !== "cancelado" && t.estado !== "anulado"; });
+    const hechas = (dd.tareas || []).filter(function (t: Cualquiera) { return t.estado === "completado"; }).sort(function (a: Cualquiera, b: Cualquiera) { return String(b.fecha).localeCompare(String(a.fecha)); });
+    const estado = vg ? "alerta" : abiertas.length ? "abierta" : hechas.length ? "hecha" : "nada";
+    return { pr: pr, abiertas: abiertas, hechas: hechas, fen: (dd.fenologia || []).slice().sort(function (a: Cualquiera, b: Cualquiera) { return String(b.fecha).localeCompare(String(a.fecha)); })[0] || null, vg: vg, estado: estado };
+  }
+  function refrescaBalizas(): void {
+    BAL.forEach(function (g) {
+      const u = g.userData, dd = datosBal(u.k); u.estado = dd.estado; u.col.setHex(COLB[dd.estado]); u.rombo.material.color.setHex(COLB[dd.estado]); u.anillo.material.color.setHex(COLB[dd.estado]); u.uni.uPulso.value = dd.estado === "alerta" ? 1 : 0;
+    });
+  }
+  function colocaBalizas(): void {
+    if (!montado) return;
+    colocado = true;
+    BAL.forEach(function (g) { const pr = parcelas[g.userData.k]!; g.position.set(pr.centro[0], suelo(pr.centro[0]!, pr.centro[1]!) * Estado.exag, -pr.centro[1]!); }); congelaBalizas(); refrescaBalizas();
+  }
+  // AG-1.15: la baliza (grupo y columna) queda quieta tras colocarla; el rombo (gira y sube y baja) y el anillo (late) se mueven cada fotograma y siguen en automático
+  function congelaBalizas(): void { const mov: T3[] = []; BAL.forEach(function (g) { mov.push(g.userData.rombo, g.userData.anillo); }); d.Estaticos.congela(gBal, mov); }
+  function fuenteBal(): string { const OT = d.OT(), fch = OT && OT.fecha_consulta ? String(OT.fecha_consulta).slice(8, 10) + "/" + String(OT.fecha_consulta).slice(5, 7) : "?"; return OT && OT.fuente === "vivo" ? "OlivarTrack, leído en vivo el " + fch : "OlivarTrack, instantánea del " + fch; }
+  function fichaBal(k: number): string {
+    const dd = datosBal(k), pr = dd.pr; let h = '<button type="button" class="cerrar-baliza" aria-label="Cerrar la ficha de la parcela">×</button>';
+    const pill = [PILL_TXT[dd.estado], dd.estado];
+    h += '<div class="b-cab"><strong>' + esc(pr.nombre) + '</strong><span class="b-pill e-' + pill[1] + '">' + pill[0] + "</span></div>";
+    h += '<p class="b-sub">' + num1(pr.ha, 1) + " ha</p>";
+    if (dd.vg) h += '<p class="b-aviso">Vigía marca esta parcela hoy (' + esc(dd.vg.gravedad || "pide una mirada") + "). Es relativo y sin calibrar: sirve para decidir dónde mirar, no para decir que algo está enfermo.</p>";
+    if (dd.abiertas.length) h += "<h4>Abiertas</h4><ul>" + dd.abiertas.slice(0, 3).map(function (t: Cualquiera) { return "<li>" + esc(t.titulo) + ' <span class="b-n">' + (t.avance != null ? num1(t.avance, 0) + " %" : t.estado) + "</span></li>"; }).join("") + "</ul>";
+    if (dd.hechas.length) h += "<h4>Hecho hace poco</h4><ul>" + dd.hechas.slice(0, 2).map(function (t: Cualquiera) { return "<li>" + esc(t.titulo) + ' <span class="b-n">' + esc(String(t.fecha).slice(8, 10) + "/" + String(t.fecha).slice(5, 7)) + (t.andados != null && t.objetivo ? " · " + t.andados + " de " + t.objetivo + " olivos" : "") + "</span></li>"; }).join("") + "</ul>";
+    if (dd.fen) h += '<h4>Fenología</h4><p class="b-sub">BBCH ' + dd.fen.bbch + " · " + (BBCH_TXT[Math.floor(dd.fen.bbch / 10)] || "") + " · " + esc(String(dd.fen.fecha).slice(8, 10) + "/" + String(dd.fen.fecha).slice(5, 7)) + "</p>";
+    const fuente = fuenteBal();
+    const gente = genteEnBaliza(k);   // I4: con la presencia compartida, quién está ahora en esta parcela; y el botón para ir
+    if (gente) h += '<p class="b-sub">' + (gente.length ? "Aquí están: " + gente.map(esc).join(", ") : "No hay nadie en esta parcela") + "</p>";
+    h += '<button type="button" class="ir-baliza" data-k="' + k + '">Ir a esta baliza</button>';
+    h += '<p class="b-pie">' + fuente + " · balizas visitadas " + balVisitas + " de " + BAL.length + (balVisitas === BAL.length ? " · inspección completa" : "") + "</p>";
+    return h;
+  }
+  function cierraBaliza(): void { balCerrada = balForzada >= 0 ? balForzada : balCerca; balForzada = -1; $("baliza").hidden = true; }
+  // ---- C7 (02e_entidades.js): las balizas como entidades, baliza:<id de la parcela>. Tocar su columna de luz (en pantalla, del pie a 27 m, a menos de 22 px;
+  // con el rayo de VR, del pie a 28,5 m, con un radio que crece con la distancia) la elige y abre su ficha en su propio recuadro (#baliza; en VR, la lámina con
+  // botones de 29_vr); al pasear, la cercanía de Usables (a menos de 17 m) abre la de la más cercana. Su ficha como datos (para VR y para usar «Ir a esta
+  // baliza»): estado, quién está, lo abierto, lo hecho, la fenología y la fuente; los alias van como texto (se pintan en un canvas, nunca HTML).
+  function idBal(k: number): string { return "baliza:" + parcelas[k]!.id; }
+  function balDe(id: string): number { for (let i = 0; i < BAL.length; i++) if (idBal(BAL[i].userData.k) === id) return i; return -1; }
+  function balizaAbierta(): number { const b = $("baliza"), ib = b && !b.hidden && b.querySelector(".ir-baliza"); return ib ? Number(ib.getAttribute("data-k")) : -1; }   // la k de la parcela con la ficha abierta, o -1
+  function fichaBalEnt(id: string): Cualquiera {
+    const i = balDe(id); if (i < 0) return null;
+    const k = BAL[i].userData.k, dd = datosBal(k), pr = dd.pr, l = [PILL_TXT[dd.estado] + " · " + num1(pr.ha, 1) + " ha"], dm = function (f: unknown) { return String(f).slice(8, 10) + "/" + String(f).slice(5, 7); };
+    if (dd.vg) l.push("Vigía la marca hoy (" + (dd.vg.gravedad || "pide una mirada") + "): relativo y sin calibrar, sirve para decidir dónde mirar.");
+    if (dd.abiertas.length) l.push("Abiertas: " + dd.abiertas.slice(0, 3).map(function (t: Cualquiera) { return t.titulo + (t.avance != null ? " (" + num1(t.avance, 0) + " %)" : ""); }).join("; "));
+    else if (dd.hechas.length) l.push("Hecho hace poco: " + dd.hechas[0].titulo + " (" + dm(dd.hechas[0].fecha) + ")");
+    if (dd.fen) l.push("Fenología: BBCH " + dd.fen.bbch + " · " + (BBCH_TXT[Math.floor(dd.fen.bbch / 10)] || "") + " · " + dm(dd.fen.fecha));
+    const gente = genteEnBaliza(k);
+    return { titulo: "Baliza · " + pr.nombre, color: COLB[dd.estado], gente: gente, destacado: gente ? (gente.length ? "Aquí están: " + gente.join(", ") : "No hay nadie en esta parcela") : null,
+      lineas: l, pie: fuenteBal() + " · visitadas " + balVisitas + " de " + BAL.length, acciones: [{ id: "bir", txt: "Ir a esta baliza", fn: function () { return irABaliza(k); } }] };
+  }
+  function balEnPantalla(cx: number, cy: number, r: Cualquiera): Cualquiera {   // ¿está el toque (cx, cy) sobre la columna de luz de alguna baliza (de su pie a 27 m de alto)?
+    const a = balV1, b = balV2; let mejor = -1, md = 22;
+    BAL.forEach(function (g, i) {
+      const pr = parcelas[g.userData.k]!, y0 = suelo(pr.centro[0]!, pr.centro[1]!) * Estado.exag;
+      a.set(pr.centro[0], y0, -pr.centro[1]!).project(d.camera); b.set(pr.centro[0], y0 + 27, -pr.centro[1]!).project(d.camera); if (a.z > 1 && b.z > 1) return;
+      const ax = (a.x * 0.5 + 0.5) * r.width + r.left, ay = (-a.y * 0.5 + 0.5) * r.height + r.top, bx = (b.x * 0.5 + 0.5) * r.width + r.left, by = (-b.y * 0.5 + 0.5) * r.height + r.top;
+      const vx = bx - ax, vy = by - ay, L = vx * vx + vy * vy || 1, t = Math.max(0, Math.min(1, ((cx - ax) * vx + (cy - ay) * vy) / L)), dd = Math.hypot(cx - (ax + t * vx), cy - (ay + t * vy));
+      if (dd < md) { md = dd; mejor = i; }
+    });
+    return mejor < 0 ? null : { id: idBal(BAL[mejor].userData.k), s: md / 22 };
+  }
+  function balEnRayo(rr: Cualquiera): Cualquiera {   // ¿apunta el rayo a la columna de luz de una baliza (del pie a 28,5 m)? el radio crece con la distancia
+    const o = rr.ray.origin, dr = rr.ray.direction, bb = dr.y, den = 1 - bb * bb; let mejor = null, ms = 1e9;
+    if (den < 1e-6) return null;
+    for (let i = 0; i < BAL.length; i++) {
+      const g = BAL[i].position; balW0.set(o.x - g.x, o.y - g.y, o.z - g.z);
+      const dw = dr.x * balW0.x + dr.y * balW0.y + dr.z * balW0.z, s = Math.max(0, Math.min(28.5, (balW0.y - bb * dw) / den));   // altura del punto más cercano en la columna
+      const t = (g.x - o.x) * dr.x + (g.y + s - o.y) * dr.y + (g.z - o.z) * dr.z; if (t < 0.5 || t > 2500) continue;
+      const dist = Math.hypot(o.x + dr.x * t - g.x, o.y + dr.y * t - g.y - s, o.z + dr.z * t - g.z), rad = Math.max(1.2, t * 0.012), sc = dist / rad;
+      if (sc < 1 && sc + t * 0.0005 < ms) { ms = sc + t * 0.0005; mejor = { id: idBal(BAL[i].userData.k), t: t, s: sc }; }
+    }
+    return mejor;
+  }
+  function registraEntidad(): void {
+    quitaEnt = d.Entidades.registra({ tipo: "baliza", dueno: "19_balizas", prioridad: 20, sinAnillo: true, pantalla: balEnPantalla, rayo: balEnRayo, ficha: fichaBalEnt,
+      cerca: function (x: number, y: number): Cualquiera {   // la más cercana a quien pasea (Usables decide si está a menos de radioCerca)
+        let mejor = -1, md = 1e9; BAL.forEach(function (g, i) { const pr = parcelas[g.userData.k]!, dd = Math.hypot(pr.centro[0]! - x, pr.centro[1]! - y); if (dd < md) { md = dd; mejor = i; } });
+        return mejor < 0 ? null : { id: idBal(BAL[mejor].userData.k), d: md };
+      }, radioCerca: 17,
+      existe: function (id: string): boolean { return balDe(id) >= 0; },
+      pos: function (id: string): Cualquiera { const i = balDe(id); return i < 0 ? null : { x: BAL[i].position.x, y: BAL[i].position.y, z: BAL[i].position.z }; },
+      muestra: function (id: string): boolean { const i = balDe(id); if (i < 0) return false; balCerrada = -1; balForzada = i; ultFicha = -2; return true; },   // en su recuadro (y en VR, la lámina de botones la recoge por abierta)
+      abierta: function (): Cualquiera { const k = balizaAbierta(); return k >= 0 && parcelas[k] ? idBal(k) : null; },
+      cierra: function (): void { cierraBaliza(); },
+      suelta: function (): void { balForzada = -1; } });   // al tocar otra cosa (olivo, suelo), la ficha forzada se suelta y vuelve la de cercanía
+  }
+  // ---- I4: las balizas como punto de encuentro. Quién está en la parcela (con ?presencia: los que se dibujan, dentro de su linde; null sin presencia),
+  // el aviso del minimapa («¿Ir a esta baliza?», con Ir y Cancelar) e ir: a 4-5,5 m de la columna, fuera de copas y troncos, mirándola (Llegada.ve)
+  function genteEnBaliza(k: number): string[] | null {   // las entidades «persona» (las registra la presencia compartida solo con ?presencia); sin ese tipo, null
+    const gente = d.Entidades.lista("persona"); if (!gente) return null;
+    return d.Encuentro().enParcela(gente, parcelas[k]!.linde, d.HazasPuro.dentroPoligono);
+  }
+  function irABaliza(k: number): boolean {
+    const pr = parcelas[k]; if (!pr) return false;
+    const desde = d.paseando() || d.VRX().on ? { x: d.pp.x, y: d.pp.y } : { x: d.objetivo.x, y: -d.objetivo.z };
+    const L = d.sitioJunto({ x: pr.centro[0]!, y: pr.centro[1]! }, desde, d.Encuentro().BALIZA, d.enQuad() && !d.VRX().on ? 1.05 : 0.55);
+    cierraAvisoBaliza(); balForzada = -1; balCerrada = -1;
+    return d.Llegada.ve(L.x, L.y, L.ang);
+  }
+  function textoAvisoBaliza(k: number): string {
+    const g = genteEnBaliza(k), pr = parcelas[k]!;
+    return "Parcela " + pr.nombre + " · " + (g === null ? "¿Ir a esta baliza?" : g.length ? "aquí están: " + g.join(", ") + ". ¿Ir a esta baliza?" : "No hay nadie en esta parcela. ¿Ir?");
+  }
+  function avisoBaliza(k: number): boolean {   // el aviso pequeño del minimapa; el texto va con textContent (los alias son de otras personas: nunca HTML)
+    const document = d.documento;
+    if (!avisoB) {
+      const raiz = document.createElement("div"), txt = document.createElement("p"), ir = document.createElement("button"), no = document.createElement("button");
+      raiz.setAttribute("role", "dialog"); raiz.setAttribute("aria-label", "Ir a la baliza"); raiz.hidden = true;
+      raiz.style.cssText = "position:absolute;left:12px;top:12px;z-index:31;max-width:min(300px,calc(100% - 24px));padding:10px;border-radius:12px;background:rgba(16,20,24,0.92);color:#fff;font:13px/1.35 system-ui,sans-serif;box-sizing:border-box";
+      txt.style.margin = "0 0 8px"; txt.id = "avisoBalTxt"; raiz.setAttribute("aria-describedby", "avisoBalTxt");
+      const bs = "font:inherit;color:inherit;border-radius:8px;padding:6px 14px;min-height:44px;min-width:44px;cursor:pointer;margin-right:8px;";
+      ir.type = "button"; ir.textContent = "Ir"; ir.style.cssText = bs + "background:rgba(64,240,255,0.22);border:1px solid rgba(64,240,255,0.7)";
+      no.type = "button"; no.textContent = "Cancelar"; no.style.cssText = bs + "background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.35)";
+      ir.addEventListener("click", function () { if (avisoB.k >= 0) irABaliza(avisoB.k); });
+      no.addEventListener("click", cierraAvisoBaliza);
+      raiz.addEventListener("keydown", function (e: Cualquiera) { e.stopPropagation(); if (e.key === "Escape") { cierraAvisoBaliza(); e.preventDefault(); } });   // las teclas no mueven al paseante
+      raiz.appendChild(txt); raiz.appendChild(ir); raiz.appendChild(no); (d.visor || document.body).appendChild(raiz);
+      avisoB = { raiz: raiz, txt: txt, ir: ir, k: -1, foco: null };
+    }
+    avisoB.k = k; avisoB.txt.textContent = textoAvisoBaliza(k); avisoB.foco = document.activeElement; avisoB.raiz.hidden = false;
+    try { avisoB.ir.focus({ preventScroll: true }); } catch (e) { /* sin foco */ }
+    return true;
+  }
+  function cierraAvisoBaliza(): void {
+    if (!avisoB || avisoB.raiz.hidden) return;
+    avisoB.raiz.hidden = true; avisoB.k = -1;
+    try { if (avisoB.foco && avisoB.foco.focus) avisoB.foco.focus({ preventScroll: true }); } catch (e) { /* sin foco */ }
+  }
+  function dibujaBalizasMini(c: Cualquiera, X: (v: number) => number, Y: (v: number) => number, pts?: Cualquiera[]): void {   // pts (opcional): ahí se apunta dónde cae cada rombo, para tocarlo (17_minimapa.js)
+    if (pts) pts.length = 0;
+    BAL.forEach(function (g) {
+      const pr = parcelas[g.userData.k]!, x = X(pr.centro[0]!), y = Y(pr.centro[1]!);
+      if (pts) pts.push({ k: g.userData.k, px: x, py: y });
+      c.fillStyle = "#" + ("000000" + COLB[g.userData.estado]!.toString(16)).slice(-6); c.strokeStyle = "#101418"; c.lineWidth = 1.2; c.beginPath(); c.moveTo(x, y - 6); c.lineTo(x + 4.5, y); c.lineTo(x, y + 6); c.lineTo(x - 4.5, y); c.closePath(); c.fill(); c.stroke();
+      if (g.userData.visita) { c.strokeStyle = "#ffffff"; c.lineWidth = 1.6; c.beginPath(); c.moveTo(x - 2, y); c.lineTo(x - 0.5, y + 2); c.lineTo(x + 2.5, y - 2); c.stroke(); }
+    });
+  }
+  // ¿cambió de dónde vienen los datos de las balizas (la fecha de la consulta, si son los de fábrica o los vivos, cuántos avisos de Vigía)? Antes se construía una cadena
+  // «fecha|i/v|n» cada fotograma y se comparaba; ahora se comparan los tres campos, sin cadenas (AG-1.4c). Recuerda lo último visto; el primer fotograma siempre cambia.
+  function firmaCambia(): boolean {
+    const OT = d.OT(), VIVO = d.VIVO(), f = OT && OT.fecha_consulta, i = OT === d.D.ot, v = VIVO ? (VIVO.vigia ? VIVO.vigia.length : "x") : "n";
+    if (balSigOk && f === balSigF && i === balSigI && v === balSigV) return false;
+    balSigOk = true; balSigF = f; balSigI = i; balSigV = v; return true;
+  }
+  function actualizaBalizas(dt: number): void {
+    if (!montado) return;
+    uBaliza.uT.value = d.tVida(); tBal += dt;
+    if (firmaCambia()) { refrescaBalizas(); ultFicha = -2; }
+    BAL.forEach(function (g, i) {
+      const u = g.userData; u.rombo.rotation.y += dt * 1.4; u.rombo.position.y = 27.5 + Math.sin(d.tVida() * 1.8 + i) * 0.5;
+      u.anillo.scale.setScalar(1 + 0.12 * Math.sin(d.tVida() * 3 + i * 2)); g.visible = true;
+    });
+    if (balForzada >= 0) { if (ultFicha !== balForzada || tBal > 2) { tBal = 0; ultFicha = balForzada; $("baliza").innerHTML = fichaBal(BAL[balForzada].userData.k); } $("baliza").hidden = false; return; }   // abierta al tocar su baliza
+    if (!d.paseando()) { $("baliza").hidden = true; balCerca = -1; return; }
+    const TR = d.TR(); if (TR.act && TR.t < TR.tCae + 0.4) { $("baliza").hidden = true; return; }   // la ficha espera a que el muñequito aterrice
+    const c = d.Usables.cercano(), mejor = c ? balDe(c.id) : -1;   // C7: la cercanía la lleva Usables (a pie, en quad o con el dron; a menos de 17 m)
+    const dentro = mejor >= 0;
+    if (dentro) {
+      if (!BAL[mejor].userData.visita) { BAL[mejor].userData.visita = true; balVisitas = BAL.filter(function (g) { return g.userData.visita; }).length; d.bus.emite("sonido:baliza", { completa: balVisitas === BAL.length }); ultFicha = -2; }
+      if (mejor !== ultFicha || tBal > 2) { tBal = 0; ultFicha = mejor; $("baliza").innerHTML = fichaBal(BAL[mejor].userData.k); }
+      $("baliza").hidden = mejor === balCerrada; balCerca = mejor;   // cerrada con la ×: no vuelve sola hasta que te alejes
+    } else { $("baliza").hidden = true; balCerca = -1; ultFicha = -2; balCerrada = -1; }
+  }
+
+  /** lo que suelta el componente al apagarse (L2-05): el grupo de la escena y todas sus geometrías y materiales, el tipo «baliza» de Entidades, el oyente de la ficha, el aviso
+   *  del minimapa (su DOM), window.__vrBalizas y la ficha abierta */
+  function libera(): void {
+    if (!montado) return;
+    if (quitaEnt) { quitaEnt(); quitaEnt = null; }
+    if (alClick) { $("baliza").removeEventListener("click", alClick); alClick = null; }
+    if (avisoB) { if (avisoB.raiz.parentNode) avisoB.raiz.parentNode.removeChild(avisoB.raiz); avisoB = null; }
+    try { delete ventana["__vrBalizas"]; } catch (e) { ventana["__vrBalizas"] = undefined; }
+    const ficha = $("baliza"); if (ficha) ficha.hidden = true;
+    d.scene.remove(gBal);
+    gBal.traverse(function (o: T3) { if (o.geometry) o.geometry.dispose(); });
+    materiales.libera();   // el ShaderMaterial de cada columna y los dos básicos de cada baliza
+    gBal = null; BAL = []; balCerca = -1; balCerrada = -1; balForzada = -1; ultFicha = -2; tBal = 0; balSigOk = false; montado = false;
+  }
+
+  monta();
+  return {
+    monta, libera, colocaBalizas, avisoBaliza, dibujaBalizasMini, actualizaBalizas, firmaCambia, materiales,
+    grupo: function (): T3 { return gBal; },
+    balizas: function (): T3[] { return BAL; },
+    visitas: function (): number { return balVisitas; },
+    resumen: function (): { balizas: number; visitadas: number; montado: boolean } { return { balizas: BAL.length, visitadas: balVisitas, montado }; },
+    uBaliza,
+  };
+}
+export type Balizas = ReturnType<typeof creaBalizas>;
+
+/** El manifiesto del componente «balizas-parcela»: el ciclo de vida de las balizas. El objeto que el motor usa es el mismo que monta (lo crea el legado al cargarse:
+ *  08_marcadores, 17_minimapa y 90_final lo nombran). Se monta de nuevo (monta()) si el exterior se libera y vuelve a entrar. */
+export function manifiestoBalizas(balizas: Balizas): Manifiesto {
+  return {
+    id: ID_BALIZAS, version: 1,
+    consume: ["Materiales", "Estaticos", "Entidades", "Usables", "OT", "VIVO", "paseando", "pp", "objetivo", "Llegada", "TR", "VRX", "Encuentro", "sitioJunto", "tVida", "enQuad"],
+    expone: [],
+    eventos: { escucha: [], emite: ["sonido:baliza"] },
+    bandera: { defecto: true },
+    presupuesto: { llamadas: 0, triangulos: 0 },   // solo ciclo de vida: lo que dibuja (3 llamadas por baliza) lo cuenta pruebas/presupuesto.json
+    mundos: ["exterior"],
+    monta: function () { balizas.monta(); return balizas; },
+    libera: function (api) { if (api) (api as Balizas).libera(); }
+  };
+}

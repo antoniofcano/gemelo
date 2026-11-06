@@ -49,6 +49,19 @@ export type { Catalogo, DepsCatalogo, Pieza as PiezaCatalogo } from "./exterior/
 export { Escalera, GeneradosPuro } from "./exterior/generados-escalera.ts";
 export { creaGenerados, manifiestoGenerados, ID_GENERADOS } from "./exterior/generados.ts";
 export type { DepsGenerados, Generados } from "./exterior/generados.ts";
+// A3-3 (MU5-n): la nube y el paisaje del exterior (la nube LiDAR, el paisaje, las balizas, las lindes, los carteles y las decoraciones), componentes con su libera() de verdad.
+export { ALTO_MAX, MATERIAL_NUBE, NIV_NUBE, NubePuro, PRESUPUESTO_NUBE, creaNube, manifiestoNube } from "./exterior/nube.ts";
+export type { DepsNube, Nube } from "./exterior/nube.ts";
+export { ID_PAISAJE, creaPaisaje, manifiestoPaisaje } from "./exterior/paisaje.ts";
+export type { DatosPaisaje, DepsPaisaje, Paisaje } from "./exterior/paisaje.ts";
+export { COLB, ID_BALIZAS, creaBalizas, manifiestoBalizas } from "./exterior/balizas.ts";
+export type { Balizas, DepsBalizas } from "./exterior/balizas.ts";
+export { ID_LINDES, LindesPuro, creaLindes, manifiestoLindes } from "./exterior/lindes.ts";
+export type { DepsLindes, EstadoLindes, LibLineas } from "./exterior/lindes.ts";
+export { CartelesPuro, ID_CARTELES, creaCarteles, manifiestoCarteles } from "./exterior/carteles.ts";
+export type { DepsCarteles } from "./exterior/carteles.ts";
+export { DecoracionesPuro, ID_DECORACIONES, creaDecoraciones, decoracionesGeometria, manifiestoDecoraciones } from "./exterior/decoraciones.ts";
+export type { DepsDecoraciones, EstadoDecoraciones, UtilesGeometria } from "./exterior/decoraciones.ts";
 // A3-4 (MU5-n): el cielo, el tiempo y el suelo del exterior, componentes con su libera() de verdad.
 export { creaTiempo, creaTiempoVivo, manifiestoTiempo, ID_TIEMPO } from "./exterior/tiempo.ts";
 export type { DepsTiempo, Tiempo } from "./exterior/tiempo.ts";

@@ -35,8 +35,15 @@ function compara(titulo, n, hazAntes, hazAhora) {
     for (let c = 0; c < 7; c++) { let x = (s() - 0.5) * 1200, y = (s() - 0.5) * 1200, an = s() * 6; for (let i = 0; i < 150; i++) { E.push([x, y]); an += (s() - 0.5) * 0.5; x += Math.cos(an) * 8; y += Math.sin(an) * 8; } }
     const pts = []; for (let i = 0; i < 4096; i++) pts.push([(s() - 0.5) * 1400, (s() - 0.5) * 1400]);
     const antes = () => { const f = function (x, y) { var m = 1e9; for (var i = 0; i < E.length; i += 2) { var d = Math.hypot(E[i][0] - x, E[i][1] - y); if (d < m) m = d; } return m; }; return (i) => f(pts[i & 4095][0], pts[i & 4095][1]); };
-    const src = lee("apps/web/motor/18_paisaje.js"), a = src.indexOf("var ejeCel = 64"), b = src.indexOf("function distArroyo("), cu = R.cuerpo(src, "function distArroyo(");
-    const ahora = () => { const f = new Function("ejeArroyo", src.slice(a, b + src.slice(b).indexOf(cu) + cu.length + 1) + "\nreturn distArroyo;")(E); return (i) => f(pts[i & 4095][0], pts[i & 4095][1]); };
+    // A3-3: 18_paisaje es un talón; distArroyo vive en apps/web/src/mundos/exterior/paisaje.ts (se mide el de verdad: Mundos.creaPaisaje con un único cauce, la lista plana)
+    const ahora = () => {
+      const f = require("./guardianes/_mundos").creaPaisaje({
+        THREE, D: { paisaje: { edificios: [], tendido: { linea: [], postes: [] }, arroyo: { ejes: [E] }, arboles: [] } }, $: () => null, ESC_R8: 1, suelo: () => 0, copas: [], hash: () => 0,
+        SRGB: THREE.SRGBColorSpace, Estado: { exag: 1 }, Estaticos: { congela() {} }, Materiales: require("./guardianes/_materiales").fabrica(THREE).Materiales, scene: new THREE.Scene(), gSombras: new THREE.Group(),
+        matSombra: { opacity: 1 }, geoSombra: null, instSombra: () => null, tMundo: () => 0, cur: { ms: 0, nub: 0, lluvia: 0 }, nivelEn: s => s, EST: () => ({ activa: false, clima: null })
+      }).distArroyo;
+      return (i) => f(pts[i & 4095][0], pts[i & 4095][1]);
+    };
     compara("1 distArroyo (" + E.length + " puntos, la mitad cuenta)", 20000, antes, ahora);
   }
 

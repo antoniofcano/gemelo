@@ -1,5 +1,5 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: Mundo, suelo, copaAlta, kcor, desp, tinte, aviva, colorEn, copas, cIn, marc, med
+// Expone: Mundo, suelo, copaAlta, kcor, tinte, aviva, colorEn, copas, cIn, marc, med
 // Consume: 01_datos (D, b64, i16, RES), 01a_aparato (Aparato), 02b_cola (ColaExt), 10_ndvi (rampa, ndviRel)
 // ===============================================================================
   // ---------- el mundo: teselas de 256 m con relieve, copa, color del suelo, nube y ortofoto. Todo lo demás pregunta aquí (suelo, copaAlta, colorSuelo, orto).

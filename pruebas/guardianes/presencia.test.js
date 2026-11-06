@@ -302,9 +302,9 @@ test("balizas (I4): quién está en una parcela, por su linde (HazasPuro.dentroP
   assert.deepStrictEqual(Encuentro.enParcela([], linde, HazasPuro.dentroPoligono), []);
   assert.deepStrictEqual(Encuentro.enParcela(null, linde, HazasPuro.dentroPoligono), []);
   // los de vista aérea y los bloqueados no llegan aquí: enParcela recibe las entidades «persona», que son los puntos de la presencia, que ya los quita (seVe; prueba de SalaPose.seVe en presencia_red.test.js)
-  const B = lee("apps/web/motor/19_balizas.js");
-  assert.match(B, /return Encuentro\.enParcela\(gente, parcelas\[k\]\.linde, HazasPuro\.dentroPoligono\);/, "la lista sale de las entidades «persona»");
-  assert.match(B, /var gente = Entidades\.lista\("persona"\); if \(!gente\) return null;/, "sin presencia (sin tipo «persona»), no hay lista (el aviso solo pregunta)");
+  const B = require("./_fuente").fuenteMotor("19_balizas.js");   // A3-3: 19_balizas es un talón; su código está en balizas.ts
+  assert.match(B, /return d\.Encuentro\(\)\.enParcela\(gente, parcelas\[k\]!\.linde, d\.HazasPuro\.dentroPoligono\);/, "la lista sale de las entidades «persona»");
+  assert.match(B, /const gente = d\.Entidades\.lista\("persona"\); if \(!gente\) return null;/, "sin presencia (sin tipo «persona»), no hay lista (el aviso solo pregunta)");
   assert.match(lee("apps/web/motor/38_presencia_compartida.js"), /lista: function \(\) \{ return puntos\(\)\.map\(/, "la lista del tipo «persona» son los puntos de la presencia (los que se dibujan)");
   assert.match(B, /avisoB\.txt\.textContent = textoAvisoBaliza\(k\)/, "el aviso pone los alias como texto, nunca como HTML");
   assert.match(B, /gente\.map\(esc\)/, "en la ficha (HTML), los alias escapados");

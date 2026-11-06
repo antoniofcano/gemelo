@@ -3,7 +3,7 @@
  "expone": {
   "01_datos.js": ["D","$","tinta","fmt","b64","i16","RES","x0","yN","ANCHO","ALTO","EXT","FOG0","FOG1","DIST_MAX","DIST_INI","DEPURA","VRP","FACTOR_R8","FACTOR_R8_GEN","factorCopaDeConfig","ESC_R8"],
   "01a_aparato.js": ["Aparato"],
-  "02_mundo.js": ["Mundo","suelo","copaAlta","kcor","desp","tinte","aviva","colorEn","copas","cIn","marc","med"],
+  "02_mundo.js": ["Mundo","suelo","copaAlta","kcor","tinte","aviva","colorEn","copas","cIn","marc","med"],
   "02b_cola.js": ["CargaPuro","Cola","ColaExt"],
   "02c_componentes.js": ["ComponentesPuro","Reparto","Bus","Pausa","ConfigPuro","Teclas","Componentes","Config"],
   "02d_laminas.js": ["LaminasPuro","Laminas"],
@@ -45,7 +45,7 @@
   "16_vida.js": ["tVida","enQuad","vq","gFauna","altSuelo","quita","mira","quad","temaEstela","velPaseo","giroPaseo","ponQuad","vidaPaseo","enDron","dr","dron","ponDron","cicloVista","dronMando","camaraDron","vidaEntra","vidaSale","actualizaVida"],
   "16b_fauna.js": [],
   "17_minimapa.js": ["Minimapa","actualizaMinimapa"],
-  "18_paisaje.js": ["colocaPaisaje","instSombra","sombrasSol","aguaNivel","actualizaPaisaje","ejeArroyo","distArroyo"],
+  "18_paisaje.js": ["colocaPaisaje","sombrasSol","instSombra","aguaNivel","actualizaPaisaje","ejeArroyo","distArroyo"],
   "19_balizas.js": ["colocaBalizas","avisoBaliza","dibujaBalizasMini","actualizaBalizas"],
   "20_sonido.js": [],
   "21_suelo.js": ["SN","vn2","cubierta","actualizaSuelo","recoloreaSuelo"],

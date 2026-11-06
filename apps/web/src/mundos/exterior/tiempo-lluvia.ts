@@ -31,7 +31,7 @@ export const DEF_LLUVIA: DefMaterial<OpcLluvia> = {
     });
     return m;
   },
-  // MU5-n, tercer commit: la variante TSL, APAGADA (MATERIALES §10). Las mismas cuentas en positionNode (la caída con mod, el empuje del viento, la cola de 3,4 m) y el
+  // MU5-n, tercer commit: la variante TSL, APAGADA (MATERIALES §11). Las mismas cuentas en positionNode (la caída con mod, el empuje del viento, la cola de 3,4 m) y el
   // color con su alfa; los uniformes, los MISMOS objetos. Sin tono (el clásico solo lleva colorspace_fragment): toneMapped = false.
   tsl: function (o, c) {
     var W = c.THREE as A, T = c.TSL as A, un = o.uniforms;

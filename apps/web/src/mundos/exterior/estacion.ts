@@ -47,7 +47,7 @@ export const DEF_FRUTO_FLOR: DefMaterial<OpcFrutoFlor> = {
       fragmentShader: "uniform vec3 uLuz; varying vec3 vCol; void main(){ vec2 d = gl_PointCoord - 0.5; float r2 = dot(d, d); if (r2 > 0.25) discard; float brillo = smoothstep(0.07, 0.0, length(d - vec2(-0.12, 0.12))); gl_FragColor = vec4(sRGBTransferEOTF(vec4(vCol, 1.0)).rgb * uLuz * (0.82 + 0.4 * (0.25 - r2)) + brillo * 0.3 * uLuz, 1.0);\n#include <colorspace_fragment>\n}"
     });
   },
-  // MU5-n, tercer commit: la variante TSL, APAGADA (solo con el WebGPURenderer, MU6) y PARCIAL (MATERIALES §10). Un PointsNodeMaterial con las mismas cuentas: el
+  // MU5-n, tercer commit: la variante TSL, APAGADA (solo con el WebGPURenderer, MU6) y PARCIAL (MATERIALES §11). Un PointsNodeMaterial con las mismas cuentas: el
   // BBCH de cada punto (uBBCH ± 3,5 por aR), el tamaño y el color de flores y aceitunas, el disco con su brillo y la luz (uLuz), con los MISMOS uniformes.
   //   · lleva el tamaño en sizeNode (tam · uEsc / max(0,5, −mv.z), con el metro que lo acerca) y descarta en el fragmento los puntos sin tamaño y fuera del disco;
   //   · FALTA: con el WebGPURenderer un punto mide 1 px salvo como sprite instanciado (MULTIVIEW §2.3): los frutos tienen que pasar a sprites, y eso hay que medirlo;
