@@ -4,7 +4,7 @@ Gemelo digital en 3D de fincas de olivar, para el navegador (three.js 0.186.1): 
 suelo con ortofoto y NDVI, tiempo, vida, sonido, paseo en primera persona, vuelo, minimapa y modo VR (WebXR, Meta Quest).
 Nace como mockup de [OlivarTrack](https://github.com/antoniofcano/olivartrack) para Cano & Damas Oleicultores.
 
-Dos fincas montadas con el mismo motor: **Cerro Velasco** (5 parcelas, 7,1 ha) y **Hituelo** (4 fincas, 27 parcelas, 95 ha, ~5.900 olivos).
+Un mundo: **Hituelo** (4 fincas, 27 parcelas, 95 ha, ~5.900 olivos). Cerro Velasco, la primera finca del gemelo, salió del mundo el 2026-11-06 (decisión 229).
 
 > Estado: prototipo. Funciona en Chrome (probado con renderizado por software) y sin errores de consola, pero el rendimiento
 > en iPhone y Quest **no está medido**. Mira [doc/ESTADO.md](doc/ESTADO.md) y [doc/sistema/MEDIDAS.md](doc/sistema/MEDIDAS.md). **Versión: v0.2.0.** Método de trabajo: [CLAUDE.md](CLAUDE.md); índice: [doc/README.md](doc/README.md).
@@ -18,7 +18,7 @@ Dos fincas montadas con el mismo motor: **Cerro Velasco** (5 parcelas, 7,1 ha) y
 | `apps/web/herramientas/`, `apps/web/vite.config.js` | Generan el motor y construyen la página con Vite |
 | `tuberia/tiles3d/` | Genera el tileset 3D Tiles de cada finca a partir del contrato v2 |
 | `tuberia/finca_8_teselas.py`, `tuberia/hituelo_conv.py` | Exportador: de los intermedios (LiDAR, ortofoto, NDVI, suelo) a teselas de 256 m |
-| `tuberia/datos/` | Scripts que producen esos intermedios (LiDAR del IGN, ortofoto PNOA, Sentinel-2, SoilGrids) para Cerro Velasco y Hituelo |
+| `tuberia/datos/` | Scripts que producen esos intermedios (LiDAR del IGN, ortofoto PNOA, Sentinel-2, SoilGrids) para Hituelo |
 | `pruebas/` | Pruebas con Chrome headless (Playwright): carga y presupuesto de dibujo, vistas, VR con una sesión WebXR simulada |
 | `doc/` | Toda la documentación ([índice](doc/README.md)): estado, decisiones ([ADR](doc/adr/README.md)), arquitectura, contratos, operación. El diseño original por teselas es una foto en [doc/historico/](doc/historico/DISENO-2026-10.md) |
 | `contratos/` | Esquemas y ejemplos de los contratos de datos exportador→motor |

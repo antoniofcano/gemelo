@@ -17,6 +17,8 @@ Una medida de VR sin las perillas con las que se hizo no se puede comparar con o
 
 ## Cerro Velasco, antes y después (mismas cámaras; banco de entonces `prueba.js`, no versionado: hoy `pruebas/prueba3.js`)
 
+> Foto de un día. Cerro Velasco ya no está en el mundo (decisión 229, 2026-11-06); las cifras se quedan como historia.
+
 | Vista | Llamadas | Triángulos | Puntos | Heap JS |
 |---|---|---|---|---|
 | Mapa, modo Nube — antes | 214 | 765 k | 679 k | 91 MB |

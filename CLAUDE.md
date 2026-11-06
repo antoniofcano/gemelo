@@ -34,7 +34,7 @@ Gemelo digital en 3D de fincas de olivar (three.js 0.186.1, teselas de 256 m, Li
 CLAUDE.md  CHANGELOG.md  VERSION  package.json  Makefile
 apps/web/                cliente web (ADR-0010): motor/NN_*.js (el motor, en módulos; ver ARCHITECTURE), plantilla.html,
                          herramientas/genera_motor.mjs y vite.config.js (build con Vite, three 0.186.1)
-tuberia/                 de los datos a las teselas: finca_8_teselas.py (exportador), hituelo_conv.py, datos/{cerro,hituelo}/
+tuberia/                 de los datos a las teselas: finca_8_teselas.py (exportador), hituelo_conv.py, datos/hituelo/ (Hituelo, el único mundo: decisiones 22 y 229)
                          y tiles3d/ (genera el tileset 3D Tiles de cada finca)
 prototipos/              maquetas de UX (sin datos reales)
 modelos/                 catálogos de olivos-tipo (hoy solo el fixture sintético; los reales, del constructor, fuera)
