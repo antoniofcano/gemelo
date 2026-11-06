@@ -107,9 +107,11 @@ test("en el código: lo de fuera se escapa al pintarlo, nada se pide a otros hos
 // solo a través de esc(). Esc vive en 15_tiempo.js (mismo ámbito que 14_historia.js). El guardián comprueba la función y que ningún
 // campo de fuera se concatena o se mete en una celda sin esc(…); los patrones se construyen por partes para no marcarse a sí mismos.
 const ESC = (() => {
+  // MU5-n (A3-4): 15_tiempo.js declara esc (14_historia la usa al cargarse) y la delega en la de apps/web/src/mundos/exterior/tiempo-puro.ts
   const m = /function esc\(s\) \{[^\n]*\}/.exec(lee("apps/web/motor/15_tiempo.js"));
   assert.ok(m, "esc debe existir en 15_tiempo.js");
-  return new Function(m[0] + "\nreturn esc;")();
+  assert.match(m[0], /return Mundos\.esc\(s\);/, "15_tiempo.js delega esc en Mundos.esc");
+  return new Function("Mundos", m[0] + "\nreturn esc;")(require("./_mundos"));
 })();
 // un campo de fuera (…nombre, …titulo, …parcela, …gravedad) pegado con «+», «[» o «,» sin esc( delante
 // (el «[» de un índice, como en parcelas[k], no cuenta: va pegado a un nombre)

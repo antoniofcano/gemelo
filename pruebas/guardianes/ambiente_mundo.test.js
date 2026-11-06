@@ -28,13 +28,20 @@ function recorre(n, fn, pila = []) {
   }
 }
 const nombreDe = f => (f.id && f.id.name) || "(anónima)";
+/** MU5-n (A3-4): un fichero de apps/web/src/mundos/exterior/ como JavaScript (los tipos quitados por Node, que deja los mismos sitios) */
+const { stripTypeScriptTypes } = require("node:module");
+const tsJs = f => stripTypeScriptTypes(lee("apps/web/src/mundos/exterior/" + f));
+function arbolTs(f) { return acorn.parse(tsJs(f), { ecmaVersion: "latest", sourceType: "module", locations: true }); }
 /** Cada uso de scene.<prop>: [prop, escribe?, funciones que lo envuelven (sin contar la IIFE)] */
-function usosDeScene(fichero) {
+function usosDeScene(fichero) { return usosEn(arbol(fichero), 1); }
+/** lo mismo en un fichero TypeScript del exterior (sin IIFE: se cuentan todas las funciones que lo envuelven) */
+function usosDeSceneTs(f) { return usosEn(arbolTs(f), 0); }
+function usosEn(ast, saltar) {
   const usos = [];
-  recorre(arbol(fichero), (n, pila) => {
-    if (n.type === "MemberExpression" && n.object.type === "Identifier" && n.object.name === "scene" && !n.computed) usos.push({ prop: n.property.name, linea: n.loc.start.line - 1, funciones: pila.slice(1).map(nombreDe) });
+  recorre(ast, (n, pila) => {
+    if (n.type === "MemberExpression" && n.object.type === "Identifier" && n.object.name === "scene" && !n.computed) usos.push({ prop: n.property.name, linea: n.loc.start.line - 1, funciones: pila.slice(saltar).map(nombreDe) });
   });
-  recorre(arbol(fichero), n => {
+  recorre(ast, n => {
     if (n.type === "AssignmentExpression" && n.left.type === "MemberExpression" && n.left.object.type === "Identifier" && n.left.object.name === "scene") {
       const u = usos.find(x => x.linea === n.left.loc.start.line - 1 && x.prop === n.left.property.name); if (u) u.escribe = true;
     }
@@ -74,23 +81,26 @@ test("el Ambiente del exterior tiene los valores de antes (los que fijaban 03_es
 });
 
 test("15_tiempo no toca la escena con el exterior congelado: lo que escribe en ella por fotograma está en actualizaTiempo, que es un paso del exterior", () => {
-  const usos = usosDeScene("15_tiempo.js");
-  // fuera de cualquier función (al montarse): solo scene.add de sus objetos (el grupo del cielo, el sol, las estrellas, la lluvia…)
-  const alMontar = usos.filter(u => !u.funciones.length);
-  assert.ok(alMontar.length >= 2 && alMontar.every(u => u.prop === "add"), "al montarse 15_tiempo solo cuelga sus objetos: " + JSON.stringify(alMontar));
-  // dentro de funciones: solo en actualizaTiempo (y en las que se llaman al montarse con scene.add, como la que crea las estrellas o la lluvia)
-  const enFunciones = usos.filter(u => u.funciones.length);
-  const fuera = enFunciones.filter(u => u.funciones.indexOf("actualizaTiempo") < 0 && u.prop !== "add");
-  assert.deepStrictEqual(fuera, [], "15_tiempo solo lee o escribe la scene en actualizaTiempo");
-  const escribe = enFunciones.filter(u => u.escribe).map(u => u.prop + "@" + u.funciones.join(">"));
-  assert.deepStrictEqual([...new Set(escribe)], ["background@actualizaTiempo"], "lo que reescribe por fotograma es el fondo (la niebla la mueve en su sitio)");
+  // MU5-n (A3-4): 15_tiempo.js es una extracción parcial (cablea Mundos.creaTiempo) y no nombra la scene más que para pasarla; el tiempo vive en
+  // apps/web/src/mundos/exterior/tiempo*.ts. Se lee su código (sin los tipos, con stripTypeScriptTypes de Node) como antes el del módulo
+  assert.deepStrictEqual(usosDeScene("15_tiempo.js"), [], "15_tiempo.js (la extracción parcial) no lee ni escribe la scene");
+  const TS = ["tiempo.ts", "tiempo-puro.ts", "tiempo-parche.ts", "tiempo-cielo.ts", "tiempo-lluvia.ts", "tiempo-barrera.ts", "tiempo-paso.ts", "tiempo-fichas.ts"];
+  const usos = TS.flatMap(f => usosDeSceneTs(f).map(u => Object.assign(u, { f })));
+  // al montarse (creaCielo, creaLluvia): solo scene.add de sus objetos (el grupo del cielo, el sol, las estrellas, la lluvia); al liberarse, solo scene.remove
+  const alMontar = usos.filter(u => u.prop === "add");
+  assert.ok(alMontar.length >= 4 && alMontar.every(u => /^(creaCielo|creaLluvia)/.test(u.funciones.join(">"))), "al montarse el tiempo solo cuelga sus objetos: " + JSON.stringify(alMontar));
+  assert.ok(usos.filter(u => u.prop === "remove").every(u => u.funciones[u.funciones.length - 1] === "libera"), "solo libera() los descuelga");
+  // fuera de eso: solo en actualizaTiempo (el paso de cada fotograma, tiempo-paso.ts)
+  const fuera = usos.filter(u => u.prop !== "add" && u.prop !== "remove" && u.funciones.indexOf("actualizaTiempo") < 0);
+  assert.deepStrictEqual(fuera, [], "el tiempo solo lee o escribe la scene en actualizaTiempo");
+  const escribe = usos.filter(u => u.escribe).map(u => u.prop + "@" + u.funciones.slice(-1)[0] + "@" + u.f);
+  assert.deepStrictEqual([...new Set(escribe)], ["background@actualizaTiempo@tiempo-paso.ts"], "lo que reescribe por fotograma es el fondo (la niebla la mueve en su sitio)");
   // lo que corre por un evento (el tema) no toca la scene
-  const src = sinCabecera(lee("apps/web/motor/15_tiempo.js"));
-  for (const f of ["pintaFondoTiempo", "temaBarrera"]) {
-    const i = src.indexOf("function " + f + "("); assert.ok(i >= 0, f);
+  for (const [f, fn] of [["tiempo.ts", "pintaFondoTiempo"], ["tiempo-barrera.ts", "temaBarrera"]]) {
+    const src = tsJs(f), i = src.indexOf("function " + fn + "("); assert.ok(i >= 0, fn);
     let n = 0, j = src.indexOf("{", i);
     for (let k = j; k < src.length; k++) { if (src[k] === "{") n++; else if (src[k] === "}" && --n === 0) { j = k; break; } }
-    assert.ok(!/\bscene\./.test(src.slice(i, j)), f + " no toca la scene");
+    assert.ok(!/scene\./.test(src.slice(i, j)), fn + " no toca la scene");
   }
   // actualizaTiempo solo la llama el paso «tiempo» del exterior (90_final.js), que no corre con el exterior congelado
   const fin = sinCabecera(lee("apps/web/motor/90_final.js"));
@@ -99,6 +109,8 @@ test("15_tiempo no toca la escena con el exterior congelado: lo que escribe en e
   assert.match(llamadas[0], /\{ bloque: Reparto\.reg\("tiempo"\), fn: function \(dt, t\) \{ actualizaTiempo\(dt, t\); \} \}/);
   const i = fin.indexOf("var exterior = Mundos.creaExterior("), j = fin.indexOf("], antesDelRender:", i), k = fin.indexOf(llamadas[0]);
   assert.ok(i >= 0 && j > i && k > i && k < j, "la llamada a actualizaTiempo está en los pasos del exterior");
+  // y 15_tiempo.js solo la reexpone (llama a Tiempo.actualiza, el paso de tiempo-paso.ts)
+  assert.match(sinCabecera(lee("apps/web/motor/15_tiempo.js")), /function actualizaTiempo\(dt, tms\) \{ Tiempo\.actualiza\(dt, tms\); tMundo = Tiempo\.tMundo\(\); \}/);
   const otros = fs.readdirSync(path.join(RAIZ, "apps", "web", "motor")).filter(f => f.endsWith(".js") && f !== "15_tiempo.js" && f !== "90_final.js")
     .filter(f => /actualizaTiempo\(/.test(sinCabecera(lee("apps/web/motor/" + f))));
   assert.deepStrictEqual(otros, [], "nadie más llama a actualizaTiempo");

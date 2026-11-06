@@ -83,7 +83,7 @@ test("16_vida.js pide el nivel del sol por fotograma con nivelEn (un temporal de
 });
 
 test("nivel(ms) reserva (es la de siempre) y nivelEn no: el analizador lo ve en las dos", () => {
-  const src = lee("apps/web/motor/15_tiempo.js");
+  const src = lee("apps/web/src/mundos/exterior/tiempo-puro.ts");   // MU5-n (A3-4): antes en 15_tiempo.js
   assert.ok(R.reservas(src, "nivel", "function nivel(").length > 0, "nivel(ms) devuelve objetos nuevos");
   assert.deepStrictEqual(R.reservas(src, "nivelEn", "function nivelEn("), []);
 });

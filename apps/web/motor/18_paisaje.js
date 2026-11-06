@@ -2,7 +2,7 @@
 // Expone: colocaPaisaje, instSombra, sombrasSol, aguaNivel, actualizaPaisaje, ejeArroyo, distArroyo
 // Consume: 01_datos (D, $, ESC_R8), 02_mundo (suelo, desp, copas), 02g_vr_presupuesto (VrPresupuesto), 02i_materiales (Materiales),
 //   02j_estaticos (Estaticos), 03_escena (scene, SRGB, Estado), 04d_sombreado_tiles (hash), 06_arboles (gSombras),
-//   07_follaje (matSombra, geoSombra), 09_camara (pon), 15_tiempo (nivelEn, cur, tMundo, nivel), 23_estacion (EST)
+//   07_follaje (matSombra, geoSombra), 09_camara (pon), 15_tiempo (nivelEn, nivel, cur, tMundo), 23_estacion (EST)
 // ===============================================================================
   // ---------- el paisaje que sale del LiDAR: edificios (clase 6), el tendido y sus postes, el arroyo y los árboles que no son olivos
   // Lo que el LiDAR clasifica de verdad son los edificios. El tendido, los postes, el cauce y las copas se deducen de la geometría (alturas, alineación, relieve) y se rotulan así.

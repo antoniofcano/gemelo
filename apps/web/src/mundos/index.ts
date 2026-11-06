@@ -49,3 +49,14 @@ export type { Catalogo, DepsCatalogo, Pieza as PiezaCatalogo } from "./exterior/
 export { Escalera, GeneradosPuro } from "./exterior/generados-escalera.ts";
 export { creaGenerados, manifiestoGenerados, ID_GENERADOS } from "./exterior/generados.ts";
 export type { DepsGenerados, Generados } from "./exterior/generados.ts";
+// A3-4 (MU5-n): el cielo, el tiempo y el suelo del exterior, componentes con su libera() de verdad.
+export { creaTiempo, creaTiempoVivo, manifiestoTiempo, ID_TIEMPO } from "./exterior/tiempo.ts";
+export type { DepsTiempo, Tiempo } from "./exterior/tiempo.ts";
+export { TiempoPuro, creaNivelSol, creaReloj, creaFormatos, num1, rumbo, esc, hace, LAT, LON, ZONA, DEMOS } from "./exterior/tiempo-puro.ts";
+export { GLSL_SOMBRA, creaParcheTiempo } from "./exterior/tiempo-parche.ts";
+export type { ParcheTiempo, UniformesSombra, UniformesViento } from "./exterior/tiempo-parche.ts";
+export { creaCielo, pintaNubesDe, texBrilloDe, PALETA_OCASO } from "./exterior/tiempo-cielo.ts";
+export { creaLluvia } from "./exterior/tiempo-lluvia.ts";
+export { creaBarreras, BARRERA_ALTO } from "./exterior/tiempo-barrera.ts";
+export { creaPasoTiempo } from "./exterior/tiempo-paso.ts";
+export { creaFichasTiempo } from "./exterior/tiempo-fichas.ts";

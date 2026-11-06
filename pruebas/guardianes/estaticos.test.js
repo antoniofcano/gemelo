@@ -90,12 +90,11 @@ test("18_paisaje: tras colocaPaisaje y al cambiar la exageración (1 → 3 → 1
 });
 
 // ---------------------------------------------------------------- 15_tiempo (barreras) y 39_oficina_mundo (balizas oficiales): su código de verdad
-function barreras(Estaticos) {
-  const F = lee("apps/web/motor/15_tiempo.js"), T = trozo(F, "  function creaBarrera(pr)", "  function pintaFondoTiempo()");
-  const f = new Function("THREE", "Estaticos", "suelo", "matBarrera", "gLinde",
-    "\"use strict\";\nvar BARRERA_ALTO = 5.5, BARRERAS = [], Estado = { exag: 1 };\n" + T + "\nreturn { crea: creaBarrera, coloca: colocaBarrera, pon: function (e) { Estado.exag = e; }, n: function () { return BARRERAS.length; } };");
+function barreras(Estaticos) {   // MU5-n (A3-4): el código de verdad está en apps/web/src/mundos/exterior/tiempo-barrera.ts (creaBarreras)
   const gLinde = new THREE.Group(); Estaticos.congela(gLinde); const escena = new THREE.Scene(); escena.add(gLinde);
-  return Object.assign(f(THREE, Estaticos, (x, y) => 60 + 0.3 * x - 0.2 * y, new THREE.MeshBasicMaterial(), gLinde), { escena });
+  const Estado = { exag: 1 }, n = { v: 0 };
+  const B = require("./_mundos").creaBarreras({ THREE, gLinde, Estaticos, suelo: (x, y) => 60 + 0.3 * x - 0.2 * y, Estado, cieloBase: () => new THREE.Color(0x87b5e0) });
+  return { crea: p => { n.v++; return B.creaBarrera(p); }, coloca: B.colocaBarrera, pon: e => { Estado.exag = e; }, n: () => n.v, escena };
 }
 test("15_tiempo: la barrera de luz de cada linde (malla congelada) da la misma matriz del mundo que en automático con cada exageración", () => {
   const A = barreras(estaticosReal()), B = barreras(estaticosNulo());
@@ -154,7 +153,7 @@ const CONGELAN = {
   "08_marcadores.js": "gLinde: grupo vacío en identidad al que cuelgan la linde y las barreras",
   "08b_marcadores_lidar.js": "copas LiDAR, marcas OlivarTrack y desfase: la exageración va en las matrices de instancia",
   "14_historia.js": "las mallas de resalte de parcela: uniforme de exageración",
-  "15_tiempo.js": "barreras de luz de las lindes: identidad, los vértices llevan la exageración (colocaBarrera)",
+  "15_tiempo.js": "barreras de luz de las lindes (tiempo-barrera.ts): identidad, los vértices llevan la exageración (colocaBarrera)",
   "18_paisaje.js": "paisaje entero: edificios, postes, hilos, árboles y cauces, tras colocaPaisaje (cada vez que cambia la exageración) y la malla de sombras",
   "19_balizas.js": "baliza (grupo y columna) tras colocaBalizas; el rombo y el anillo se quedan en automático",
   "21_suelo.js": "matas, piedras y contactos del suelo: instancias",

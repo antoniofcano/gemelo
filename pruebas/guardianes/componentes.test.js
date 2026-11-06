@@ -36,6 +36,9 @@ const COMPONENTES = ficherosMotor().filter(esComponente);
 // MU5-n (A3-1a): un componente que pasó a TypeScript se registra con su manifiesto de src/mundos/ (Componentes.registra(Mundos.<fábrica>(…))); sus eventos
 // están en el fichero de TypeScript que exporta esa fábrica, que es «suyo»
 const MUNDOS_TS = require(path.join(RAIZ, "apps", "web", "src", "mundos", "index.ts"));
+/** ¿el fichero del motor es el puente de un componente de TypeScript? Un talón («// [talón] …») o una extracción parcial (A3-4: 15_tiempo.js, que conserva
+ *  funciones declaradas que otros piden antes en el montaje) que registra el manifiesto de src/mundos con Componentes.registra(Mundos.…) */
+const delTs = src => (/^  \/\/ \[talón\] /m.test(src) || /extracción parcial/.test(src)) && /^  Componentes\.registra\(Mundos\.\w+\(/m.test(src);
 function delegaEn(f) {
   const m = /^  Componentes\.registra\(Mundos\.(\w+)\(/m.exec(fs.readFileSync(path.join(MOTOR, f), "utf8")); if (!m) return null;
   const dir = path.join(RAIZ, "apps", "web", "src", "mundos");
@@ -181,7 +184,8 @@ function manifiestos() {
     const src = fs.readFileSync(path.join(MOTOR, f), "utf8");
     // A3-1b: un talón «var X = Mundos.creaX({…deps del motor…}); Componentes.registra(Mundos.manifiestoX(X));» no puede evaluarse sin el motor (la
     // fábrica recibe sus dependencias); su manifiesto se pide a Mundos con un doble de X (el manifiesto solo guarda X para llamarlo en sus fases)
-    const talon = /^  \/\/ \[talón\] /m.test(src) && /^  Componentes\.registra\(Mundos\.(\w+)\(/m.exec(src);
+    // MU5-n (A3-4): también una extracción parcial (15_tiempo.js) que registra así el manifiesto de su componente de src/mundos
+    const talon = (/^  \/\/ \[talón\] /m.test(src) || /extracción parcial/.test(src)) && /^  Componentes\.registra\(Mundos\.(\w+)\(/m.exec(src);
     if (talon) {
       const doble = new Proxy(function () {}, { get: (t, k) => k === Symbol.toPrimitive ? () => "" : k === "then" ? undefined : doble, apply: () => doble });
       defs.push(MUNDOS_TS[talon[1]](doble));
@@ -238,14 +242,14 @@ test("la suma de los presupuestos de los encendidos por defecto cabe en el de di
 test("consume resuelto y sin ciclos; un componente no expone nada en su primer nivel ni consume de otro componente; lo que usa de fuera lo declara", () => {
   const M = manifiestos(), d = contratoModulos.deriva(), ifaces = Object.keys(json("contratos/interfaces.json").interfaces);
   const comp = new Set(COMPONENTES.map(f => f.slice(0, -3)));
-  const esTalon = f => /^  \/\/ \[talón\] /m.test(fs.readFileSync(path.join(MOTOR, f.endsWith(".js") ? f : f + ".js"), "utf8"));
+  const esTalon = f => delTs(fs.readFileSync(path.join(MOTOR, f.endsWith(".js") ? f : f + ".js"), "utf8"));
   const expuestosNoComp = new Set(Object.entries(d.expone).filter(([f]) => !comp.has(f.slice(0, -3)) || esTalon(f)).flatMap(([, ns]) => ns));   // lo que expone un talón (A3-1b) también vale
   const expComp = new Set(Object.values(M).flatMap(x => x.expone));
   for (const [f, def] of Object.entries(M)) {
     for (const n of def.consume) assert.ok(expuestosNoComp.has(n) || ifaces.includes(n) || expComp.has(n), f + ": consume «" + n + "», que nadie expone");
     // A3-1b: un talón de TypeScript («// [talón] …» + Componentes.registra(Mundos.…)) expone a propósito su objeto al legado (Escena3D, SueloFotos…) y
     // recibe sus dependencias por la fábrica; sus reglas de componente las vigilan Vitest (ComponentesPuro.valida) y medida_componentes
-    if (/^  \/\/ \[talón\] /m.test(fs.readFileSync(path.join(MOTOR, f), "utf8"))) continue;
+    if (delTs(fs.readFileSync(path.join(MOTOR, f), "utf8"))) continue;
     assert.deepStrictEqual(d.expone[f], [], f + ": un componente no expone nada en su primer nivel (los demás le hablan por el Bus o Componentes.api)");
     for (const g of Object.keys(d.cons[f])) assert.ok(!comp.has(g) || esTalon(g), f + " consume de otro componente: " + g);   // salvo el objeto que expone un talón (A3-1b)
     // lo que su código (sin comentarios) usa de los módulos que no son el núcleo de componentes ni lo básico de la escena, está en su consume
@@ -327,7 +331,9 @@ test("en Node: el núcleo con la pieza de las fichas del tiempo de verdad arranc
   assert.deepStrictEqual(r.errores, []);
   r = arranca("?fichas=0", fuente); assert.ok(!r.Componentes.activo("fichas-tiempo")); assert.ok(!r.Bus.hay("prevision:alterna"));
   r = arranca("", ""); assert.deepStrictEqual(r.Componentes.resumen(), []); assert.ok(!r.Bus.hay("prevision:alterna"), "sin el fichero: nadie atiende el botón (15_tiempo.js lo esconde)");
-  assert.match(lee("apps/web/motor/15_tiempo.js"), /vm\.hidden = !Bus\.hay\("prevision:alterna"\)/);
+  // MU5-n (A3-4): el botón vive en apps/web/src/mundos/exterior/tiempo-fichas.ts y pregunta al Bus por tiempo.ts
+  assert.match(lee("apps/web/src/mundos/exterior/tiempo-fichas.ts"), /vm\.hidden = !PM\.hay\(\)/);
+  assert.match(lee("apps/web/src/mundos/exterior/tiempo.ts"), /hay: function \(\): boolean \{ return bus\.hay\("prevision:alterna"\); \}/);
 });
 
 // ---------- C4: el sonido como componente

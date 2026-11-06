@@ -44,9 +44,12 @@ function extrae(src, inicio) {   // como en generados_motor.mjs: una función o 
   }
   throw new Error("sin cierre: " + inicio);
 }
-const T15 = lee("15_tiempo.js"), T03 = lee("03_escena.js");
-const piezas = [extrae(T03, "var GLSL_LIN"), extrae(T03, "function colorVertSRGB"), extrae(T15, "var uViento"), extrae(T15, "var uSombra"),
-  extrae(T15, "var GLSL_SOMBRA"), extrae(T15, "function parcheTiempo")].join("\n");
+// MU5-n (A3-4): uViento, uSombra, GLSL_SOMBRA y parcheTiempo viven en apps/web/src/mundos/exterior/tiempo-parche.ts (creaParcheTiempo): los REALES, con el colorVertSRGB de 03
+const { creaParcheTiempo } = await import(pathToFileURL(path.join(RAIZ, "apps", "web", "src", "mundos", "exterior", "tiempo-parche.ts")).href);
+const T03 = lee("03_escena.js");
+const piezas = [extrae(T03, "var GLSL_LIN"), extrae(T03, "function colorVertSRGB"),
+  "var __PT = __creaParcheTiempo({ THREE: THREE, colorVertSRGB: colorVertSRGB }), uViento = __PT.uViento, uSombra = __PT.uSombra, GLSL_SOMBRA = __PT.GLSL_SOMBRA;",
+  "function parcheTiempo(sh, viento) { __PT.parcheTiempo(sh, viento); }"].join("\n");
 const A01 = lee("01a_aparato.js"), G07 = lee("07ab_generados.js"), L07 = lee("07ac_lejanos.js");   // 01a: el Aparato real (AG-0.3)
 // AG-1.5: CargaPuro (la regla del presupuesto de carga que usa 07b_arboles), ahora en apps/web/src/nucleo/cola.ts (A1-10; node lee TypeScript tal cual)
 const { CargaPuro } = await import(pathToFileURL(path.join(RAIZ, "apps", "web", "src", "nucleo", "cola.ts")).href);
@@ -62,6 +65,7 @@ function contexto(busqueda, reloj, mas) {
     suelo: () => 0, camera: { position: new THREE.Vector3(0, 10, 0) }, renderer: null,   // A3-2b: el talón de 07ac recibe el renderizador por argumento (null: aquí no se hornea)
     Cola: { add: () => { throw new Error("los generados no deben usar la Cola compartida"); }, hay: () => false },
     ColaExt: { pon: () => { throw new Error("los generados no deben usar la Cola compartida"); }, hay: () => false },   // MU2-6: la del exterior (02b_cola)
+    __creaParcheTiempo: creaParcheTiempo,   // A3-4: el parche del tiempo de verdad (tiempo-parche.ts)
     Componentes: { registra: () => true }   // A3-2a: 07ab es un talón que registra el componente «olivos-generados» (su fábrica, Mundos.creaGenerados, la da conFabrica)
   };
   if (mas) Object.assign(ctx, mas.glob);

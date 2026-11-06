@@ -2,7 +2,7 @@
 // Expone: EST, bbchEn, construyeFrutosLista, hoyMadrid, objetivoMundo, actualizaOlivo
 // Consume: 01_datos ($), 02i_materiales (Materiales), 03_escena (renderer, SRGB, Estado), 04d_sombreado_tiles (hash), 06_arboles (gFollaje),
 //   07_follaje (matHojaG, matHojaP), 10_ndvi (NDV, ndviIdx), 13_parcelas (parcelas), 14_historia (OT),
-//   15_tiempo (TiempoPuro, ahoraMs, TM, fmtHora, fmtClaveDia, num1, esc, objetivoMundoBase, aplicaMundo), 21_suelo (SN)
+//   15_tiempo (TiempoPuro, ahoraMs, TM, fmtHora, fmtClaveDia, num1, objetivoMundoBase, aplicaMundo, esc), 21_suelo (SN)
 // Nota: Publica además window.__otDebug (depuración del olivo estacional).
 // ===============================================================================
   // ---------- el olivo estacional: la fecha de la estación (el deslizador de la hierba) manda en el sol, el clima, el color de la copa y la fenología

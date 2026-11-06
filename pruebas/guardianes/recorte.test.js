@@ -129,12 +129,10 @@ test("39_oficina_mundo: las balizas oficiales se recortan y su esfera las contie
 });
 
 // ---------------------------------------------------------------- 15_tiempo: las barreras de luz de las lindes (nacen con los vértices a cero; el sombreador no los mueve)
-function barreras() {
-  const F = lee("apps/web/motor/15_tiempo.js"), T = trozo(F, "  function creaBarrera(pr)", "  function pintaFondoTiempo()");
-  const f = new Function("THREE", "Estaticos", "suelo", "matBarrera", "gLinde",
-    "\"use strict\";\nvar BARRERA_ALTO = 5.5, BARRERAS = [], Estado = { exag: 1 };\n" + T +
-    "\nreturn { crea: creaBarrera, coloca: colocaBarrera, pon: function (e) { Estado.exag = e; }, mallas: function () { return gLinde.children; }, n: function () { return BARRERAS.length; } };");
-  return f(THREE, estaticos(), (x, y) => 60 + 0.3 * x - 0.2 * y, new THREE.MeshBasicMaterial(), new THREE.Group());
+function barreras() {   // MU5-n (A3-4): el código de verdad está en apps/web/src/mundos/exterior/tiempo-barrera.ts (creaBarreras)
+  const Estado = { exag: 1 }, gLinde = new THREE.Group(), n = { v: 0 };
+  const B = require("./_mundos").creaBarreras({ THREE, gLinde, Estaticos: estaticos(), suelo: (x, y) => 60 + 0.3 * x - 0.2 * y, Estado, cieloBase: () => new THREE.Color(0x87b5e0) });
+  return { crea: p => { n.v++; return B.creaBarrera(p); }, coloca: B.colocaBarrera, pon: e => { Estado.exag = e; }, mallas: () => gLinde.children, n: () => n.v };
 }
 test("15_tiempo: la barrera de luz de cada linde se recorta y su esfera la contiene tras colocaBarrera, aunque three la calculara con los vértices a cero", () => {
   const B = barreras();
@@ -152,7 +150,7 @@ test("15_tiempo: la barrera de luz de cada linde se recorta y su esfera la conti
   contiene(ms[0], "barrera 0 tras volver a exag 1");
 });
 test("15_tiempo: las estrellas no pasan por el dibujo de día (visible = opacity > 0) y siguen a la cámara", () => {
-  const F = sinComentarios(lee("apps/web/motor/15_tiempo.js"));
+  const F = sinComentarios(require("./_fuente").fuenteMotor("15_tiempo.js"));   // MU5-n (A3-4): tiempo-paso.ts
   assert.match(F, /estrellas\.visible\s*=\s*estrellas\.material\.opacity\s*>\s*0/, "estrellas.visible depende de su opacidad");
   assert.match(F, /estrellas\.position\.copy\(camera\.position\)/, "las estrellas siguen a la cámara");
 });
@@ -308,7 +306,7 @@ const SIN_RECORTE = {
   "07ac_lejanos.js": [1, "los olivos lejanos: instancias por toda la finca (hasta 1,6 km) que se rehacen al moverse; vacía no se dibuja (visible = count > 0)"],
   "07b_arboles.js": [1, "niveles 1 y 2: instancias por toda la finca que se rehacen al moverse; vacías no se dibujan (visible = count > 0)"],
   "08b_marcadores_lidar.js": [2, "copas y marcadores LiDAR: instancias por toda la finca"],
-  "15_tiempo.js": [3, "nubes, estrellas y lluvia van con la cámara (las estrellas, además, no se dibujan de día: visible = opacity > 0)"],
+  "15_tiempo.js": [3, "(en tiempo-cielo.ts y tiempo-lluvia.ts) nubes, estrellas y lluvia van con la cámara (las estrellas, además, no se dibujan de día: visible = opacity > 0)"],
   "16_vida.js": [1, "las estelas: se reescriben cada fotograma; vacías no se dibujan"],
   "16b_fauna.js": [2, "las aves y los conejos (seis como mucho, a menos de 120 m): se mueven cada fotograma; vacías no se dibujan"],
   "21_suelo.js": [3, "matas, piedras y contornos: instancias alrededor de quien mira, rehechas al moverse"],
