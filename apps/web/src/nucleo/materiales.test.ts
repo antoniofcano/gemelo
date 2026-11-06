@@ -115,6 +115,21 @@ describe("los materiales estándar valen en los dos renderizadores sin cambio", 
 });
 
 describe("libera(dueño): suelta lo suyo y nada más", () => {
+  it("MU5-n: lo que el dueño suelta por su cuenta (dispose, con el «dispose» de three) sale de su lista: no crece en la sesión", () => {
+    class ConEventos extends MatFalso {
+      oy: Array<() => void> = [];
+      addEventListener(_t: string, f: () => void): void { this.oy.push(f); }
+      removeEventListener(_t: string, f: () => void): void { this.oy = this.oy.filter((x) => x !== f); }
+      override dispose(): void { super.dispose(); for (const f of this.oy.slice()) f(); }
+    }
+    const M = creaMateriales({ THREE }), d = M.de("terreno");
+    const a = d.adopta(new ConEventos()), b = d.adopta(new ConEventos());
+    d.adopta(a);   // dos veces el mismo: un solo oyente
+    expect(a.oy.length).toBe(1); expect(M.duenos()).toEqual({ terreno: 2 });
+    a.dispose();
+    expect(M.duenos()).toEqual({ terreno: 1 }); expect(a.oy.length).toBe(0);
+    expect(d.libera()).toBe(1); expect(b.liberado).toBe(1); expect(a.liberado).toBe(1);
+  });
   it("cada dueño libera solo lo que creó con él; lo creado sin dueño no se toca", () => {
     const M = creaMateriales({ THREE });
     M.define("prueba", DEF);

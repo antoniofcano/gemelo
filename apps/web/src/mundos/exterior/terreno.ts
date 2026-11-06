@@ -23,6 +23,7 @@
 // Nada de aquí importa three ni lee globales al cargarse: THREE, D, el Mundo, la Cola del exterior, la cámara, el parche del tiempo (15_tiempo), el
 // ruido vn2 (21_suelo) y el suelo de fotos (04f, que se monta después: por eso va por funciones) entran por argumento.
 import type { Manifiesto } from "../../nucleo/componentes.ts";
+import type { DefMaterial, MaterialMin } from "../../nucleo/materiales.ts";
 import type { Trabajo } from "../../nucleo/cola.ts";
 import type { Tesela } from "./teselas.ts";
 
@@ -40,10 +41,8 @@ export interface MaterialTerreno {
   customProgramCacheKey?: (() => string) | undefined;
   dispose(): void;
 }
-type Ctor<T> = new (opciones?: unknown) => T;
 /** Lo que se usa de THREE (el del motor: three o super-three). */
 export interface ThreeTerreno {
-  MeshLambertMaterial: Ctor<MaterialTerreno>;
   Vector2: new (x: number, y: number) => unknown;
   Vector4: new (x: number, y: number, z: number, w: number) => { toArray?(): number[] };
   DataTexture: new (d: Uint8Array, w: number, h: number, formato: unknown, tipo: unknown) => TexturaMin;
@@ -122,7 +121,18 @@ export interface DepsTerreno {
   sueloFotosPuro?: (() => SueloFotosPuroMin | null | undefined) | null;
   /** performance.now */
   ahora(): number;
+  /** MU5-n, segundo commit: la fábrica de materiales (02i: Materiales). Aquí se define «terreno» (su clásico, y su TSL en el tercer commit) y se pide con dueño */
+  materiales: FabricaTerreno;
 }
+/** Lo que se usa de la fábrica (nucleo/materiales.ts): define y la vista con dueño. */
+export interface FabricaTerreno {
+  define<O>(nombre: string, def: DefMaterial<O>): void;
+  de(dueno: string): { crea(nombre: string, opc?: unknown): MaterialMin; libera(): number };
+}
+/** El nombre del material del terreno en la fábrica (MATERIALES §1, fila 1) y el dueño de lo que pide este componente. */
+export const TERRENO = "terreno", DUENO_TERRENO = "terreno-sombreado";
+/** Lo que recibe la variante de «terreno»: los uniformes del glb (los suyos y los de su tesela del Mundo). */
+export interface OpcTerreno { u: Record<string, Uniforme> }
 
 export function creaSombreadoTiles(deps: DepsTerreno) {
   const THREE = deps.THREE, Mundo = deps.mundo, RES = deps.RES, suelo = deps.suelo, ColaExt = deps.cola, camera = deps.camara, UN = deps.UN, matSuelo = deps.matSuelo, vn2 = deps.vn2;
@@ -311,12 +321,18 @@ export function creaSombreadoTiles(deps: DepsTerreno) {
     if (UN.uMos.value || !Mundo.mosaico.img) return;
     mos = new THREE.Texture(Mundo.mosaico.img); mos.anisotropy = 4; mos.needsUpdate = true; UN.uMos.value = mos;
   }
-  function material(u: Record<string, Uniforme>): MaterialTerreno {
-    const m = new THREE.MeshLambertMaterial({}); m.color = matSuelo.color;   // el color (lluvia, luz) es uno solo para todo el relieve
-    m.onBeforeCompile = function (sh) { parche(sh as Sombreador, u); };
-    m.customProgramCacheKey = function () { return fotos() ? "terreno-3dtiles-fotos" : "terreno-3dtiles"; };   // un solo programa para todos los glb
-    return m;
-  }
+  // MU5-n, segundo commit: el material del terreno se registra en la fábrica (una sola fuente por material; MATERIALES §5) y se pide con dueño
+  const fabrica = deps.materiales, mats = fabrica.de(DUENO_TERRENO);
+  fabrica.define(TERRENO, {
+    clasico: function (o: OpcTerreno, c) {
+      const Lambert = c.THREE["MeshLambertMaterial"] as new (opc?: unknown) => MaterialTerreno, u = o.u;
+      const m = new Lambert({}); m.color = matSuelo.color;   // el color (lluvia, luz) es uno solo para todo el relieve
+      m.onBeforeCompile = function (sh) { parche(sh as Sombreador, u); };
+      m.customProgramCacheKey = function () { return fotos() ? "terreno-3dtiles-fotos" : "terreno-3dtiles"; };   // un solo programa para todos los glb
+      return m as MaterialMin;
+    }
+  });
+  function material(u: Record<string, Uniforme>): MaterialTerreno { return mats.crea(TERRENO, { u: u }) as unknown as MaterialTerreno; }
   // un modelo recién cargado: su malla de terreno (la que lleva ortofoto; los olivos instanciados no se tocan) pasa a este sombreado
   function modelo(raiz: RaizGlb, tile: TileGlb | null | undefined): void {
     const b = tile && tile.boundingVolume && tile.boundingVolume.box; if (!b || !raiz) return;   // sin caja no se sabe dónde cae: se queda con su material
@@ -356,6 +372,7 @@ export function creaSombreadoTiles(deps: DepsTerreno) {
     if (mos) { if (UN.uMos.value === mos) UN.uMos.value = null; mos.dispose(); mos = null; }
     Mundo.lista.forEach(function (t) { sueltaTexturas(t, true); });   // L2-05: las texturas de cada tesela del Mundo (y sus uniformes)
     if (RUI0) { RUI0.dispose(); RUI0 = null; }
+    mats.libera();   // lo que quede de este dueño en la fábrica (lo suelto por suelta() ya salió de su lista)
   }
   function resumen(): { glb: number; conTesela: number; conDetalle: number } { return { glb: vivos.length, conTesela: vivos.filter(function (v) { return v.mt; }).length, conDetalle: vivos.filter(function (v) { return v.u["uDet"] && (v.u["uDet"] as Uniforme).value; }).length }; }
   /** el componente (ADR-0023): del exterior, siempre encendido. Lo registra 90_final.js. No añade llamadas: cambia el material de los glb que dibuja 04b */

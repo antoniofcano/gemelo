@@ -164,7 +164,7 @@ function cuentaTs(f) {
 // MU5-n: el primer commit de un módulo lleva su código a src/ tal cual (sus materiales «siguen saliendo igual», MATERIALES §5) y el segundo los registra con
 // define(). Entre los dos, el fichero va aquí con su cuenta y su motivo; solo puede bajar, y su segundo commit lo quita
 const FUERA_SRC = {
-  "apps/web/src/mundos/exterior/terreno.ts": [2, 0, "el parche del terreno (04d; el tipo MaterialTerreno y el sitio), movido tal cual en el primer commit de su MU5-n (A3-1a); el segundo lo registra con define()"]
+  // (vacío: el terreno, 04d, ya registra «terreno» con define() desde su segundo commit de MU5-n, A3-1a)
 };
 const REGISTRA = /\.define\(\s*["'`A-Z_]/;
 test("trinquete en apps/web/src/: los sombreadores propios solo en la fábrica o en un módulo que los registra con define()", t => {

@@ -37,7 +37,7 @@ Son tres. Pasados a TSL, desbloquean a casi todos:
 
 | # | Fichero | Nombre | Material de partida | Qué hace el parche | Niebla | NDVI | Viento | Hora | Dif. |
 |---|---|---|---|---|---|---|---|---|---|
-| 1 | `04d_sombreado_tiles.js` (fuera) | — (`terreno`) | Lambert + parche, uno por tesela | suelo, ortofoto, NDVI de 2 fechas, mosaico, relieve fino (`dFdx`), modos Ortofoto/NDVI, `uExag` | sí | **sí** (`uNdviMap`, `uG`) | no | nubes, helada | **A** |
+| 1 | `04d_sombreado_tiles.js` → `src/mundos/exterior/terreno.ts` (MU5-n, A3-1a) | `terreno` | Lambert + parche, uno por glb (`define`/`crea`, dueño `terreno-sombreado`) | suelo, ortofoto, NDVI de 2 fechas, mosaico, relieve fino (`dFdx`), modos Ortofoto/NDVI, `uExag` | sí | **sí** (`uNdviMap`, `uG`) | no | nubes, helada | **A** |
 | 2 | `15_tiempo.js` (fuera) | — (`conTiempo`) | `parcheTiempo` sobre `matHojaG`, `matHojaP`, `matCorteza` (con viento), `matSuelo`, `matOrto` y la nube (sin viento) | sombra de nubes, helada, color sRGB, vaivén | sí | no | **sí** (follaje) | nubes, helada, tinte | M |
 | 3 | `15_tiempo.js` (fuera) | — (`nubes`) | `ShaderMaterial` | manchas de nube de cara a la cámara en una sola malla; paleta del ocaso con `?suelo=fotos` | no | no | deriva (en la CPU) | ocaso | M |
 | 4 | `15_tiempo.js` (fuera) | — (`lluvia`) | `ShaderMaterial` (`LineSegments`) | rayas que caen en una caja que sigue a la cámara | no | no | **sí** (`uViento`) | `uT` | B |
@@ -67,14 +67,14 @@ Son tres. Pasados a TSL, desbloquean a casi todos:
 
 ### 1.4 Los recuentos
 
-- **Por la fábrica:** 22 sitios con nombre.
+- **Por la fábrica:** 23 sitios con nombre.
+  - 2 `define` (MU5-n): `terreno` (A3-1a, `src/mundos/exterior/terreno.ts`) y `suelo-fondo` (A3-1b, antes el `parchea` de `04e`, en `mundos/exterior/suelo-fondo.ts`), cada uno con su clásico y su TSL.
   - 9 `parchea`: `05`, `06` ×2, `07a` ×2, `07ac` ×2, `14` y `44`.
-  - 1 `define` (MU5-n, A3-1b): `suelo-fondo` (antes el `parchea` de `04e`), con su clásico y su TSL en `mundos/exterior/suelo-fondo.ts`.
   - 4 `encadena`: `07ab` ×3 y `26b`.
   - 8 `sombreador`: `16`, `18`, `19`, `22b` ×2, `23`, `29` y `38`.
   - Los cuenta por nombre `Materiales.inventario()` al cargar.
-- **Fuera de la fábrica:** 7 sitios, que vigila el trinquete de `materiales_f1.test.js`.
-  - `04d` (1 parche), `15_tiempo` (1 parche y 3 `ShaderMaterial`) y `21_suelo` (2 parches).
+- **Fuera de la fábrica:** 6 sitios, que vigila el trinquete de `materiales_f1.test.js`.
+  - `15_tiempo` (1 parche y 3 `ShaderMaterial`) y `21_suelo` (2 parches).
   - Más `encadena()` de la biblioteca de olivos, que es su punto único.
   - Pasan a la fábrica en el segundo commit de su MU5-n.
 - **Dependen de la niebla:** todos los que parten de un material de three (filas 1, 2, 6-16, 23 y 26). Ningún `ShaderMaterial` depende de ella.
@@ -125,7 +125,7 @@ Quién lo llama:
 - **Un mundo:** `90_final.js` lo encadena en el `contexto` del gestor. `base.limpia(...)` llama a `Materiales.libera(base.id)` al liberar el mundo, junto a `Componentes.liberaMundo`.
 - **Un componente:** pide `Materiales.de(<su id>)` y, en su `n.limpia`, llama a `.libera()`.
 
-Hoy nadie pide con dueño y `libera` devuelve 0. Las texturas no son de la fábrica: las libera quien las crea.
+Desde MU5-n (A3-1a) pide con dueño el terreno (`terreno-sombreado`). **Lo que el dueño suelta por su cuenta** (un glb que se va: `SombreadoTiles.suelta` hace `dispose()`) sale solo de su lista: la fábrica escucha el evento `dispose` de three al guardarlo, para que la lista no crezca durante la sesión; un doble sin `addEventListener` se queda hasta `libera(dueño)`. Las texturas no son de la fábrica: las libera quien las crea.
 
 **La variante de ejemplo** (`ejemplo-tsl`, `DEF_EJEMPLO`) demuestra la ruta y está apagada:
 

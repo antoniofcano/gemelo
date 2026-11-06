@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: hash, matSuelo, matOrto, UN, SombreadoTiles
-// Consume: 01_datos (D, RES, x0, yN, ANCHO, ALTO), 02_mundo (Mundo, suelo), 02b_cola (ColaExt), 03_escena (camera),
+// Consume: 01_datos (D, RES, x0, yN, ANCHO, ALTO), 02_mundo (Mundo, suelo), 02b_cola (ColaExt), 02i_materiales (Materiales), 03_escena (camera),
 //   04f_suelo_fotos (SueloFotosPuro, SueloFotos), 15_tiempo (parcheTiempo), 21_suelo (vn2)
 // ===============================================================================
   // ---------- el sombreado del relieve (F1d, T5; T8 fase 2: la única escena es la 3D Tiles). MU5-n (A3-1a): el sombreado pasó a TypeScript,
@@ -10,7 +10,7 @@
   // matSuelo y matOrto (el ciclo del día les pone el color; el relieve de los glb comparte el de matSuelo) y lo que leen por su nombre 04e, 08, 14, 15,
   // 21 y otros: hash, UN y SombreadoTiles. Sin tileset no crea nada (04b no lo llama).
   var hash = Mundos.hash;
-  var matSuelo = new THREE.MeshLambertMaterial({}), matOrto = new THREE.MeshBasicMaterial({ color: 0xffffff });   // «maestros»: el ciclo del día les pone el color; el relieve de los glb comparte el de matSuelo
+  var matSuelo = Materiales.estandar("MeshLambertMaterial", {}), matOrto = Materiales.estandar("MeshBasicMaterial", { color: 0xffffff });   // «maestros»: el ciclo del día les pone el color; el relieve de los glb comparte el de matSuelo
   var UN = Mundos.uniformesTerreno({ THREE: THREE, D: D, x0: x0, yN: yN, ANCHO: ANCHO, ALTO: ALTO, tinteOrto: matOrto.color });   // uniformes compartidos por todo el relieve (y por quien sigue la exageración: 08, 14, 15...)
   var SombreadoTiles = Mundos.creaSombreadoTiles({
     THREE: THREE, RES: RES, mundo: Mundo, suelo: suelo, cola: ColaExt, camara: camera, UN: UN, matSuelo: matSuelo,
@@ -18,5 +18,6 @@
     vn2: function (x, y) { return vn2(x, y); },   // 21_suelo: las mismas funciones que usa cubierta() en la CPU
     sueloFotos: function () { return typeof SueloFotos !== "undefined" ? SueloFotos : null; },   // 04f se monta después (EV-1s, ?suelo=fotos)
     sueloFotosPuro: function () { return typeof SueloFotosPuro !== "undefined" ? SueloFotosPuro : null; },
-    ahora: function () { return performance.now(); }
+    ahora: function () { return performance.now(); },
+    materiales: Materiales   // MU5-n: el material «terreno» se define en la fábrica (02i) y se pide con dueño «terreno-sombreado»
   });

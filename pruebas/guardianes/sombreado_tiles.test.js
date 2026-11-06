@@ -28,6 +28,7 @@ test.before(async () => {
 // MU5-n (A3-1a): el sombreado vive en apps/web/src/mundos/exterior/terreno.ts y 04d_sombreado_tiles.js lo crea con Mundos.creaSombreadoTiles: se evalúa 04d tal
 // cual (su cableado) con el puente de los mundos de verdad, y uSombra/parcheTiempo de 15_tiempo.js, como antes
 const MUNDOS = require(path.join(RAIZ, "apps", "web", "src", "mundos", "index.ts"));
+const { fabrica } = require("./_materiales");   // MU5-n, segundo commit: el material «terreno» sale de la fábrica de verdad (02i)
 function evalua(conFotos) {
   const tie = lee("15_tiempo.js");
   const sombra = /  var uSombra = [\s\S]*?\n(?=  function conTiempo)/.exec(tie), pt = /  function parcheTiempo\(sh, viento\) \{[\s\S]*?\n  \}\n/.exec(tie);
@@ -42,8 +43,8 @@ function evalua(conFotos) {
   };
   const D = { ts: TS, orto_px: 512, mosaico: { x0: 0, yN: 0, w: 1, h: 1, res: 1 } }, cola = [];
   const sf = sueloFotos(conFotos);
-  const f = Function("THREE", "Mundos", "D", "RES", "ANCHO", "ALTO", "Mundo", "ColaExt", "camera", "x0", "yN", "suelo", "vn2", "parcheTiempo", "SueloFotosPuro", "SueloFotos", "performance", cuerpo);   // MU2-6: la Cola del exterior (ColaExt.pon)
-  const m = f(THREE, MUNDOS, D, 1, 1000, 1000, Mundo, { pon: (k, prio, gen, alAcabar) => cola.push({ k, gen, alAcabar }), cancela: () => {} }, new THREE.PerspectiveCamera(), 0, 0, () => 0, () => 0, tiempo.parcheTiempo, sf.P, sf.S, { now: () => 0 });
+  const f = Function("THREE", "Mundos", "D", "RES", "ANCHO", "ALTO", "Mundo", "ColaExt", "camera", "x0", "yN", "suelo", "vn2", "parcheTiempo", "SueloFotosPuro", "SueloFotos", "performance", "Materiales", cuerpo);   // MU2-6: la Cola del exterior (ColaExt.pon)
+  const m = f(THREE, MUNDOS, D, 1, 1000, 1000, Mundo, { pon: (k, prio, gen, alAcabar) => cola.push({ k, gen, alAcabar }), cancela: () => {} }, new THREE.PerspectiveCamera(), 0, 0, () => 0, () => 0, tiempo.parcheTiempo, sf.P, sf.S, { now: () => 0 }, fabrica(THREE).Materiales);
   m.uSombra = tiempo.uSombra; m.Mundo = Mundo; m.cola = cola; m.SF = sf.S;
   return m;
 }

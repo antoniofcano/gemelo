@@ -4,6 +4,8 @@
 // HONESTIDAD: aquí no se dibuja; lo que se ve lo dice el banco.
 import { beforeAll, describe, expect, it } from "vitest";
 import { ComponentesPuro } from "../../nucleo/componentes.ts";
+import { creaMateriales } from "../../nucleo/materiales.ts";
+import type { ThreeMin } from "../../nucleo/materiales.ts";
 import { creaSombreadoTiles, hash, uniformesTerreno } from "./terreno.ts";
 import type { DepsTerreno, RaizGlb, ThreeTerreno } from "./terreno.ts";
 import type { Tesela } from "./teselas.ts";
@@ -41,7 +43,7 @@ function monta(THREE: ThreeTerreno & Record<string, unknown>) {
   const T = THREE as unknown as { MeshLambertMaterial: new () => { color: unknown } };
   const matSuelo = new T.MeshLambertMaterial(), UN = uniformesTerreno({ THREE, D, x0: 0, yN: 0, ANCHO: 1000, ALTO: 1000, tinteOrto: {} });
   const deps: DepsTerreno = {
-    THREE, RES: 1, mundo, suelo: () => 0, UN, matSuelo, parcheTiempo: () => {}, vn2: () => 0.5, ahora: () => 1e6,
+    THREE, RES: 1, mundo, suelo: () => 0, UN, matSuelo, materiales: creaMateriales({ THREE: THREE as unknown as ThreeMin }), parcheTiempo: () => {}, vn2: () => 0.5, ahora: () => 1e6,
     cola: { pon: (k, _p, gen, fin) => { cola.push({ k, gen, fin }); return true; }, cancela: (k) => { const i = cola.findIndex((c) => c.k === k); if (i >= 0) cola.splice(i, 1); } },
     camara: { position: { x: 0, y: 0, z: 0 } }
   };
@@ -53,7 +55,7 @@ function monta(THREE: ThreeTerreno & Record<string, unknown>) {
     const raiz: RaizGlb = { traverse: (f) => f(malla as never) }, tile = { boundingVolume: { box: [x0 + lado / 2, lado / 2, 0, lado / 2, 0, 0, 0, lado / 2, 0, 0, 0, 5] } };
     return { raiz, tile, malla, map };
   }
-  return { S, UN, lista, cola, corre, glb, soltar: (t: Tesela) => { if (alSoltar) alSoltar(t); } };
+  return { S, UN, deps, lista, cola, corre, glb, soltar: (t: Tesela) => { if (alSoltar) alSoltar(t); } };
 }
 
 let C: Awaited<ReturnType<typeof threeContado>>;
@@ -118,6 +120,10 @@ describe("el componente «terreno-sombreado»: montar y liberar deja las textura
     const n = C.vivos.materiales.size;
     m.S.suelta(a.raiz);
     expect(C.vivos.materiales.size).toBe(n - 1); expect(m.S.resumen().glb).toBe(1);
+    // MU5-n, segundo commit: el material sale de la fábrica («terreno», con dueño «terreno-sombreado»), y el suelto por suelta() ya no está en su lista
+    const F = m.deps.materiales as unknown as { inventario(): Record<string, { tipo: string; n: number }>; duenos(): Record<string, number>; ruta(n: string): string };
+    expect(F.inventario()["terreno"]).toEqual({ tipo: "define", n: 2 }); expect(F.duenos()).toEqual({ "terreno-sombreado": 1 }); expect(F.ruta("terreno")).toBe("clasico");
     m.S.libera();
+    expect(F.duenos()).toEqual({});
   });
 });

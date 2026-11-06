@@ -39,6 +39,9 @@ export interface MaterialMin {
   isMeshDepthMaterial?: boolean;
   isMeshDistanceMaterial?: boolean;
   isNodeMaterial?: boolean;
+  /** el EventDispatcher de three: la fábrica escucha «dispose» para olvidar lo que su dueño ya soltó por su cuenta */
+  addEventListener?: (tipo: string, fn: () => void) => void;
+  removeEventListener?: (tipo: string, fn: () => void) => void;
 }
 type Constructor = new (opciones?: unknown) => MaterialMin;
 /** El THREE del motor (el clásico: three o super-three): solo se usan sus clases de material por nombre. */
@@ -184,7 +187,18 @@ export function creaMateriales(deps: DepsMateriales) {
     u.n++;
   }
   function guarda<M extends MaterialMin>(m: M, dueno?: string): M {
-    if (dueno && m) { let s = porDueno.get(dueno); if (!s) porDueno.set(dueno, (s = new Set())); s.add(m); }
+    if (dueno && m) {
+      let s = porDueno.get(dueno); if (!s) porDueno.set(dueno, (s = new Set()));
+      if (s.has(m)) return m;
+      s.add(m);
+      // MU5-n (A3-1a): lo que el dueño suelta por su cuenta (un glb del tileset que se va: SombreadoTiles.suelta) sale de su lista, para que la lista no
+      // crezca durante la sesión. libera(dueño) lo encuentra ya fuera. Un doble sin addEventListener se queda en la lista hasta libera(dueño)
+      const lista = s;
+      if (typeof m.addEventListener === "function") {
+        const olvida = function (): void { lista.delete(m); if (typeof m.removeEventListener === "function") m.removeEventListener("dispose", olvida); };
+        m.addEventListener("dispose", olvida);
+      }
+    }
     return m;
   }
   // la variante TSL de un nombre, si es la ruta que toca; si corre el renderizador nuevo y no la hay, se avisa una vez por nombre (MUNDOS §6)
