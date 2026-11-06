@@ -37,6 +37,8 @@ const TS_DE = {
   "44_lindes.js": "apps/web/src/mundos/exterior/lindes.ts",
   "44b_carteles.js": "apps/web/src/mundos/exterior/carteles.ts",
   "50_decoraciones.js": "apps/web/src/mundos/exterior/decoraciones.ts",
+  // A3-7a: la interfaz (apps/web/src/ui/), que se lee como JavaScript sin tipos ni «dp.» (comoJsUi)
+  "32b_capas.js": "apps/web/src/ui/capas.ts",
   // A3-2a: 07ab vive en varios ficheros (la escalera, el horneado, la cola, el sombreado, el lote y el módulo): se leen todos, en este orden
   // A3-6c: la VR y la locomoción, de todo mundo (apps/web/src/mundos/comun/)
   "36_mandos.js": "apps/web/src/mundos/comun/mandos.ts",

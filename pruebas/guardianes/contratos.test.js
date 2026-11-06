@@ -1,6 +1,6 @@
 "use strict";
 const test = require("node:test"), assert = require("node:assert");
-const { RAIZ, fixture, lee, fs, path } = require("./_util"), { fuenteMotor, TS_DE } = require("./_fuente");
+const { RAIZ, fixture, lee, fs, path } = require("./_util"), { fuenteMotor, TS_DE, comoJsUi } = require("./_fuente");
 const { erroresTesela, enHuella } = require("./_tesela");
 const Ajv2020 = require("ajv/dist/2020").default;
 const contratoModulos = require(path.join(RAIZ, "pruebas", "contrato_modulos.js"));
@@ -243,6 +243,9 @@ for (const [nombre, def] of Object.entries(IFACES.interfaces)) {
     } else if (def.fuente && def.fabrica) {   // migrada a TypeScript (A1-10): el contrato lo cumple la fábrica de apps/web/src/, y el módulo del motor es un talón que la llama
       real = retornoDeFabrica(lee(def.fuente), def.fabrica).sort();
       assert.match(fuenteMotor(def.modulo), new RegExp("^  var " + nombre + " = (?:Nucleo|Mundos)\\." + def.fabrica + "\\(", "m"), def.modulo + " (talón) debe hacer var " + nombre + " = Nucleo|Mundos." + def.fabrica + "(…)");   // A3-1b: los componentes del exterior vienen de Mundos
+    } else if (def.fuente && def.puente === "Interfaz") {   // A3-7a: la IIFE movida a apps/web/src/ui/ tal cual; se lee como el JavaScript de antes (comoJsUi: sin tipos ni «dp.»)
+      real = retornoDe(comoJsUi(lee(def.fuente)), nombre).sort();
+      assert.ok([].concat(TS_DE[def.modulo] || []).includes(def.fuente), def.modulo + " debe ser el talón de " + def.fuente + " (TS_DE de _fuente.js)");
     } else if (def.fuente) {   // A3-6a: la IIFE movida a TypeScript tal cual; el módulo del motor es su talón (la marca apunta a ese .ts)
       real = retornoDe(lee(def.fuente), nombre, true).sort();
       assert.ok([].concat(TS_DE[def.modulo] || []).includes(def.fuente), def.modulo + " debe ser el talón de " + def.fuente + " (TS_DE de _fuente.js)");

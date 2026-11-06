@@ -400,7 +400,7 @@ test("C4 en Node: el sonido se monta con su pestaña de Configuración y su fila
 
 // ---------- puntos de extensión con trozo puro (C2): las capas con su procedencia y los ajustes de un componente
 test("Capas.registra exige la procedencia (medido, deducido o ilustrativo: regla 5) y una función para alternarla", () => {
-  const s = lee("apps/web/motor/32b_capas.js"), C = new Function("\"use strict\";\n" + trozo(s, "// [puro:inicio]", "// [puro:fin]") + "\nreturn CapasPuro;")();
+  const s = fuenteMotor("32b_capas.js"), C = new Function("\"use strict\";\n" + trozo(s, "// [puro:inicio]", "// [puro:fin]") + "\nreturn CapasPuro;")();
   const ok = { id: "humedad-suelo", nombre: "Humedad del suelo", procedencia: "deducido", alterna() {} };
   assert.deepStrictEqual(C.valida(ok), []);
   for (const [k, v] of [["sin procedencia", { procedencia: undefined }], ["procedencia inventada", { procedencia: "estimado" }], ["sin alterna", { alterna: null }], ["grupo raro", { grupo: "otros" }], ["id raro", { id: "Hum" }], ["sin nombre", { nombre: " " }]])
