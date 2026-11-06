@@ -140,7 +140,7 @@ test("en el código: sin setInterval ni setTimeout ni escuchas propias (su reloj
   const codigo = FUENTE.replace(/\/\/.*$/gm, "");
   assert.ok(!/setInterval|setTimeout|addEventListener|requestAnimationFrame/.test(codigo));
   assert.match(lee("apps/web/motor/90_final.js"), /Laminas\.revisa\(dt\)/);
-  assert.match(lee("apps/web/motor/29_vr.js"), /if \(Laminas\.toca\(rr\)\)/);
+  assert.match(require("./_fuente").fuenteMotor("29_vr.js"), /if \(Laminas\.toca\(rr\)\)/);
 });
 
 test("EV2-A1: «encima» pinta por encima de todo (sin profundidad, transparente, renderOrder 998); sin ella, el material de siempre", () => {

@@ -5,7 +5,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
-const PASEO = lee("apps/web/motor/12_paseo.js"), MOD = lee("apps/web/motor/34b_palanca.js"), PL = lee("apps/web/plantilla.html"), css = lee("apps/web/plantilla.css");
+const PASEO = require("./_fuente").fuenteMotor("12_paseo.js"), MOD = require("./_fuente").fuenteMotor("34b_palanca.js"), PL = lee("apps/web/plantilla.html"), css = lee("apps/web/plantilla.css");
 function puro() {
   const i = PASEO.indexOf("// [puro:inicio]"), f = PASEO.indexOf("// [puro:fin]");
   assert.ok(i >= 0 && f > i, "12_paseo.js debe marcar el trozo puro de la palanca con // [puro:inicio] y // [puro:fin]");
@@ -64,8 +64,8 @@ test("se enciende por defecto en táctil; ?palanca=0 o el ajuste la apagan; en e
 
 test("sin bandera el módulo no hace nada: nipplejs solo se pide encendida y con paseo; la cruceta sigue ahí", () => {
   assert.match(MOD, /import\("nipplejs"\)/, "nipplejs por import() perezoso");
-  assert.ok(!/^\s*import\s+[\w{*]/m.test(MOD), "sin import estático: apagada no se descarga");
-  assert.match(MOD, /if \(q && paseando\) enciende\(\); else if \(!q\) apaga\(\)/, "solo enciende si quiere y se pasea");
+  assert.ok(!/^\s*import\s+[\w{*]/m.test(lee("apps/web/motor/34b_palanca.js")) && !/^\s*import[^;\n]*nipplejs/m.test(MOD), "sin import estático: apagada no se descarga");   // A3-6c: palanca.ts importa del núcleo, no nipplejs
+  assert.match(MOD, /if \(q && paseando(\(\))?\) enciende\(\); else if \(!q\) apaga\(\)/, "solo enciende si quiere y se pasea");
   assert.match(MOD, /PalancaPuro\.activa\(tac, aj, location\.search\)/, "la decisión es la pura");
   assert.match(css, /\.palanca \{[^}]*display: none/, "la zona está oculta por defecto");
   assert.match(css, /\[data-palanca="si"\] \.visor\.paseo \.palanca \{ display: block/, "solo se ve con la bandera y paseando");
@@ -82,7 +82,7 @@ test("la CSP (style-src 'self'): el módulo no escribe style= ni <style>; solo e
 test("el paseo la suma por el camino que ya hay (sin duplicar la física) y el ajuste existe", () => {
   assert.match(PASEO, /av = Math\.max\(-1, Math\.min\(1, av \+ mandoPalanca\.av\)\)/, "se suma al avance del teclado y la cruceta");
   assert.match(PASEO, /var vel = velPaseo\(av, dt\)/, "la velocidad sigue saliendo de velPaseo (quad, pendiente, correr)");
-  assert.match(PASEO, /if \(enQuad \|\| enDron\) gi = /, "en quad y dron el lado gira, como la cruceta");
+  assert.match(PASEO, /if \(enQuad(\(\))? \|\| enDron(\(\))?\) gi = /, "en quad y dron el lado gira, como la cruceta");
   assert.match(PASEO, /ponPalanca\(0, 0\)/, "se suelta al salir del paseo y al perder el foco");
   assert.match(lee("apps/web/motor/33_ajustes.js"), /"controles\.palanca": bool\(true\)/, "el ajuste vale sí por defecto");
 });
@@ -90,8 +90,8 @@ test("el paseo la suma por el camino que ya hay (sin duplicar la física) y el a
 test("la palanca nace venga de donde venga el paseo (no solo el botón «Pasear»), y si nipplejs no carga vuelve la cruceta", () => {
   // fallo visto en un móvil el 2026-11-04: al entrar a pasear yendo andando a un punto (12b_llegada.js, entraPaseo() sin pulsar el botón)
   // la cruceta se ocultaba y la palanca no nacía: solo se podía girar
-  assert.match(MOD, /new MutationObserver\(alPasear\)\.observe\(visor, \{ attributes: true, attributeFilter: \["class"\] \}\)/, "mira la clase «paseo» del visor");
-  assert.match(MOD, /function alPasear\(\) \{ if \(paseando\) \{ if \(quiere\(\)\) enciende\(\); \}/);
+  assert.match(MOD, /new MutationObserver\(alPasear\)(\.|; mo\.)observe\(visor, \{ attributes: true, attributeFilter: \["class"\] \}\)/, "mira la clase «paseo» del visor");
+  assert.match(MOD, /function alPasear\(\) \{ if \(paseando(\(\))?\) \{ if \(quiere\(\)\) enciende\(\); \}/);
   assert.match(MOD, /\.catch\(function \(\) \{ pidiendo = false; raiz\.setAttribute\("data-palanca", "no"\); \}\)/, "si no carga, data-palanca=no: vuelve la cruceta");
   assert.match(PASEO, /visor\.classList\.add\("paseo"\)/, "entraPaseo pone la clase que mira la palanca");
   assert.match(css, /\[data-palanca="si"\] \.visor\.paseo \.pad-mov \{ display: none; \}/, "la cruceta solo se oculta con data-palanca=si");

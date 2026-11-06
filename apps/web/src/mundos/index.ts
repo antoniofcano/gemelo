@@ -113,6 +113,25 @@ export type { DepsAvatares } from "./comun/avatares.ts";
 // A3-6a: el menú de muñeca en VR (antes 31c_muneca.js), componente de todo mundo.
 export { ID_MUNECA, MunecaPuro, creaMuneca, manifiestoMuneca } from "./comun/muneca.ts";
 export type { ContextoMuneca, DepsMuneca } from "./comun/muneca.ts";
+// A3-6c (MU5-n): la VR y la locomoción, componentes de TODOS los mundos (mundos/comun/). Cada uno, con su libera() de verdad.
+export { ID_MANDOS, creaMandos, manifiestoMandos } from "./comun/mandos.ts";
+export type { DepsMandos, LibMandos, Mandos } from "./comun/mandos.ts";
+export { VrConfortPuro, VrFichaPuro, VrGentePuro, VrConcedidaPuro } from "./comun/vr-puros.ts";
+export type { Gente, FilaGente, MedidaLamina, PuntoGente } from "./comun/vr-puros.ts";
+export { ID_VR, creaVr } from "./comun/vr.ts";
+export type { CtxVr, DepsVr, Vr } from "./comun/vr.ts";
+export { VR_GIROS, VR_PESTANAS, creaPanelVR } from "./comun/vr-panel.ts";
+export type { CtxPanelVR, Lamina, PanelVR } from "./comun/vr-panel.ts";
+export { ID_IR_A, creaIrA, manifiestoIrA } from "./comun/ir-a.ts";
+export type { DepsIrA, IrA } from "./comun/ir-a.ts";
+export { ID_LLEGADA, creaLlegada, manifiestoLlegada } from "./comun/llegada.ts";
+export type { DepsLlegada, Llegada } from "./comun/llegada.ts";
+export { ID_PASEO, PalancaPuro, creaPaseo, manifiestoPaseo } from "./comun/paseo.ts";
+export type { DepsPaseo, Paseo } from "./comun/paseo.ts";
+export { ID_CAMARA, creaCamara, manifiestoCamara } from "./comun/camara.ts";
+export type { Camara, DepsCamara } from "./comun/camara.ts";
+export { ID_PALANCA, creaPalanca, manifiestoPalanca } from "./comun/palanca.ts";
+export type { DepsPalanca, Palanca } from "./comun/palanca.ts";
 // A3-6b (MU5-n): hablar en la guiada y en un corro (antes 47_habla.js), componente de todo mundo; su lógica pura (HablaPuro) viene de red/voz/ por el export * de arriba.
 export { ID_HABLA, creaHabla, manifiestoHabla } from "./comun/habla.ts";
 export type { DepsHabla, Habla } from "./comun/habla.ts";

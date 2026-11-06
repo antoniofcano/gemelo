@@ -13,12 +13,12 @@ const EXCEPCIONES = {
 function filas() {
   const out = []; const re = /PanelVR\.filas\("([a-z]+)", \{ id: "([A-Za-z_]+)", orden: (\d+), alto: (\d+)/g;
   for (const f of fs.readdirSync(MOTOR).filter(x => x.endsWith(".js")).sort()) {
-    const s = fs.readFileSync(path.join(MOTOR, f), "utf8"); let m;
+    const s = require("./_fuente").fuenteMotor(f); let m;   // A3-6c: de un talón, también sus .ts (las filas de 29_vr viven en mundos/comun/vr-panel.ts)
     while ((m = re.exec(s))) out.push({ pestana: m[1], id: m[2], orden: +m[3], alto: +m[4], fichero: f });
   }
   return out;
 }
-const pestanas = () => { const m = fs.readFileSync(path.join(MOTOR, "29_vr.js"), "utf8").match(/var VR_PESTANAS = (\[\[.*?\]\]),/); return JSON.parse(m[1]).map(x => x[0]); };
+const pestanas = () => { const m = require("./_fuente").fuenteMotor("29_vr.js").match(/var VR_PESTANAS = (\[\[.*?\]\]),/); return JSON.parse(m[1]).map(x => x[0]); };
 
 test("panel VR: la suma de los altos de cada pestaña cabe en el espacio útil", () => {
   const todas = filas(), tabs = pestanas(); assert.ok(todas.length >= 15, "se leyeron las filas: " + todas.length);
@@ -36,7 +36,7 @@ test("panel VR: las excepciones apuntan a filas que existen (si se arreglan, se 
 });
 
 test("panel VR: las pestañas caben en su fila (x ≤ 984) y no se solapan", () => {
-  const s = fs.readFileSync(path.join(MOTOR, "29_vr.js"), "utf8"), n = pestanas().length;
+  const s = require("./_fuente").fuenteMotor("29_vr.js"), n = pestanas().length;
   const m = s.match(/b\("t_" \+ t\[0\], 40 \+ i \* (\d+), 104, (\d+), 64/); assert.ok(m, "geometría de las pestañas");
   assert.ok(40 + (n - 1) * +m[1] + +m[2] <= 984, "las pestañas se salen del panel");
   assert.ok(+m[2] <= +m[1], "las pestañas no se solapan");

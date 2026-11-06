@@ -123,9 +123,9 @@ test("medidor-fotogramas: medida:inicia mide con «cuadro:fin», termina, la tar
 });
 
 test("medidor-fotogramas: ni 28_depura, ni 29_vr, ni 33_ajustes, ni 90_final nombran ya a Mide; hablan por el Bus", () => {
-  const f = n => sinComentarios(lee("apps/web/motor/" + n + ".js")).replace(/"(?:[^"\\\n]|\\.)*"/g, "\"\"");
+  const f = n => sinComentarios(require("./_fuente").fuenteMotor(n + ".js")).replace(/"(?:[^"\\\n]|\\.)*"/g, "\"\"");
   for (const n of ["28_depura", "29_vr", "33_ajustes", "90_final"]) assert.ok(!/(?<![\w$.])(Mide|MideEst|vrMideEmpieza|vrMideEnvio|vrMideFin)(?![\w$])/.test(f(n)), n + " sigue nombrando al medidor");
-  const bruto = n => lee("apps/web/motor/" + n + ".js");
+  const bruto = n => require("./_fuente").fuenteMotor(n + ".js");   // A3-6c: 29_vr es un talón de mundos/comun/vr*.ts
   assert.match(bruto("90_final"), /Bus\.emite\("cuadro:fin", FIN\)/);
   assert.match(bruto("29_vr"), /Bus\.on\("medida:fin"/); assert.match(bruto("29_vr"), /Bus\.emite\("medida:estado", q\)/); assert.match(bruto("29_vr"), /Bus\.emite\("medida:envia"\)/);
   assert.match(bruto("33_ajustes"), /Bus\.emite\("medida:muestra"/); assert.match(bruto("33_ajustes"), /Bus\.emite\("medida:inicia"/);

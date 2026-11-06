@@ -41,6 +41,14 @@ const TS_DE = {
   "44b_carteles.js": "apps/web/src/mundos/exterior/carteles.ts",
   "50_decoraciones.js": "apps/web/src/mundos/exterior/decoraciones.ts",
   // A3-2a: 07ab vive en varios ficheros (la escalera, el horneado, la cola, el sombreado, el lote y el módulo): se leen todos, en este orden
+  // A3-6c: la VR y la locomoción, de todo mundo (apps/web/src/mundos/comun/)
+  "36_mandos.js": "apps/web/src/mundos/comun/mandos.ts",
+  "12c_ir_a.js": "apps/web/src/mundos/comun/ir-a.ts",
+  "12b_llegada.js": "apps/web/src/mundos/comun/llegada.ts",
+  "12_paseo.js": "apps/web/src/mundos/comun/paseo.ts",
+  "09_camara.js": "apps/web/src/mundos/comun/camara.ts",
+  "34b_palanca.js": "apps/web/src/mundos/comun/palanca.ts",
+  "29_vr.js": ["vr.ts", "vr-rig.ts", "vr-teletransporte.ts", "vr-panel.ts", "vr-sesion.ts", "vr-puros.ts"].map(f => "apps/web/src/mundos/comun/" + f),
   "07ab_generados.js": ["generados.ts", "generados-escalera.ts", "generados-horneado.ts", "generados-cola.ts", "generados-sombreado.ts", "generados-lote.ts"].map(f => "apps/web/src/mundos/exterior/" + f),
   // A3-4: 15_tiempo es una extracción parcial; el tiempo vive en ocho ficheros (el módulo, lo puro, el parche, el cielo, la lluvia, la barrera, el paso y las fichas)
   "21_suelo.js": "apps/web/src/mundos/exterior/hierba.ts",   // A3-4
@@ -48,11 +56,26 @@ const TS_DE = {
   "23_estacion.js": "apps/web/src/mundos/exterior/estacion.ts",   // A3-4
   "15_tiempo.js": ["tiempo.ts", "tiempo-puro.ts", "tiempo-parche.ts", "tiempo-cielo.ts", "tiempo-lluvia.ts", "tiempo-barrera.ts", "tiempo-paso.ts", "tiempo-fichas.ts"].map(f => "apps/web/src/mundos/exterior/" + f),
 };
+/** A3-6c: los .ts de mundos/comun/ (la VR y la locomoción) se leen como el JavaScript que sale de ellos: sin los tipos (stripTypeScriptTypes de Node, que los cambia por
+ *  espacios) y sin `export` al principio de línea, con los huecos que dejan los tipos recogidos. Así sus guardianes de siempre (los que buscan el código de 29_vr, 12_paseo… con
+ *  expresiones regulares o evalúan sus trozos [puro] con new Function) miran el código movido tal cual, sin tener que aceptar «: T» en cada patrón. Solo para comun/: los
+ *  guardianes de exterior/ ya leen su TypeScript con los tipos. */
+// solo los de A3-6c (la VR y la locomoción); los de A3-6a en comun/ (presencia, avatares, muñeca…) se leen con su TypeScript o con fuenteMotorJs, como los dejó A3-6a
+const COMO_JS = /(^|\/)apps\/web\/src\/mundos\/comun\/(vr[\w-]*|mandos|paseo|llegada|ir-a|camara|palanca)\.ts$/;
+function comoJs(ts) {
+  const m = require("node:module"), avisa = process.emitWarning;
+  process.emitWarning = () => {};   // «experimental»: no ensucia la salida de las pruebas
+  let js; try { js = m.stripTypeScriptTypes(ts); } finally { process.emitWarning = avisa; }
+  return js.replace(/^(\s*)export (?=(const|function|var|let|async|class)\b)/gm, "$1")
+    .replace(/[ \t]{2,}(?=[),;\]])/g, "")             // (o: T) → (o), [a!] → [a]
+    .replace(/(?<=[\])\w]) +(?=[[.])/g, "")            // a![0] → a[0], x!.y → x.y (los «!» que se van)
+    .replace(/[ \t]{2,}(?=[={])/g, " ");               // var x: T = → var x =, function f(): T { → function f() {
+}
 /** el talón y el .ts juntos (o solo el fichero del motor, si no es de los migrados) */
 function fuenteMotor(fichero) {
   const talon = lee("apps/web/motor/" + fichero);
   const ts = TS_DE[fichero];
-  return ts ? [talon].concat([].concat(ts).map(lee)).join("\n") : talon;
+  return ts ? [talon].concat([].concat(ts).map(f => COMO_JS.test(f) ? comoJs(lee(f)) : lee(f))).join("\n") : talon;
 }
 
 /** A3-6a: el mismo texto sin las anotaciones mecánicas que puso la migración a TypeScript (`?: any`, `: any[]`, `: any`) ni el prefijo de las dependencias que
@@ -61,4 +84,4 @@ function fuenteMotorJs(fichero) {
   return fuenteMotor(fichero).replace(/\?: any(?![\w$])/g, "").replace(/: any(?:\[\])?(?=[\s,)=;])/g, "").replace(/(?<![\w.$])dp\./g, "");
 }
 
-module.exports = { fuenteMotor, fuenteMotorJs, TS_DE };
+module.exports = { fuenteMotor, fuenteMotorJs, TS_DE, comoJs, COMO_JS };

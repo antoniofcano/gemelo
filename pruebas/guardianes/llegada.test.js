@@ -5,7 +5,7 @@
 const test = require("node:test"), { describe, before } = test, assert = require("node:assert");
 const { lee } = require("./_util");
 
-const FUENTE = lee("apps/web/motor/12b_llegada.js");
+const FUENTE = require("./_fuente").fuenteMotor("12b_llegada.js");   // A3-6c: el talón y mundos/comun/llegada.ts
 
 test("12b_llegada.js toma su lógica pura del núcleo (LlegadaPuro = Nucleo.LlegadaPuro); sus pruebas, en apps/web/src/nucleo/locomocion.test.ts", () => {
   assert.match(FUENTE, /^  var LlegadaPuro = Nucleo\.LlegadaPuro;$/m);

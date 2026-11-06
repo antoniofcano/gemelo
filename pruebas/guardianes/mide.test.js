@@ -179,7 +179,7 @@ test("PB9: el envío es SOLO a petición (el botón), al mismo origen, sin nada 
   assert.ok(!/envia\(\)/.test(FUENTE.replace(/function envia\(\)/, "").replace(/api\.envia = envia/, "")) || /addEventListener\("click", envia\)/.test(FUENTE), "solo se llama desde el botón");
   assert.ok(!/envia\(\)/.test(FUENTE.slice(FUENTE.indexOf("function termina()"), FUENTE.indexOf("function guarda()"))), "termina() no envía nada por su cuenta");
   assert.ok(/Enviar esta medida a la oficina/.test(FUENTE), "el texto del botón");
-  const vr = lee("apps/web/motor/29_vr.js");
+  const vr = require("./_fuente").fuenteMotor("29_vr.js");
   assert.ok(/b\("mideEnvia"[^;]*Bus\.emite\("medida:envia"\)/.test(vr), "el botón del panel de VR pide el envío por el Bus (medida:envia) con el gatillo");
   assert.ok(/n\.on\("medida:envia", function \(\) \{ envia\(\); \}\)/.test(FUENTE), "y el medidor lo atiende");
   assert.ok(!/localStorage/.test(envia));

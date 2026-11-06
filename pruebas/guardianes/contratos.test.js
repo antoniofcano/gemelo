@@ -235,6 +235,11 @@ for (const [nombre, def] of Object.entries(IFACES.interfaces)) {
       assert.ok(ini >= 0, "no encuentro «export const " + nombre + " = {» en " + def.fuente);
       real = claves(src, ini).sort();
       assert.match(fuenteMotor(def.modulo), new RegExp("^  var " + nombre + " = Nucleo\\." + nombre + ";", "m"), def.modulo + " debe hacer var " + nombre + " = Nucleo." + nombre + ";");
+    } else if (def.fuente && def.de) {   // A3-6c: la crea una fábrica de TypeScript dentro de otra (PanelVR, en creaVr); el talón la saca de lo que dio la de fuera: var Vr = Mundos.creaVr(…); var PanelVR = Vr.PanelVR
+      real = retornoDeFabrica(lee(def.fuente), def.fabrica).sort();
+      const t = fuenteMotor(def.modulo);
+      assert.match(t, new RegExp("^  var " + def.de + " = (?:Nucleo|Mundos)\\." + def.fabricaDe + "\\(", "m"), def.modulo + " (talón) debe hacer var " + def.de + " = Mundos." + def.fabricaDe + "(…)");
+      assert.match(t, new RegExp("[ ,]" + nombre + " = " + def.de + "\\." + nombre + "[,;]"), def.modulo + " (talón) debe sacar " + nombre + " = " + def.de + "." + nombre);
     } else if (def.fuente && def.fabrica) {   // migrada a TypeScript (A1-10): el contrato lo cumple la fábrica de apps/web/src/, y el módulo del motor es un talón que la llama
       real = retornoDeFabrica(lee(def.fuente), def.fabrica).sort();
       assert.match(fuenteMotor(def.modulo), new RegExp("^  var " + nombre + " = (?:Nucleo|Mundos)\\." + def.fabrica + "\\(", "m"), def.modulo + " (talón) debe hacer var " + nombre + " = Nucleo|Mundos." + def.fabrica + "(…)");   // A3-1b: los componentes del exterior vienen de Mundos

@@ -160,7 +160,7 @@ test("el paso de hora de VR (h−/h+) mueve el reloj del mundo con la regla del 
 });
 
 test("en el código: los botones h−/h+ de VR llaman al reloj del mundo (no al #hora que actualizaTiempo pisa) y el corrimiento llega a la luz", () => {
-  const VR = lee("apps/web/motor/29_vr.js").replace(/^\s*\/\/.*$/gm, "");
+  const VR = require("./_fuente").fuenteMotor("29_vr.js").replace(/^\s*\/\/.*$/gm, "");
   assert.ok(!/vrSlider\(\s*["']hora["']/.test(VR), "ya no se mueve #hora desde VR");
   assert.strictEqual((VR.match(/pasoHoraMundo\(-1\)/g) || []).length, 1); assert.strictEqual((VR.match(/pasoHoraMundo\(1\)/g) || []).length, 1);
   assert.ok(!/\$\("hora"\)/.test(VR), "ni se lee la hora de #hora: el rótulo sale del reloj del mundo");

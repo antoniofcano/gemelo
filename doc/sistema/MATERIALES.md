@@ -60,7 +60,7 @@ Son tres. Pasados a TSL, desbloquean a casi todos:
 | 21 | `apps/web/src/mundos/exterior/huellas-polvo.ts` (antes `22b_huellas_polvo.js`) | `polvo` | `ShaderMaterial` (puntos) | polvo | no | no | CPU | `uLuz` | M (puntos) — **TSL parcial, apagada (MU5-n, A3-5):** `PointsNodeMaterial`; el tamaño en píxeles no vale en el WebGPURenderer nativo (§12) |
 | 22 | `apps/web/src/mundos/exterior/estacion.ts` (antes `23_estacion.js`) | `fruto-flor` | `ShaderMaterial` (puntos) | flores y aceitunas por BBCH | no | CPU (vigor) | no | `uLuz` | M (puntos) — **TSL parcial (MU5-n, A3-4):** `define` con clásico y TSL apagada; le falta el tamaño de los puntos (sprites) (§11) |
 | 23 | `mundos/comun/avatares.ts` (antes `26b_avatares.js`) | `vrm-fundido` | MToon + `encadena` | fundido por tramado | sí (MToon) | no | no | no | M-A (`MToonNodeMaterial`) — **TSL parcial, apagada (MU5-n, A3-6a):** `MeshStandardNodeMaterial` con el tramado por `maskNode`, sin el sombreado toon de MToon (§13) |
-| 24 | `29_vr.js` | `vineta-vr` | `ShaderMaterial` | viñeta de confort | no | no | no | no | B |
+| 24 | `apps/web/src/mundos/comun/vr.ts` (antes `29_vr.js`) | `vineta-vr` | `ShaderMaterial` | viñeta de confort | no | no | no | no | B — **hecho (MU5-n, A3-6c):** `define("vineta-vr", { clasico, tsl })`, la TSL apagada (§14) |
 | 25 | `mundos/comun/presencia.ts` (antes `38_presencia_compartida.js`) | `nombres-presencia` | `ShaderMaterial` (instanciado) | nombres de un atlas, de cara a la cámara | no | no | no | no | M (de cara a la cámara **por ojo**) — **TSL parcial, apagada (MU5-n, A3-6a):** `MeshBasicNodeMaterial` con el atlas por instancia; falta ponerlo de cara a la cámara por ojo (§13) |
 | 26 | `44_lindes.js` | `lindes-acerca` | `LineMaterial` + parche | lindes acercadas a la cámara | sí | no | no | no | M (`Line2NodeMaterial`) — **hecho (MU5-n, A3-3):** `define("lindes-acerca", { clasico, tsl })`, la TSL apagada y **parcial** (§9.1) |
 | — | `nucleo/materiales.ts` | `ejemplo-tsl` | Basic + parche / `MeshBasicNodeMaterial` | el ejemplo de la ruta (§3): color · `uBrillo` | sí | no | no | no | hecho |
@@ -417,6 +417,31 @@ Las dos viven junto a su clásico (una sola fuente), están **apagadas** (solo l
 Ver MUNDOS §2 («Cómo quedó (MU5-n, A3-6a)»). Pruebas de memoria (Vitest, sin GPU): `presencia.test.ts` (con `?presencia=sim&chat=1`: geometrías, materiales y la textura con su `dispose`, el lienzo del atlas a 0, el panel fuera, el observador desconectado, el tipo «persona» quitado), `avatares.test.ts` (la copia del VRM suelta, el grupo fuera, el gancho quitado, `bufs` a 0), `muneca.test.ts` (la lámina al salir de VR; sus enganches y ganchos con el `libera()` del componente) y `red/salas.test.ts` (cada sala dejada y la red cerrada).
 
 **No probado:** nada de esto en un navegador, en iPhone ni en el Quest (esta tarea no abrió Chrome ni Docker); que las TSL se vean como las clásicas (MU6).
+
+## 14. Lo hecho en A3-6c (2026-11-06): la VR y la locomoción, de todo mundo
+
+Siete módulos del legado pasan a `apps/web/src/mundos/comun/` como componentes de **todos** los mundos (`mundos: "todos"`; MUNDOS §2, «Cómo quedó (MU5-n, A3-6c)»). Qué toca de la receta del §5 a cada uno:
+
+| Módulo | 1.er commit (TS y componente) | 2.º commit (materiales por la fábrica) | 3.er commit (TSL apagada) |
+|---|---|---|---|
+| `36_mandos.js` → `mandos.ts` (`mandos-vr`) | hecho | hecho: la caja de respaldo, `MeshBasicMaterial` estándar con dueño `mandos-vr` (los modelos del mando y de la mano son de las fábricas de three y se sueltan como antes) | **no hace falta:** sin sombreador propio |
+| `29_vr.js` → `vr.ts` + `vr-rig.ts`, `vr-teletransporte.ts`, `vr-panel.ts`, `vr-sesion.ts`, `vr-puros.ts` (`vr`) | hecho (+ L2-06, lo de sus módulos) | hecho: `vineta-vr` pasa de `Materiales.sombreador` a `define` + `Materiales.de("vr").crea` (el mismo `ShaderMaterial`, movido: mismo código, estado y clave de programa); los rayos, el arco, su marca, la línea del aire, el velo y las tres láminas, estándar (`.estandar`) con el mismo dueño | hecho (§14.1) |
+| `12c_ir_a.js` → `ir-a.ts` (`ir-a`) | hecho | hecho: el `PointsMaterial` de la línea de puntos, estándar con dueño `ir-a` | **no hace falta** |
+| `12b_llegada.js` → `llegada.ts` (`anillo-llegada`) | hecho | hecho: el `MeshBasicMaterial` del anillo, estándar con dueño `anillo-llegada` | **no hace falta** |
+| `12_paseo.js` → `paseo.ts` (`paseo`) | hecho | hecho: los cuatro `MeshLambertMaterial` del muñequito, estándar con dueño `paseo` | **no hace falta** |
+| `09_camara.js` → `camara.ts` (`camara-orbital`) | hecho | **no hace falta:** sin materiales | **no hace falta** |
+| `34b_palanca.js` → `palanca.ts` (`palanca-tactil`) | hecho | **no hace falta:** DOM (nipplejs) | **no hace falta** |
+
+- **Pendiente:** `34_movibles.js` (las ventanas flotantes: el chat y el minimapa). Es de la frontera `ui/` de MUNDOS §1 (HUD y ventanas), que aún no tiene alias hacia el legado; sin materiales ni sombreador.
+- **Cobertura (`Materiales.cobertura()`):** `vineta-vr` con clásico y TSL. **Fuera de la fábrica:** ninguna fila de `FUERA` que bajar: la viñeta ya pasaba por `Materiales.sombreador`; los recuentos del §1.4 bajan un `sombreador` (29) y suben un `define`.
+
+### 14.1 La variante TSL de la viñeta
+
+Vive junto al clásico en `vr.ts` (`defVineta`), está **apagada** (solo la daría la fábrica con el `WebGPURenderer`, MU6): un `MeshBasicNodeMaterial` negro con `opacityNode = smoothstep(uA, uA + 0,34, |uv − 0,5| · 2) · uK`, el estado de dibujo del clásico (transparente, sin probar ni escribir profundidad, sin niebla) y los MISMOS `{ value }` de `uK` y `uA` que mueve `vrActualiza`. Probada en Vitest con `three/webgpu` y `three/tsl` de verdad (`vr.test.ts`). **Sin diferencias conocidas; no comprobado** que el grafo compile ni que se vea igual por ojo con multiview (capturas: MU6; el Quest sigue en super-three, MULTIVIEW §4.1).
+
+### 14.2 Los ciclos de vida (`libera()`)
+
+Ver MUNDOS §2 («Cómo quedó (MU5-n, A3-6c)») y COMPONENTES §6. Pruebas (Vitest, sin GPU: no hay `renderer.info`; se cuentan las creaciones y los «dispose» de three): `vr.test.ts` (diez sesiones sin crear geometrías, materiales ni texturas; `libera()` suelta todo), `mandos.test.ts` (diez sesiones con el modelo del mando: nada vivo, ni escuchas ni relojes), `ir-a.test.ts`, `llegada.test.ts`, `paseo.test.ts`, `camara.test.ts` y `palanca.test.ts`. **No probado:** en un navegador, en el Quest ni en el iPhone (esta tarea no abrió Chrome ni Docker).
 
 ## 15. Lo hecho en A3-6b (2026-11-07): la voz, hablar y los corros, de todo mundo
 

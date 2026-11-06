@@ -16,6 +16,11 @@ const acorn = require("acorn");
 const { ficheros, lee } = require("./_util"), { fuenteMotor } = require("./_fuente");
 
 const MODULOS = ["12_paseo.js", "12b_llegada.js", "12c_ir_a.js", "16_vida.js", "29_vr.js"];
+// A3-6c (MU5-n): los que viven en mundos/comun/ (29_vr, 12c_ir_a…) se analizan con su talón y el JavaScript que sale de sus .ts (_fuente.js: sin tipos), sin sus import
+const { TS_DE, COMO_JS } = require("./_fuente");
+const enComun = m => [].concat(TS_DE[m] || []).some(f => COMO_JS.test(f));   // los de A3-6c, que _fuente.js lee como JavaScript
+const textoDe = (f, nombre) => enComun(nombre) ? fuenteMotor(nombre).replace(/^import .*$/gm, "") : lee(f);
+const ACORN = MODULOS;
 // Lo que se queda en el legado a propósito. `en`: la función que lo contiene (el nombre de su declaración, de su variable o de lo que se le asigna);
 // `codigo`: el texto exacto de la llamada o del nombre. Si cambia el texto, falla: se revisa si sigue siendo legítimo.
 const PERMITIDAS = {
@@ -26,7 +31,11 @@ const PERMITIDAS = {
   ],
   copas: [
     { f: "12c_ir_a.js", en: "toca", codigo: "copas", n: 2, motivo: "el rodeo (IrAPuro.planifica y su replanificación en IrAPuro.ir) cruza un segmento con cada tronco, que un obstaculo(x, y, radio) de un punto no responde" },
+    { f: "12c_ir_a.js", en: "copas", codigo: "copas", n: 1, motivo: "A3-6c: el talón da el censo a ir-a.ts por función (02_mundo lo declara; nadie lo reescribe, pero así se lee al usarlo)" },
+    { f: "12c_ir_a.js", en: "creaIrA", codigo: "copas", n: 1, motivo: "A3-6c: el alias de esa función dentro de creaIrA (el rodeo la llama, arriba)" },
     { f: "29_vr.js", en: "window.__vrOlivo", codigo: "copas", n: 1, motivo: "ayuda de las pruebas de VR: el olivo más cercano a la cabeza" },
+    { f: "29_vr.js", en: "copas", codigo: "copas", n: 1, motivo: "A3-6c: el talón da el censo a la VR por función, solo para window.__vrOlivo" },
+    { f: "29_vr.js", en: "creaVrSesion", codigo: "copas", n: 1, motivo: "A3-6c: el alias de esa función en vr-sesion.ts, para window.__vrOlivo" },
   ],
 };
 
@@ -71,7 +80,7 @@ function analiza(modulos, vigilados) {
 
 const MOTOR = ficheros().filter(f => /^apps\/web\/motor\/[^/]+\.js$/.test(f)).sort();
 let cache = null;
-const montaje = () => cache || (cache = analiza(MOTOR.map(f => ({ nombre: f.slice("apps/web/motor/".length), texto: lee(f) })), MODULOS));
+const montaje = () => cache || (cache = analiza(MOTOR.map(f => ({ nombre: f.slice("apps/web/motor/".length), texto: textoDe(f, f.slice("apps/web/motor/".length)) })), ACORN));
 const clave = u => u.f + " · " + u.en + " · " + u.codigo;
 
 test("los cinco módulos de locomoción están en el motor", () => {
@@ -110,12 +119,12 @@ test("LlegadaPuro.rayoSuelo, IrAPuro.planifica e IrAPuro.ir reciben los delegado
   assert.ok(plan.length >= 1 && ir.length >= 1, "12c_ir_a llama a IrAPuro.planifica e IrAPuro.ir");
   for (const u of plan) assert.strictEqual(arg(u, 4), "gm.dentro", clave(u) + ": la caja de planifica es gm.dentro");
   for (const u of ir) assert.strictEqual(arg(u, 5), "gm.dentro", clave(u) + ": la caja de ir (la de replanificar) es gm.dentro");
-  const llegada = lee("apps/web/motor/12b_llegada.js");
+  const llegada = fuenteMotor("12b_llegada.js");   // A3-6c: el talón y llegada.ts
   assert.match(llegada, /var alto = function \(x, z\) \{ return gm\.suelo\(x, -z\) \* Estado\.exag; \};/, "el alto de la llegada es gm.suelo · exag");
 });
 
 test("cada módulo de locomoción pregunta al mundo activo (gm.suelo, gm.dentro o gm.obstaculo)", () => {
-  for (const m of MODULOS) assert.match(lee("apps/web/motor/" + m), /\bgm\.(suelo|dentro|obstaculo)\(|\bgm\.dentro\b/, m + " no usa los delegados de gm");
+  for (const m of MODULOS) assert.match(fuenteMotor(m), /\bgm\.(suelo|dentro|obstaculo)\(|\bgm\.dentro\b/, m + " no usa los delegados de gm");
 });
 
 // A3-5 (MU5-n): el código de 16_vida vive en mundos/exterior/vida.ts, que acorn no lee (TypeScript); el talón solo cablea. Lo mismo, sobre el texto del .ts sin comentarios: el dron se mueve con
@@ -129,6 +138,21 @@ test("16_vida (vida.ts): el dron se mueve con sueloMundo y obstaculo (gm); suelo
   assert.ok(!/\bD\.ext\b/.test(ts) && !/\bfueraDeTroncos\b/.test(ts) && !/\bcopas\b/.test(ts), "vida.ts no lee D.ext, ni copas, ni fueraDeTroncos");
   const talon = lee("apps/web/motor/16_vida.js");
   assert.match(talon, /sueloMundo: function \(x, y\) \{ return gm\.suelo\(x, y\); \}, obstaculo: function \(x, y, r\) \{ return gm\.obstaculo\(x, y, r\); \}/, "el talón cablea el mundo activo");
+});
+
+// A3-6c (MU5-n): lo mismo para 29_vr, cuyo código vive en mundos/comun/vr*.ts (el JavaScript que sale de ellos, sin comentarios): quien mira se mueve con gm.suelo, gm.dentro y
+// gm.obstaculo; suelo( solo para la marca del arco (dibujo; el punto de caída lo calcula vrArco con gm.suelo y gm.dentro) y en window.__vrOlivo (ayuda de las pruebas de VR, el olivo
+// más cercano a la cabeza), que es también el único que nombra copas; ni D.ext ni fueraDeTroncos.
+test("29_vr (mundos/comun/vr*.ts): se mueve con gm; suelo( solo en la marca del arco y en __vrOlivo; copas solo en __vrOlivo; ni D.ext ni fueraDeTroncos", () => {
+  const js = fuenteMotor("29_vr.js").split("\n").filter(l => !/^\s*\/\//.test(l)).map(l => l.replace(/\s\/\/.*$/, "")).join("\n");
+  const suelos = [...js.matchAll(/(?<![\w.])suelo\(([^)]*)\)/g)].map(m => m[0]).filter(x => !/^suelo\(x: number/.test(x));
+  assert.deepStrictEqual(suelos.sort(), ["suelo(VRX.tp.x, -VRX.tp.z)", "suelo(b.x, b.y)"].sort(), "suelo( fuera de la lista en la VR (si mueve a alguien, gm.suelo)");
+  assert.match(js, /arcoMarca\.position\.set\(VRX\.tp\.x, suelo\(VRX\.tp\.x, -VRX\.tp\.z\) \* Estado\.exag \+ 0\.08, VRX\.tp\.z\)/, "la marca del arco es dibujo");
+  assert.match(js, /window\.__vrOlivo = function \(\) \{ var h = VRX\.cab, b = null, bd = 1e9; copas\(\)\.forEach\(/, "copas, solo en la ayuda de pruebas");
+  assert.strictEqual([...js.matchAll(/(?<![\w.])copas\(\)/g)].length, 1, "copas() una sola vez (en __vrOlivo)");
+  assert.ok(!/D\.ext/.test(js) && !/fueraDeTroncos/.test(js), "la VR no lee D.ext ni fueraDeTroncos");
+  for (const re of [/gm\.suelo\(px, -pz\)/, /gm\.dentro\(hit\.x, -hit\.z\)/, /ob = gm\.obstaculo\(nx, -nz, rTronco\)/, /VRX\.rig\.y = gm\.suelo\(px, py\) \* Estado\.exag \+ vrBaseY\(\)/]) assert.match(js, re);
+  assert.match(lee("apps/web/motor/29_vr.js"), /gm: function \(\) \{ return gm; \}/, "el talón da el gestor de mundos por función (90_final lo declara después)");
 });
 
 test("90_final.js da al exterior su caja y su censo (creaExterior({ ext: D.ext, copas: copas, … }))", () => {

@@ -50,7 +50,7 @@ test("los límites de la oficina son los del esquema y los del motor; los máxim
   const motor = lee("apps/web/motor/02c_componentes.js");
   const ini = motor.indexOf("// [puro:inicio]"), fin = motor.indexOf("// [puro:fin]");
   const { ConfigPuro } = new Function("Nucleo", "\"use strict\";\n" + motor.slice(ini, fin) + "\nreturn { ConfigPuro };")(require("./_nucleo"));   // MU2-5: ComponentesPuro sale del núcleo
-  const VR_TRI = [...lee("apps/web/motor/29_vr.js").match(/var VR_PERFILES = \[(.*?)\];/)[1].matchAll(/tri: (\d+)/g)].map(m => Number(m[1]));
+  const VR_TRI = [...require("./_fuente").fuenteMotor("29_vr.js").match(/var VR_PERFILES = \[(.*?)\];/)[1].matchAll(/tri: (\d+)/g)].map(m => Number(m[1]));
   assert.deepStrictEqual(P.GAFAS_MAX, VR_TRI, "los máximos de gafas son los VR_PERFILES[].tri del código");
   const esc = ESQ.properties.escalera.properties, vistos = new Set();
   const nodo = ruta => ruta.split(".").slice(1).reduce((n, c) => (/^\d+$/.test(c) ? n.prefixItems[Number(c)] : (n.properties || {})[c]), { properties: esc });

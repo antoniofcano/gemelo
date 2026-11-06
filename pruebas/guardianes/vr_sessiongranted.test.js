@@ -5,12 +5,12 @@
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
-const FUENTE = lee("apps/web/motor/29_vr.js");
+const FUENTE = require("./_fuente").fuenteMotor("29_vr.js");
 const SEC = FUENTE.indexOf("----- 8) Q2c");
 const i = FUENTE.indexOf("// [puro:inicio]", SEC), f = FUENTE.indexOf("// [puro:fin]", i);
 assert.ok(SEC >= 0 && i > SEC && f > i, "29_vr.js debe marcar el trozo puro de Q2c");
 const A = FUENTE.indexOf("  var vrDeteccion = null;"), B = FUENTE.indexOf("  window.__vrDebug = function");
-assert.ok(A > f && B > A, "falta el cableado vrConcedida()");
+assert.ok(A >= 0 && B > A, "falta el cableado vrConcedida()");   // A3-6c: el cableado (vr-sesion.ts) y lo puro (vr-puros.ts) viven en ficheros distintos
 const PURO = FUENTE.slice(i, f), CABLEADO = FUENTE.slice(A, B);
 const P = new Function("\"use strict\";\n" + PURO + "\nreturn VrConcedidaPuro;")();
 const base = { busqueda: "?mide", xr: true, on: false, entrando: false, soporta: true };

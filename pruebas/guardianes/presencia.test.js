@@ -125,7 +125,7 @@ test("búfer: una mano que deja de llegar deja de dibujarse; la cabeza sigue", (
 });
 
 // ---------- el muñeco de los demás (P5): el mismo paseante que el local, animado con la velocidad que sale de la interpolación
-const PASEO = lee("apps/web/motor/12_paseo.js");
+const PASEO = require("./_fuente").fuenteMotor("12_paseo.js");
 /** anda en línea recta a `vel` m/s hacia `rumbo` (0 = −z) durante `seg` a 60 fps; devuelve la última salida y el balanceo máximo */
 function anda(st, vel, seg, { x = 0, z = 0, rumbo = 0, suelo = 100, exag = 1, hCab = NaN, manos = false, yawCab = 0 } = {}) {
   const dt = 1 / 60, o = {}, max = { pierna: 0, brazo: 0 };

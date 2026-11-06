@@ -4,7 +4,7 @@
 // NO probado en unas Quest.
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
-const VR = lee("apps/web/motor/29_vr.js");
+const VR = require("./_fuente").fuenteMotor("29_vr.js");
 const i = VR.indexOf("var VrConfortPuro = (function"), f = VR.indexOf("var VrFichaPuro = (function");
 assert.ok(i >= 0 && f > i);
 const P = new Function("\"use strict\";\n" + VR.slice(i, f) + "\nreturn VrConfortPuro;")();

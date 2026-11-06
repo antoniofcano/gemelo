@@ -10,7 +10,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
-const F02G = lee("apps/web/motor/02g_vr_presupuesto.js"), F26B = require("./_fuente").fuenteMotorJs("26b_avatares.js"), VR = lee("apps/web/motor/29_vr.js");
+const F02G = lee("apps/web/motor/02g_vr_presupuesto.js"), F26B = require("./_fuente").fuenteMotorJs("26b_avatares.js"), VR = require("./_fuente").fuenteMotor("29_vr.js");
 function trozo(f, ini, fin) { const i = f.indexOf(ini), j = f.indexOf(fin); assert.ok(i >= 0 && j > i, "falta " + ini + " … " + fin); return f.slice(i, j); }
 const AP = require("./_mundos").AvataresPuro;   // A3-6a: en apps/web/src/mundos/comun/avatares.ts
 const Nucleo = require("./_nucleo"), XP = Nucleo.XrPerillasPuro;   // 02f_xr_perillas.js es un talón del núcleo (A1-11)

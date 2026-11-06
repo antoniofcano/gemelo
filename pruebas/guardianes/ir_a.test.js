@@ -5,7 +5,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
-const FUENTE = lee("apps/web/motor/12c_ir_a.js");
+const FUENTE = require("./_fuente").fuenteMotor("12c_ir_a.js");   // A3-6c: el talón y mundos/comun/ir-a.ts
 
 test("12c_ir_a.js toma su lógica pura del núcleo (IrAPuro = Nucleo.IrAPuro)", () => {
   assert.match(FUENTE, /^  var IrAPuro = Nucleo\.IrAPuro;$/m);
@@ -13,7 +13,7 @@ test("12c_ir_a.js toma su lógica pura del núcleo (IrAPuro = Nucleo.IrAPuro)", 
 });
 
 test("la costura: 09_camara solo camina si no se eligió nada, 12_paseo cancela con mandos y al salir, el ajuste existe", () => {
-  const cam = lee("apps/web/motor/09_camara.js"), paseo = lee("apps/web/motor/12_paseo.js"), aj = lee("apps/web/motor/33_ajustes.js");
+  const cam = require("./_fuente").fuenteMotor("09_camara.js"), paseo = require("./_fuente").fuenteMotor("12_paseo.js"), aj = lee("apps/web/motor/33_ajustes.js");
   assert.match(cam, /if \(!elige\(e\.clientX, e\.clientY\)\) IrA\.toca\(/, "el toque sobre un olivo/baliza/persona sigue eligiendo y no camina");
   assert.match(cam, /function elige\(cx, cy\) \{ return Usables\.toque/);
   assert.match(paseo, /IrA\.paso\(dt, !!\(teclas\.up \|\| teclas\.down \|\| teclas\.left \|\| teclas\.right \|\| mandoPalanca\.av \|\| mandoPalanca\.lat \|\| mandoPalanca\.giro\)\)/);

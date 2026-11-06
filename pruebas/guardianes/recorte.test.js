@@ -223,7 +223,7 @@ test("23_estacion: fuera del BBCH que pinta el sombreador (b = BBCH ± 3,5 entre
 
 // ---------------------------------------------------------------- 02e_entidades y 29_vr: geometría fija (anillo y láminas): la esfera que calcula three vale siempre
 test("02e_entidades y 29_vr: el anillo de resaltado y las láminas VR se recortan y su geometría no se reescribe (la esfera de three vale siempre)", () => {
-  const E = sinComentarios(lee("apps/web/motor/02e_entidades.js")), V = sinComentarios(lee("apps/web/motor/29_vr.js"));
+  const E = sinComentarios(lee("apps/web/motor/02e_entidades.js")), V = sinComentarios(require("./_fuente").fuenteMotor("29_vr.js"));
   assert.match(E, /anillo\.name = "resaltado";/); assert.ok(!/anillo\.frustumCulled = false/.test(E), "el anillo se recorta");
   assert.ok(!/anillo\.geometry\s*=|anillo\.geometry\.(setAttribute|attributes)/.test(E), "la geometría del anillo es fija (solo se escala y se mueve)");
   const L = trozo(V, "function creaLamina(", "function creaDe(");

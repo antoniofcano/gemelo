@@ -8,7 +8,7 @@
 const test = require("node:test"), { describe, before } = test, assert = require("node:assert");
 const { lee, SALIDA, fs, path } = require("./_util");
 
-const FUENTE = lee("apps/web/motor/35_fichas_tiempo.js"), VR = lee("apps/web/motor/29_vr.js");
+const FUENTE = lee("apps/web/motor/35_fichas_tiempo.js"), VR = require("./_fuente").fuenteMotor("29_vr.js");
 function trozo(ini, fin, fuente = FUENTE) {
   const i = fuente.indexOf(ini), f = fuente.indexOf(fin);
   assert.ok(i >= 0 && f > i, "el fichero debe marcar " + ini + " … " + fin);
@@ -263,7 +263,7 @@ test("en el código: P por Teclas (que filtra campos, Ctrl/Alt/Cmd y repetición
   assert.ok(!/setInterval|setTimeout/.test(codigo), "su reloj es la fase «tarde» del bucle");
   assert.ok(!/document\.addEventListener|window\.addEventListener/.test(codigo), "ni eventos propios en document ni teclado propio");
   assert.match(lee("apps/web/src/mundos/exterior/tiempo.ts"), /bus\.emite\("prevision:alterna"\)/);   // MU5-n (A3-4): 15_tiempo.js pasó a src/mundos/exterior/tiempo*.ts
-  assert.ok(!/KeyP/.test(lee("apps/web/motor/12_paseo.js") + lee("apps/web/motor/31_hud.js")), "la P no la usa nadie más");
+  assert.ok(!/KeyP/.test(require("./_fuente").fuenteMotor("12_paseo.js") + lee("apps/web/motor/31_hud.js")), "la P no la usa nadie más");
   assert.ok(!/KeyP/.test(lee("apps/web/motor/02c_componentes.js")), "ni está reservada");
 });
 

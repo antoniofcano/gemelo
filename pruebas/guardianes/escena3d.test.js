@@ -45,7 +45,7 @@ test("su build ES solo importa «three» y «three/addons/…» (Vite se los res
 });
 
 test("el motor: 04b_escena3d.js es la única escena (sin ESC3D ni ?escena=), arranca con D.tileset o ?tileset= y si no falla con «falta el tileset»; cada perfil VR trae su errorTarget", () => {
-  const m = fuenteMotor("04b_escena3d.js"), vr = lee(path.join(MOTOR, "29_vr.js")), fin = lee(path.join(MOTOR, "90_final.js"));
+  const m = fuenteMotor("04b_escena3d.js"), vr = require("./_fuente").fuenteMotor("29_vr.js"), fin = lee(path.join(MOTOR, "90_final.js"));
   assert.ok(!fs.existsSync(path.join(MOTOR, "04_terreno.js")), "04_terreno.js se borró en T8 fase 2 (decisión 79)");
   const todo = fs.readdirSync(MOTOR).filter(f => f.endsWith(".js")).map(f => lee(path.join(MOTOR, f))).join("\n");
   assert.ok(!/\bESC3D\b|\bTerreno\.|escena=clasica/.test(todo), "quedan ESC3D, Terreno o ?escena=clasica en el motor");
@@ -399,7 +399,7 @@ test("VR simulada con la escena por defecto (3D Tiles): entra, anda, cada perfil
   if (SALTO) return t.skip(SALTO);
   if (!process.env.GEMELO_VR) return t.skip("opcional: define GEMELO_VR=1 para la VR simulada con la escena 3D Tiles (inestable con SwiftShader)");
   await prepara();
-  const perfiles = [...lee(path.join(MOTOR, "29_vr.js")).match(/var VR_PERFILES = \[(.*?)\];/)[1].matchAll(/[ {,]e: (\d+)/g)].map(x => +x[1]);
+  const perfiles = [...require("./_fuente").fuenteMotor("29_vr.js").match(/var VR_PERFILES = \[(.*?)\];/)[1].matchAll(/[ {,]e: (\d+)/g)].map(x => +x[1]);
   assert.ok(perfiles.length >= 2, "no se leyeron los errorTarget de VR_PERFILES");
   const { p, errores } = await abre("", true);
   const dbg = () => p.evaluate(() => window.__vrDebug()), et = () => p.evaluate(() => window.__g.Escena3D.resumen().errorTarget);
