@@ -60,3 +60,5 @@ export { ID_LINDES, LindesPuro, creaLindes, manifiestoLindes } from "./exterior/
 export type { DepsLindes, EstadoLindes, LibLineas } from "./exterior/lindes.ts";
 export { CartelesPuro, ID_CARTELES, creaCarteles, manifiestoCarteles } from "./exterior/carteles.ts";
 export type { DepsCarteles } from "./exterior/carteles.ts";
+export { DecoracionesPuro, ID_DECORACIONES, creaDecoraciones, decoracionesGeometria, manifiestoDecoraciones } from "./exterior/decoraciones.ts";
+export type { DepsDecoraciones, EstadoDecoraciones, UtilesGeometria } from "./exterior/decoraciones.ts";

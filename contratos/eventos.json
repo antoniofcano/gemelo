@@ -173,7 +173,7 @@
         "46_guiada",
         "47_habla",
         "47b_corro",
-        "50_decoraciones"
+        "mundos/exterior/decoraciones"
       ]
     },
     "decoraciones:cambian": {
@@ -198,12 +198,12 @@
         }
       },
       "emiten": ["42_personalizacion"],
-      "escuchan": ["50_decoraciones"]
+      "escuchan": ["mundos/exterior/decoraciones"]
     },
     "decoraciones:pide": {
       "descripcion": "P7g (D3): quien dibuja las decoraciones (50_decoraciones), al montarse, pide la última lista; quien la tiene (42_personalizacion) responde con «decoraciones:cambian». Sin nadie que la tenga, no pasa nada (llegará cuando se traiga).",
       "datos": { "type": "object" },
-      "emiten": ["50_decoraciones"],
+      "emiten": ["mundos/exterior/decoraciones"],
       "escuchan": ["42_personalizacion"]
     },
     "fauna:conejo-cerca": {
