@@ -136,7 +136,7 @@ test("la perilla ?cartulina=rect|silueta: defecto rect; lo raro avisa y se queda
 });
 
 test("07ab y 07ac miran la perilla, cuentan los triángulos de la silueta y no calculan nada por fotograma", () => {
-  const g = lee("apps/web/motor/07ab_generados.js"), l = lee("apps/web/motor/07ac_lejanos.js");
+  const g = lee("apps/web/motor/07ab_generados.js"), l = require("./_fuente").fuenteMotor("07ac_lejanos.js");   // A3-2b: talón + lejanos.ts
   assert.match(g, /if \(Materiales\.cartulina\.silueta\) \{ silPend = true; encola\("Gsiluetas", -2, siluetasG\(\)/, "07ab: las siluetas por la cola propia, al montar los materiales");
   assert.match(g, /function tri\(r\) \{ return r \? M\.triangulosNivel\(r\) \+ extraSil\(r\) : 0; \}/, "07ab: el reparto paga los triángulos de la silueta");
   assert.match(g, /gs = SIL && SIL\[k\] \|\| G\[gk\], g = geoDe\(gs\.atrib, gs\.indice, false\)/, "07ab: la malla instanciada usa la silueta");

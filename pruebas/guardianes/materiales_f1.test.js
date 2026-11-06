@@ -106,13 +106,13 @@ test("cada material del motor que pasa por la fábrica tiene un nombre literal, 
   const src = path.join(RAIZ, "apps/web/src/mundos/exterior"), fuentes = fs.readdirSync(dir).filter(f => f.endsWith(".js") && f !== "02i_materiales.js").map(f => [f, path.join(dir, f)])
     .concat(fs.readdirSync(src).filter(f => f.endsWith(".ts") && !f.endsWith(".test.ts")).map(f => [f, path.join(src, f)]));
   for (const [f, ruta] of fuentes) {
-    const s = sinComentarios(fs.readFileSync(ruta, "utf8")), re = /Materiales\.(parchea|encadena|sombreador)\(([^,)]*)/g;
+    const s = sinComentarios(fs.readFileSync(ruta, "utf8")), re = /[Mm]ateriales\.(parchea|encadena|sombreador)\(([^,)]*)/g;
     let m;
     // MU5-n: los que ya van por define(NOMBRE, …) (la constante con el nombre literal) también pasan por la fábrica: se cuentan por su constante
     const rd = /\bMateriales\.define\((MATERIAL_[A-Z0-9_]+)/g;
     while ((m = rd.exec(s))) (visto[m[1]] = visto[m[1]] || []).push(f);
     while ((m = re.exec(s))) {
-      const arg = m[1] === "sombreador" ? m[2].trim() : (s.slice(m.index).match(/^Materiales\.\w+\([^,]+,\s*("[^"]*"|[^,]+)/) || [])[1];
+      const arg = m[1] === "sombreador" ? m[2].trim() : (s.slice(m.index).match(/^[Mm]ateriales\.\w+\([^,]+,\s*("[^"]*"|[^,]+)/) || [])[1];
       assert.match(arg || "", /^"[a-z0-9]+(-[a-z0-9]+)*"$/, f + ": el nombre de Materiales." + m[1] + " debe ser un literal (es la clave de su versión TSL): " + arg);
       (visto[arg] = visto[arg] || []).push(f);
     }

@@ -59,7 +59,7 @@ function contexto(busqueda, reloj, mas) {
     // la configuración del servidor (02c Config) sin servidor: todo vale lo del código
     fetch: undefined,   // sin servidor: no hay manifiesto (3b pone uno de prueba)
     Config: { listo: Promise.resolve(null), al: f => f(null), param: (r, c, u) => (u !== undefined && u !== null ? u : c), umbrales: (c, u) => u || c, tablaEpocas: () => null, epocaDeFecha: () => null }, factorCopaDeConfig: () => 1,
-    suelo: () => 0, camera: { position: new THREE.Vector3(0, 10, 0) },
+    suelo: () => 0, camera: { position: new THREE.Vector3(0, 10, 0) }, renderer: null,   // A3-2b: el talón de 07ac recibe el renderizador por argumento (null: aquí no se hornea)
     Cola: { add: () => { throw new Error("los generados no deben usar la Cola compartida"); }, hay: () => false },
     ColaExt: { pon: () => { throw new Error("los generados no deben usar la Cola compartida"); }, hay: () => false }   // MU2-6: la del exterior (02b_cola)
   };
@@ -148,7 +148,7 @@ exige(E.tope({ base: 550000, movil: false, escala: 2, triLejanos: 1000 }) === 10
 // ---- 2b) el sombreador del impostor (07ac) usa la disposición del formato 1 de apps/web/olivo/impostor.js: el texto GLSL lleva las fórmulas que
 // aquí se reproducen en JS, y estas dan la misma vista, la misma base y la misma celda que impostor.js para 2.000 direcciones al azar y las 64 vistas
 {
-  const glsl = L07;
+  const glsl = L07 + "\n" + fs.readFileSync(path.join(RAIZ, "apps/web/src/mundos/exterior/lejanos.ts"), "utf8");   // A3-2b: 07ac es un talón; su GLSL vive en lejanos.ts
   for (const f of ["return vec2(d.x / s + d.z / s, d.x / s - d.z / s)", "float a = -1.0 + 2.0 * ij.x / 7.0, b = -1.0 + 2.0 * ij.y / 7.0", "float x = (a + b) * 0.5, z = (a - b) * 0.5",
     "r = cross(vec3(0.0, 1.0, 0.0), d)", "u = cross(d, r)", "floor(clamp((ot_oct(ot_d) + 1.0) * 3.5, 0.0, 7.0) + 0.5)",
     "(vec2(mod(float(ot_k), 2.0) * 8.0 + ot_ij.x, floor(float(ot_k) / 2.0) * 8.0 + ot_ij.y) + vOtQ * 0.5 + 0.5) / 16.0", "imageOrientation: \"flipY\""])

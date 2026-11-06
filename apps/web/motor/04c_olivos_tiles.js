@@ -9,7 +9,7 @@
   // y la de cada tesela comprobadas (crypto.subtle). Aquí solo se cablea lo del legado.
   // [talón] apps/web/src/mundos/exterior/olivos-tiles.ts
   var OlivosTiles = Mundos.creaOlivosTiles({
-    D: D, copas: copas, Escena3D: Escena3D, gArboles: gArboles,
+    D: D, copas: copas, Escena3D: Escena3D, get gArboles() { return gArboles; },   // 06 se carga después de 04c: sin el getter, gArboles valía undefined al montar el talón (error «reading visible» en el bucle)
     subtle: typeof crypto !== "undefined" && crypto && crypto.subtle ? crypto.subtle : null,
     consola: console
   });

@@ -37,3 +37,6 @@ export type { ArbolesL0, DepsArbolesL0 } from "./exterior/arboles-l0.ts";
 // A3-2b (MU5-n): el follaje y las sombras de los olivos (07_follaje.js).
 export { ID_FOLLAJE, creaFollaje } from "./exterior/follaje.ts";
 export type { DepsFollaje, Follaje } from "./exterior/follaje.ts";
+// A3-2b (MU5-n): los olivos lejanos de la escalera (07ac_lejanos.js).
+export { ID_LEJANOS, creaLejanos } from "./exterior/lejanos.ts";
+export type { DepsLejanos, Lejanos } from "./exterior/lejanos.ts";
