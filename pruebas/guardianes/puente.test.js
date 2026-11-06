@@ -25,6 +25,7 @@ const SALTO_VR = !fs.existsSync(path.join(WEB, "node_modules", "super-three", "b
 // lo que escribía genera_motor.mjs antes del puente (main en 75a2442), escrito a mano
 const ANTES = 'import * as THREE from "three";\nimport "./plantilla.css";\n';
 const LINEA_PUENTE = 'import * as Nucleo from "@gemelo/nucleo";\n';
+const LINEA_MUNDOS = 'import * as Mundos from "@gemelo/mundos";\n';   // MU2-3: el exterior, que nucleo/ no puede importar
 const MARCA_TALON = /^\s*\/\/ \[talón\] (apps\/web\/src\/\S+\.ts)\s*$/m;
 const MAX_LINEAS_TALON = 30;
 
@@ -33,12 +34,13 @@ const ficheros = () => fs.readdirSync(MOTOR).filter(f => f.endsWith(".js")).sort
 const concatena = (sin = []) => ficheros().filter(f => !sin.includes(f)).map(f => fs.readFileSync(path.join(MOTOR, f), "utf8")).join("");
 const sinCabecera = s => s.startsWith(C.MARCA_I) ? s.slice(s.indexOf(C.MARCA_F) + C.MARCA_F.length + 1) : s;
 
-test("el texto generado es el de antes con una sola línea de más: la importación del núcleo, tras la de three (también con --sin)", () => {
+test("el texto generado es el de antes con dos líneas de más: la importación del núcleo y la de los mundos, tras la de three (también con --sin)", () => {
   for (const sin of [[], ["35_fichas_tiempo.js"]]) {
     const txt = G.entradaMotor(sin), antes = ANTES + concatena(sin);
-    assert.ok(txt.startsWith('import * as THREE from "three";\n' + LINEA_PUENTE), "la segunda línea debe ser la del puente");
+    assert.ok(txt.startsWith('import * as THREE from "three";\n' + LINEA_PUENTE + LINEA_MUNDOS), "la segunda y la tercera línea deben ser las de los puentes");
     assert.strictEqual(txt.split(LINEA_PUENTE).length, 2, "la línea del puente, exactamente una vez");
-    assert.strictEqual(txt.replace(LINEA_PUENTE, ""), antes, "quitada la línea del puente, el texto debe ser el de antes" + (sin.length ? " (--sin " + sin + ")" : ""));
+    assert.strictEqual(txt.split(LINEA_MUNDOS).length, 2, "la línea de los mundos, exactamente una vez");
+    assert.strictEqual(txt.replace(LINEA_PUENTE, "").replace(LINEA_MUNDOS, ""), antes, "quitadas las líneas de los puentes, el texto debe ser el de antes" + (sin.length ? " (--sin " + sin + ")" : ""));
   }
   // y genera() escribe justo eso
   const raiz = fs.mkdtempSync(path.join(os.tmpdir(), "gemelo-puente-")), idx = path.join(raiz, "i.json");
@@ -137,7 +139,7 @@ function construyeMini(build) {
   const raiz = fs.mkdtempSync(path.join(os.tmpdir(), "gemelo-puente-raiz-")), sal = fs.mkdtempSync(path.join(os.tmpdir(), "gemelo-puente-dist-"));
   try {
     fs.writeFileSync(path.join(raiz, "index.html"), '<!doctype html>\n<html><head><meta charset="utf-8"></head><body><script type="module" src="./e.js"></script></body></html>\n');
-    fs.writeFileSync(path.join(raiz, "e.js"), G.IMPORTA_THREE + G.IMPORTA_NUCLEO +
+    fs.writeFileSync(path.join(raiz, "e.js"), G.IMPORTA_THREE + G.IMPORTA_NUCLEO + G.IMPORTA_MUNDOS +
       '(function () {\n  "use strict";\n  var partesDeVersion = Nucleo.partesDeVersion;\n  document.title = partesDeVersion("1.2.3").join("-") + " " + THREE.REVISION;\n})();\n');
     const env = Object.assign({}, process.env, { GEMELO_WEB_RAIZ: raiz, GEMELO_WEB_SALIDA: sal, GEMELO_BUILD: build });
     delete env.GEMELO_SUPER_THREE;
@@ -168,4 +170,21 @@ test("el alias del núcleo es el mismo en Vite y en TypeScript, y lleva a apps/w
   assert.match(vc, /\{ find: \/\^@gemelo\\\/nucleo\$\/, replacement: NUCLEO \}/, "vite.config.js: el alias de «@gemelo/nucleo»");
   assert.match(vc, /export const NUCLEO = path\.join\(WEB, "src", "nucleo", "index\.ts"\);/);
   assert.strictEqual(G.IMPORTA_NUCLEO, LINEA_PUENTE);
+  // y el de los mundos (MU2-3)
+  assert.deepStrictEqual(ts.compilerOptions.paths["@gemelo/mundos"], ["./src/mundos/index.ts"]);
+  assert.match(vc, /\{ find: \/\^@gemelo\\\/mundos\$\/, replacement: MUNDOS \}/, "vite.config.js: el alias de «@gemelo/mundos»");
+  assert.match(vc, /export const MUNDOS = path\.join\(WEB, "src", "mundos", "index\.ts"\);/);
+  assert.strictEqual(G.IMPORTA_MUNDOS, LINEA_MUNDOS);
+});
+
+test("todo Mundos.<x> del legado lo exporta apps/web/src/mundos/index.ts, y ningún módulo declara Mundos", async () => {
+  const exporta = new Set(Object.keys(await import(pathToFileURL(path.join(WEB, "src", "mundos", "index.ts")).href)));
+  assert.ok(exporta.has("creaExterior"));
+  const mal = [];
+  for (const f of ficheros()) {
+    const src = sinCabecera(fs.readFileSync(path.join(MOTOR, f), "utf8"));
+    if (/\b(var|let|const|function)\s+Mundos\b/.test(src)) mal.push(f + ": declara Mundos (taparía el puente de los mundos)");
+    for (const m of src.matchAll(/(?<![\w.$])Mundos\.([A-Za-z_$][\w$]*)/g)) if (!exporta.has(m[1])) mal.push(f + ": Mundos." + m[1] + " no lo exporta apps/web/src/mundos/index.ts");
+  }
+  assert.deepStrictEqual(mal, []);
 });

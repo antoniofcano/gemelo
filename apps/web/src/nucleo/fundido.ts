@@ -84,3 +84,54 @@ export function creaFundido(duracion: number = FUNDIDO_S): Fundido {
     cierra, abre, funde, paso, reinicia,
   };
 }
+
+// ---------- El fundido del gestor de mundos, en pantalla y en VR (MU2-3)
+// WorldManager pide cierra() y abre() (nucleo/mundos.ts, Fundido). En VR los lleva el velo pegado a la cabeza (el de arriba, por 29_vr: vrCierra y vrAbre).
+// Fuera de VR no había un fundido que se quedara a negro: el de 12b_llegada (fundePantalla) es de ida y vuelta, privado y con su propio estado. Este es
+// un velo de DOM mínimo, con el mismo CSS y la misma duración que ese (0,15 s por mitad), que se crea la primera vez que se cierra (hasta entonces el
+// documento no cambia) y se queda opaco hasta abre(). Si en el momento de cerrar hay una sesión de VR, las dos mitades de ese cambio van por el velo de VR.
+
+/** Lo mínimo del velo de DOM (un div). */
+export interface ElementoVelo { style: { cssText: string; opacity: string }; setAttribute(nombre: string, valor: string): void }
+export interface DepsFundidoPantalla {
+  documento: { createElement(etiqueta: string): ElementoVelo } | null;
+  /** donde se cuelga el velo (el visor) */
+  contenedor: { appendChild(e: ElementoVelo): unknown } | null;
+  /** el velo de VR de 29_vr */
+  vr?: { activa(): boolean; cierra(): Promise<void>; abre(): Promise<void> } | null;
+  temporizador(fn: () => void, ms: number): unknown;
+  /** s por mitad; por defecto FUNDIDO_S */
+  duracion?: number;
+}
+
+export function creaFundidoPantalla(deps: DepsFundidoPantalla): { cierra(): Promise<void>; abre(): Promise<void> } {
+  const dur = typeof deps.duracion === "number" && deps.duracion >= 0 ? deps.duracion : FUNDIDO_S;
+  const ms = dur * 1000;
+  let velo: ElementoVelo | null = null, modo: "vr" | "pantalla" | null = null;
+  const espera = (): Promise<void> => new Promise<void>(r => { deps.temporizador(r, ms); });
+  function elVelo(): ElementoVelo | null {
+    if (velo || !deps.documento || !deps.contenedor) return velo;
+    const v = deps.documento.createElement("div");
+    v.setAttribute("aria-hidden", "true");
+    v.style.cssText = "position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity " + dur + "s linear;z-index:5";
+    deps.contenedor.appendChild(v); velo = v;
+    return v;
+  }
+  function cierra(): Promise<void> {
+    if (modo === "vr" && deps.vr) return deps.vr.cierra();
+    if (modo === "pantalla") return espera();
+    if (deps.vr && deps.vr.activa()) { modo = "vr"; return deps.vr.cierra(); }
+    modo = "pantalla";
+    const v = elVelo(); if (!v) return Promise.resolve();
+    v.style.opacity = "1";
+    return espera();
+  }
+  function abre(): Promise<void> {
+    const m = modo; modo = null;
+    if (m === "vr" && deps.vr) return deps.vr.abre();
+    if (m !== "pantalla" || !velo) return Promise.resolve();
+    velo.style.opacity = "0";
+    return espera();
+  }
+  return { cierra, abre };
+}

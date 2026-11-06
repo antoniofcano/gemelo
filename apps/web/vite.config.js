@@ -14,6 +14,7 @@ const WEB = path.dirname(fileURLToPath(import.meta.url));
 const BUILD = buildPedida(process.env);
 // el núcleo nuevo (apps/web/src/nucleo/index.ts): lo que la IIFE del motor ve como Nucleo.<nombre> (el mismo alias está en tsconfig.json, «paths»)
 export const NUCLEO = path.join(WEB, "src", "nucleo", "index.ts");
+export const MUNDOS = path.join(WEB, "src", "mundos", "index.ts");
 // el constructor de olivos (ADR-0017), que el motor pide con import("gemelo-olivo") solo con ?olivos=gen; si apps/web/olivo no está instalado
 // (cd apps/web/olivo && npm i), un sustituto vacío: el build no falla y el motor dibuja lo de siempre
 const OLIVO = fs.existsSync(path.join(WEB, "olivo", "node_modules", "three-gen", "package.json")) ? path.join(WEB, "olivo", "index.js") : path.join(WEB, "olivo", "sin_olivo.js");
@@ -70,6 +71,8 @@ export default defineConfig({
       // el puente con el código nuevo (MUNDOS §9.3, ADR-0033): genera_motor.mjs escribe `import * as Nucleo from "@gemelo/nucleo"` delante del
       // motor; aquí se resuelve al núcleo de src/ (TypeScript, que Vite compila sin paso nuevo). Va en las dos builds (no depende de BUILD)
       { find: /^@gemelo\/nucleo$/, replacement: NUCLEO },
+      // MU2-3: el exterior (mundos/), que el núcleo no puede importar: su propio alias, detrás del del núcleo (genera_motor.mjs: IMPORTA_MUNDOS)
+      { find: /^@gemelo\/mundos$/, replacement: MUNDOS },
       { find: /^gemelo-olivo$/, replacement: OLIVO },
       // V12: las tipografías del mismo origen (@fontsource, OFL-1.1) que entran por el @import de plantilla.css, que puede estar fuera de apps/web
       { find: /^@fontsource\//, replacement: path.join(WEB, "node_modules", "@fontsource") + "/" },

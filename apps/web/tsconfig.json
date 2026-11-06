@@ -6,7 +6,7 @@
     "moduleResolution": "bundler",
     "lib": ["es2022", "dom"],
     "types": ["vite/client"],
-    "paths": { "@gemelo/nucleo": ["./src/nucleo/index.ts"] }
+    "paths": { "@gemelo/nucleo": ["./src/nucleo/index.ts"], "@gemelo/mundos": ["./src/mundos/index.ts"] }
   },
   "include": ["src/**/*.ts", "vitest.config.ts"]
 }

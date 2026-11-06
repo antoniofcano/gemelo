@@ -3,7 +3,7 @@
 // --sin: ficheros del motor que se dejan fuera (ADR-0023: un componente se puede quitar del motor sin tocar a nadie; lo comprueba
 // pruebas/guardianes/componentes.test.js). Solo componentes: quitar un fichero del núcleo o de los de siempre rompe el motor.
 // Escribe en <dest> (por defecto apps/web/.generado/):
-//   entrada/motor.generado.js  = `import * as THREE from "three";` + `import * as Nucleo from "@gemelo/nucleo";` (el puente, MUNDOS §9.3) +
+//   entrada/motor.generado.js  = `import * as THREE from "three";` + `import * as Nucleo from "@gemelo/nucleo";` (el puente, MUNDOS §9.3) + `import * as Mundos from "@gemelo/mundos";` (el exterior, MU2-3) +
 //                                los módulos de motor/ concatenados en orden alfabético, que ES el orden de montaje (01_datos abre la IIFE y
 //                                99_cierre la cierra). Dentro de la IIFE se ven THREE y Nucleo (lo que exporta apps/web/src/nucleo/index.ts)
 //   index.html                 = plantilla.html (con los textos de la finca, si el índice trae `textos`) + el JSON del índice (#datos) + la entrada como módulo
@@ -21,11 +21,12 @@ const MOTOR = path.join(WEB, "motor");
 // y mismo sitio en el orden). Lo vigila pruebas/guardianes/puente.test.js: el texto es el de antes con esta línea de más.
 export const IMPORTA_THREE = 'import * as THREE from "three";\n';
 export const IMPORTA_NUCLEO = 'import * as Nucleo from "@gemelo/nucleo";\n';
+export const IMPORTA_MUNDOS = 'import * as Mundos from "@gemelo/mundos";\n';   // MU2-3: el exterior, que nucleo/ no puede importar
 export const IMPORTA_CSS = 'import "./plantilla.css";\n';
 
 /** El texto entero de entrada/motor.generado.js (sin = ficheros que se dejan fuera, como en concatenaMotor) */
 export function entradaMotor(sin = []) {
-  return IMPORTA_THREE + IMPORTA_NUCLEO + IMPORTA_CSS + concatenaMotor(sin);
+  return IMPORTA_THREE + IMPORTA_NUCLEO + IMPORTA_MUNDOS + IMPORTA_CSS + concatenaMotor(sin);
 }
 
 /** Escapa un texto para contenido HTML (L9-04): el nombre de la finca y los textos del índice no pueden cerrar etiquetas ni meter marcado */

@@ -203,15 +203,26 @@ export function creaBucle(deps: DepsBucle) {
     if (deps.enPausa && deps.enPausa()) { if (deps.pausa) deps.pausa(dt, t); if (deps.alFin) deps.alFin(fin); return; }
     if (recolocar) { recolocar = false; const x = deps.xr; if (x && x.activa() && x.recoloca) x.recoloca(); }
     const R = deps.reparto, rp = !!(R && R.on);
-    let q = rp ? (R as RepartoBucle).ini(t) : 0;
-    for (let i = 0; i < pasos.length; i++) {
-      const p = pasos[i] as PasoBucle;
+    corre(pasos, dt, t, rp, rp ? (R as RepartoBucle).ini(t) : 0);
+    if (deps.alFin) deps.alFin(fin);
+  }
+  // Recorre una lista de pasos con las reglas del bucle (los «caro» no corren oculto, el render se cronometra en fin.r y cada bloque suma al reparto).
+  // q = la marca de tiempo del reparto (solo se lee si rp). Sin reservas: es lo que corre a cada fotograma.
+  function corre(lista: readonly PasoBucle[], dt: number, t: number, rp: boolean, q: number): void {
+    const R = deps.reparto;
+    for (let i = 0; i < lista.length; i++) {
+      const p = lista[i] as PasoBucle;
       if (p.caro && oculto) continue;
       if (p.render) { const tR = deps.ahora(); p.fn(dt, t); fin.r = deps.ahora() - tR; if (rp) q = deps.ahora(); continue; }
       p.fn(dt, t);
       if (rp) q = typeof p.bloque === "number" ? (R as RepartoBucle).pasa(p.bloque, q) : deps.ahora();
     }
-    if (deps.alFin) deps.alFin(fin);
+  }
+  /** MU2-3: una sublista de pasos dentro de UN paso del bucle (los del mundo activo, que le da WorldManager.actualiza). Con las mismas reglas que
+   *  la lista del bucle: un paso «caro» no corre oculto y cada bloque suma al reparto del fotograma en curso. El paso del bucle que la llama es «bloque: null». */
+  function recorre(lista: readonly PasoBucle[], dt: number, t: number): void {
+    const R = deps.reparto, rp = !!(R && R.on);
+    corre(lista, dt, t, rp, rp ? deps.ahora() : 0);
   }
   /** un fotograma, protegido: lo llama bucle() en pantalla y 29_vr (vrAnimacion) en VR */
   function cuadro(t: number): void {
@@ -237,6 +248,6 @@ export function creaBucle(deps: DepsBucle) {
   pon(deps.lienzo || null, "webglcontextlost", alPerdido);
   pon(deps.lienzo || null, "webglcontextrestored", alRecuperado);
 
-  return { cuadro: cuadro, bucle: bucle, estado: estado, fin: fin };
+  return { cuadro: cuadro, bucle: bucle, estado: estado, fin: fin, recorre: recorre };
 }
 export type Bucle = ReturnType<typeof creaBucle>;

@@ -73,7 +73,7 @@ La página pide `t/<clave>.json|jpg` (`D.teselas` es el índice; `D.base` da el 
 | `44_lindes.js` | — (componente `lindes-hazas`; `LindesPuro`) | A4: la linde de las hazas pegada al relieve con `LineSegments2`/`LineMaterial` de three (`import()` al montarse): la tuya ámbar, 4 px y opaca; las ajenas blanco roto, 2 px y medio transparentes; 2 llamadas, 6 triángulos por tramo de ≤ 2 m cortado en cada borde de tesela, tope de 8.000 tramos; acercamiento de profundidad en el sombreador contra el parpadeo; `?lindes=0` la apaga |
 | `50_decoraciones.js` | — (componente `decoraciones-olivo`; `DecoracionesPuro`) | P7g D3: la pieza de temporada colgada de los olivos cercanos al foco (ilustrativa), una `InstancedMesh` por pieza con `mergeGeometries` de three (`import()` al montarse); ≤ 6 llamadas y ≤ 64 piezas; la lista le llega de `42_personalizacion` por el Bus (`decoraciones:cambian`) |
 | `51_fichas_mundo.js` | — (componente `fichas-mundo`; `FichasMundoPuro`) | EV2-A1, solo con `?ui=capas`: en VR, la ficha de un olivo o de una baliza colgada junto a lo que describe con `Laminas` (encima de la copa, como mucho 3, 1 llamada cada una) en lugar de las láminas de `29_vr.js` que siguen a la cabeza ([COMPONENTES](COMPONENTES.md)) |
-| `90_final.js` | bucle `cuadro()` | orden de actualizaciones |
+| `90_final.js` | `cuadro`, `bucle` | cableado: el exterior (`src/mundos/exterior.ts`, MU2-3) con los pasos del fotograma, el gestor de mundos y la lista de pasos del `Bucle` |
 | `99_cierre.js` | — | cierra la IIFE |
 
 (La cabecera de cada módulo declara qué expone y qué consume; el guardián de contratos lo comprueba.)
@@ -92,6 +92,8 @@ Desde A1-14 (MU1-10, [MUNDOS §9.4 fila 8](MUNDOS.md#94-qué-se-extrae-a-nucleo-
 - **Contexto de WebGL perdido** (L7-10): `preventDefault`, el bucle se para (en VR se cierra la sesión) y se avisa; al recuperarse se **rehace** (three reconstruye su estado en su propio `webglcontextrestored` y vuelve a subir lo que conserva en memoria) y se relanza el bucle con el aviso «si falta algo, recarga»; si no vuelve en 10 s, aviso de recargar. **No probado en un aparato.**
 - `window.__bucle()` da los contadores (fallos, salidas de VR, oculto, contexto perdido, reinicios del espacio). Pruebas: `nucleo/bucle.test.ts` (Vitest, con dobles) y los pasos 11 de `pruebas/prueba_vr.js` (WebXR simulado, en el banco).
 
+
+Desde MU2-3 la cámara es un paso del `Bucle` y todo lo que sigue hasta `Escena3D.actualiza` (inclusive) corre dentro de `exterior.actualiza`, que el `Bucle` llama como un paso (`gm.actualiza`); después van `render`, la fase «trasRender» y el medidor. El orden no cambió:
 
 `dt` acotado a 0,1 s → cámara (VR, paseo u órbita) → tiempo, olivo estacional, vida, minimapa, paisaje, balizas, sonido, suelo, nube → **componentes, fase «mundo»** (entre ellos la presencia: nada sin `?presencia=sim|red`) → `Arboles.actualiza` (reclasifica niveles) → `actualizaCarga` cada 0,2 s (`Mundo.actualiza` pide teselas; cada 3 s suelta ortofotos lejanas) → huellas, perros → **componentes, fase «tarde»** (cada uno a su ritmo) → `Cola.corre(Arboles.presupuesto())` → suelo de fondo, `Escena3D.actualiza` → `render` → **componentes, fase «trasRender»** → contador `?debug` → `vrFin` en VR. Los módulos que aún no son componentes se llaman a mano; los componentes, por `Componentes.actualiza(fase)` sin nombrarlos (§9). En VR el bucle lo lleva la sesión XR en vez de `requestAnimationFrame`.
 

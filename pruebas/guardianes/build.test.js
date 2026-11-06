@@ -14,7 +14,7 @@ for (const finca of ["cerro", "hituelo"]) {
     if (SALTO) return t.skip(SALTO);
     const P = montaPagina({ finca });
     const js = SRC.map(f => fs.readFileSync(path.join(RAIZ, f), "utf8")).join("");   // lo que concatena genera_motor.mjs: orden alfabético, sin huecos
-    assert.strictEqual(fs.readFileSync(path.join(P.raiz, "entrada", "motor.generado.js"), "utf8"), 'import * as THREE from "three";\nimport * as Nucleo from "@gemelo/nucleo";\nimport "./plantilla.css";\n' + js);   // con el puente (MUNDOS §9.3, puente.test.js)
+    assert.strictEqual(fs.readFileSync(path.join(P.raiz, "entrada", "motor.generado.js"), "utf8"), 'import * as THREE from "three";\nimport * as Nucleo from "@gemelo/nucleo";\nimport * as Mundos from "@gemelo/mundos";\nimport "./plantilla.css";\n' + js);   // con el puente (MUNDOS §9.3, puente.test.js)
     const html = fs.readFileSync(path.join(P.carpeta, P.url), "utf8");
     // V12: estilos y tipografías del mismo origen (la CSP no deja <style>, style="…" ni Google Fonts)
     assert.match(html, /<link rel="stylesheet"[^>]*href="\.\/assets\/[^"]+\.css"/, "la página no enlaza su hoja de estilos empaquetada");

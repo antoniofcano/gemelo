@@ -78,6 +78,9 @@ const BUCLE = {
   "25_perros.js": [["amenazaEn", "function amenazaEn("], ["actualizaPerros", "function actualizaPerros("], ["empacaPerros", "function empacaPerros("]],
   "02c_componentes.js": [["Bus.emite", "function emite(ev, datos)"], ["Reparto.pasa", "function pasa(i, q)"], ["Reparto.ini", "function ini(t)"]],   // Q0h: el reparto del JS por bloque, cada fotograma medido
   "src/nucleo/presupuesto.ts": [["VrPresupuesto.mueve", "function mueve("], ["VrControlPuro.decide", "function decide("], ["VrControlPuro.holgura", "function holgura("], ["VrControlPuro.escalaVr", "function escalaVr("], ["completa", "function completa("], ["nSube", "function nSube("]],   // Q0c-a y A1-12: cada fotograma en VR (antes en 02g_vr_presupuesto.js)
+  "src/nucleo/mundos.ts": [["WorldManager.actualiza", "function actualiza("]],   // MU2-3: el gestor llama al mundo activo cada fotograma
+  "src/mundos/exterior.ts": [["Exterior.actualiza", "actualiza(dt: number, t: number): void"]],   // MU2-3: el exterior recorre sus pasos cada fotograma
+  "src/nucleo/bucle.ts": [["Bucle.corre", "function corre("], ["Bucle.recorre", "function recorre("]],   // MU2-3: la sublista de pasos del mundo activo, cada fotograma
   "18_paisaje.js": [["distArroyo", "function distArroyo("], ["celdaArroyoDist", "function celdaArroyoDist("]],
   "16_vida.js": [["velPaseo", "function velPaseo("], ["giroPaseo", "function giroPaseo("], ["vidaPaseo", "function vidaPaseo("], ["dronMando", "function dronMando("],
     ["camaraDron", "function camaraDron("], ["vidaDron", "function vidaDron("], ["actualizaVida", "function actualizaVida("], ["emiteEstela", "e.emite = function"], ["angDifRad", "function angDifRad("]],

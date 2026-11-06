@@ -59,7 +59,9 @@ test("el motor: 04b_escena3d.js es la única escena (sin ESC3D ni ?escena=), arr
   assert.ok(perfiles.every((p, i) => i === 0 || p.e > perfiles[i - 1].e), "el errorTarget debe crecer al bajar de perfil");
   assert.match(vr, /Escena3D\.perfil\(p\)/); assert.match(vr, /Escena3D\.perfil\(null\)/);
   // A1-14: el fotograma es una lista de pasos que recorre nucleo/bucle.ts (el cronómetro de render() lo pone el bucle en el paso «render: true»)
-  assert.match(fin, /Escena3D\.actualiza\(\); \} \},?\s*\n\s*\{ render: true, fn: function \(\) \{ renderer\.render\(scene, camera\); \} \}/, "Escena3D.actualiza() va justo antes de dibujar");
+  // MU2-3: Escena3D.actualiza() es el ÚLTIMO paso del exterior, y el exterior (gm.actualiza) es el paso del Bucle justo antes de dibujar (la fase trasRender va después)
+  assert.match(fin, /Escena3D\.actualiza\(\); \} \}\s*\n\s*\] \}\);/, "Escena3D.actualiza() cierra la lista de pasos del exterior");
+  assert.match(fin, /\{ bloque: null, fn: gm\.actualiza \},[^\n]*\n\s*\{ render: true, fn: function \(\) \{ renderer\.render\(scene, camera\); \} \}/, "el exterior corre justo antes de dibujar");
 });
 
 // ---------------------------------------------------------------- los olivos del tileset (04c_olivos_tiles.js), sin navegador

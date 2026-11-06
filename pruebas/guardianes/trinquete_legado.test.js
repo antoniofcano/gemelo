@@ -18,6 +18,7 @@ const C = require(path.join(RAIZ, "pruebas", "contrato_modulos.js"));
 // 2026-11-06, A1-14 (MU1-10, el bucle de 90_final.js pasa a apps/web/src/nucleo/bucle.ts; 29_vr.js +6 líneas: vrRecoloca): 19.124 líneas (de 19.135)
 // 2026-11-06, C1 (decisión 229: la historia y el avance árbol a árbol de la finca que salió del mundo, fuera de 14_historia.js): 18.958 líneas (de 19.135)
 // 2026-11-06, al fusionar A1-14 y C1: 18.947 líneas
+// 2026-11-06, MU2-3 (el exterior como primer mundo: el cableado del gestor entra en 90_final.js y actualizaCarga sale a apps/web/src/mundos/exterior.ts; sin cambio neto): 18.947 líneas (sin cambio)
 const TOPE = 18947;
 
 /** líneas de un texto (la última sin salto también cuenta) */

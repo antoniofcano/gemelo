@@ -401,7 +401,9 @@ test("C9a en Node: anfitrión y juego se encuentran por el Bus en cualquier orde
   const fin = sinComentarios(lee("apps/web/motor/90_final.js"));
   // A1-14: el bucle es nucleo/bucle.ts; que en pausa solo corran la fase «pausa» y el fin lo prueba nucleo/bucle.test.ts (Vitest). Aquí, lo que le da 90_final:
   assert.ok(fin.includes('enPausa: function () { return Pausa.activa() && !VRX.on; }, pausa: function (dt, t) { Componentes.actualiza("pausa", dt, t); depuraCuadro(t); }'), "en pausa, el bucle solo corre la fase «pausa» (ni render, ni Cola, ni módulos)");
-  assert.ok(fin.indexOf("Pausa.activa()") < fin.indexOf("actualizaTiempo("), "y lo mira antes que nada del mundo");
+  // MU2-3: los pasos del mundo (actualizaTiempo…) van dentro del exterior, que corre como UN paso del Bucle (gm.actualiza), y el Bucle mira la pausa antes que ningún paso
+  assert.ok(fin.indexOf("Pausa.activa()") > fin.indexOf("Bucle = Nucleo.creaBucle(") && fin.indexOf("fn: gm.actualiza") > fin.indexOf("Pausa.activa()"), "y lo mira antes que nada del mundo");
+  assert.ok(fin.indexOf("actualizaTiempo(") < fin.indexOf("Bucle = Nucleo.creaBucle("), "los pasos del mundo van dentro del exterior, no sueltos en el Bucle");
   // ?cosecha=0: el anfitrión sin juegos; ?juegos=0: sin anfitrión; sin el fichero del juego: anfitrión vacío
   let q = arranca("?cosecha=0", H + "\n" + J); assert.deepStrictEqual(q.ventana.__juegos().juegos, []); q.Componentes.configura({ juegos: { activo: false } });
   q = arranca("?juegos=0", H + "\n" + J); assert.ok(!q.Componentes.activo("juegos") && q.Componentes.activo("cae-la-cosecha")); assert.deepStrictEqual(iconos, []);
