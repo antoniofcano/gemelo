@@ -33,6 +33,8 @@ const TS_DE = {
   "44b_carteles.js": "apps/web/src/mundos/exterior/carteles.ts",
   "50_decoraciones.js": "apps/web/src/mundos/exterior/decoraciones.ts",
   // A3-2a: 07ab vive en varios ficheros (la escalera, el horneado, la cola, el sombreado, el lote y el módulo): se leen todos, en este orden
+  // A3-6c: la VR y la locomoción, de todo mundo (apps/web/src/mundos/comun/)
+  "36_mandos.js": "apps/web/src/mundos/comun/mandos.ts",
   "07ab_generados.js": ["generados.ts", "generados-escalera.ts", "generados-horneado.ts", "generados-cola.ts", "generados-sombreado.ts", "generados-lote.ts"].map(f => "apps/web/src/mundos/exterior/" + f),
 };
 /** el talón y el .ts juntos (o solo el fichero del motor, si no es de los migrados) */

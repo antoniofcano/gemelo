@@ -1344,7 +1344,7 @@
         "29_vr"
       ],
       "escuchan": [
-        "36_mandos"
+        "mundos/comun/mandos"
       ]
     },
     "vr:rig-monta": {
@@ -1364,7 +1364,7 @@
         "29_vr"
       ],
       "escuchan": [
-        "36_mandos"
+        "mundos/comun/mandos"
       ]
     },
     "vr:sale": {

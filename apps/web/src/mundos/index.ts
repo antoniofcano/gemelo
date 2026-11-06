@@ -79,3 +79,7 @@ export { ID_PERROS, angCorto, creaPerros, manifiestoPerros } from "./exterior/pe
 export type { DepsPerros, Perros } from "./exterior/perros.ts";
 export { ID_VIDA, creaVida } from "./exterior/vida.ts";
 export type { DepsVida, EstadoVida, Vida } from "./exterior/vida.ts";
+// A3-6c (MU5-n): la VR y la locomoción, componentes de TODOS los mundos (mundos/comun/). Cada uno, con su libera() de verdad.
+export { TODO_MUNDO } from "./comun/tipos.ts";
+export { ID_MANDOS, creaMandos, manifiestoMandos } from "./comun/mandos.ts";
+export type { DepsMandos, LibMandos, Mandos } from "./comun/mandos.ts";
