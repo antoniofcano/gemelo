@@ -16,7 +16,7 @@ const lee = f => fs.readFileSync(path.join(MOTOR, f), "utf8");
 let THREE, M, MF;   // M: lo que devuelve el motor evaluado; MF: lo mismo con ?suelo=fotos (EV-1s, 04f_suelo_fotos.js)
 // el trozo puro de 04f y una maqueta de SueloFotos (sin cargar texturas): apagado, como sin la bandera, o encendido
 function sueloFotos(activo) {
-  const f = lee("04f_suelo_fotos.js"), P = new Function("\"use strict\";\n" + f.slice(f.indexOf("// [puro:inicio]"), f.indexOf("// [puro:fin]")) + "\nreturn SueloFotosPuro;")();
+  const P = require("./_mundos").SueloFotosPuro;   // A3-1b: 04f es un talón; SueloFotosPuro vive en apps/web/src/mundos/exterior/suelo-fotos.ts
   const neutro = new THREE.DataTexture(new Uint8Array(4), 1, 1), campos = [];
   return { P, S: { activo, U: { uFot: { value: null }, uFotK: { value: 0 } }, rueNeutro: () => neutro, campo: () => { const t = new THREE.DataTexture(new Uint8Array(4), 1, 1); campos.push(t); return t; }, actualiza() {}, libera() {}, campos } };
 }

@@ -109,8 +109,7 @@ test("la tubería entera sobre fotos sintéticas: determinista, repetible, sin E
 
 test("lo versionado en apps/web/public/suelo/ es lo del manifiesto: clases y metros de las recetas y del motor, huellas, tamaños", () => {
   const dir = path.join(RAIZ, "apps", "web", "public", "suelo"), man = JSON.parse(fs.readFileSync(path.join(dir, "suelo.json"), "utf8"));
-  const fuente = lee("apps/web/motor/04f_suelo_fotos.js"), i = fuente.indexOf("// [puro:inicio]"), f = fuente.indexOf("// [puro:fin]");
-  const P = new Function("\"use strict\";\n" + fuente.slice(i, f) + "\nreturn SueloFotosPuro;")();
+  const P = require("./_mundos").SueloFotosPuro;   // A3-1b: 04f es un talón; el trozo puro vive en apps/web/src/mundos/exterior/suelo-fotos.ts
   assert.deepStrictEqual(man.clases.map(c => c.id), RECETAS.clases.map(c => c.id));
   assert.deepStrictEqual(P.CLASES, RECETAS.clases.map(c => c.id), "el orden de los niveles del motor es el de las recetas");
   assert.deepStrictEqual(P.METROS, RECETAS.clases.map(c => c.metros), "los metros del motor son los de las recetas");
@@ -137,8 +136,7 @@ test("EV-1k: los KTX2 no se versionan (Antonio, 2026-11-05): ninguno en lo versi
   assert.match(b, /genera_motor\.mjs && node herramientas\/suelo_ktx2\.mjs && vite build$/, "npm run build debe generar los KTX2 antes de Vite");
   const h = lee("apps/web/herramientas/suelo_ktx2.mjs");
   assert.ok(h.includes('"tuberia", "suelo"') && h.includes('"ktx2.mjs"') && h.includes('path.join(WEB, "public", "suelo")'), "con tuberia/suelo/ktx2.mjs y a lo público (Vite lo copia en las dos builds)");
-  const fuente = lee("apps/web/motor/04f_suelo_fotos.js"), i = fuente.indexOf("// [puro:inicio]"), f = fuente.indexOf("// [puro:fin]");
-  const P = new Function("\"use strict\";\n" + fuente.slice(i, f) + "\nreturn SueloFotosPuro;")();
+  const P = require("./_mundos").SueloFotosPuro;   // A3-1b: 04f es un talón; el trozo puro vive en apps/web/src/mundos/exterior/suelo-fotos.ts
   const nombre = /export const nombreKtx2 = px => "suelo_" \+ px \+ "\.ktx2";/.test(lee("tuberia/suelo/ktx2.mjs"));
   assert.ok(nombre && RECETAS.tamanos.every(px => P.ktx2(px) === "suelo/suelo_" + px + ".ktx2"), "la tubería escribe el nombre que pide el motor");
 });

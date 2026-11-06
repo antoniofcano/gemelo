@@ -10,3 +10,5 @@ export type { DepsVacio, FabricaLuz } from "./vacio.ts";
 // A3-1b (MU5-n): los componentes del exterior que salen del legado (tileset y suelo de fotos). Cada uno, con su libera() de verdad.
 export { creaSueloFondo, manifiestoSueloFondo } from "./exterior/suelo-fondo.ts";
 export type { DepsSueloFondo, SueloFondo } from "./exterior/suelo-fondo.ts";
+export { SueloFotosPuro, creaSueloFotos, manifiestoSueloFotos } from "./exterior/suelo-fotos.ts";
+export type { DepsSueloFotos, SueloFotos } from "./exterior/suelo-fotos.ts";

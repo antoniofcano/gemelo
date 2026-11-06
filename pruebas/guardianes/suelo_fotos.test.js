@@ -6,8 +6,9 @@
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
-const F04F = lee("apps/web/motor/04f_suelo_fotos.js"), F04D = lee("apps/web/motor/04d_sombreado_tiles.js"), F15 = lee("apps/web/motor/15_tiempo.js");
-const P = (() => { const i = F04F.indexOf("// [puro:inicio]"), f = F04F.indexOf("// [puro:fin]"); assert.ok(i >= 0 && f > i); return new Function("\"use strict\";\n" + F04F.slice(i, f) + "\nreturn SueloFotosPuro;")(); })();
+// A3-1b: 04f es un talón; su código vive en apps/web/src/mundos/exterior/suelo-fotos.ts (SueloFotosPuro y creaSueloFotos). F04F es el talón y el .ts juntos (lo que ve el motor)
+const F04F = lee("apps/web/motor/04f_suelo_fotos.js") + "\n" + lee("apps/web/src/mundos/exterior/suelo-fotos.ts"), F04D = lee("apps/web/motor/04d_sombreado_tiles.js"), F15 = lee("apps/web/motor/15_tiempo.js");
+const P = require("./_mundos").SueloFotosPuro;
 
 test("la bandera: apagado por defecto; ?suelo=fotos lo enciende; 768 en escritorio y 384 en móvil y gafas; en VR solo con ?sueloVR=1", () => {
   assert.strictEqual(P.decide("", "escritorio").activo, false);
@@ -20,7 +21,7 @@ test("la bandera: apagado por defecto; ?suelo=fotos lo enciende; 768 en escritor
   assert.strictEqual(P.decide("?suelo=fotos&sueloPx=384", "escritorio").px, 384);
   assert.strictEqual(P.decide("?suelo=fotos&sueloPx=1024", "escritorio").px, 768, "solo 384 o 768 (los tamaños que hay)");
   assert.strictEqual(P.decide("?suelo=fotos&sueloVR=1", "quest").vr, true);
-  assert.match(F04F, /U\.uFotK\.value = hecho && \(cfg\.vr \|\| !Aparato\.vr\(\)\) \? 1 : 0/, "en VR se apaga salvo ?sueloVR=1");
+  assert.match(F04F, /U\.uFotK\.value = hecho && \(cfg\.vr \|\| !d\.Aparato\.vr\(\)\) \? 1 : 0/, "en VR se apaga salvo ?sueloVR=1");
 });
 
 test("presupuesto declarado: 7 clases en 13 niveles RGBA8 con mipmaps (39,0 MB a 768, 9,8 MB a 384; tope 41 y 10,5), 2 muestreadores, ≤ 6 lecturas por píxel, 0 llamadas y 0 triángulos", () => {
@@ -97,8 +98,7 @@ test("la paleta del atardecer del motor es la que sacó la tubería de las fotos
 });
 
 test("la casilla «Suelo con texturas de la finca» (vista.suelo) lo enciende; la URL manda sobre ella (?suelo=fotos enciende, ?suelo=0 apaga)", () => {
-  const F = require("fs").readFileSync(require("path").join(__dirname, "..", "..", "apps", "web", "motor", "04f_suelo_fotos.js"), "utf8"), i = F.indexOf("// [puro:inicio]"), f = F.indexOf("// [puro:fin]");
-  const P = new Function("\"use strict\";\n" + F.slice(i, f) + "\nreturn SueloFotosPuro;")();
+  const F = F04F;   // el talón lee el ajuste; decide() está en el .ts
   assert.strictEqual(P.decide("", "escritorio", undefined).activo, false, "sin ajuste ni URL, apagado");
   assert.strictEqual(P.decide("", "escritorio", true).activo, true, "con la casilla, encendido");
   assert.strictEqual(P.decide("?suelo=0", "escritorio", true).activo, false, "?suelo=0 manda sobre la casilla");
@@ -152,12 +152,12 @@ test("ktx2Vale: solo vale el KTX2 que espera el sombreado (13 láminas del tama�
 test("el motor carga el KTX2 con el KTX2Loader de three, con detectSupport, del mismo origen, por la Cola, y lo suelta todo (loader y workers)", () => {
   assert.ok(F04F.includes('import("three/addons/loaders/KTX2Loader.js")'), "el KTX2Loader de three, con import() solo cuando hace falta");
   assert.ok(/setTranscoderPath\(P\.BASIS\)/.test(F04F), "el transcodificador de basis/ (mismo origen), no la ruta de import.meta.url");
-  assert.ok(/\.detectSupport\(renderer\)/.test(F04F), "detectSupport(renderer) es obligatorio");
-  assert.ok(/function sueltaLoader\(\) \{ if \(loader\) \{ loader\.dispose\(\); loader = null; \} \}/.test(F04F), "el loader se libera (sus workers y su URL blob:)");
+  assert.ok(/\.detectSupport\(d\.renderer\)/.test(F04F), "detectSupport(renderer) es obligatorio");
+  assert.ok(/function sueltaLoader\(\): void \{ if \(loader\) \{ loader\.dispose\(\); loader = null; \} \}/.test(F04F), "el loader se libera (sus workers y su URL blob:)");
   const cuerpo = F04F.slice(F04F.indexOf("function cargaKtx2()"), F04F.indexOf("function carga()"));
   assert.strictEqual((cuerpo.match(/sueltaLoader\(\)/g) || []).length, 2, "se suelta tanto si carga como si falla");
-  assert.ok(/function libera\(\) \{\s*vez\+\+; sueltaLoader\(\); ColaExt\.cancela\("SF"\);/.test(F04F), "libera() suelta el loader, cancela lo pendiente y tira lo que llegue tarde");
-  assert.ok(/return enCola\(\(function\* \(\) \{/.test(cuerpo), "el montaje del KTX2 va por la Cola");
+  assert.ok(/function libera\(\): void \{\s*vez\+\+; sueltaLoader\(\); d\.ColaExt\.cancela\("SF"\);/.test(F04F), "libera() suelta el loader, cancela lo pendiente y tira lo que llegue tarde");
+  assert.ok(/return enCola\(\(function\* \(\)/.test(cuerpo), "el montaje del KTX2 va por la Cola");
   assert.ok(/t\.onUpdate = function \(\) \{ t\.mipmaps = \[\]; \};/.test(cuerpo), "ya en la tarjeta, fuera la copia de la CPU");
   assert.ok(/t\.wrapS = t\.wrapT = THREE\.RepeatWrapping/.test(cuerpo) && /t\.colorSpace = THREE\.NoColorSpace/.test(cuerpo), "repetible y sin espacio de color, como la de las WebP");
   assert.ok(!/https?:\/\//.test(F04F.replace(/\/\/[^\n]*/g, "")), "el motor no pide nada a otro origen");
