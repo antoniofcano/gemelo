@@ -188,7 +188,7 @@ describe("nube LiDAR (componente del exterior)", () => {
     const m = F.crea(MATERIAL_NUBE, opc) as { isNodeMaterial: boolean; isPointsNodeMaterial: boolean; color: unknown; size: number; sizeAttenuation: boolean; vertexColors: boolean; onBeforeCompile?: unknown };
     expect(m.isNodeMaterial).toBe(true); expect(m.isPointsNodeMaterial).toBe(true); expect(m.color).toBe(color);
     expect(m.size).toBe(opc.size); expect(m.sizeAttenuation).toBe(true); expect(m.vertexColors).toBe(true);
-    // lo que NO lleva (y MATERIALES §9 dice): ni el parche de la luz de 15_tiempo ni, por tanto, su sombra de nubes
+    // lo que NO lleva (y MATERIALES §10 dice): ni el parche de la luz de 15_tiempo ni, por tanto, su sombra de nubes
     expect(m.onBeforeCompile).not.toBe(opc.parche);
   });
 

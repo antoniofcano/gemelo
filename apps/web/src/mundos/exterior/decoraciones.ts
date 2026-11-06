@@ -14,7 +14,7 @@
 // exageración o pasan 4 s (relieve fino recién llegado); es poco trabajo (≤ 64 matrices), sin Cola. libera() lo suelta todo (geometrías y materiales).
 // Presupuesto (regla 6): ≤ 6 llamadas (una por pieza con algo a la vista) y ≤ MAX × 40 = 2.560 triángulos; sin texturas. Medido por cálculo en Node
 // (pruebas/guardianes/decoraciones.test.js, con el three de verdad); en Chrome, escrito y sin ejecutar (decoraciones_chrome.test.js, por el banco).
-// Sus materiales (Lambert y Basic con color por vértice) no llevan parche ni ShaderMaterial: salen igual en las dos rutas y no tienen commit de materiales ni de TSL en MU5-n (MATERIALES §9).
+// Sus materiales (Lambert y Basic con color por vértice) no llevan parche ni ShaderMaterial: salen igual en las dos rutas y no tienen commit de materiales ni de TSL en MU5-n (MATERIALES §10).
 // Su libera() ya soltaba las mallas, las geometrías y los materiales y quitaba su complemento de la ficha; se conserva y se prueba.
 // Del legado recibe por argumento lo que necesita (THREE, el índice, las copas, el suelo, Entidades…); no lee globales.
 import type { ContextoComponente, Manifiesto } from "../../nucleo/componentes.ts";

@@ -105,7 +105,7 @@ describe("lindes de las hazas (componente del exterior)", () => {
     const m = F.crea(MATERIAL_LINDES, opc) as { isNodeMaterial: boolean; isLine2NodeMaterial: boolean; color: { getHex(): number }; linewidth: number; worldUnits: boolean; transparent: boolean; opacity: number; depthWrite: boolean; onBeforeCompile?: unknown; uniforms?: unknown };
     expect(m.isNodeMaterial).toBe(true); expect(m.isLine2NodeMaterial).toBe(true); expect(m.color.getHex()).toBe(0xffb020);
     expect([m.linewidth, m.worldUnits, m.transparent, m.opacity, m.depthWrite]).toEqual([4, false, false, 1, true]);
-    // lo que NO lleva (y MATERIALES §9 dice): ni el acercamiento de profundidad ni, por tanto, su parche
+    // lo que NO lleva (y MATERIALES §10 dice): ni el acercamiento de profundidad ni, por tanto, su parche
     expect(m.onBeforeCompile).not.toBe(opc.parche); expect(m.uniforms).toBeUndefined();
   });
 
