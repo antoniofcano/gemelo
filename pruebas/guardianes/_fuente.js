@@ -18,6 +18,7 @@ const TS_DE = {
   "07_follaje.js": "apps/web/src/mundos/exterior/follaje.ts",   // A3-2b
   "08_marcadores.js": "apps/web/src/mundos/exterior/marcadores.ts",   // A3-2b
   "08b_marcadores_lidar.js": "apps/web/src/mundos/exterior/marcadores-lidar.ts",   // A3-2b
+  "52_aves_mes.js": "apps/web/src/mundos/exterior/aves-mes.ts",   // A3-5
   "54_trabajo_hoy.js": "apps/web/src/mundos/exterior/trabajo-hoy.ts",   // A3-5
   "07a_catalogo.js": "apps/web/src/mundos/exterior/catalogo.ts",
   // A3-2a: 07ab vive en varios ficheros (la escalera, el horneado, la cola, el sombreado, el lote y el módulo): se leen todos, en este orden

@@ -52,3 +52,5 @@ export type { DepsGenerados, Generados } from "./exterior/generados.ts";
 // A3-5 (MU5-n): la vida del olivar. Cada uno, con su libera() de verdad.
 export { ID_TRABAJO_HOY, TrabajoHoyPuro, creaTrabajoHoy, manifiestoTrabajoHoy } from "./exterior/trabajo-hoy.ts";
 export type { DepsTrabajoHoy, TrabajoHoy } from "./exterior/trabajo-hoy.ts";
+export { ID_AVES_MES, AvesMesPuro, creaAvesMes, manifiestoAvesMes } from "./exterior/aves-mes.ts";
+export type { AvesMes, DepsAvesMes } from "./exterior/aves-mes.ts";
