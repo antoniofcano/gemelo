@@ -61,6 +61,17 @@ export const DEF_SUELO_FONDO: DefMaterial<OpcSueloFondo> = {
     m.onBeforeCompile = parcheSueloFondo;
     m.customProgramCacheKey = function () { return MATERIAL_SUELO_FONDO; };
     return m;
+  },
+  // MU5-n, tercer commit: la variante TSL, APAGADA (solo con el WebGPURenderer, que hasta MU6 no existe; nadie la usa hoy). Lo mismo que el parche:
+  // color de matSuelo (el MISMO objeto, releído en cada objeto como el ejemplo de la fábrica) × mosaico pasado de sRGB a lineal al leerlo; el alfa, el del mosaico.
+  tsl: function (o, c) {
+    const Lambert = c.THREE["MeshLambertNodeMaterial"] as new (opc: unknown) => MaterialMin & { color: unknown; colorNode: unknown };
+    const { texture, uniform, vec4, sRGBTransferEOTF } = c.TSL as Record<string, any>;   // eslint-disable-line @typescript-eslint/no-explicit-any
+    const m = new Lambert({ polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 });
+    m.color = o.color;
+    const mosaico = texture(o.map), base = uniform(o.color).onObjectUpdate(function () { return o.color; });
+    m.colorNode = vec4(base.mul(sRGBTransferEOTF(mosaico.rgb)), mosaico.a);
+    return m;
   }
 };
 

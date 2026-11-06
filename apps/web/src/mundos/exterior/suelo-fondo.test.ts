@@ -83,7 +83,7 @@ describe("suelo de fondo (componente del exterior)", () => {
   it("su material sale de la fábrica con el nombre de la tabla de MATERIALES, con dueño; el clásico es el de siempre (mismo parche y misma clave de programa) y libera() lo suelta", () => {
     const { api, deps } = monta(), F = deps.Materiales;
     api.actualiza(); const m = api.malla().material;
-    expect(F.cobertura()[MATERIAL_SUELO_FONDO]).toEqual({ clasico: true, tsl: false, usado: 1 });
+    expect(F.cobertura()[MATERIAL_SUELO_FONDO]).toEqual({ clasico: true, tsl: true, usado: 1 });
     expect(F.duenos()).toEqual({ "suelo-fondo": 1 }); expect(F.ruta(MATERIAL_SUELO_FONDO)).toBe("clasico");
     expect(m.onBeforeCompile).toBe(parcheSueloFondo); expect(m.customProgramCacheKey()).toBe("suelo-fondo"); expect(m.isMeshLambertMaterial).toBe(true);
     expect(m.color).toBe(deps.matSuelo.color); expect(m.map).toBe(deps.UN.uMos.value); expect(m.polygonOffsetFactor).toBe(2); expect(m.polygonOffsetUnits).toBe(2);
@@ -91,7 +91,24 @@ describe("suelo de fondo (componente del exterior)", () => {
     expect(sh.fragmentShader).not.toContain("#include <map_fragment>"); expect(sh.fragmentShader).toContain("sRGBTransferEOTF(texture2D(map, vMapUv))");
     let liberado = 0; m.addEventListener("dispose", () => { liberado++; });
     api.libera(); expect(liberado).toBe(1); expect(F.duenos()).toEqual({});
-    expect(DEF_SUELO_FONDO.tsl).toBeUndefined();   // la variante TSL va en el tercer commit de MU5-n
+  });
+
+  it("la variante TSL (apagada): solo con el renderizador nuevo; con three/webgpu y three/tsl de verdad se construye un MeshLambertNodeMaterial con el mismo color y su colorNode", async () => {
+    const rutaW = "three/webgpu", rutaT = "three/tsl";   // por variable: three no trae tipos
+    const W = await import(/* @vite-ignore */ rutaW as string), TSL = await import(/* @vite-ignore */ rutaT as string);
+    const nuevo = { tipo: "nuevo", pedido: "nuevo" }, clasico = { tipo: "clasico", pedido: "" };
+    const color = new W.Color(0x808080), tex = new W.Texture();
+    // sin renderizador nuevo (hoy, siempre): el clásico, aunque haya nodos
+    const hoy = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: clasico, nodos: () => ({ THREE: W, TSL }) });
+    hoy.define(MATERIAL_SUELO_FONDO, DEF_SUELO_FONDO);
+    expect(hoy.ruta(MATERIAL_SUELO_FONDO)).toBe("clasico"); expect((hoy.crea(MATERIAL_SUELO_FONDO, { map: tex, color }) as { isMeshLambertMaterial?: boolean }).isMeshLambertMaterial).toBe(true);
+    // con él y la variante: el TSL
+    const F = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: nuevo, nodos: () => ({ THREE: W, TSL }) });
+    F.define(MATERIAL_SUELO_FONDO, DEF_SUELO_FONDO);
+    expect(F.ruta(MATERIAL_SUELO_FONDO)).toBe("tsl"); expect(F.cobertura()[MATERIAL_SUELO_FONDO]).toMatchObject({ clasico: true, tsl: true });
+    const m = F.crea(MATERIAL_SUELO_FONDO, { map: tex, color }) as { isNodeMaterial: boolean; isMeshLambertNodeMaterial: boolean; color: unknown; colorNode: unknown; polygonOffset: boolean; polygonOffsetFactor: number; fog: boolean; onBeforeCompile?: unknown };
+    expect(m.isNodeMaterial).toBe(true); expect(m.isMeshLambertNodeMaterial).toBe(true); expect(m.color).toBe(color); expect(m.colorNode).toBeTruthy();
+    expect(m.polygonOffset).toBe(true); expect(m.polygonOffsetFactor).toBe(2); expect(m.fog).toBe(true);
   });
 
   it("el escalón de VR: pide menos celdas, baja más, rehace la malla; suelta() olvida la fuente", () => {
