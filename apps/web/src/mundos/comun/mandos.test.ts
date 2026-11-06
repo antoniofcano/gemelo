@@ -100,6 +100,7 @@ describe("mandos-vr: el ciclo de vida por sesión (L2-06)", () => {
       await espera();
       const cubo = m.grips[1]!.children.find((o: A) => o.isMesh);
       expect(cubo).toBeTruthy(); vivos.add(cubo.geometry); vivos.add(cubo.material);
+      expect(m.deps.Materiales.duenos()["mandos-vr"]).toBe(1);   // la caja sale de la fábrica con su dueño (segundo commit de la receta)
       cubo.geometry.addEventListener("dispose", () => vivos.delete(cubo.geometry)); cubo.material.addEventListener("dispose", () => vivos.delete(cubo.material));
       m.n.emite("vr:rig-libera");
       expect(vivos.size).toBe(0); expect(m.grips[1].children.length).toBe(0);

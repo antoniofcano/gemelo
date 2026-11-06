@@ -40,6 +40,7 @@ export function creaMandos(d: DepsMandos, n: ContextoComponente) {
   var THREE = d.THREE, renderer = d.renderer, consola = d.consola || console, window: T = d.ventana;   // la ventana del legado (o la de la prueba)
   var ponReloj = d.reloj ? d.reloj.pon : function (fn: () => void, ms: number) { return setTimeout(fn, ms); };
   var quitaReloj = d.reloj ? d.reloj.quita : function (id: T) { clearTimeout(id); };
+  var materiales = d.Materiales.de(ID_MANDOS);   // la caja de respaldo, con dueño «mandos-vr» (se suelta por sesión y, al apagar, lo que quede)
   var RUTA = "./xr/perfiles", ESPERA = 6000;
   var pideLib: Promise<LibMandos> | null = null, S: T = null, avisos: Record<string, boolean> = {};
   function avisa1(clave: string, txt: string) { if (avisos[clave]) return; avisos[clave] = true; try { consola.warn("[VR] " + txt); } catch (e) { /* sin consola */ } }
@@ -96,7 +97,7 @@ export function creaMandos(d: DepsMandos, n: ContextoComponente) {
   function respaldoMando(e: T, porque: string) {
     if (!S || !esMando(e.src) || e.okC) return;
     avisa1("mando", "mandos: " + porque + "; se dibuja una caja en su lugar");
-    if (!e.cubo) { e.cubo = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.045, 0.13), new THREE.MeshBasicMaterial({ color: 0x4a5560, fog: false })); e.grip.add(e.cubo); }
+    if (!e.cubo) { e.cubo = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.045, 0.13), materiales.estandar("MeshBasicMaterial", { color: 0x4a5560, fog: false })); e.grip.add(e.cubo); }
     e.cubo.visible = true;
   }
   function respaldoMano(e: T, porque: string) {
@@ -188,6 +189,7 @@ export function creaMandos(d: DepsMandos, n: ContextoComponente) {
     libera();
     E.forEach(function (e) { e.grip.removeEventListener("connected", e.alConecta); e.grip.removeEventListener("disconnected", e.alDesconecta); });
     delete window.__mandos;
+    materiales.libera();
   }
   return { monta: monta, libera: libera, resumen: resumen, suelta: suelta };
 }
