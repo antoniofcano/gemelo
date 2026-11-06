@@ -49,7 +49,7 @@
       "origen": "CLAUDE.md §1", "clave": "5", "titulo": "Distinguir siempre medido / deducido / ilustrativo",
       "vigila": [
         { "fichero": "pruebas/guardianes/componentes.test.js", "test": "Capas.registra exige la procedencia (medido, deducido o ilustrativo: regla 5)" },
-        { "fichero": "pruebas/guardianes/vr_presupuesto.test.js", "test": "lo medido cae después que lo deducido e ilustrativo (regla 5)" }
+        { "fichero": "apps/web/src/nucleo/presupuesto.test.ts", "test": "lo medido cae después que lo deducido e ilustrativo (regla 5)" }
       ],
       "falta": "Solo se exige en las capas registradas y en la tabla de recortes de VR; lo que se muestra fuera de Capas y lo que se escribe en doc/ no se comprueba."
     },

@@ -8,3 +8,4 @@ export { RenderPuro, InfoDibujo, creaRender } from "./render.ts";
 export { XrPerillasPuro, creaXrPerillas } from "./xr-perillas.ts";
 export { EntidadesPuro } from "./entidades.ts";
 export { LlegadaPuro, IrAPuro } from "./locomocion.ts";
+export { VrPresupuestoPuro, VrControlPuro, creaVrPresupuesto } from "./presupuesto.ts";

@@ -8,8 +8,8 @@ const { lee } = require("./_util");
 const Nucleo = require("./_nucleo");
 
 function estado(busqueda) { return Nucleo.creaXrPerillas({ busqueda }); }
-const F02G = lee("apps/web/motor/02g_vr_presupuesto.js");
-const VrControlPuro = new Function("\"use strict\";\n" + F02G.slice(F02G.indexOf("// [puro:inicio]"), F02G.indexOf("// [puro:fin]")) + "\nreturn VrControlPuro;")();
+// 02g es un talón desde A1-12: el controlador y el presupuesto vienen del núcleo de verdad (apps/web/src/nucleo/presupuesto.ts)
+const { VrControlPuro, creaVrPresupuesto } = Nucleo;
 
 test("cableado: 29_vr usa XrPerillas en un solo sitio, 03_escena el MSAA, y el informe y el panel dicen la línea", () => {
   const vr = lee("apps/web/motor/29_vr.js");
@@ -39,8 +39,8 @@ test("29_vr: near efectivo al entrar y restaurado al salir; el controlador baja 
     const VRX = { emaDt: 13.9, emaJs: 6, tNivel: 0, nivel: 0, nBaj: 0, nAlt: 0 };
     // Q0c-b: el cambio de nivel va por la Cola (se anota el nivel pedido); aquí no se avanza el generador
     const VR_PERFILES = [0, 1, 2, 3], Cola = { cancela() {}, add(k, prio, gen) { niveles.push(VRX.nivel); } };
-    // Q0c-c: el VrPresupuesto de verdad (02g), que da el nivel mínimo que pide la gente a la vista (0 sin gente)
-    const VrPresupuesto = new Function("\"use strict\";\n" + F02G.slice(F02G.indexOf("// [puro:inicio]"), F02G.indexOf("// [puro:fin]")) + F02G.slice(F02G.indexOf("// [motor:inicio]"), F02G.indexOf("// [motor:fin]")) + "\nreturn VrPresupuesto;")();
+    // Q0c-c: el VrPresupuesto de verdad (el del núcleo, que crea el talón 02g), que da el nivel mínimo que pide la gente a la vista (0 sin gente)
+    const VrPresupuesto = creaVrPresupuesto();
     const f = new Function("VRX", "XrPerillas", "VR_PERFILES", "Cola", "VrControlPuro", "VrPresupuesto", "\"use strict\";\n" + ad + "\nreturn vrAdapta;")(VRX, X, VR_PERFILES, Cola, VrControlPuro, VrPresupuesto);
     return { f, VRX, niveles };
   }

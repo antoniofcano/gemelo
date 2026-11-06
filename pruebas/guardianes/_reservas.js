@@ -66,7 +66,7 @@ function reservas(src, fn, inicio) {
   return out;
 }
 
-/** Las funciones del bucle, por módulo. «inicio» localiza la función (debe ser único en el fichero). Solo lo que corre a cada fotograma. */
+/** Las funciones del bucle, por módulo (de apps/web/motor/; las claves «src/…» son de apps/web/src/, el núcleo en TypeScript). «inicio» localiza la función (debe ser único en el fichero). Solo lo que corre a cada fotograma. */
 const BUCLE = {
   "02l_tope_tiles.js": [["paso (Q0k)", "function paso(s, m)"]],   // el lazo del tope del tileset: cada 0,25 s en VR
   "04b_escena3d.js": [["muestraTope", "function muestraTope("], ["sumaVisible", "function sumaVisible("]],
@@ -77,7 +77,7 @@ const BUCLE = {
   "19_balizas.js": [["firmaCambia", "function firmaCambia("]],
   "25_perros.js": [["amenazaEn", "function amenazaEn("], ["actualizaPerros", "function actualizaPerros("], ["empacaPerros", "function empacaPerros("]],
   "02c_componentes.js": [["Bus.emite", "function emite(ev, datos)"], ["Reparto.pasa", "function pasa(i, q)"], ["Reparto.ini", "function ini(t)"]],   // Q0h: el reparto del JS por bloque, cada fotograma medido
-  "02g_vr_presupuesto.js": [["VrPresupuesto.mueve", "function mueve("]],   // Q0c-a: cada fotograma en VR
+  "src/nucleo/presupuesto.ts": [["VrPresupuesto.mueve", "function mueve("]],   // Q0c-a: cada fotograma en VR (antes en 02g_vr_presupuesto.js; A1-12)
   "18_paisaje.js": [["distArroyo", "function distArroyo("], ["celdaArroyoDist", "function celdaArroyoDist("]],
   "16_vida.js": [["velPaseo", "function velPaseo("], ["giroPaseo", "function giroPaseo("], ["vidaPaseo", "function vidaPaseo("], ["dronMando", "function dronMando("],
     ["camaraDron", "function camaraDron("], ["vidaDron", "function vidaDron("], ["actualizaVida", "function actualizaVida("], ["emiteEstela", "e.emite = function"], ["angDifRad", "function angDifRad("]],
@@ -91,7 +91,7 @@ const BUCLE = {
 function recuenta() {
   const tot = {};
   for (const f of Object.keys(BUCLE)) {
-    const src = fs.readFileSync(path.join(RAIZ, "apps", "web", "motor", f), "utf8"); tot[f] = { total: 0, porFn: {}, detalle: [], faltan: [] };
+    const src = fs.readFileSync(f.startsWith("src/") ? path.join(RAIZ, "apps", "web", f) : path.join(RAIZ, "apps", "web", "motor", f), "utf8"); tot[f] = { total: 0, porFn: {}, detalle: [], faltan: [] };
     for (const [fn, ini] of BUCLE[f]) {
       const r = reservas(src, fn, ini); if (r === null) { tot[f].faltan.push(fn); continue; }
       tot[f].porFn[fn] = r.length; tot[f].total += r.length; tot[f].detalle.push(...r);
