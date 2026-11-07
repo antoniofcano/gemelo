@@ -553,13 +553,13 @@ Ocho módulos del legado pasan a TypeScript (COMPONENTES §6, «A3-7b2»). Solo 
 | `46_guiada.js` → `ui/guiada.ts` (`visita-guiada`) | hecho | **no hace falta:** DOM; la lámina del cierre es de `Laminas` (§16) | **no hace falta** |
 | `49_avisos_correo.js` → `ui/avisos-correo.ts` (`avisos-correo`) | hecho | **no hace falta:** DOM de Configuración | **no hace falta** |
 | `42_personalizacion.js` → `mundos/exterior/personalizacion.ts` (`personalizacion`) | hecho | **no hace falta:** DOM, y la lámina del olivo elegido es de `Laminas` (§16) | **no hace falta** |
-| `39_oficina_mundo.js` → `mundos/exterior/oficina-mundo.ts` (`oficina-mundo`) | hecho | **hecho:** los dos `MeshBasicMaterial` de las balizas oficiales (la columna, aditiva y translúcida, y la bandera), estándar con dueño `oficina-mundo`; `libera()` los suelta con `materiales.libera()` en lugar de a mano | **no hace falta:** sin sombreador propio |
+| `39_oficina_mundo.js` → `mundos/exterior/oficina-mundo.ts` (`oficina-mundo`; desde A3-8b, las balizas son `39b_oficina_balizas.js` → `mundos/exterior/oficina-balizas.ts`, `oficina-balizas`) | hecho | **hecho:** los dos `MeshBasicMaterial` de las balizas oficiales (la columna, aditiva y translúcida, y la bandera), estándar con dueño `oficina-mundo` (desde A3-8b, `oficina-balizas`); `libera()` los suelta con `materiales.libera()` en lugar de a mano | **no hace falta:** sin sombreador propio |
 | `40_juegos.js` → `mundos/exterior/juegos.ts` (`juegos`) | hecho | **no hace falta:** canvas 2D; la lámina de VR es de `Laminas` | **no hace falta** |
 | `41_cae_la_cosecha.js` → `mundos/exterior/cae-la-cosecha.ts` (`cae-la-cosecha`) | hecho | **no hace falta:** canvas 2D | **no hace falta** |
 | `46b_primera_vez.js` → `red/voz/primera-vez.ts` | hecho (lógica pura, sin componente) | **no hace falta** | **no hace falta** |
 
 - **Cobertura (`Materiales.cobertura()`):** sin cambios (los dos materiales son estándar, no `define`). **Fuera de la fábrica:** ninguna fila de `FUERA` que bajar; nada de esto tenía `onBeforeCompile` ni `ShaderMaterial`.
-- **Pruebas:** `oficina-mundo.test.ts` (Vitest, con la fábrica de verdad y three de verdad, sin GPU): el dueño `oficina-mundo` tiene dos materiales con las balizas puestas y ninguno tras liberar, y la geometría y el material de cada malla reciben su `dispose`. Los guardianes que evalúan `montaGrafica` con `new Function` (`estaticos`, `recorte`) reciben un doble de la fábrica (`materiales.estandar`).
+- **Pruebas:** `oficina-mundo.test.ts` (Vitest, con la fábrica de verdad y three de verdad, sin GPU; desde A3-8b en `apps/web/src/`, con los dos componentes): el dueño `oficina-mundo` (desde A3-8b, `oficina-balizas`) tiene dos materiales con las balizas puestas y ninguno tras liberar, y la geometría y el material de cada malla reciben su `dispose`. Los guardianes que evalúan `montaGrafica` con `new Function` (`estaticos`, `recorte`) reciben un doble de la fábrica (`materiales.estandar`).
 
 **No probado:** nada de esto en un navegador, en iPhone ni en el Quest (esta tarea no abrió Chrome ni Docker).
 

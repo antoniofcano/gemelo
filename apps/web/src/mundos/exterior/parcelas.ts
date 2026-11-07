@@ -118,6 +118,7 @@ export type Parcelas = ReturnType<typeof creaParcelas>;
 export function manifiestoParcelas(api: { libera(): void }): Manifiesto {
   return {
     id: ID_PARCELAS, version: 1, consume: ["Ajustes"], expone: [], eventos: { escucha: [], emite: [] }, bandera: { defecto: true }, presupuesto: { llamadas: 0, triangulos: 0 },
-    fases: {}, mundos: ["exterior"], monta: function () { return api; }, libera: function () { api.libera(); }
+    fases: {}, mundos: ["exterior"], dom: ["#ventanaMapa", "[data-abre=\"mapa\"]"],   // A3-8b: la ventana «Mapa y parcelas» (sus chips) y sus iconos, escondidos fuera del exterior
+    monta: function () { return api; }, libera: function () { api.libera(); }
   };
 }

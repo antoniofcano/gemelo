@@ -365,6 +365,7 @@ export function manifiestoPaisaje(paisaje: Paisaje): Manifiesto {
     bandera: { defecto: true },
     presupuesto: { llamadas: 0, triangulos: 0 },   // solo ciclo de vida: lo que dibuja (muros, tejados, postes, hilos, cauces y 4 InstancedMesh de árboles) lo cuenta pruebas/presupuesto.json; la casilla «Paisaje» lo apaga a la vista
     mundos: ["exterior"],
+    dom: [{ sel: "#cPaisaje", sube: "label" }],   // A3-8b: su casilla de «Capas y vista», escondida fuera del exterior (COMPONENTES §3.2)
     monta: function () { paisaje.monta(); return paisaje; },
     libera: function (api) { if (api) (api as Paisaje).libera(); }
   };

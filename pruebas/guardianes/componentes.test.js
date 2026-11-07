@@ -468,3 +468,11 @@ test("C9a en Node: anfitrión y juego se encuentran por el Bus en cualquier orde
   q = arranca("", H); assert.deepStrictEqual(q.ventana.__juegos().juegos, []); q.Componentes.configura({ juegos: { activo: false } });
   assert.deepStrictEqual(q.errores, []);
 });
+
+// A3-8b: el registro marca el DOM de un componente fuera de su mundo con ATRIBUTO_FUERA (nucleo/componentes.ts); lo que lo esconde de verdad es la regla de la plantilla,
+// que tiene que existir y ganar a cualquier display del componente (!important). Con el gestor y los manifiestos de verdad lo prueba apps/web/src/mundos/dom-fuera.test.ts.
+test("A3-8b: la plantilla esconde lo que el registro marca fuera de su mundo ([data-fuera-de-mundo] { display: none !important })", () => {
+  const { ATRIBUTO_FUERA } = require(path.join(NUCLEO_TS, "componentes.ts"));   // sin pasar por el puente: el legado no lo usa
+  assert.strictEqual(ATRIBUTO_FUERA, "data-fuera-de-mundo");
+  assert.match(lee("apps/web/plantilla.css"), new RegExp("^\\[" + ATRIBUTO_FUERA + "\\]\\s*\\{\\s*display:\\s*none\\s*!important;\\s*\\}", "m"));
+});

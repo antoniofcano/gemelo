@@ -98,6 +98,7 @@ export function manifiestoMarcadoresLidar(d: DepsMarcadoresLidar): Manifiesto {
     presupuesto: { llamadas: 3, triangulos: 240000 },   // [SUPUESTO] techo para 10.000 copas (octaedro de 8 triángulos) y 10.000 marcas (anillo de 8 lados = 16 triángulos, antes 20 lados = 40) = 8·N + 16·M; Hituelo tiene 5.882 copas. Una maqueta de 140 copas y 60 marcas mide 2 llamadas y 3.520 triángulos (componentes_c10c.test.js); con «Desfase» encendida suma la llamada de las líneas
     fases: {},
     mundos: ["exterior"],
+    dom: [{ sel: "#cCopas", sube: "label" }, { sel: "#cMarc", sube: "label" }, { sel: "#cDesf", sube: "label" }],   // A3-8b: sus casillas de «Capas y vista», escondidas fuera del exterior
     monta: function (n) { return creaMarcadoresLidar(d, n); },
     actualiza: {},
     libera: function (api) { if (api) (api as MarcadoresLidar).suelta(); }

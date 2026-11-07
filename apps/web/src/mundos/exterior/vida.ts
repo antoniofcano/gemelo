@@ -335,6 +335,7 @@ export function creaVida(d: DepsVida) {
     bandera: { defecto: true },
     presupuesto: { llamadas: 0, triangulos: 0 },
     mundos: ["exterior"],
+    dom: [{ sel: "#cFauna", sube: "label" }, "#tDron", "#padQuad", "#padDron", "#padSube", "#padBaja"],   // A3-8b: su casilla, el rótulo del dron y los botones del quad y del dron, escondidos fuera del exterior
     monta: function () { return { libera }; },
     libera: function () { libera(); }
   };

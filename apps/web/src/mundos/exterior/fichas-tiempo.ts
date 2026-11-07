@@ -369,6 +369,7 @@ export function manifiestoFichasTiempo(dp: DepsFichasTiempo): Manifiesto {
     bandera: { defecto: true, url: "fichas" },
     presupuesto: { llamadas: 1, triangulos: 2, texturasMB: 3 },   // una malla de 2 triángulos y una textura de 1024 × 704 sin mipmaps (2,9 MB), solo con la lámina abierta
     mundos: ["exterior"],
+    dom: ["#ventanaTiempo", "[data-abre=\"tiempo\"]"],   // A3-8b: la ventana «Tiempo y estación» y sus iconos, escondidos fuera del exterior (COMPONENTES §3.2)
     monta: function (n?: T) { return FichasTiempoMotor(n); },
     libera: function (api?: T) { if (api) api.cierra(); }
   };

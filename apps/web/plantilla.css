@@ -28,6 +28,7 @@
 html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; }
 body { background: #0b0d0a; color: var(--fg); font-family: var(--body); font-size: 14px; line-height: 1.45; }
 [hidden] { display: none !important; }
+[data-fuera-de-mundo] { display: none !important; }   /* A3-8b: el DOM de un componente fuera de su mundo (nucleo/componentes.ts, ATRIBUTO_FUERA) */
 :focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; }
 .vh { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 

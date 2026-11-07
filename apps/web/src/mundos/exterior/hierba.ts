@@ -314,6 +314,7 @@ export function manifiestoHierba(hierba: Hierba): Manifiesto {
     // matas, ≤ 2.600 piedras, en 2 llamadas: los contactos no se cuelgan) lo cuentan los topes de pruebas/presupuesto.json con el resto de la escena
     presupuesto: { llamadas: 0, triangulos: 0 },
     mundos: ["exterior"],
+    dom: [{ sel: "#cHierba", sube: "label" }],   // A3-8b: su casilla de «Capas y vista», escondida fuera del exterior (COMPONENTES §3.2)
     monta: function () { return hierba; },
     libera: function (api) { if (api) (api as Hierba).libera(); }
   };
