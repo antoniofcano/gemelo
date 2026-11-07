@@ -442,3 +442,28 @@ Vive junto al clásico en `vr.ts` (`defVineta`), está **apagada** (solo la dar�
 ### 14.2 Los ciclos de vida (`libera()`)
 
 Ver MUNDOS §2 («Cómo quedó (MU5-n, A3-6c)») y COMPONENTES §6. Pruebas (Vitest, sin GPU: no hay `renderer.info`; se cuentan las creaciones y los «dispose» de three): `vr.test.ts` (diez sesiones sin crear geometrías, materiales ni texturas; `libera()` suelta todo), `mandos.test.ts` (diez sesiones con el modelo del mando: nada vivo, ni escuchas ni relojes), `ir-a.test.ts`, `llegada.test.ts`, `paseo.test.ts`, `camara.test.ts` y `palanca.test.ts`. **No probado:** en un navegador, en el Quest ni en el iPhone (esta tarea no abrió Chrome ni Docker).
+
+## 16. Lo hecho en A3-7a (2026-11-07): la interfaz (`ui/`), de todo mundo
+
+Trece módulos del legado pasan a `apps/web/src/ui/` (MUNDOS §1, la frontera nueva; COMPONENTES §6, «A3-7a»). Solo dos tienen materiales; ninguno tiene sombreador propio. Qué toca de la receta del §5 a cada uno:
+
+| Módulo | 1.er commit (TS y componente) | 2.º commit (materiales por la fábrica) | 3.er commit (TSL apagada) |
+|---|---|---|---|
+| `02d_laminas.js` → `ui/laminas.ts` (`laminas-mundo`) | hecho | hecho: el `MeshBasicMaterial` de cada lámina (el normal, con `alphaTest` 0,5; el de encima, transparente y sin profundidad; los dos sin niebla ni tone mapping), estándar con dueño `laminas-mundo`. La fábrica (02i) se monta después de 02d: se pide al abrir la primera lámina | **no hace falta:** sin sombreador propio |
+| `02e_entidades.js` → `ui/entidades.ts` (`seleccion-usables`) | hecho | hecho: el `MeshBasicMaterial` del anillo de resaltado, estándar con dueño `seleccion-usables`; se pide al crear el anillo | **no hace falta** |
+| `17_minimapa.js` → `ui/minimapa.ts` (`minimapa-finca`, solo del exterior) | hecho | **no hace falta:** lienzo 2D | **no hace falta** |
+| `24_pantalla.js` → `ui/pantalla.ts` (`menu-pantalla`) y `mundos/comun/transicion.ts` | hecho | **no hace falta:** DOM; la transición solo mueve la cámara y el muñeco | **no hace falta** |
+| `27_debug.js` → `ui/ganchos.ts` (no es componente) | hecho | **no hace falta** | **no hace falta** |
+| `28_depura.js` → `ui/depura.ts` (`contador-depura`) | hecho | **no hace falta:** DOM | **no hace falta** |
+| `30_mide.js` → `ui/mide.ts` (`medidor-fotogramas`) | hecho | **no hace falta:** DOM | **no hace falta** |
+| `31_hud.js` → `ui/hud.ts` (`hud-pantalla`) | hecho (+ L2-11) | **no hace falta:** HTML y CSS | **no hace falta** |
+| `31b_hud_personal.js` → `ui/hud-personal.ts` (`hud-personal`) | hecho (+ L2-11) | **no hace falta** | **no hace falta** |
+| `32_ventanas.js` → `ui/ventanas.ts` (`ventanas`) | hecho | **no hace falta** | **no hace falta** |
+| `32b_capas.js` → `ui/capas.ts` (`capas-mundo`) | hecho | **no hace falta** | **no hace falta** |
+| `33_ajustes.js` → `ui/ajustes.ts` (`configuracion`) | hecho | **no hace falta** | **no hace falta** |
+| `34_movibles.js` → `ui/movibles.ts` (`movibles`) | hecho | **no hace falta** | **no hace falta** |
+
+- **Cobertura (`Materiales.cobertura()`):** sin cambios (los dos materiales son estándar, no `define`). **Fuera de la fábrica:** ninguna fila de `FUERA` que bajar; nada de esto tenía `onBeforeCompile` ni `ShaderMaterial`.
+- **Pruebas:** `laminas.test.ts` y `entidades.test.ts` (Vitest, con la fábrica de verdad): el dueño tiene un material por lámina abierta (o el del anillo) y ninguno tras cerrar o liberar; `laminas.test.ts` cuenta además los «dispose» de three (geometría, material y textura de cada lámina). Las pruebas de Node que evalúan el trozo `[motor]` de las láminas o de los usables les dan un doble de la fábrica.
+
+**No probado:** nada de esto en un navegador, en iPhone ni en el Quest (esta tarea no abrió Chrome ni Docker).

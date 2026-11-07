@@ -548,3 +548,32 @@ Siete componentes nuevos o migrados, todos con `mundos: "todos"` (la forma de A3
 #### Nota de comodidad (regla 11)
 
 Sin cambio de interacción: el código de los gestos, los mandos (Y panel, X viñeta, A vuelo, B mirador, grip correr y agarrar, gatillo), el giro por saltos (30° por defecto), el teletransporte (arco a pie, rayo desde el aire), el fundido (~0,3 s; saltos > 5 m), la viñeta (sus puntos y sus tiempos), las velocidades (1,4 / 3,0 / 8 / 20 m/s), la altura de la vista y los radios de los troncos se movieron tal cual, y los guardianes de siempre (`vr`, `vr_confort`, `vr_control`, `xr_perillas`, `llegada`, `ir_a`, `palanca`, `mandos`, `movibles`, `locomocion_mundo`, `ux_teclas`…) siguen en verde sobre ese mismo código. **No probado** en el Quest ni en el iPhone, ni en un navegador (esta tarea no abrió Chrome).
+
+### A3-7a (MU5-n) · la interfaz (`ui/`), componentes de todo mundo
+
+Trece módulos de la interfaz pasan a `apps/web/src/ui/`, la frontera nueva de MUNDOS §1 (importa solo de `nucleo/` y `datos/`; el legado la ve como `Interfaz.<x>`). Todos son de **ciclo de vida** (sin fases: el bucle los mueve como siempre) y todos, salvo el minimapa, son de **todo mundo** (`mundos: "todos"`): la interfaz es de la página y de la persona, no del mundo que se vea.
+
+| Módulo (talón) | Componente | Qué suelta su `libera()` |
+|---|---|---|
+| `02d_laminas.js` → `ui/laminas.ts` | `laminas-mundo` | cierra las láminas abiertas con el motivo de siempre, «cerrada» (malla, material de la fábrica, textura y lienzo de cada una) y se borra del Bus («vr:sale») |
+| `02e_entidades.js` → `ui/entidades.ts` | `seleccion-usables` (presupuesto: 1 llamada y 80 triángulos, el anillo) | el anillo (`Usables.libera`, el de siempre) y, nuevo, `Usables.desengancha`: la × de la ficha, el observador de `#ficha` y la caja de acciones |
+| `17_minimapa.js` → `ui/minimapa.ts` | `minimapa-finca`, **`mundos: ["exterior"]`** (dibuja la finca) | las escuchas del lienzo, de sus botones y de la tecla M, el enganche pendiente a `Movibles`, las capas (`Minimapa.olvida`) y devuelve `#mapita` a su sitio |
+| `24_pantalla.js` → `ui/pantalla.ts` (y `mundos/comun/transicion.ts`) | `menu-pantalla` | cierra el menú, suelta el bloqueo de Esc y quita sus escuchas. La transición del mapa al paseo no es componente (nada que soltar) |
+| `27_debug.js` → `ui/ganchos.ts` | — (no es componente: `window.__g` vive lo que la página) | — |
+| `28_depura.js` → `ui/depura.ts` | `contador-depura` | la caja del visor y `__g.depuraJs` |
+| `30_mide.js` → `ui/mide.ts` | `medidor-fotogramas` (ya lo era; ahora de todo mundo) | lo de siempre: la caja, la escucha de la pestaña, el observador de tareas largas, `__mide` y la medida en curso |
+| `31_hud.js` → `ui/hud.ts` | `hud-pantalla` | **los dos relojes (250 y 100 ms; L2-11)**, todas sus escuchas, el observador de la barra, la suscripción a Configuración, los iconos registrados y los avisos |
+| `31b_hud_personal.js` → `ui/hud-personal.ts` | `hud-personal` | **su reloj de 500 ms (L2-11)**, las escuchas de sus cuatro botones y «voz:estado» |
+| `32_ventanas.js` → `ui/ventanas.ts` | `ventanas` | cierra la abierta sin mover el foco, devuelve el recorrido a su ventana, saca las registradas y quita sus escuchas y el observador del recorrido |
+| `32b_capas.js` → `ui/capas.ts` | `capas-mundo` | las casillas registradas (apagando antes las encendidas) |
+| `33_ajustes.js` → `ui/ajustes.ts` | `configuracion` | las escuchas de sus controles, de los deslizadores de la página y de las dos media queries, y la interfaz pintada en `#menuAjustes`; el almacén sigue (`Ajustes.lee` vale después) |
+| `34_movibles.js` → `ui/movibles.ts` | `movibles` | las escuchas de cada asa, del menú «Llevar a…» y de la ventana, el observador del visor, el fotograma y el aviso pendientes, y los nodos que creó |
+
+- **Cómo suelta:** `ui/soltador.ts` apunta lo que cada pieza engancha (escuchas, observadores, relojes, nodos, «quita» de otros) y lo deshace de una vez. El código movido solo cambia `x.addEventListener(` por `escucha(x, ` (mismo tipo, misma función, mismas opciones). En `02e` y `02d`, cuyos trozos `[motor]` evalúan las pruebas tal cual, lo que se suelta se apunta a mano dentro del trozo.
+- **Ids con apellido** (`hud-pantalla`, `minimapa-finca`, `laminas-mundo`, `seleccion-usables`): `componentes.test.js` exige que nadie nombre a un componente, y «hud», «minimapa» o «laminas» salen en cadenas y claves de otros módulos.
+- **Lo que se monta después** de cada módulo (o que otro reescribe) entra por getter del talón; lo que va antes, por valor, como en A3-6a. `02d` y `02e`, que van casi primeros, lo piden casi todo por getter (la escena, la cámara, el renderer, la fábrica de materiales, VRX…); `30_mide` lo pide todo por getter, como lo leía antes al usarlo.
+- **Pruebas (Vitest, con los dobles del DOM de `ui/prueba-dom.ts`):** una por pieza (`*.test.ts` de `ui/`) y `memoria.test.ts`, que monta juntas las que enganchan algo a la página, las libera y comprueba que no queda ningún reloj, observador ni escucha en la ventana, el documento o la plantilla.
+
+#### Nota de comodidad (regla 11)
+
+Sin cambio de interacción: el código de los paneles, las teclas (1-6, F1, F, Inicio o 0, Intro, Esc, M, P), los gestos (arrastrar las ventanas flotantes, las flechas desde el agarre), el foco (al título al abrir, de vuelta a quien abrió al cerrar), los tamaños (44 px) y los textos se movió tal cual; los guardianes de interfaz (`ux_plantilla`, `ux_teclas`, `ux_ventanas`, `ux_hud`, `ux_hud_personal`, `ux_tactil`, `ajustes_ui`, `laminas`, `entidades`, `movibles`, `mide`…) leen el código movido y siguen en verde. Lo único que cambia es lo que pasa **al liberar**, que antes no pasaba nunca. **No probado** en un navegador, en el iPhone ni en el Quest (esta tarea no abrió Chrome ni Docker); los hallazgos de la lente 6 que cambiarían la interacción (L6-01, L6-03, L6-04) no se tocaron y quedan para la ronda del banco.
