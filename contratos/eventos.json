@@ -864,7 +864,7 @@
       "descripcion": "Abrir o cerrar la lámina de la previsión del tiempo en el mundo (el botón «Ver la previsión en el mundo» de la ventana Tiempo y, en VR, «hora» en el menú de muñeca, EV2-A3). Sin datos alterna; con abre true o false, abre o cierra.",
       "datos": { "type": "object", "properties": { "abre": { "type": "boolean" } } },
       "emiten": ["mundos/exterior/tiempo", "mundos/comun/muneca"],
-      "escuchan": ["35_fichas_tiempo"]
+      "escuchan": ["mundos/exterior/fichas-tiempo"]
     },
     "mundo:aplica": {
       "descripcion": "El mundo se ha vuelto a aplicar (aplica() de 08_marcadores.js: cambió la exageración vertical, el modo o los datos de las teselas): lo que cuelga del terreno se recoloca. Hoy lo atiende el componente de los marcadores del LiDAR (copas, anillos y desfase); sin él (?marcadores=0), nadie.",
@@ -987,7 +987,7 @@
         "mundos/comun/muneca"
       ],
       "escuchan": [
-        "35_fichas_tiempo"
+        "mundos/exterior/fichas-tiempo"
       ]
     },
     "red:estado": {

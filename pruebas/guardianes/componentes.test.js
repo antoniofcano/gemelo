@@ -321,7 +321,8 @@ test("el motor sin cada componente (genera_motor.mjs --sin) es JavaScript válid
 });
 
 test("en Node: el núcleo con la pieza de las fichas del tiempo de verdad arranca con ella, sin ella, con ?fichas=0 y apagándola desde la configuración", () => {
-  const F = "35_fichas_tiempo.js", fuente = sinCabecera(fs.readFileSync(path.join(MOTOR, F), "utf8"));
+  // A3-7b1: 35 es un talón; el componente vive en mundos/exterior/fichas-tiempo.ts. Se evalúa el .ts como JavaScript (de [puro:inicio] al final) y se registra su manifiesto con las globales de abajo
+  const F = "35_fichas_tiempo.js", todo = require("./_fuente").fuenteMotor(F), fuente = todo.slice(todo.indexOf("// [puro:inicio]")) + "\nComponentes.registra(manifiestoFichasTiempo({}));\n";
   class V3 { constructor() { this.x = this.y = this.z = 0; } set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; } copy(v) { return this.set(v.x, v.y, v.z); } }
   const filas = [], tapas = [];
   const globales = { THREE: { Vector3: V3 }, PanelVR: { filas: (p, f) => { filas.push(f); return () => filas.splice(filas.indexOf(f), 1); }, tapa: fn => { tapas.push(fn); return () => tapas.splice(tapas.indexOf(fn), 1); }, repinta() {}, cierra() {}, rumbo: () => 0 },

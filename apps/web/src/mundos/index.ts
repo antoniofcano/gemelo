@@ -150,3 +150,5 @@ export { ID_VISTA_FAMILIA, VistaFamiliaPuro, manifiestoVistaFamilia } from "./ex
 export type { DepsVistaFamilia } from "./exterior/vista-familia.ts";
 export { ID_FICHAS_MUNDO, FichasMundoPuro, manifiestoFichasMundo } from "./exterior/fichas-mundo.ts";
 export type { DepsFichasMundo } from "./exterior/fichas-mundo.ts";
+export { ID_FICHAS_TIEMPO, FichasTiempoPuro, manifiestoFichasTiempo } from "./exterior/fichas-tiempo.ts";
+export type { DepsFichasTiempo } from "./exterior/fichas-tiempo.ts";

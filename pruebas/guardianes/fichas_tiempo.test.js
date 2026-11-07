@@ -8,7 +8,7 @@
 const test = require("node:test"), { describe, before } = test, assert = require("node:assert");
 const { lee, SALIDA, fs, path } = require("./_util");
 
-const FUENTE = lee("apps/web/motor/35_fichas_tiempo.js"), VR = require("./_fuente").fuenteMotor("29_vr.js");
+const FUENTE = require("./_fuente").fuenteMotor("35_fichas_tiempo.js"), VR = require("./_fuente").fuenteMotor("29_vr.js");
 function trozo(ini, fin, fuente = FUENTE) {
   const i = fuente.indexOf(ini), f = fuente.indexOf(fin);
   assert.ok(i >= 0 && f > i, "el fichero debe marcar " + ini + " … " + fin);

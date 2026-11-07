@@ -191,11 +191,11 @@ export function manifiestoFichasMundo(dp: DepsFichasMundo): Manifiesto {
       tarde: tarde,
       vivas: function () { return vivas.slice(); },
       info: function (id?: T) { var e = E[id]; return e ? { origen: e.origen, en: e.en, hover: e.hover, alto: e.maq.h, botones: e.maq.botones.map(function (b?: T) { return b.id; }) } : null; },
-      cierra: function () { quitas.splice(0).forEach(function (q?: T) { try { q(); } catch (e: T) {} }); vivas.slice().forEach(function (id?: T) { dp.Laminas.cierra(lid(id), "cerrada"); }); if (typeof window !== "undefined" && (window as T).__fichasMundo === resumen) delete (window as T).__fichasMundo; }
+      cierra: function () { quitas.splice(0).forEach(function (q?: T) { try { q(); } catch (e: T) {} }); vivas.slice().forEach(function (id?: T) { dp.Laminas.cierra(lid(id), "cerrada"); }); if (typeof window !== "undefined" && window.__fichasMundo === resumen) delete window.__fichasMundo; }
     };
     // pruebas (pruebas/prueba_vr_capas.js) y ?debug: qué fichas hay colgadas, dónde y qué botón se apunta
     function resumen() { return vivas.map(function (id?: T) { var e = E[id], i = dp.Laminas.info(lid(id)); return { id: id, origen: e.origen, junto: e.en.junto, escala: e.en.escala, pos: i.pos, w: i.w, h: i.h, hover: e.hover, botones: e.maq.botones.map(function (b?: T) { return { id: b.id, x: b.x, y: b.y, w: b.w, h: b.h }; }), ancho: e.maq.w / P.PX_M * e.en.escala, alto: e.maq.h / P.PX_M * e.en.escala }; }); }
-    if (typeof window !== "undefined") (window as T).__fichasMundo = resumen;
+    if (typeof window !== "undefined") window.__fichasMundo = resumen;
     return api;
   }
   // [motor:fin]
