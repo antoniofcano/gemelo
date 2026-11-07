@@ -13,7 +13,7 @@ export const ID_USABLES = "seleccion-usables";
 
 /** Lo que el talón de 02e le da: $ (01_datos), THREE y el Bus (02c); por getter, lo que se monta después (scene, lienzo, pp, dr, enDron, VRX) o cambia (paseando) */
 export interface DepsEntidades {
-  $(id: string): T; THREE: T; Bus: T; readonly scene: T; readonly lienzo: T; readonly pp: T; readonly dr: T; readonly enDron: boolean; readonly paseando: boolean; readonly VRX: T;
+  $(id: string): T; THREE: T; Bus: T; readonly Materiales: T; readonly scene: T; readonly lienzo: T; readonly pp: T; readonly dr: T; readonly enDron: boolean; readonly paseando: boolean; readonly VRX: T;
   ventana: T; documento: T;
 }
 
@@ -95,7 +95,9 @@ export function creaEntidades(dp: DepsEntidades) {
   })();
 
   var Usables: T = (function () {
-    var P: T = EntidadesPuro, actual: T = null, como: T = "", conAcciones: T = false, enFicha: T = null, cerca: T = null, presentadores: T = {}, anillo: T = null, quitaX: T = null, moFicha: T = null;
+    var P: T = EntidadesPuro, actual: T = null, como: T = "", conAcciones: T = false, enFicha: T = null, cerca: T = null, presentadores: T = {}, anillo: T = null, quitaX: T = null, moFicha: T = null, M: T = null;
+    // MU5-n (A3-7a, segundo commit): el material del anillo es estándar, de la fábrica, con dueño «seleccion-usables» (Materiales, de 02i, se monta después: se pide al crear el anillo)
+    function materiales() { return M || (M = dp.Materiales.de("seleccion-usables")); }
     function modoVista() { return typeof dp.VRX !== "undefined" && dp.VRX && dp.VRX.on ? "vr" : "pantalla"; }
     // ---- la ficha común en pantalla: el recuadro #ficha de siempre (título, pares <dt>/<dd> y, si la ficha trae acciones, sus botones debajo); textContent, nunca HTML
     function engancha() {
@@ -240,14 +242,14 @@ export function creaEntidades(dp: DepsEntidades) {
       var d: T = Entidades.de(actual); if (!d || d.sinAnillo || !d.pos) { if (anillo) anillo.visible = false; return; }
       if (!anillo) {
         var g: T = new dp.THREE.RingGeometry(0.86, 1, 40); g.rotateX(-Math.PI / 2);
-        anillo = new dp.THREE.Mesh(g, new dp.THREE.MeshBasicMaterial({ color: 0x40f0ff, transparent: true, opacity: 0.85, depthWrite: false, fog: false, forceSinglePass: true }));
+        anillo = new dp.THREE.Mesh(g, materiales().estandar("MeshBasicMaterial", { color: 0x40f0ff, transparent: true, opacity: 0.85, depthWrite: false, fog: false, forceSinglePass: true }));
         anillo.name = "resaltado"; anillo.renderOrder = 5; dp.scene.add(anillo);   // se recorta: la geometría es fija (solo se escala y se mueve)
       }
       colocaAnillo();
     }
     // un tipo se ha quitado del registro: si lo elegido era suyo, se suelta (sin preguntarle: ya no está)
     function olvida(t?: T) { if (actual && P.tipoDe(actual) === t) { var a: T = actual; actual = null; conAcciones = false; dp.Bus.emite("usable:suelta", { id: a, motivo: "quitada" }); if (enFicha === a) { enFicha = null; var f: T = dp.$("ficha"); if (f) f.hidden = true; } resalteU(); } if (cerca && P.tipoDe(cerca.id) === t) cerca = null; }
-    function libera() { if (anillo) { dp.scene.remove(anillo); anillo.geometry.dispose(); anillo.material.dispose(); anillo = null; } }
+    function libera() { if (anillo) { dp.scene.remove(anillo); anillo.geometry.dispose(); anillo.material.dispose(); anillo = null; } if (M) M.libera(); }
     function estado() { return { actual: actual, como: como, conAcciones: conAcciones, enFicha: enFicha, cerca: cercano(), anillo: !!(anillo && anillo.visible), tipos: Entidades.resumen() }; }
     function elegido() { return actual; }
     // A3-7a: lo que engancha() y botonesPantalla() dejaban puesto para siempre: la × de la ficha, el observador de #ficha y la caja de acciones con su escucha

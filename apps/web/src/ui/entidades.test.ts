@@ -4,6 +4,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { ID_USABLES, creaEntidades, manifiestoEntidades } from "./entidades.ts";
 import { creaMundo, type Mundo } from "./prueba-dom.ts";
+import { creaMateriales } from "../nucleo/materiales.ts";
+import type { ThreeMin } from "../nucleo/materiales.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type A = any;
@@ -16,11 +18,12 @@ function monta() {
   const d = m.documento, ficha = m.el("div", "ficha"), scene = new THREE.Scene(), eventos: string[] = [];
   for (const [t, id] of [["h3", "fichaTitulo"], ["dl", "fichaDatos"], ["button", "cerrarFicha"]]) ficha.appendChild(m.el(t!, id));
   ficha.hidden = true; d.body.appendChild(ficha);
-  const E = creaEntidades({ $: (id: string) => d.getElementById(id), THREE, Bus: { emite: (ev: string) => { eventos.push(ev); return 0; } }, scene, lienzo: null, pp: { x: 0, y: 0 }, dr: { x: 0, y: 0 },
+  const Materiales = creaMateriales({ THREE: THREE as unknown as ThreeMin, busqueda: "" });
+  const E = creaEntidades({ $: (id: string) => d.getElementById(id), THREE, Materiales, Bus: { emite: (ev: string) => { eventos.push(ev); return 0; } }, scene, lienzo: null, pp: { x: 0, y: 0 }, dr: { x: 0, y: 0 },
     enDron: false, paseando: false, VRX: { on: false }, ventana: m.ventana, documento: d });
   E.Entidades.registra({ tipo: "olivo", dueno: "prueba", prioridad: 1, ficha: (id: string) => ({ titulo: "Olivo " + id, filas: [{ k: "Copa", v: "4 m" }], acciones: [{ id: "ir", txt: "Ir", fn: () => true }] }),
     pos: () => ({ x: 1, y: 0, z: 2 }), existe: () => true, lista: () => [] });
-  return { E, m, d, ficha, scene, eventos };
+  return { E, m, d, ficha, scene, eventos, Materiales };
 }
 
 describe("entidades y usables", () => {
@@ -36,6 +39,11 @@ describe("entidades y usables", () => {
     E.Usables.elige("olivo:a", "toque"); expect(m.observadores()).toBe(1); expect(m.escuchas()).toBe(2);
     const c = manifiestoEntidades(E); c.libera({} as never);
     expect(scene.children.length).toBe(0); expect(m.observadores()).toBe(0); expect(d.getElementById("cerrarFicha")._escuchas.click.length).toBe(0); expect(d.getElementById("fichaAcciones")).toBe(null);   // la escucha de la caja de acciones se va con la caja
+  });
+  it("el material del anillo es de la fábrica, con dueño «seleccion-usables», y libera() no deja nada suyo (segundo commit)", () => {
+    const { E, Materiales } = monta();
+    E.Usables.elige("olivo:a", "toque"); expect(Materiales.duenos()[ID_USABLES]).toBe(1);
+    E.Usables.libera(); expect(Materiales.duenos()[ID_USABLES] || 0).toBe(0);
   });
   it("el componente es de todos los mundos y solo de ciclo de vida", () => {
     const c = manifiestoEntidades(monta().E);

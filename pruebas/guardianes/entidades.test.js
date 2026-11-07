@@ -36,10 +36,12 @@ function mundo(o) {
   const scene = { add: x => reg.escena.add(x), remove: x => reg.escena.delete(x) };
   const lienzo = { getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }) };
   const VRX = { on: false }, pp = { x: 0, y: 0 }, dr = { x: 0, y: 0 };
-  const f = new Function("Nucleo", "THREE", "scene", "lienzo", "$", "document", "Bus", "VRX", "pp", "dr", "console",
+  // A3-7a: el material del anillo sale de la fábrica (Materiales.de("seleccion-usables").estandar): un doble que crea el del THREE de mentira y apunta el dueño
+  const Materiales = { de: d => { reg.dueno = d; return { estandar: (c, op) => new THREE[c](op), libera: () => { reg.liberaFabrica = (reg.liberaFabrica || 0) + 1; return 0; } }; } };
+  const f = new Function("Nucleo", "THREE", "scene", "lienzo", "$", "document", "Bus", "VRX", "pp", "dr", "console", "Materiales",
     "\"use strict\";\nvar EntidadesPuro = Nucleo.EntidadesPuro, paseando = false, enDron = false; function __pon(k, v) { if (k === 'paseando') paseando = v; if (k === 'enDron') enDron = v; }\n" +
     trozo("// [motor:inicio]", "// [motor:fin]") + "\nreturn { Entidades, Usables, __pon };");
-  const r = f(Nucleo, THREE, scene, lienzo, $, documento, Bus, VRX, pp, dr, { error: (...a) => reg.errores.push(a.join(" ")) });
+  const r = f(Nucleo, THREE, scene, lienzo, $, documento, Bus, VRX, pp, dr, { error: (...a) => reg.errores.push(a.join(" ")) }, Materiales);
   return Object.assign(r, { reg, ids, VRX, pp, dr });
 }
 // tipos de prueba: olivos (prioridad 10, pantalla y rayo), balizas (20, recuadro propio, cercanía) y hazas (fondo)
