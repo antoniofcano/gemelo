@@ -146,3 +146,5 @@ export { ID_HAZAS, HazasPuro, creaHazas, manifiestoHazas } from "./exterior/haza
 export type { DepsHazas } from "./exterior/hazas.ts";
 export { ID_MUNDO_HOY, MundoHoyPuro, manifiestoMundoHoy } from "./exterior/mundo-hoy.ts";
 export type { DepsMundoHoy } from "./exterior/mundo-hoy.ts";
+export { ID_VISTA_FAMILIA, VistaFamiliaPuro, manifiestoVistaFamilia } from "./exterior/vista-familia.ts";
+export type { DepsVistaFamilia } from "./exterior/vista-familia.ts";

@@ -7,8 +7,9 @@
 // Lo de Chrome (los controles de verdad en la ventana): pruebas/guardianes/vista_familia_chrome.test.js.
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
+const { fuenteMotor } = require("./_fuente");   // A3-7b1: 48 es un talón; su código vive en mundos/exterior/vista-familia.ts
 
-const FUENTE = lee("apps/web/motor/48_vista_familia.js");
+const FUENTE = fuenteMotor("48_vista_familia.js");
 function trozo(ini, fin) {
   const i = FUENTE.indexOf(ini), f = FUENTE.indexOf(fin);
   assert.ok(i >= 0 && f > i, "48_vista_familia.js debe marcar " + ini + " … " + fin);
