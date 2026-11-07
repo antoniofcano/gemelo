@@ -9,7 +9,7 @@ Gemelo digital en 3D de fincas de olivar (three.js 0.186.1, teselas de 256 m, Li
 ## 1. Reglas de oro (no negociables)
 
 1. **Nada llega a `main` sin pasar la puerta local.** La lista exacta vive en UN solo sitio: [doc/operacion/ONBOARDING.md](doc/operacion/ONBOARDING.md#la-puerta). Aquí no se copia. Cada pieza nueva lleva su comprobación.
-2. **La lógica testeable vive en módulos con contrato (`apps/web/motor/NN_*.js`), no repartida.** El orden alfabético de `apps/web/motor/` ES el orden de montaje (lo fija `apps/web/herramientas/genera_motor.mjs` con `readdirSync().sort()`); cada módulo declara en su cabecera qué **expone** y qué **consume**. Desde el [ADR-0033](doc/adr/0033-mundos.md), esto rige solo el legado de `apps/web/motor/` mientras exista: el código nuevo de apps/web/src/ es TypeScript estricto con módulos ES, su orden es el de sus importaciones y sus cuatro fronteras (nucleo, datos, red, mundos) las vigila `dependency-cruiser`.
+2. **La lógica testeable vive en módulos con contrato (`apps/web/src/`), no repartida.** Cada módulo dice qué expone y qué consume con sus `import`/`export`, y sus fronteras (`nucleo`, `datos`, `red`, `mundos`, `ui`) las vigila `dependency-cruiser`. La entrada del cliente, `apps/web/src/arranque.ts`, solo cablea: crea los objetos en el orden de sus pasos (`// [paso: NN_nombre]`); cada `crea…` recibe por valor lo de los pasos anteriores y por función lo de los posteriores ([ADR-0033](doc/adr/0033-mundos.md); el legado concatenado de `apps/web/motor/` desapareció en A3-8c).
 3. **Contratos de datos versionados.** El exportador (Python) y el motor (JS) se ponen de acuerdo por contrato ([doc/sistema/CONTRATOS.md](doc/sistema/CONTRATOS.md)), nunca por convención oral. Cambiar un campo es cambiar el contrato, su esquema y el fixture en el mismo commit.
 4. **Los datos no se versionan; el repo es público.** Ni LiDAR, ortofoto, teselas, marcas, ni datos de la explotación. Nunca claves, rutas locales (`C:\Users…`), correos, ni ids o enlaces de artefactos privados. Las fuentes se documentan con licencia y atribución (IGN CC BY 4.0, Copernicus, ISRIC). Lo vigila el guardián de secretos.
 5. **Distinguir siempre medido / deducido / ilustrativo**, en lo que se muestra y en lo que se documenta. Medido: copas (LiDAR 2024), relieve. Deducido: tendido, postes, cauces, clasificación de árboles no olivo. Ilustrativo: troncos y ramas.
@@ -32,7 +32,7 @@ Gemelo digital en 3D de fincas de olivar (three.js 0.186.1, teselas de 256 m, Li
 
 ```
 CLAUDE.md  CHANGELOG.md  VERSION  package.json  Makefile
-apps/web/                cliente web (ADR-0010): motor/NN_*.js (el motor, en módulos; ver ARCHITECTURE), plantilla.html,
+apps/web/                cliente web (ADR-0010): src/ (el cliente en TypeScript, con su entrada src/arranque.ts; ver ARCHITECTURE), plantilla.html,
                          herramientas/genera_motor.mjs y vite.config.js (build con Vite, three 0.186.1)
 tuberia/                 de los datos a las teselas: finca_8_teselas.py (exportador), hituelo_conv.py, datos/hituelo/ (Hituelo, el único mundo: decisiones 22 y 229)
                          y tiles3d/ (genera el tileset 3D Tiles de cada finca)
@@ -55,7 +55,7 @@ Documentación por pregunta: `doc/rumbo/` (¿hacia dónde vamos?: PLAN, DECISION
 |---|---|
 | Pasar la puerta completa | `npm run puerta` (lista en ONBOARDING) |
 | Regenerar el fixture sintético | `npm run fixture` (a `pruebas/salida/fixture/`) |
-| Regenerar las cabeceras «Expone / Consume» de `apps/web/motor/` | `node pruebas/contrato_modulos.js --escribe` (y `--comprueba`) |
+| Rehacer la foto de nombres del arranque (cuando un cambio es a propósito) | `GEMELO_PASOS_ESCRIBE=1 node --test pruebas/guardianes/arranque.test.js` |
 | Instalar el cliente web | `cd apps/web && npm i` |
 | Construir la web (Vite) | `cd apps/web && GEMELO_DATOS=<indice.json> npm run build` → `apps/web/dist/` |
 | Servir el gemelo en local (web, api, Caddy) | `npm run dev:arriba` ([DESARROLLO-LOCAL](doc/operacion/DESARROLLO-LOCAL.md)) |
@@ -77,9 +77,9 @@ Ejecuta la [skill `release`](.claude/skills/release/SKILL.md); no la redefine. R
 ## 5. Convenciones que evitan romper cosas
 
 - **Variables de entorno `GEMELO_*`** para toda ruta de datos (`GEMELO_DATOS`, `GEMELO_DESCARGAS`, `GEMELO_LIDAR`, `GEMELO_IMAGEN`, `GEMELO_HITUELO`, `GEMELO_PARCELAS`, `GEMELO_MDS`, `GEMELO_SUELO`) y de pruebas (`GEMELO_URL`, `GEMELO_RAIZ`, `CHROME`, `PLAYWRIGHT_CORE`). Nunca rutas absolutas en el código.
-- **Estilo del motor legado** (`apps/web/motor/`, que se estrangula módulo a módulo según el [ADR-0033](doc/adr/0033-mundos.md)): `var`, `"use strict"`, sin módulos por dentro (generadores y `async` sí). Los módulos de `apps/web/motor/` se concatenan en orden y Vite los empaqueta como un único módulo con `import * as THREE from "three"` (ADR-0010). Un módulo no declara globales fuera de la IIFE que abre `01_datos.js` y cierra `99_cierre.js`.
-- **Código nuevo** (apps/web/src/, ADR-0033): TypeScript estricto, módulos ES y pruebas con Vitest; habla con el legado por el puente de `apps/web/herramientas/genera_motor.mjs` ([MUNDOS §9](doc/sistema/MUNDOS.md)).
-- **Orden de `apps/web/motor/`:** el prefijo numérico decide el montaje (`02_` < `02b_` < `03_`). Un módulo nuevo se coloca por lo que consume; hay huecos libres entre `29_` y `90_` (el `26_` lo ocupa la presencia).
+- **Estilo del arranque:** `apps/web/src/` es TypeScript estricto (`tsc`). El cuerpo de `arranca()` en `apps/web/src/arranque.ts` declara con `var` y `function` a propósito (izado y `typeof` de lo que define un paso posterior), y ninguna variable suelta la reasigna un paso y la lee otro: el estado compartido vive en su objeto (`Estado`, `Paseo.E`, `Vida.E`…).
+- **Código nuevo** (`apps/web/src/`, ADR-0033): TypeScript estricto, módulos ES y pruebas con Vitest; los guardianes de Node leen los `.ts` con `pruebas/guardianes/_fuente.js` y `_pasos.js`.
+- **Orden del arranque:** el prefijo numérico de cada paso de `arranque.ts` decide el orden de creación (`02_` < `02b_` < `03_`); un paso nuevo se coloca por lo que consume (hay huecos entre `54_` y `90_`).
 - **Fin de línea LF** en todo (`.gitattributes`). Sin CRLF.
 - **Datos por tesela:** coordenadas relativas a `centro_utm`; filas de sur a norte; relieve con una celda de margen; nube con orden barajado de semilla fija ([CONTRATOS.md](doc/sistema/CONTRATOS.md)).
 - **Todo recurso de GPU se libera** (`dispose()`); la prueba de memoria vigila `renderer.info.memory`.

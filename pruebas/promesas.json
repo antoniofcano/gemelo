@@ -10,7 +10,7 @@
       "falta": "Pasar la puerta antes de subir lo hace quien sube (y la repite CI en GitHub Actions): ninguna prueba puede saber, desde dentro de la puerta, si se pasó antes de un commit. «Cada pieza nueva lleva su comprobación» no tiene guardián."
     },
     {
-      "origen": "CLAUDE.md §1", "clave": "2", "titulo": "La lógica testeable vive en módulos con contrato (`apps/web/motor/NN_*.js`), no repartida.",
+      "origen": "CLAUDE.md §1", "clave": "2", "titulo": "La lógica testeable vive en módulos con contrato (`apps/web/src/`), no repartida.",
       "vigila": [
         { "fichero": "pruebas/guardianes/sintaxis.test.js", "test": "el arranque tiene sus pasos en orden (01_datos primero, 90_final último)" },
         { "fichero": "pruebas/guardianes/arranque.test.js", "test": "los nombres que expone cada paso a los demás son los de la foto" },
@@ -118,7 +118,7 @@
       "falta": "Solo caza rutas de usuario (C:\\Users…, /home/…); otras rutas absolutas en el código y que cada ruta de datos se lea de una GEMELO_* no se comprueban."
     },
     {
-      "origen": "CLAUDE.md §5", "clave": "Estilo del motor legado",
+      "origen": "CLAUDE.md §5", "clave": "Estilo del arranque:",
       "vigila": [
         { "fichero": "pruebas/guardianes/sintaxis.test.js", "test": "el arranque, sin tipos, es JavaScript válido (un módulo ES)" },
         { "fichero": "pruebas/guardianes/sintaxis.test.js", "test": "paso válido por sí solo (envuelto en una función)" },
@@ -139,7 +139,7 @@
       ]
     },
     {
-      "origen": "CLAUDE.md §5", "clave": "Orden de `apps/web/motor/`:",
+      "origen": "CLAUDE.md §5", "clave": "Orden del arranque:",
       "vigila": [
         { "fichero": "pruebas/guardianes/sintaxis.test.js", "test": "el arranque tiene sus pasos en orden (01_datos primero, 90_final último)" },
         { "fichero": "pruebas/guardianes/arranque.test.js", "test": "los pasos del arranque son los de la foto, en el orden alfabético de su nombre" },
