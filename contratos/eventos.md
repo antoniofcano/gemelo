@@ -26,10 +26,10 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `componentes:cambia` | `{ id, activo }` | `nucleo/componentes` (`apps/web/src/nucleo/componentes.ts`, MU2-5: al montar o liberar un componente) | `15_tiempo` (esconde «Ver la previsión en el mundo» si nadie la atiende) |
 | `capas:cambia` | (nada) | `mundos/exterior/marcadores` (`capas()`: cambió una casilla de capas o se aplicó el estado) | `mundos/exterior/marcadores-lidar` (lee las casillas de copas, marcas y desfase) |
 | `corro:estado` | `{ disponible, activa, puedo, corro, miembros, recibidas, enviadas }` | `47b_corro` (F3k-3: cambió lo que sabe de la voz por cercanía, tras `GET /api/presencia/corros/estado`; sin alias ni identidades) | — (el HUD, las pruebas de F3k-5) |
-| `cuadro:fin` | `{ t }` (el mismo objeto cada fotograma) | `90_final` (al acabar `cuadro()`, también en pausa) | `30_mide` (solo mientras está armado o midiendo) |
+| `cuadro:fin` | `{ t }` (el mismo objeto cada fotograma) | `90_final` (al acabar `cuadro()`, también en pausa) | `ui/mide` (antes 30_mide) (solo mientras está armado o midiendo) |
 | `decoraciones:cambian` | `{ lista: [{ finca, copas_id, pieza, mia }] }` (la lista entera) | `42_personalizacion` (P7g D3: trajo la lista blanca de una haza, o se lo pidieron; al liberarse, la lista vacía) | `50_decoraciones` (la sustituye y redibuja; ignora las piezas que no conoce) |
 | `decoraciones:pide` | `{}` | `50_decoraciones` (al montarse) | `42_personalizacion` (responde con `decoraciones:cambian`) |
-| `depura:lineas` | `{ lineas: [texto] }` | `ui/depura` (antes 28_depura; el contador de `?debug`, cada 0,5 s) | `30_mide` (la línea de la medida, si hay una en curso o lista), `mundos/comun/presencia` (antes 38_presencia_compartida) (añade su línea si está activa), `44_lindes` (llamadas, tramos, triángulos y paso de la linde), `45_voz` (sala, voces, micro y modo, si está en una guiada), `46_guiada` (evento, papel, palabra, manos y si se está cerrando), `47_habla` (micro, modo y mano), `47b_corro` (si la voz por cercanía está activa, el corro, las invitaciones y los iconos), `50_decoraciones` (llamadas, piezas y triángulos de las decoraciones) |
+| `depura:lineas` | `{ lineas: [texto] }` | `ui/depura` (antes 28_depura; el contador de `?debug`, cada 0,5 s) | `ui/mide` (antes 30_mide) (la línea de la medida, si hay una en curso o lista), `mundos/comun/presencia` (antes 38_presencia_compartida) (añade su línea si está activa), `44_lindes` (llamadas, tramos, triángulos y paso de la linde), `45_voz` (sala, voces, micro y modo, si está en una guiada), `46_guiada` (evento, papel, palabra, manos y si se está cerrando), `47_habla` (micro, modo y mano), `47b_corro` (si la voz por cercanía está activa, el corro, las invitaciones y los iconos), `50_decoraciones` (llamadas, piezas y triángulos de las decoraciones) |
 | `guiada:entrada` | `{ evento, ok, mensaje }` | `mundos/comun/presencia` (antes 38_presencia_compartida) (OF11e: resultado de `guiada:entrar`; `mensaje` es la frase de la api si no dejó entrar) | `43_agenda` (pinta «Estáis en la visita» o la frase) |
 | `guiada:entrar` | `{ evento }` | `43_agenda` (OF11e: pulsó «Entrar en la visita»; sin nadie que escuche no hay botón) | `mundos/comun/presencia` (antes 38_presencia_compartida) (solo con `?presencia=red`: `Presencia.entraGuiada`, y contesta `guiada:entrada`) |
 | `guiada:cierre` | `{ en, segundos }` | `46_guiada` (F3f: llegó el aviso de que se cierra la sala guiada, tema `cierre` sin participante) | — (la cuenta atrás, la lámina en VR y la vuelta a la visita libre ya las pone él) |
@@ -44,13 +44,13 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `juego:ofrece` | `{ id, titulo, descripcion?, ayuda?, vr?, crea }` (`vr: { botones, palanca, ayuda? }` si sabe jugarse en VR, C9b) | `41_cae_la_cosecha` (al montarse y al oír `juego:pide`) | `40_juegos` (el anfitrión: lo pone en la ventana Juegos) |
 | `juego:pide` | — | `40_juegos` (al montarse) | `41_cae_la_cosecha` |
 | `juego:retira` | `{ id }` | `41_cae_la_cosecha` (al liberarse) | `40_juegos` (lo quita y, si estaba abierto, lo cierra) |
-| `medida:empieza` | (nada) | `30_mide` (empieza a medir dentro de VR) | `29_vr` (esconde el panel) |
-| `medida:envia` | (nada) | `29_vr` (el botón «Enviar esta medida a la oficina») | `30_mide` |
-| `medida:envio` | (nada) | `30_mide` (cambió el estado del envío) | `29_vr` (repinta la tarjeta) |
-| `medida:estado` | `{ res }` (pregunta: el medidor rellena `res` con `{ resultado, lineas, puedeEnviar, envio, textoEnvio }`) | `29_vr` | `30_mide` |
-| `medida:fin` | (nada) | `30_mide` (termina una medida dentro de VR) | `29_vr` (abre la tarjeta del resultado) |
-| `medida:inicia` | `{ segundos? }` | `ui/ajustes` (antes 33_ajustes; «Medir 60 s» de Configuración → Avanzado) | `30_mide` |
-| `medida:muestra` | `{ on }` | `ui/ajustes` (antes 33_ajustes; cambia «Contador de rendimiento») | `30_mide` (enseña o esconde su caja) |
+| `medida:empieza` | (nada) | `ui/mide` (antes 30_mide) (empieza a medir dentro de VR) | `29_vr` (esconde el panel) |
+| `medida:envia` | (nada) | `29_vr` (el botón «Enviar esta medida a la oficina») | `ui/mide` (antes 30_mide) |
+| `medida:envio` | (nada) | `ui/mide` (antes 30_mide) (cambió el estado del envío) | `29_vr` (repinta la tarjeta) |
+| `medida:estado` | `{ res }` (pregunta: el medidor rellena `res` con `{ resultado, lineas, puedeEnviar, envio, textoEnvio }`) | `29_vr` | `ui/mide` (antes 30_mide) |
+| `medida:fin` | (nada) | `ui/mide` (antes 30_mide) (termina una medida dentro de VR) | `29_vr` (abre la tarjeta del resultado) |
+| `medida:inicia` | `{ segundos? }` | `ui/ajustes` (antes 33_ajustes; «Medir 60 s» de Configuración → Avanzado) | `ui/mide` (antes 30_mide) |
+| `medida:muestra` | `{ on }` | `ui/ajustes` (antes 33_ajustes; cambia «Contador de rendimiento») | `ui/mide` (antes 30_mide) (enseña o esconde su caja) |
 | `mundo:aplica` | (nada) | `mundos/exterior/marcadores` (`aplica()`: cambió la exageración, el modo o los datos de las teselas) | `mundos/exterior/marcadores-lidar` (recoloca copas, anillos y desfase) |
 | `ndvi:cambia` | `{ lo, hi }` | `mundos/exterior/ndvi` (`pintaNdvi()` de `10_ndvi`, que es `Ndvi.pinta` desde MU5-n: cambió la fecha del campo o la escala relativa) | `mundos/exterior/capa-ndvi` (el componente de `10b_capa_ndvi`: rehace la textura, la leyenda y la gráfica) |
 | `mundo:hoy` | `{ linea: { txt, de, cuando } \| null, trabajo: { parcelas: [id], cuando } \| null }` | `53_mundo_hoy` (tras cada lectura buena de `/api/mundo/hoy`) | `44b_carteles` (la línea «Hoy en el olivar» del tablón), `mundos/exterior/trabajo-hoy` (antes 54_trabajo_hoy: un tractor en cada haza con tarea en curso, apagado por defecto) |

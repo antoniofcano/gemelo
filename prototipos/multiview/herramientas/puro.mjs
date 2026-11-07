@@ -5,13 +5,18 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { stripTypeScriptTypes } from "node:module";
 
 const MOTOR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "apps", "web", "motor");
 const PREFIJO = "gemelo-puro:";
 
 export function trozoPuro(modulo, nombre) {
   if (!/^[0-9a-z_]+$/.test(modulo) || !/^[A-Za-z]+$/.test(nombre)) throw new Error("gemelo-puro: nombre raro " + modulo + "/" + nombre);
-  const s = fs.readFileSync(path.join(MOTOR, modulo + ".js"), "utf8");
+  let s = fs.readFileSync(path.join(MOTOR, modulo + ".js"), "utf8");
+  // MU5-n: un módulo migrado queda en motor/ como talón («// [talón] apps/web/src/….ts») y su trozo puro vive en ese .ts; se lee sin los tipos
+  // (stripTypeScriptTypes de Node) y sin el «export» de delante (30_mide → apps/web/src/ui/mide.ts, A3-7a)
+  const talon = /^\s*\/\/ \[talón\] (apps\/web\/src\/\S+\.ts)\s*$/m.exec(s);
+  if (talon) s = stripTypeScriptTypes(fs.readFileSync(path.join(MOTOR, "..", "..", "..", talon[1]), "utf8")).replace(/^export (?=var )/gm, "");
   const i = s.indexOf("// [puro:inicio]"), f = s.indexOf("// [puro:fin]");
   if (i < 0 || f < i) throw new Error("apps/web/motor/" + modulo + ".js no marca su trozo puro");
   const trozo = s.slice(i, f);

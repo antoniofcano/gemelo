@@ -143,7 +143,7 @@
         "90_final"
       ],
       "escuchan": [
-        "30_mide"
+        "ui/mide"
       ]
     },
     "depura:lineas": {
@@ -166,7 +166,7 @@
         "ui/depura"
       ],
       "escuchan": [
-        "30_mide",
+        "ui/mide",
         "mundos/comun/presencia",
         "mundos/exterior/lindes",
         "45_voz",
@@ -529,7 +529,7 @@
       "descripcion": "El medidor de fotogramas empieza a medir dentro de una sesión de VR: el panel de VR se esconde para no tapar la vista durante la medida.",
       "datos": {},
       "emiten": [
-        "30_mide"
+        "ui/mide"
       ],
       "escuchan": [
         "mundos/comun/vr-panel"
@@ -542,14 +542,14 @@
         "mundos/comun/vr-panel"
       ],
       "escuchan": [
-        "30_mide"
+        "ui/mide"
       ]
     },
     "medida:envio": {
       "descripcion": "Cambió el estado del envío de la medida a la oficina (enviando, enviada, límite, mal): el panel de VR repinta su tarjeta.",
       "datos": {},
       "emiten": [
-        "30_mide"
+        "ui/mide"
       ],
       "escuchan": [
         "mundos/comun/vr-panel"
@@ -572,14 +572,14 @@
         "mundos/comun/vr-panel"
       ],
       "escuchan": [
-        "30_mide"
+        "ui/mide"
       ]
     },
     "medida:fin": {
       "descripcion": "El medidor de fotogramas termina una medida dentro de una sesión de VR: el panel vuelve a verse con la tarjeta del resultado.",
       "datos": {},
       "emiten": [
-        "30_mide"
+        "ui/mide"
       ],
       "escuchan": [
         "mundos/comun/vr-panel"
@@ -599,7 +599,7 @@
         "ui/ajustes"
       ],
       "escuchan": [
-        "30_mide"
+        "ui/mide"
       ]
     },
     "medida:muestra": {
@@ -619,7 +619,7 @@
         "ui/ajustes"
       ],
       "escuchan": [
-        "30_mide"
+        "ui/mide"
       ]
     },
     "mundo:aplica": {

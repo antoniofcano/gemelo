@@ -47,7 +47,7 @@ test("los lectores de renderer.info del motor pasan por InfoDibujo (30_mide.js: 
     if (/renderer\.info\b/.test(s) && !PENDIENTES[f]) mal.push(f);
   }
   assert.deepStrictEqual(mal, [], "leen renderer.info a mano (usa InfoDibujo.lee / .fotograma / .triangulos de 02h_render.js)");
-  for (const f of Object.keys(PENDIENTES)) assert.match(lee("apps/web/motor/" + f), /renderer\.info/, f + " ya no lee renderer.info: quítalo de PENDIENTES");
+  for (const f of Object.keys(PENDIENTES)) assert.match(require("./_fuente").fuenteMotor(f), /renderer\.info/, f + " ya no lee renderer.info: quítalo de PENDIENTES");   // A3-7a: 30_mide es un talón de ui/mide.ts
   // las pruebas de página también (con la misma forma de siempre en su salida)
   for (const f of ["pruebas/prueba3.js", "pruebas/vistas2.js", "pruebas/prueba_arb.js"]) assert.match(lee(f), /infoDibujo\(\)/, f);
 });

@@ -8,7 +8,7 @@ const { RAIZ, lee, path, fs } = require("./_util");
 const { sirve, motivoSalto, lanza } = require("./_navegador");
 const { montaPagina, saltoPagina } = require("./_pagina");
 
-const FUENTE = lee("apps/web/motor/30_mide.js");
+const FUENTE = require("./_fuente").fuenteMotor("30_mide.js");
 function puro() {
   const i = FUENTE.indexOf("// [puro:inicio]"), f = FUENTE.indexOf("// [puro:fin]");
   assert.ok(i >= 0 && f > i, "30_mide.js debe marcar su trozo puro con // [puro:inicio] y // [puro:fin]");
@@ -261,7 +261,7 @@ test("en Chrome con WebXR simulado (opcional, GEMELO_VR=1): &mide=5 empieza al e
 
 test("Q0f: si la medida cambia de pantalla a VR (o al revés) a mitad, vuelve a empezar en el modo nuevo (nunca una medida mixta)", () => {
   // visto el 2026-11-04: «Medir» en el mapa y luego entrar en VR daba una medida de «pantalla» sin nivel ni perillas (medidas 13 y 14)
-  const F = lee("apps/web/motor/30_mide.js"), i = F.indexOf("function fotograma(tIni, d)"), cuerpo = F.slice(i, F.indexOf("function termina()", i));
+  const F = require("./_fuente").fuenteMotor("30_mide.js"), i = F.indexOf("function fotograma(tIni, d)"), cuerpo = F.slice(i, F.indexOf("function termina()", i));
   assert.match(cuerpo, /if \(estado !== "midiendo"\) return;\s*\/\/ Q0f[^\n]*\n\s*if \(modoIni !== modoAhora\(\)\) \{ empieza\(tIni\); return; \}/, "antes de contar el fotograma, el cambio de modo reinicia");
   assert.match(F, /function empieza\(tIni\) \{\s*t0 = tIni; m = \{ t: \[\], ms: \[\], js: \[\]/, "empezar vacía la serie");
   assert.match(F, /modoIni = modoAhora\(\)/, "y apunta el modo nuevo");
@@ -357,7 +357,7 @@ test("Q0g: la autopsia solo se paga midiendo: sin &mide ni botón no hay observa
   assert.ok(/desobservaLargas\(\); largas = \{ fin: \[\], dur: \[\] \}; observaLargas\(\);/.test(FUENTE), "empieza() arma el observador");
   assert.ok(/if \(api\.on\) fotograma\(d\.t, d\)/.test(FUENTE), "el fotograma solo se procesa con la medida armada");
   assert.ok(/function termina\(\) \{\s*Reparto\.on = false;\s*desobservaLargas\(\)/.test(FUENTE) && /desengancha\(\); desobservaLargas\(\);/.test(FUENTE), "se suelta al terminar y al liberar");
-  const rs = R.recuenta()["30_mide.js"];
+  const rs = R.recuenta()["src/ui/mide.ts"];
   assert.deepStrictEqual(rs.faltan, []); assert.strictEqual(rs.total, 0, JSON.stringify(rs.detalle));
   assert.deepStrictEqual(Object.keys(rs.porFn).sort(), ["apuntaReparto", "bits", "causasDelFotograma"]);
   // lo que lee causasDelFotograma existe: Cola.tot (02b), Generados.lotes (07ab)

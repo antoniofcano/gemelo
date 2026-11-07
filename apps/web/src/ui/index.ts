@@ -35,3 +35,6 @@ export type { DepsGanchos, Ganchos } from "./ganchos.ts";
 // A3-7a: el contador de ?debug (antes 28_depura.js), componente de todo mundo.
 export { ID_CONTADOR, creaDepura, manifiestoDepura } from "./depura.ts";
 export type { DepsDepura, Depura } from "./depura.ts";
+// A3-7a: el medidor de fotogramas (antes 30_mide.js), componente de todo mundo.
+export { ID_MEDIDOR, MideEst, manifiestoMide } from "./mide.ts";
+export type { DepsMide } from "./mide.ts";

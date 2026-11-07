@@ -24,6 +24,7 @@ function contexto(Bus) {
 }
 function carga(fichero, g, defs) {
   g.Componentes = { registra: d => { defs.push(d); return true; } };
+  if (!g.Interfaz) g.Interfaz = require(path.join(RAIZ, "apps", "web", "src", "ui", "index.ts"));   // A3-7a: 30_mide es un talón de apps/web/src/ui/mide.ts
   vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/" + fichero), vm.createContext(conFabrica(g)), { filename: fichero });
   assert.strictEqual(defs.length, 1, "un componente por fichero");
   return defs[0];

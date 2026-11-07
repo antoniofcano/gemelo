@@ -20,7 +20,7 @@ test("cableado: 29_vr usa XrPerillas en un solo sitio, 03_escena el MSAA, y el i
   assert.match(vr, /xr: \{ near: [^}]*fov: /, "window.__vrDebug() trae las perillas");
   assert.match(lee("apps/web/motor/03_escena.js"), /antialias: XrPerillas\.aa/);
   assert.match(require("./_fuente").fuenteMotor("28_depura.js"), /XrPerillas\.linea\(\)/);
-  const mide = lee("apps/web/motor/30_mide.js");
+  const mide = require("./_fuente").fuenteMotor("30_mide.js");
   assert.match(mide, /perillas: modoIni === "VR" \? XrPerillas\.linea\(\)/); assert.match(mide, /r\.perillas/);
   // las banderas xr* solo se leen en 02f
   const otros = require("fs").readdirSync(require("path").join(__dirname, "..", "..", "apps/web/motor")).filter(f => f.endsWith(".js") && f !== "02f_xr_perillas.js");
@@ -78,7 +78,7 @@ test("cableado F2a: 03_escena pide multiviewStereo solo si XrPerillas.multiview(
   assert.match(vr, /\["local-floor", "bounded-floor", "hand-tracking"\]\.concat\(XrPerillas\.mv && XrPerillas\.mv\.activo \? \["layers"\] : \[\]\)/);
   assert.ok(vr.indexOf("XrPerillas.mvEnUso(renderer)") > vr.indexOf("await renderer.xr.setSession(ses)"), "en uso se mira con la sesión ya puesta");
   assert.match(vr, /mv: XrPerillas\.mv \?/, "window.__vrDebug().xr.mv");
-  const mide = lee("apps/web/motor/30_mide.js");
+  const mide = require("./_fuente").fuenteMotor("30_mide.js");
   assert.match(mide, /"build vr · pedido "/); assert.match(mide, /en uso " \+ \(renderer\.xr && renderer\.xr\.isMultiview/);
 });
 
