@@ -1,16 +1,19 @@
-// El mundo en modo oficina (A3-7b2, MU5-n; antes 39_oficina_mundo.js). La lógica (los tres temas solo de la api, el panel, las balizas, el anuncio, la invitación) la prueba
-// pruebas/guardianes/oficina_mundo.test.js; aquí, el ciclo de vida con el registro de componentes de verdad, un DOM de mentira y three de verdad (sin GPU): libera() CANCELA las
+// El mundo en modo oficina (A3-7b2, MU5-n; antes 39_oficina_mundo.js), partido en A3-8b en dos componentes: «oficina-mundo» (ui/oficina-mundo.ts, de todo mundo: los anuncios, las
+// invitaciones y el panel) y «oficina-balizas» (mundos/exterior/oficina-balizas.ts, del exterior: las balizas oficiales), que consume el primero. Esta prueba vive en la raíz de src/
+// porque monta los dos juntos y ni ui/ ni mundos/ pueden importar del otro (las fronteras de .dependency-cruiser.cjs). La lógica (los tres temas solo de la api, el panel, las
+// balizas, el anuncio, la invitación) la prueba pruebas/guardianes/oficina_mundo.test.js; aquí, el ciclo de vida con el registro de componentes de verdad, un DOM de mentira y three de verdad (sin GPU): libera() CANCELA las
 // peticiones en vuelo (AbortController), suelta las mallas de las balizas (geometría y material) y lo que colgó de la escena, y quita el tipo de Entidades, la capa del minimapa y
 // window.__oficinaMundo; y el hallazgo propio: mover una baliza sin el panel abierto (en VR) avisa por Hud.aviso en lugar de saltar un TypeError.
 // HONESTIDAD: sala, presencia, api y DOM de mentira; el panel y las láminas en el iPhone y en el Quest, no están probados.
 // @ts-expect-error three no trae tipos en el repo (MUNDOS §9.1): aquí se usa de verdad, sin GPU, solo para geometrías y materiales
 import * as THREE from "three";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ID_OFICINA_MUNDO, manifiestoOficinaMundo } from "./oficina-mundo.ts";
-import { creaMateriales } from "../../nucleo/materiales.ts";
-import { busPrueba, montaComponente } from "../../nucleo/prueba-componentes.ts";
-import { creaMundo, type Mundo } from "../../nucleo/prueba-dom.ts";
-import type { Manifiesto } from "../../nucleo/componentes.ts";
+import { ID_OFICINA_MUNDO, manifiestoOficinaMundo } from "./ui/oficina-mundo.ts";
+import { ID_OFICINA_BALIZAS, manifiestoOficinaBalizas } from "./mundos/exterior/oficina-balizas.ts";
+import { creaMateriales } from "./nucleo/materiales.ts";
+import { busPrueba, montaComponente } from "./nucleo/prueba-componentes.ts";
+import { creaMundo, type Mundo } from "./nucleo/prueba-dom.ts";
+import type { Manifiesto } from "./nucleo/componentes.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type A = any;
@@ -31,7 +34,7 @@ function monta(fetchDoble: (u: string, op: A) => Promise<unknown>, opc: { oficin
   vi.stubGlobal("fetch", (u: string, op: A) => { llamadas.push({ u, metodo: op.method, signal: op.signal }); return fetchDoble(u, op); });
   vi.stubGlobal("location", { search: "?presencia=red" });
   const tipos: Record<string, A> = {}, cuenta = { escena: 0, capas: 0, avisos: [] as string[], quitados: [] as string[] };
-  const grupos: A[] = [];
+  const grupos: A[] = [], paneles: Record<string, A> = {};
   const scene = { add: (g: A) => { cuenta.escena++; grupos.push(g); }, remove: () => { cuenta.escena--; } };
   const visor = m.el("div"); m.documento.body.appendChild(visor);
   const dp = {
@@ -40,18 +43,24 @@ function monta(fetchDoble: (u: string, op: A) => Promise<unknown>, opc: { oficin
     Estaticos: { congela() { /* doble */ } }, Materiales: creaMateriales({ THREE: THREE as A, busqueda: "" }), visor, scene, camera: { position: new THREE.Vector3(0, 20, 0) }, Estado: { exag: 1 }, objetivo: new THREE.Vector3(50, 0, -50), pp: { x: 50, y: 60 },
     Llegada: { ve: () => true }, HazasPuro: { prefijoApi: () => "/api/" }, Minimapa: { capa: () => { cuenta.capas++; return () => { cuenta.capas--; }; } },
     Aspecto: { CHALECO: 0x5b6b00, INSIGNIA: 0xf4ecc2 }, Chat: { limpia: (t: string) => (String(t).trim() || null) }, Encuentro: { BALIZA: 1 }, sitioJunto: () => ({ x: 0, y: 0, ang: 0 }),
-    Hud: { icono: () => () => { /* doble */ }, aviso: (t: string) => { cuenta.avisos.push(t); } }, Ventanas: { registra: () => null }, VRX: { on: !!opc.gafas, cab: new THREE.Vector3() }, paseando: true, enQuad: false,
+    Hud: { icono: () => () => { /* doble */ }, aviso: (t: string) => { cuenta.avisos.push(t); } }, Ventanas: { registra: (id: string, d: A) => { const cu = m!.el("div"); paneles[id] = cu; d.construye(cu); return () => { delete paneles[id]; }; } }, VRX: { on: !!opc.gafas, cab: new THREE.Vector3() }, paseando: true, enQuad: false,
   };
-  const sala = { escucha: () => () => { /* sin temas */ } };
+  const temas: Record<string, (bytes: Uint8Array, de?: unknown) => void> = {};   // A3-8b: lo que llega por la sala, para mandarlo desde la prueba
+  const sala = { escucha: (t: string, f: (bytes: Uint8Array, de?: unknown) => void) => { temas[t] = f; return () => { delete temas[t]; }; } };
   const previos = [dobleDe("red-salas", "Red", { sala: () => sala }),
     dobleDe("presencia-compartida", "Presencia", { yo: () => ({ oficial: opc.oficina !== false }), sala: () => "general", mensaje() { /* doble */ }, cambiaSala: () => Promise.resolve(true) })];
-  const c = montaComponente(manifiestoOficinaMundo(dp as A), bus, previos);
-  return { dp, c, llamadas, tipos, cuenta, grupos, bus, m, visor, api: c.api() as A };
+  previos.push(manifiestoOficinaMundo(dp as A));   // A3-8b: la oficina de todo mundo; las balizas, del exterior, la consumen
+  const c = montaComponente(manifiestoOficinaBalizas(dp as A), bus, previos);
+  (dp as A).Componentes = c.C;   // como el talón: el registro de verdad (las balizas miran en él qué mundo está activo)
+  return { dp, c, llamadas, tipos, cuenta, grupos, bus, m, visor, temas, paneles, api: c.api() as A };
 }
 
 describe("el mundo en modo oficina", () => {
-  it("el componente es del exterior (las balizas son de su escena, su suelo y su minimapa)", () => {
-    expect(manifiestoOficinaMundo({} as A).mundos).toEqual(["exterior"]); expect(manifiestoOficinaMundo({} as A).id).toBe(ID_OFICINA_MUNDO);
+  it("A3-8b: dos componentes; la oficina es de todo mundo (una invitación llega aunque estés en un interior) y sus balizas, del exterior (su escena, su suelo y su minimapa)", () => {
+    expect(manifiestoOficinaMundo({} as A).mundos).toBe("todos"); expect(manifiestoOficinaMundo({} as A).id).toBe(ID_OFICINA_MUNDO);
+    expect(manifiestoOficinaMundo({} as A).expone).toEqual(["OficinaMundo"]);
+    expect(manifiestoOficinaBalizas({} as A).mundos).toEqual(["exterior"]); expect(manifiestoOficinaBalizas({} as A).id).toBe(ID_OFICINA_BALIZAS);
+    expect(manifiestoOficinaBalizas({} as A).consume).toContain("OficinaMundo");
   });
   it("libera() cancela la petición en vuelo y deja la escena y la página como estaban", async () => {
     const s = monta((u) => (u.startsWith("/api/balizas-oficiales") ? J(200, BALIZAS) : J(404, { mensaje: "no" })));
@@ -60,9 +69,9 @@ describe("el mundo en modo oficina", () => {
     expect(s.cuenta.escena).toBe(1); expect(s.tipos["baliza-oficial"]).toBeTruthy(); expect(s.cuenta.capas).toBe(1); expect(typeof (s.m.ventana as A).__oficinaMundo).toBe("function");
     const g = s.grupos[0], mallas = g.children as A[], libres = { geo: 0, mat: 0 };
     mallas.forEach(x => { const gd = x.geometry.dispose.bind(x.geometry), md = x.material.dispose.bind(x.material); x.geometry.dispose = () => { libres.geo++; gd(); }; x.material.dispose = () => { libres.mat++; md(); }; });
-    expect(s.dp.Materiales.duenos()["oficina-mundo"]).toBe(2);   // A3-7b2: los dos materiales (columna y bandera) son de la fábrica
+    expect(s.dp.Materiales.duenos()["oficina-balizas"]).toBe(2);   // A3-7b2: los dos materiales (columna y bandera) son de la fábrica
     s.c.libera();
-    expect(s.dp.Materiales.duenos()["oficina-mundo"]).toBeUndefined();
+    expect(s.dp.Materiales.duenos()["oficina-balizas"]).toBeUndefined();
     expect(s.cuenta.escena).toBe(0); expect(s.cuenta.quitados).toEqual(["baliza-oficial"]); expect(s.cuenta.capas).toBe(0); expect((s.m.ventana as A).__oficinaMundo).toBeUndefined();
     expect(libres.geo).toBe(2); expect(libres.mat).toBe(2);
     expect(s.m.relojes()).toBe(0); expect(s.m.observadores()).toBe(0);
@@ -83,6 +92,23 @@ describe("el mundo en modo oficina", () => {
     expect(await mover.fn()).toBe(true);   // refresca() devuelve true; antes, el TypeError dejaba la promesa rechazada
     expect(s.cuenta.avisos).toEqual(["Baliza movida."]);
     expect(s.llamadas.slice(antes).map(l => l.metodo + " " + l.u)).toEqual(["PUT /api/admin/balizas/7", "GET /api/balizas-oficiales?finca=hituelo"]);
+    s.c.libera();
+  });
+  it("A3-8b: en otro mundo (el vacío) la invitación sigue llegando y el panel sigue; solo su bloque de la baliza se esconde, y vuelve en el exterior", async () => {
+    const s = monta((u) => (u.startsWith("/api/balizas-oficiales") ? J(200, BALIZAS) : J(404, { mensaje: "no" })));
+    await espera();
+    s.bus.emite("mundo:sale", { id: "exterior" }); s.bus.emite("mundo:entra", { id: "vacio" });
+    expect(s.c.C.mundo()).toBe("vacio");
+    s.c.C.actualiza("tarde", 0.5, 0);   // la fase «tarde» de la oficina corre en el vacío (es de todo mundo); la de las balizas, no
+    const panel = s.paneles.oficina; expect(panel).toBeTruthy();
+    const bloque = panel.children.find((e: A) => e.textContent.includes("Baliza oficial donde estás"));
+    expect(bloque.hidden).toBe(true);
+    s.temas.sala!(new TextEncoder().encode(JSON.stringify({ v: 1, a: "visita" })), undefined);   // de la api: sin participante
+    const dlg = s.m.documento.getElementById("oficinaInvitacion"); expect(dlg && !dlg.hidden).toBe(true);
+    expect(s.bus.oyentes()).toBeGreaterThan(0);
+    s.bus.emite("mundo:sale", { id: "vacio" }); s.bus.emite("mundo:entra", { id: "exterior" });
+    s.c.C.actualiza("tarde", 0.5, 0);
+    expect(bloque.hidden).toBe(false);
     s.c.libera();
   });
 });

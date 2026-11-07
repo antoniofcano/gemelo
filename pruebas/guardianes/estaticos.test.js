@@ -105,7 +105,7 @@ test("15_tiempo: la barrera de luz de cada linde (malla congelada) da la misma m
   assert.ok(lista(A.escena).slice(1).every(o => !o.matrixAutoUpdate), "grupo y mallas congelados");
 });
 function balizasOficiales(Estaticos) {
-  const F = require("./_fuente").fuenteMotor("39_oficina_mundo.js"), T = trozo(F, "  function montaGrafica()", "  function refresca()");   // A3-7b2: el código vive en mundos/exterior/oficina-mundo.ts
+  const F = require("./_fuente").fuenteMotor("39b_oficina_balizas.js"), T = trozo(F, "  function montaGrafica()", "  function refresca()");   // A3-8b: el código vive en mundos/exterior/oficina-balizas.ts (antes, en oficina-mundo.ts)
   const scene = new THREE.Scene();
   const f = new Function("THREE", "Estaticos", "scene", "suelo", "OP", "ALTO", "COLOR", "CLARO",
     "\"use strict\";\nvar materiales = { estandar: function (c, o) { return new THREE[c](o); } };   // la fábrica de materiales (A3-7b2)\nvar gB = null, mCol = null, mBan = null, geos = [], mats = [], m4 = null, v1 = null, v2 = null, q0 = null, vS = null, w0 = null, balizas = [], Estado = { exag: 1 };\n" + T +
@@ -162,7 +162,7 @@ const CONGELAN = {
   "19_balizas.js": "baliza (grupo y columna) tras colocaBalizas; el rombo y el anillo se quedan en automático",
   "21_suelo.js": "matas, piedras y contactos del suelo: instancias",
   "22b_huellas_polvo.js": "huellas: instancias (el polvo, Points, queda en automático)",
-  "39_oficina_mundo.js": "balizas oficiales: instancias",
+  "39b_oficina_balizas.js": "balizas oficiales: instancias",   // A3-8b: antes en 39_oficina_mundo.js
   "50_decoraciones.js": "decoraciones de los olivos: instancias"
 };
 // lo que ya iba congelado antes de AG-1.15 (con matrixAutoUpdate = false a mano)

@@ -4,7 +4,8 @@
 //     en Gente, chaleco e insignia (Aspecto.viste y Aspecto.cajas);
 //   · OficinaMundoPuro (39_oficina_mundo.js): los temas «anuncio», «sala» y «balizas» solo valen SIN participante (los manda la api), su validación,
 //     la respuesta de las balizas oficiales, coordenadas y lo que el panel manda a la api;
-//   · los componentes de verdad (37_red.js, 38_presencia_compartida.js y 39_oficina_mundo.js) en el registro de 02c con THREE, DOM, LiveKit y la api de
+//   · los componentes de verdad (37_red.js, 38_presencia_compartida.js, 39_oficina_mundo.js y, desde A3-8b, 39b_oficina_balizas.js: la oficina de todo mundo y
+//     sus balizas oficiales, del exterior) en el registro de 02c con THREE, DOM, LiveKit y la api de
 //     mentira: la oficina se ve con su panel (anunciar, invitar, baliza aquí) y un hogar no; el anuncio llega (aviso, chat, Bus) y uno con participante se
 //     descarta; la invitación pregunta y «Ir» cambia de sala con el token de la otra; las balizas oficiales se piden, se registran como entidades con su
 //     ficha (Quitar solo para la oficina) y se sueltan; ?oficina=0, ?red=0 y sin servidor.
@@ -17,7 +18,7 @@ const contratoModulos = require(path.join(__dirname, "..", "contrato_modulos.js"
 
 const sinCabecera = s => s.startsWith(contratoModulos.MARCA_I) ? s.slice(s.indexOf(contratoModulos.MARCA_F) + contratoModulos.MARCA_F.length + 1) : s;
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return s.slice(i, f); };
-const RED = lee("apps/web/motor/37_red.js"), PRES = lee("apps/web/motor/38_presencia_compartida.js"), LIB = lee("apps/web/motor/26_presencia.js"), OFI = require("./_fuente").fuenteMotor("39_oficina_mundo.js"), OFI_TALON = lee("apps/web/motor/39_oficina_mundo.js");   // A3-7b2: el talón y apps/web/src/mundos/exterior/oficina-mundo.ts (leído como JavaScript, sin tipos ni «dp.»)
+const RED = lee("apps/web/motor/37_red.js"), PRES = lee("apps/web/motor/38_presencia_compartida.js"), LIB = lee("apps/web/motor/26_presencia.js"), OFI = require("./_fuente").fuenteMotor("39_oficina_mundo.js"), OFI_TALON = lee("apps/web/motor/39_oficina_mundo.js"), BAL_TALON = lee("apps/web/motor/39b_oficina_balizas.js");   // A3-7b2: el talón y su .ts (leído como JavaScript, sin tipos ni «dp.»); A3-8b: apps/web/src/ui/oficina-mundo.ts y, las balizas, mundos/exterior/oficina-balizas.ts
 const NUCLEO = lee("apps/web/motor/02c_componentes.js");
 const { SalaPose, Aspecto, Chat } = require("./_mundos");   // MU5-n (A3-6a): la lógica pura de 26_presencia.js vive en apps/web/src/red/ (pose.ts, sala.ts) y mundos/comun/muneco.ts; el legado la ve como Mundos.<nombre>
 const OP = new Function("\"use strict\";\n" + trozo(OFI, "// [puro:inicio]", "// [puro:fin]") + "\nreturn OficinaMundoPuro;")();
@@ -96,7 +97,7 @@ test("el panel: lo que manda a la api (anuncio y baliza) y cuánto dura un aviso
   assert.strictEqual(OP.hasta(new Date(2026, 9, 30, 18, 30).getTime(), hoy), "hasta las 18:30");
   assert.strictEqual(OP.hasta(new Date(2026, 10, 2, 9, 5).getTime(), hoy), "hasta el 02/11, 09:05");
   assert.strictEqual(OP.otraSala("general"), "visita"); assert.strictEqual(OP.otraSala("visita"), "general");
-  for (const e of ["oficina:anuncio", "oficina:sala"]) assert.deepStrictEqual(EVENTOS.eventos[e].emiten, ["mundos/exterior/oficina-mundo"], e);
+  for (const e of ["oficina:anuncio", "oficina:sala"]) assert.deepStrictEqual(EVENTOS.eventos[e].emiten, ["ui/oficina-mundo"], e);   // A3-8b: la oficina de todo mundo
 });
 
 // ---------- los componentes de verdad en el registro de 02c: THREE, DOM, LiveKit y la api de mentira
@@ -148,13 +149,13 @@ function lkFalso(meta) {
   return { Room, RoomEvent, DisconnectReason, salas };
 }
 const BALIZAS = { finca: "hituelo", srs: "EPSG:25830", balizas: [{ id: 7, finca: "hituelo", x: CENTRO[0] + 30, y: CENTRO[1] + 40, titulo: "Aquí se recoge hoy", texto: "Traed agua", hasta: "2030-01-01T10:00:00Z" }] };
-/** el registro (02c) y Entidades de verdad (su validación) con la presencia pura (26), la red (37), la presencia (38) y la oficina (39); lo demás, de mentira */
-function motor({ busqueda = "?presencia=red", rol = "oficina", base = "/teselas/hituelo/", ficheros = ["red", "presencia", "oficina"], balizas = BALIZAS } = {}) {
+/** el registro (02c) y Entidades de verdad (su validación) con la presencia pura (26), la red (37), la presencia (38), la oficina (39) y sus balizas (39b, A3-8b); lo demás, de mentira */
+function motor({ busqueda = "?presencia=red", rol = "oficina", base = "/teselas/hituelo/", ficheros = ["red", "presencia", "oficina", "balizas"], balizas = BALIZAS } = {}) {
   const meta = { alias: rol === "hogar" ? "Mirlo" : "Oficina", rol, avatar: { camisa: 1, sombrero: "paja", piel: 1 }, dispositivo: "escritorio" };
   const LK = lkFalso(meta), errores = [], cuenta = { mallas: 0, mallasLibres: 0, escena: 0, fetch: [], tipos: {}, quitados: [], ventanas: {}, iconos: [], capas: 0, laminas: [], hudAvisos: [] };
   const fuentes = { red: sinCabecera(RED).replace('import("livekit-client")', "Promise.resolve(LK_FALSO)"),
     presencia: sinCabecera(PRES).replace('import("three/addons/utils/BufferGeometryUtils.js")', "Promise.reject(new Error(\"sin addons en Node\"))"),
-    oficina: sinCabecera(OFI_TALON) };
+    oficina: sinCabecera(OFI_TALON), balizas: sinCabecera(BAL_TALON) };
   const ventana = { addEventListener() {}, removeEventListener() {} }, visor = new El("div");
   const documento = { getElementById: () => null, createElement: t => new El(t), createTextNode: t => ({ t }), body: new El("body"), activeElement: null };
   const consola = { error: (...a) => errores.push(a.map(String).join(" ")), warn: (...a) => { const t = a.map(String).join(" "); if (!/sin quad ni dron/.test(t)) errores.push(t); }, log() {} };
@@ -198,8 +199,8 @@ const deLaApi = (room, tema, o) => room.datos(undefined, tema, json(o));
 
 test("componentes en Node: la oficina en la sala tiene su panel; el anuncio sale arriba, en el chat y en el Bus; uno con participante se descarta", async () => {
   const r = motor(); await espera(20);
-  assert.deepStrictEqual(ACTIVOS(r), ["oficina-mundo", "presencia-compartida", "red-salas"]);
-  assert.deepStrictEqual(r.Componentes.resumen().map(x => x.id), ["red-salas", "presencia-compartida", "oficina-mundo"], "monta tras la red y la presencia");
+  assert.deepStrictEqual(ACTIVOS(r), ["oficina-balizas", "oficina-mundo", "presencia-compartida", "red-salas"]);
+  assert.deepStrictEqual(r.Componentes.resumen().map(x => x.id), ["red-salas", "presencia-compartida", "oficina-mundo", "oficina-balizas"], "monta tras la red y la presencia; las balizas, tras la oficina (A3-8b)");
   const room = r.LK.salas[0]; assert.ok(room, "dentro de la sala «visita» de la red");
   assert.strictEqual(r.ventana.__presencia().oficina, true, "tus metadatos dicen oficina");
   r.tarde();
@@ -282,7 +283,7 @@ test("componentes en Node: las balizas oficiales se piden, son entidades con su 
   const antes = r.ventana.__oficinaMundo().pedidas;
   deLaApi(r.LK.salas[0], "balizas", { v: 1, finca: "cerro" }); deLaApi(r.LK.salas[0], "balizas", { v: 1, finca: "hituelo" }); await espera(5);
   assert.strictEqual(r.ventana.__oficinaMundo().pedidas, antes + 1);
-  // libera: quita el tipo, la capa, la ventana, el icono y suelta las mallas
+  // libera: quita el tipo, la capa, la ventana, el icono y suelta las mallas (A3-8b: al liberar la oficina, antes se liberan sus balizas, que la consumen)
   const mallas = r.cuenta.mallas;
   assert.ok(r.Componentes.libera("oficina-mundo"));
   assert.ok(r.cuenta.quitados.includes("baliza-oficial")); assert.strictEqual(r.cuenta.capas, 0); assert.strictEqual(r.cuenta.ventanas.oficina, undefined); assert.deepStrictEqual(r.cuenta.iconos, []);

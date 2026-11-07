@@ -112,7 +112,7 @@ test("18_paisaje: un cauce sin anchura (puntos [x, y], como el del fixture) no d
 
 // ---------------------------------------------------------------- 39_oficina_mundo: las balizas oficiales (columna y bandera instanciadas)
 function balizasOficiales() {
-  const F = require("./_fuente").fuenteMotor("39_oficina_mundo.js"), T = trozo(F, "  function montaGrafica()", "  function refresca()");   // A3-7b2: el código vive en mundos/exterior/oficina-mundo.ts
+  const F = require("./_fuente").fuenteMotor("39b_oficina_balizas.js"), T = trozo(F, "  function montaGrafica()", "  function refresca()");   // A3-8b: el código vive en mundos/exterior/oficina-balizas.ts (antes, en oficina-mundo.ts)
   const f = new Function("THREE", "Estaticos", "scene", "suelo", "OP", "ALTO", "COLOR", "CLARO",
     "\"use strict\";\nvar materiales = { estandar: function (c, o) { return new THREE[c](o); } };   // la fábrica de materiales (A3-7b2)\nvar gB = null, mCol = null, mBan = null, geos = [], mats = [], m4 = null, v1 = null, v2 = null, q0 = null, vS = null, w0 = null, balizas = [], Estado = { exag: 1 };\n" + T +
     "\nreturn { coloca: coloca, monta: montaGrafica, pon: function (b, e) { balizas = b; Estado.exag = e; }, mallas: function () { return [mCol, mBan]; } };");
@@ -340,6 +340,6 @@ test("inventario: los frustumCulled = false que quedan en el motor son los anota
   const P = M("18_paisaje.js"), co = trozo(P, "function colocaPaisaje(", "function sombrasSol("), ss = trozo(P, "function sombrasSol(", "function actualizaPaisaje(");
   assert.ok(/computeBoundingSphere\(\)/.test(co.slice(co.lastIndexOf("needsUpdate"))), "18: colocaPaisaje calcula las esferas después de escribir");
   assert.ok(/instSombraPA\.computeBoundingSphere\(\)/.test(ss.slice(ss.lastIndexOf("instSombraPA.count = n"))), "18: sombrasSol calcula la esfera después de escribir");
-  const O = trozo(M("39_oficina_mundo.js"), "function coloca()", "function refresca()");
+  const O = trozo(M("39b_oficina_balizas.js"), "function coloca()", "function refresca()");   // A3-8b: las balizas oficiales, en su componente
   assert.ok(O.indexOf("computeBoundingSphere()") > O.indexOf("mCol.count = mBan.count"), "39: coloca() calcula las esferas después de escribir");
 });
