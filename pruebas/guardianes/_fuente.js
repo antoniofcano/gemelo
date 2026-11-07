@@ -59,6 +59,8 @@ const TS_DE = {
   "46_guiada.js": "apps/web/src/ui/guiada.ts",
   "42_personalizacion.js": "apps/web/src/mundos/exterior/personalizacion.ts",
   "39_oficina_mundo.js": "apps/web/src/mundos/exterior/oficina-mundo.ts",
+  "41_cae_la_cosecha.js": "apps/web/src/mundos/exterior/cae-la-cosecha.ts",
+  "40_juegos.js": "apps/web/src/mundos/exterior/juegos.ts",
   "24_pantalla.js": ["apps/web/src/ui/pantalla.ts", "apps/web/src/mundos/comun/transicion.ts"],   // el menú y la pantalla completa (ui/); la transición del mapa al paseo (comun/)
   // A3-2a: 07ab vive en varios ficheros (la escalera, el horneado, la cola, el sombreado, el lote y el módulo): se leen todos, en este orden
   // A3-6c: la VR y la locomoción, de todo mundo (apps/web/src/mundos/comun/)

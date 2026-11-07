@@ -41,9 +41,9 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `hazas:cambia` | `{ n, propias }` | `13b_hazas` (llegaron las hazas de la api, o se soltaron) | `44_lindes` (vuelve a pedir `Hazas.lindes()` y rehace la linde) |
 | `oficina:anuncio` | `{ texto }` (≤ 280, limpio) | `mundos/exterior/oficina-mundo` (antes 39_oficina_mundo; OF10: llegó un anuncio de la oficina por la sala) | — (para un sonido o un lector de pantalla; el aviso, la lámina en VR y el chat ya los pone él) |
 | `oficina:sala` | `{ a }` (`general` \| `visita`) | `mundos/exterior/oficina-mundo` (antes 39_oficina_mundo; OF10: la oficina invita a pasar a otra sala) | — (la pregunta «Ir» / «Quedarme» ya la hace él) |
-| `juego:ofrece` | `{ id, titulo, descripcion?, ayuda?, vr?, crea }` (`vr: { botones, palanca, ayuda? }` si sabe jugarse en VR, C9b) | `41_cae_la_cosecha` (al montarse y al oír `juego:pide`) | `40_juegos` (el anfitrión: lo pone en la ventana Juegos) |
-| `juego:pide` | — | `40_juegos` (al montarse) | `41_cae_la_cosecha` |
-| `juego:retira` | `{ id }` | `41_cae_la_cosecha` (al liberarse) | `40_juegos` (lo quita y, si estaba abierto, lo cierra) |
+| `juego:ofrece` | `{ id, titulo, descripcion?, ayuda?, vr?, crea }` (`vr: { botones, palanca, ayuda? }` si sabe jugarse en VR, C9b) | `mundos/exterior/cae-la-cosecha` (antes 41_cae_la_cosecha; al montarse y al oír `juego:pide`) | `mundos/exterior/juegos` (antes 40_juegos; el anfitrión: lo pone en la ventana Juegos) |
+| `juego:pide` | — | `mundos/exterior/juegos` (antes 40_juegos; al montarse) | `mundos/exterior/cae-la-cosecha` (antes 41_cae_la_cosecha) |
+| `juego:retira` | `{ id }` | `mundos/exterior/cae-la-cosecha` (antes 41_cae_la_cosecha; al liberarse) | `mundos/exterior/juegos` (antes 40_juegos; lo quita y, si estaba abierto, lo cierra) |
 | `medida:empieza` | (nada) | `ui/mide` (antes 30_mide) (empieza a medir dentro de VR) | `29_vr` (esconde el panel) |
 | `medida:envia` | (nada) | `29_vr` (el botón «Enviar esta medida a la oficina») | `ui/mide` (antes 30_mide) |
 | `medida:envio` | (nada) | `ui/mide` (antes 30_mide) (cambió el estado del envío) | `29_vr` (repinta la tarjeta) |
@@ -63,7 +63,7 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `red:estado` | `{ sala, estado, motivo? }` | `red/salas` (antes 37_red, A3-6a; una sala cambia de estado: `conectando`, `dentro`, `reconectando`, `fuera` con su motivo) | `red/voz/voz` (antes 45_voz) (F3f: se engancha sola a una sala que entra en una guiada); quien está en la sala lo sigue con `sala.al("estado")` |
 | `sonido:baliza` | `{ completa? }` | `19_balizas` (al llegar a una baliza) | `20_sonido` (campanilla o arpegio) |
 | `sonido:golpe` | — | `mundos/comun/transicion` (antes 24_pantalla; el aterrizaje del paseo) | `20_sonido` |
-| `sonido:juego` | `{ que, cadena? }` | `41_cae_la_cosecha` | `20_sonido` (notas cortas sintetizadas) |
+| `sonido:juego` | `{ que, cadena? }` | `mundos/exterior/cae-la-cosecha` (antes 41_cae_la_cosecha) | `20_sonido` (notas cortas sintetizadas) |
 | `perros:amenaza` | `{ x, y, res }` (pregunta: quien escuche rellena `res` con `{ x, y }` o lo deja en `null`) | `mundos/exterior/fauna` | `mundos/exterior/perros` |
 | `perros:llegan` | (nada) | `mundos/comun/transicion` (antes 24_pantalla), `29_vr` | `mundos/exterior/perros` |
 | `polvo:emite` | `{ x, y, h, vx?, vy?, vz?, tam?, vida? }` | `mundos/comun/transicion` (antes 24_pantalla), `mundos/exterior/perros` | `mundos/exterior/huellas-polvo` (antes 22b_huellas_polvo) |
@@ -72,7 +72,7 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `usable:elige` | `{ id, tipo, como }` | `ui/entidades` (antes 02e_entidades) (toque, clic, rayo y gatillo, tecla) | (nadie todavía) |
 | `usable:suelta` | `{ id, motivo }` | `ui/entidades` (antes 02e_entidades) | (nadie todavía) |
 | `usable:usa` | `{ id, accion }` | `ui/entidades` (antes 02e_entidades) (una acción de la ficha: «Ir a esta baliza», «Ir con») | (nadie todavía) |
-| `vr:entra` | — | `29_vr` | `40_juegos` (cierra el juego abierto: en VR no hay juegos hasta C9b) |
-| `vr:sale` | — | `29_vr` | `ui/laminas` (antes 02d_laminas; cierra las láminas de VR), `40_juegos` (cierra el juego en lámina) |
+| `vr:entra` | — | `29_vr` | `mundos/exterior/juegos` (antes 40_juegos; cierra el juego abierto: en VR no hay juegos hasta C9b) |
+| `vr:sale` | — | `29_vr` | `ui/laminas` (antes 02d_laminas; cierra las láminas de VR), `mundos/exterior/juegos` (antes 40_juegos; cierra el juego en lámina) |
 
 Ya no queda nada por `CustomEvent` en `document`: el `gemelo:chat` de `31_hud.js` pasó a `chat:alterna` con C5. Los mensajes de la red (las poses, el chat) **no** van por el Bus: van por la sala de la red (`Red.sala(clave).escucha(tema, fn)`, `37_red.js`), de punto a punto y sin copias.

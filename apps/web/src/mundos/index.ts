@@ -147,3 +147,9 @@ export type { DepsPersonalizacion, Personalizacion } from "./exterior/personaliz
 // A3-7b2 (MU5-n): el mundo en modo oficina (antes 39_oficina_mundo.js), componente del exterior; su libera() cancela las peticiones en vuelo.
 export { ID_OFICINA_MUNDO, creaOficinaMundo, manifiestoOficinaMundo } from "./exterior/oficina-mundo.ts";
 export type { DepsOficinaMundo, OficinaMundo } from "./exterior/oficina-mundo.ts";
+// A3-7b2 (MU5-n): «Cae la cosecha» (antes 41_cae_la_cosecha.js), el juego casual del olivar, componente del exterior.
+export { ID_CAE_LA_COSECHA, manifiestoCaeLaCosecha } from "./exterior/cae-la-cosecha.ts";
+export type { DepsCaeLaCosecha } from "./exterior/cae-la-cosecha.ts";
+// A3-7b2 (MU5-n): el anfitrión de juegos (antes 40_juegos.js), componente del exterior; su libera() cancela las peticiones en vuelo.
+export { ID_JUEGOS, creaJuegos, manifiestoJuegos } from "./exterior/juegos.ts";
+export type { DepsJuegos, Juegos } from "./exterior/juegos.ts";

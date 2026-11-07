@@ -489,20 +489,20 @@
         }
       },
       "emiten": [
-        "41_cae_la_cosecha"
+        "mundos/exterior/cae-la-cosecha"
       ],
       "escuchan": [
-        "40_juegos"
+        "mundos/exterior/juegos"
       ]
     },
     "juego:pide": {
       "descripcion": "El anfitrión de juegos acaba de montarse y pregunta qué juegos hay: cada juego encendido responde con «juego:ofrece».",
       "datos": {},
       "emiten": [
-        "40_juegos"
+        "mundos/exterior/juegos"
       ],
       "escuchan": [
-        "41_cae_la_cosecha"
+        "mundos/exterior/cae-la-cosecha"
       ]
     },
     "juego:retira": {
@@ -519,10 +519,10 @@
         }
       },
       "emiten": [
-        "41_cae_la_cosecha"
+        "mundos/exterior/cae-la-cosecha"
       ],
       "escuchan": [
-        "40_juegos"
+        "mundos/exterior/juegos"
       ]
     },
     "medida:empieza": {
@@ -1073,7 +1073,7 @@
         }
       },
       "emiten": [
-        "41_cae_la_cosecha"
+        "mundos/exterior/cae-la-cosecha"
       ],
       "escuchan": [
         "mundos/exterior/sonido"
@@ -1333,7 +1333,7 @@
         "mundos/comun/vr-sesion"
       ],
       "escuchan": [
-        "40_juegos",
+        "mundos/exterior/juegos",
         "ui/agenda"
       ]
     },
@@ -1376,7 +1376,7 @@
       "escuchan": [
         "ui/laminas",
         "mundos/comun/muneca",
-        "40_juegos"
+        "mundos/exterior/juegos"
       ]
     }
   }

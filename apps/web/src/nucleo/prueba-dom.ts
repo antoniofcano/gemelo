@@ -95,7 +95,7 @@ export function creaMundo(opc: { busqueda?: string; coarse?: boolean } = {}): Mu
   }
   const raiz = el("html"), body = el("body");
   raiz.appendChild(body);
-  const doc: T = escuchable({ documentElement: raiz, body, activeElement: body, hidden: false, createElement: (t: string) => el(t), createTextNode: (t: string) => { const n = el("#text"); n.tagName = ""; n.textContent = t; return n; },
+  const doc: T = escuchable({ documentElement: raiz, body, activeElement: body, hidden: false, createElement: (t: string) => el(t), createElementNS: (_ns: string, t: string) => el(t), createTextNode: (t: string) => { const n = el("#text"); n.tagName = ""; n.textContent = t; return n; },
     getElementById: (id: string) => (function rec(n: T): T { for (const h of n.children) { if (h.id === id) return h; const r = rec(h); if (r) return r; } return null; })(raiz),
     querySelectorAll: (s: string) => raiz.querySelectorAll(s), querySelector: (s: string) => raiz.querySelector(s), contains: (o: T) => raiz.contains(o) });
   const almacen: Record<string, string> = {};
