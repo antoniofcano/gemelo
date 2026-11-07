@@ -184,7 +184,7 @@ Exterior, molino y bodega en un solo PWA, cada uno con su sala de red; TypeScrip
 | MU3 | Unión · bodega (decisión 217): el glb del eje B en el `WorldManager` del eje A, con su sala de red | e2e: dos en la bodega y una fuera no se ven ni se oyen; aforo impuesto por la api; reunión de 6 con pantalla compartida en el Quest dentro del presupuesto de su perfil; «ir y volver» deja `info.memory` como estaba | 10-12 d | ⬜ |
 | MU4 | Unión · molino: el glb del eje B, sus máquinas animadas y su sala | una máquina completa animada (prensa de viga) con sonido, a 72 Hz en el Quest sin bajar de nivel; «ir y volver» en verde | 8 d + modelado | ⬜ |
 | MU6 | Cambiar de renderer en un solo paso (F3-F5 del ADR-0031): las variantes TSL de MU5 pasan a ser las de verdad; ya no es otro recorrido por los módulos | capturas iguales por material; medida ≤ clásico; Quest medido (decisión 224: no antes del 2026-12-01) | 3-5 d + medidas | ⬜ |
-| MU7 | Una sola build | F2 repetida en el Quest con el three del momento; super-three y su parche retirados | cuando three lo permita | ⬜ |
+| MU7 | Una sola build | F2 repetida en el Quest con el three del momento; super-three y su parche retirados | cuando three lo permita | ⏸ aplazada el 2026-11-07: en el Quest 3, el `WebGPURenderer` de three r187 con multiview cuesta casi el triple que super-three (MEDIDAS, F2b); se repite la prueba de humo con cada three nueva |
 
 | Id | Tarea | Depende de | Tipo · modelo | [ESTIMACIÓN] | Estado |
 |---|---|---|---|---|---|

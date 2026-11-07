@@ -15,6 +15,22 @@ Una medida de VR sin las perillas con las que se hizo no se puede comparar con o
 2. Una perilla de cada vez respecto a la referencia (sin `xr…`), tres repeticiones por el mismo camino ([protocolo](VR.md#medir-con-el-medidor)); con `xrnivel` fijo el nivel no cambia durante la medida y el campo «Nivel VR_PERFILES» del informe lo confirma.
 3. Escribe el aparato (Quest 3, versión del navegador) y marca lo no probado como **no probado**. Las advertencias de comodidad de las perillas están en [VR.md](VR.md#perillas-de-rendimiento-por-url).
 
+## Prueba de humo del multiview en el Quest 3 (F2b, 2026-11-07, foto, no se mantiene)
+Medida por Antonio en su Quest 3 (Oculus Browser 154.1, Chrome 154, 72 Hz) con `prototipos/multiview/` servido por la Wi-Fi (`npm run sirve:red`). Una corrida de 60 s por caso, tras 3 s de calentamiento, sin moverse; MSAA sí, escala 0,9, foveación pedida 1. La sonda: WebGL2, `OVR_multiview2` y `OCULUS_multiview` disponibles **sin banderas y con MSAA**. Criterios de decisión: [MULTIVIEW F2](MULTIVIEW.md).
+
+| Modo | n por ojo | `render()` mediana · p95 (ms) | Intervalo mediana · p95 · p99 (ms) | Fotogramas en 60 s | Llamadas (dos ojos) | Foveación de la capa |
+|---|---|---|---|---|---|---|
+| Clásico, three r187 | 200 | 1,9 · 2,4 | 13,9 · 14,5 · 14,9 | 3.690 (un parón de 8,8 s, seguramente al entrar en VR) | 402 | 1 |
+| Nuevo sin multiview, r187 | 200 | 3,7 · 4,9 | 13,9 · 14,8 · 15,2 | 4.320 | 404 | **0** |
+| Nuevo con multiview, r187 | 200 | 2,8 · 3,7 | 13,9 · 14,5 · 14,9 | 4.320 | 202 | **0** |
+| super-three r185 con multiview | 200 | **1,0 · 1,3** | 13,9 · 14,2 · 14,4 | 4.320 | 201 | 1 |
+| Clásico, three r187 | 400 | 3,9 · 4,8 | 13,9 · 14,6 · 15,0 | 4.320 | 802 | 1 |
+| Nuevo sin multiview, r187 | 400 | 6,1 · 7,9 | 14,1 · **16,6 · 24,5** | **4.180** | 804 | **0** |
+| Nuevo con multiview, r187 | 400 | 5,3 · 6,7 | 13,9 · 14,9 · 15,3 | 4.319 | 402 | **0** |
+| super-three r185 con multiview | 400 | **1,8 · 2,2** | 13,9 · 14,3 · 14,5 | 4.320 | 401 | 1 |
+
+Lectura: super-three con multiview baja el `render()` un 47 % (n = 200) y un 54 % (n = 400) frente al clásico. El renderizador nuevo de three r187 con multiview queda un 47 % y un 36 % **por encima** del clásico, y sin multiview pierde fotogramas a n = 400. Ningún modo mejora el p95 del intervalo en 1 ms, porque los que aguantan están pegados a los 72 Hz. Pendiente: por qué el modo nuevo deja la foveación de la capa a 0 (afecta a su GPU, no a la CPU medida). Sin repeticiones: una corrida por caso.
+
 ## Cerro Velasco, antes y después (mismas cámaras; banco de entonces `prueba.js`, no versionado: hoy `pruebas/prueba3.js`)
 
 > Foto de un día. Cerro Velasco ya no está en el mundo (decisión 229, 2026-11-06); las cifras se quedan como historia.
