@@ -4,19 +4,52 @@ Responde con números a la pregunta de F2 ([MULTIVIEW.md](../../doc/sistema/MULT
 
 **No probada en el Quest** (regla 7). En este equipo solo se ha comprobado que las tres builds se construyen y llevan cada una su renderizador (`pruebas/guardianes/humo_multiview.test.js`, solo Node). Que la escena se vea bien en un navegador no se ha mirado aún (no se abrió Chrome).
 
+## Guía para Antonio
+
+Unos 40-60 minutos. Los modos clásico y nuevo usan three **0.187.0**; `super` usa super-three 0.185.0 (lo que lleva hoy la build de VR). El motor del gemelo no se toca.
+
+**A. Preparar (en el ordenador, una vez)**
+1. `cd prototipos/multiview && npm ci && npm run build` (sale en `dist/`, que no se versiona).
+2. `npm run sirve` (Vite en `http://localhost:4173`; déjalo abierto).
+3. Quest en modo desarrollador, por USB, con la depuración autorizada: `adb reverse tcp:4173 tcp:4173`. `localhost` es origen seguro, así que WebXR funciona sin certificados. **No hace falta desplegar nada ni abrir la red.** Alternativas: `npm run dev:arriba -- --red-local` da https en la WiFi, pero solo sirve el gemelo (con sesión), no esta página; subirla al VPS bajo una ruta de pruebas es desplegar y lo decides tú (regla 9); y un túnel saca la página por un tercero. Con el USB no hace falta ninguna.
+
+**B. Medir (en el navegador del casco, en este orden)**
+Abre cada URL (`http://localhost:4173/…`), comprueba que la línea de estado dice el renderizador esperado, pulsa **ENTER VR**, quédate quieto mirando al frente: 3 s de calentamiento y 60 s de medida. Al terminar, el panel en VR enseña el resultado; el gatillo repite la medida sin salir (para las tres repeticiones de N = 200). Al salir de VR, **Copiar** (o **Descargar .txt**) y pega en un fichero.
+
+| Orden | URL | Qué es |
+|---|---|---|
+| 1 | `/?modo=clasico&n=200` | referencia (WebGLRenderer, three 0.187.0, sin multiview) |
+| 2 | `/?modo=nuevo&mv=0&n=200` | WebGPURenderer con `forceWebGL`, sin multiview |
+| 3 | `/?modo=nuevo&n=200` | el nuevo con multiview |
+| 4 | `/?modo=super&n=200` | super-three 0.185.0 con `multiviewStereo` |
+| 5 | los mismos con `&n=100` y `&n=400` | cómo escala |
+| 6 | `/?modo=nuevo&directo=0&n=200`, `/?modo=super&mv=0&n=200` | opcionales |
+
+Repite 1, 2 y 3 tres veces (gatillo). Con **OVR Metrics Tool** a la vez, apunta CPU, GPU y nivel de rendimiento. Mira a ojo: los dos ojos bien colocados (sin ojo corrido ni imagen doble), sin texturas negras, el borde de las esferas (MSAA) y la foveación.
+
+**C. Qué copiar y dónde pegarlo.** Cada texto trae «Caso: …», la sonda, la línea «Sesión XR: multiview activo sí/no» (con la capa y su `textureArrayLength`; es la prueba de que `OVR_multiview2` está activo de verdad y no solo pedido), mediana, p95, p99 y peor del fotograma, ms de JS y de `render()`, llamadas y triángulos. Pega todos en la conversación con el agente (o en una sección nueva de [MEDIDAS](../../doc/sistema/MEDIDAS.md)), con las notas de OVR Metrics y de la imagen. Si la línea dice «multiview activo no» en un caso con multiview pedido, esa medida **no** es de multiview: no la cuentes.
+
+**D. Cómo decidir (de [MULTIVIEW](../../doc/sistema/MULTIVIEW.md#criterios-de-f2-fijados-antes-de-medir), con N = 200)**
+- **Adelante** (F3-F4): «nuevo con multiview» baja el ms de `render()` al menos un 30 % y el p95 al menos 1 ms frente al clásico, sin empeorar la mediana ni la imagen.
+- **Abandono**: el casco no da `OVR_multiview2` sin banderas; o «nuevo con multiview» no mejora al clásico en ≥ 1 ms de p95; o la imagen sale mal (ojo corrido, texturas negras, MSAA roto).
+- **Ambiguo** (< 1 ms): se repite con la escena real a medio migrar.
+- Aparte: «super con multiview» frente al clásico decide si se activa la build de VR transitoria (mismos umbrales).
+
+**Lo que está probado y lo que no.** Solo Node: las tres builds se construyen con 0.187.0 y llevan cada una su renderizador y una sola three. **No probado**: que se vea bien en un navegador, WebXR, cualquier ms, y si los modos `nuevo` y `super` piden bien las capas en el Quest Browser. Si un modo falla al arrancar, la página enseña el error en la ficha y en la consola (`chrome://inspect`): pásalo tal cual.
+
 ## Los tres modos
 
 Dos three no pueden convivir en una página (sus clases no son las mismas y `instanceof` falla), así que son **tres builds de Vite** de la misma escena. `index.html` + `elige.js` cargan la que pida `?modo=`.
 
 | `?modo=` | three | Renderizador | Cómo se enciende el multiview |
 |---|---|---|---|
-| `clasico` (por defecto) | three **0.186.1** | `WebGLRenderer` | No existe en el clásico de three (lo quitó en 2020, MULTIVIEW §1.1). Es la referencia: lo que corre hoy en el Quest. |
+| `clasico` (por defecto) | three **0.187.0** | `WebGLRenderer` | No existe en el clásico de three (lo quitó en 2020, MULTIVIEW §1.1). Es la referencia: lo que corre hoy en el Quest. |
 | `super` | super-three **0.185.0** | `WebGLRenderer` de super-three | `new WebGLRenderer({ multiviewStereo: true })`: `multiviewStereo = false` en `node_modules/super-three/src/renderers/WebGLRenderer.js:86`, que llega a `new WebXRManager( _this, _gl, extensions, multiviewStereo )` (`:565`); allí `scope.isMultiview = useMultiview && extensions.has( 'OCULUS_multiview' )` (`webxr/WebXRManager.js:492`) pide la capa de proyección con `textureType = 'texture-array'` (`:500-504`). `&mv=0` lo apaga. |
-| `nuevo` | three **0.186.1** | `WebGPURenderer({ forceWebGL: true, multiview: true })` | `multiview = false` en `three/src/renderers/common/Renderer.js:105` → `new XRManager( this, multiview )` (`:730`); se enciende si hay capas y `renderer.hasFeature( 'OVR_multiview2' )` (`XRManager.js:1253`). `&mv=0`: el mismo renderizador sin multiview (separa el coste del renderizador nuevo del ahorro del multiview). Con `DirectRenderPipeline` por defecto (sin la pasada de salida intermedia, MULTIVIEW §2.4); `&directo=0` la quita. |
+| `nuevo` | three **0.187.0** | `WebGPURenderer({ forceWebGL: true, multiview: true })` | `multiview = false` en `three/src/renderers/common/Renderer.js:179` → `new XRManager( this, multiview )` (`:824`); se enciende si hay capas y `renderer.hasFeature( 'OVR_multiview2' )` (`XRManager.js:1256`). `&mv=0`: el mismo renderizador sin multiview (separa el coste del renderizador nuevo del ahorro del multiview). Con `DirectRenderPipeline` por defecto (sin la pasada de salida intermedia, MULTIVIEW §2.4); `&directo=0` la quita. |
 
 En la página, la línea «Sesión XR: multiview activo sí/no» dice si **de verdad** se encendió al entrar (super: `renderer.xr.isMultiview`; nuevo: `renderer.xr.useMultiview()`), con la capa (`XRProjectionLayer` o `XRWebGLLayer`) y su `textureArrayLength` (2 = `texture-array`).
 
-Versiones fijadas en `package.json` de esta carpeta (`three` 0.186.1, `super-three` 0.185.0, `vite` 6.4.5, las mismas que `apps/web`), con su `package-lock.json`. Va aparte de `apps/web` para no instalar super-three en el cliente (eso lo hace F2a) ni tocar su build. Lo que reusa, sin copiarlo (regla 12): los alias de three de `apps/web/herramientas/builds.mjs` (la build `vr` para super-three), la estadística del medidor del gemelo (`MideEst`, trozo puro de `apps/web/motor/30_mide.js`) y la lectura de `renderer.info` para los dos renderizadores (`RenderPuro`, de `02h_render.js`), por el complemento `herramientas/puro.mjs`. Así las cifras se cuentan igual que en [MEDIDAS](../../doc/sistema/MEDIDAS.md).
+Versiones fijadas en `package.json` de esta carpeta (`three` 0.187.0, `super-three` 0.185.0, `vite` 6.4.5; `apps/web` sigue en three 0.186.1 y el motor no se toca), con su `package-lock.json`. Va aparte de `apps/web` para no instalar super-three en el cliente (eso lo hace F2a) ni tocar su build. Lo que reusa, sin copiarlo (regla 12): los alias de three de `apps/web/herramientas/builds.mjs` (la build `vr` para super-three), la estadística del medidor del gemelo (`MideEst`, trozo puro de `apps/web/motor/30_mide.js`) y la lectura de `renderer.info` para los dos renderizadores (`RenderPuro`, de `02h_render.js`), por el complemento `herramientas/puro.mjs`. Así las cifras se cuentan igual que en [MEDIDAS](../../doc/sistema/MEDIDAS.md).
 
 ## Parámetros de la URL
 
@@ -92,5 +125,5 @@ La medida de super-three con multiview sirve para decidir si se activa la build 
 ## Lo que esta página no mide
 
 - La escena del gemelo: ni teselas 3D Tiles, ni olivos generados, ni nube, ni sombras, ni la Cola. La escena es sintética e **ilustrativa**; las cifras dicen cómo escala el coste por llamada en cada renderizador, no los fps del gemelo.
-- three 0.187.x: MULTIVIEW §5 pide medir también con ella; aquí solo está 0.186.1 (y super-three 0.185.0). Para 0.187, cambiar la versión en `package.json` y reconstruir.
+- three 0.186.1 (la del motor hoy): esta página ya usa 0.187.0 en clásico y nuevo (MULTIVIEW §5); si hiciera falta comparar con 0.186.1, cambiar la versión en `package.json` y reconstruir.
 - Lo que cuesta compilar los sombreadores: la medida empieza tras 3 s, con todo compilado.

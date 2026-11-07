@@ -1,4 +1,4 @@
-// La fábrica de los dos modos con WebGLRenderer clásico (clasico: three 0.186.1; super: super-three 0.185.0, por alias en construye.mjs).
+// La fábrica de los dos modos con WebGLRenderer clásico (clasico: three 0.187.0; super: super-three 0.185.0, por alias en construye.mjs).
 // El sombreador propio es un ShaderMaterial con las matrices de siempre (projectionMatrix, modelViewMatrix, normalMatrix): super-three, con
 // multiview, las cambia por las de cada vista (prefijo `#define projectionMatrix projectionMatrices[VIEW_ID]`, WebGLProgram.js), así que el mismo GLSL vale.
 import { VRButton } from "three/addons/webxr/VRButton.js";
@@ -19,7 +19,7 @@ export function fabricaWebGL(modo) {
       const op = { canvas: lienzo, antialias: p.msaa };
       // super-three: la opción es `multiviewStereo` (node_modules/super-three/src/renderers/WebGLRenderer.js:86, «multiviewStereo = false»),
       // que llega a `new WebXRManager( _this, _gl, extensions, multiviewStereo )` (:565) y allí `scope.isMultiview = useMultiview &&
-      // extensions.has( 'OCULUS_multiview' )` (webxr/WebXRManager.js:492) pide la capa con textureType 'texture-array'. En three 0.186.1 no existe.
+      // extensions.has( 'OCULUS_multiview' )` (webxr/WebXRManager.js:492) pide la capa con textureType 'texture-array'. En three 0.187.0 no existe.
       if (modo === "super") op.multiviewStereo = p.mv;
       const renderer = new THREE.WebGLRenderer(op);
       return {
