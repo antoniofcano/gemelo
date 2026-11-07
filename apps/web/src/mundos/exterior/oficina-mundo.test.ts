@@ -7,6 +7,7 @@
 import * as THREE from "three";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ID_OFICINA_MUNDO, manifiestoOficinaMundo } from "./oficina-mundo.ts";
+import { creaMateriales } from "../../nucleo/materiales.ts";
 import { busPrueba, montaComponente } from "../../nucleo/prueba-componentes.ts";
 import { creaMundo, type Mundo } from "../../nucleo/prueba-dom.ts";
 import type { Manifiesto } from "../../nucleo/componentes.ts";
@@ -36,7 +37,7 @@ function monta(fetchDoble: (u: string, op: A) => Promise<unknown>, opc: { oficin
   const dp = {
     THREE, D: { base: "/teselas/hituelo/", finca_id: "hituelo", centro_utm: CENTRO }, suelo: () => 10, Componentes: null, Laminas: { abre: () => true, cierra: () => true, hay: () => false },
     Entidades: { registra: (d: A) => { tipos[d.tipo] = d; return () => { cuenta.quitados.push(d.tipo); delete tipos[d.tipo]; }; } },
-    Estaticos: { congela() { /* doble */ } }, visor, scene, camera: { position: new THREE.Vector3(0, 20, 0) }, Estado: { exag: 1 }, objetivo: new THREE.Vector3(50, 0, -50), pp: { x: 50, y: 60 },
+    Estaticos: { congela() { /* doble */ } }, Materiales: creaMateriales({ THREE: THREE as A, busqueda: "" }), visor, scene, camera: { position: new THREE.Vector3(0, 20, 0) }, Estado: { exag: 1 }, objetivo: new THREE.Vector3(50, 0, -50), pp: { x: 50, y: 60 },
     Llegada: { ve: () => true }, HazasPuro: { prefijoApi: () => "/api/" }, Minimapa: { capa: () => { cuenta.capas++; return () => { cuenta.capas--; }; } },
     Aspecto: { CHALECO: 0x5b6b00, INSIGNIA: 0xf4ecc2 }, Chat: { limpia: (t: string) => (String(t).trim() || null) }, Encuentro: { BALIZA: 1 }, sitioJunto: () => ({ x: 0, y: 0, ang: 0 }),
     Hud: { icono: () => () => { /* doble */ }, aviso: (t: string) => { cuenta.avisos.push(t); } }, Ventanas: { registra: () => null }, VRX: { on: !!opc.gafas, cab: new THREE.Vector3() }, paseando: true, enQuad: false,
@@ -45,7 +46,7 @@ function monta(fetchDoble: (u: string, op: A) => Promise<unknown>, opc: { oficin
   const previos = [dobleDe("red-salas", "Red", { sala: () => sala }),
     dobleDe("presencia-compartida", "Presencia", { yo: () => ({ oficial: opc.oficina !== false }), sala: () => "general", mensaje() { /* doble */ }, cambiaSala: () => Promise.resolve(true) })];
   const c = montaComponente(manifiestoOficinaMundo(dp as A), bus, previos);
-  return { c, llamadas, tipos, cuenta, grupos, bus, m, visor, api: c.api() as A };
+  return { dp, c, llamadas, tipos, cuenta, grupos, bus, m, visor, api: c.api() as A };
 }
 
 describe("el mundo en modo oficina", () => {
@@ -59,7 +60,9 @@ describe("el mundo en modo oficina", () => {
     expect(s.cuenta.escena).toBe(1); expect(s.tipos["baliza-oficial"]).toBeTruthy(); expect(s.cuenta.capas).toBe(1); expect(typeof (s.m.ventana as A).__oficinaMundo).toBe("function");
     const g = s.grupos[0], mallas = g.children as A[], libres = { geo: 0, mat: 0 };
     mallas.forEach(x => { const gd = x.geometry.dispose.bind(x.geometry), md = x.material.dispose.bind(x.material); x.geometry.dispose = () => { libres.geo++; gd(); }; x.material.dispose = () => { libres.mat++; md(); }; });
+    expect(s.dp.Materiales.duenos()["oficina-mundo"]).toBe(2);   // A3-7b2: los dos materiales (columna y bandera) son de la fábrica
     s.c.libera();
+    expect(s.dp.Materiales.duenos()["oficina-mundo"]).toBeUndefined();
     expect(s.cuenta.escena).toBe(0); expect(s.cuenta.quitados).toEqual(["baliza-oficial"]); expect(s.cuenta.capas).toBe(0); expect((s.m.ventana as A).__oficinaMundo).toBeUndefined();
     expect(libres.geo).toBe(2); expect(libres.mat).toBe(2);
     expect(s.m.relojes()).toBe(0); expect(s.m.observadores()).toBe(0);

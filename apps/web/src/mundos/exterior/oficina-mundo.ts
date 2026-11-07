@@ -32,10 +32,10 @@ type T = any;
 
 export const ID_OFICINA_MUNDO = "oficina-mundo";
 
-/** Lo que el talón de 39 le da: THREE, D (01), el suelo (02) y Componentes (02c), Laminas/Entidades/Estaticos (02d-02j), la escena (03), la cámara de órbita, el paseo, la llegada,
+/** Lo que el talón de 39 le da: THREE, D (01), el suelo (02) y Componentes (02c), Laminas/Entidades/Estaticos/Materiales (02d-02j), la escena (03), la cámara de órbita, el paseo, la llegada,
  *  HazasPuro, el minimapa, la presencia (Aspecto, Chat, Encuentro, sitioJunto), Hud y Ventanas; VRX (29_vr), paseando (12) y enQuad (16), que otros reescriben, por getter */
 export interface DepsOficinaMundo {
-  THREE: T; D: T; suelo: T; Componentes: T; Laminas: T; Entidades: T; Estaticos: T; visor: T; scene: T; camera: T; Estado: T; objetivo: T; pp: T; Llegada: T; HazasPuro: T; Minimapa: T;
+  THREE: T; D: T; suelo: T; Componentes: T; Laminas: T; Entidades: T; Estaticos: T; Materiales: T; visor: T; scene: T; camera: T; Estado: T; objetivo: T; pp: T; Llegada: T; HazasPuro: T; Minimapa: T;
   Aspecto: T; Chat: T; Encuentro: T; sitioJunto: T; Hud: T; Ventanas: T; readonly VRX: T; readonly paseando: boolean; readonly enQuad: boolean;
 }
 
@@ -97,9 +97,10 @@ export function OficinaMundoMotor(dp: DepsOficinaMundo, n: T, R: T, P: T) {
   var OP: T = OficinaMundoPuro, API: T = dp.HazasPuro.prefijoApi(location.search, dp.D.base), FINCA_ID: T = dp.D.finca_id || "", CENTRO: T = dp.D.centro_utm || null;
   var COLOR: T = dp.Aspecto.CHALECO, CLARO: T = dp.Aspecto.INSIGNIA, ALTO = 18, LAM_A = "oficina-anuncio", LAM_S = "oficina-sala", REFRESCO_S = 300;
   var S: T = R ? R.sala("visita") : null, balizas: T = [], st: T = { anuncios: 0, descartados: 0, invitaciones: 0, pedidas: 0, error: null };
+  var materiales: T = dp.Materiales.de("oficina-mundo");   // lo que cree este componente se libera con su libera() (MATERIALES §5)
   var ctl: T = new AbortController();   // A3-7b2: libera() cancela lo que esté en vuelo
   var banner: T = null, tBanner = 0, anuncioVR: T = null, invitacion: T = null, dialogo: T = null, tRefresco = 0, panelOf: T = null, vivo = true;
-  var gB: T = null, mCol: T = null, mBan: T = null, geos: T = [], mats: T = [], m4: T = null, v1: T = null, v2: T = null, q0: T = null, vS: T = null, w0: T = null;
+  var gB: T = null, mCol: T = null, mBan: T = null, geos: T = [], m4: T = null, v1: T = null, v2: T = null, q0: T = null, vS: T = null, w0: T = null;
   function limpia(t?: T) { return dp.Chat.limpia(t); }
   function el(tag?: T, props?: T, hijos?: T) { var e: T = document.createElement(tag); if (props) Object.keys(props).forEach(function (k?: T) { if (k === "style") e.style.cssText = props[k]; else if (k in e) e[k] = props[k]; else e.setAttribute(k, props[k]); }); (hijos || []).forEach(function (h?: T) { e.appendChild(typeof h === "string" ? document.createTextNode(h) : h); }); return e; }
   function yo() { return P && P.yo ? P.yo() : null; }
@@ -190,8 +191,8 @@ export function OficinaMundoMotor(dp: DepsOficinaMundo, n: T, R: T, P: T) {
     gB = new dp.THREE.Group(); gB.name = "balizas-oficiales"; dp.scene.add(gB);
     var gC: T = new dp.THREE.CylinderGeometry(0.3, 0.55, ALTO, 10, 1, true), gF: T = new dp.THREE.BoxGeometry(1.5, 0.95, 0.06);
     gC.translate(0, ALTO / 2, 0); gF.translate(0.78, ALTO + 0.1, 0);   // la bandera, a un lado de lo alto de la columna
-    var mC: T = new dp.THREE.MeshBasicMaterial({ color: COLOR, transparent: true, opacity: 0.42, depthWrite: false, blending: dp.THREE.AdditiveBlending, fog: false }), mF: T = new dp.THREE.MeshBasicMaterial({ color: CLARO, fog: false });
-    geos = [gC, gF]; mats = [mC, mF];
+    var mC: T = materiales.estandar("MeshBasicMaterial", { color: COLOR, transparent: true, opacity: 0.42, depthWrite: false, blending: dp.THREE.AdditiveBlending, fog: false }), mF: T = materiales.estandar("MeshBasicMaterial", { color: CLARO, fog: false });   // A3-7b2: de la fábrica, con dueño «oficina-mundo»
+    geos = [gC, gF];
     mCol = new dp.THREE.InstancedMesh(gC, mC, OP.BALIZAS_MAX); mBan = new dp.THREE.InstancedMesh(gF, mF, OP.BALIZAS_MAX);
     [mCol, mBan].forEach(function (m?: T) { m.count = 0; gB.add(m); }); dp.Estaticos.congela(gB);   // AG-1.15: quietas; cada baliza lleva su matriz de instancia   // se recortan: coloca() les calcula el volumen envolvente
   }
@@ -341,7 +342,7 @@ export function OficinaMundoMotor(dp: DepsOficinaMundo, n: T, R: T, P: T) {
     if (dp.Laminas.hay(LAM_A)) dp.Laminas.cierra(LAM_A);
     if (banner && banner.parentNode) banner.parentNode.removeChild(banner); banner = null;
     if (dialogo && dialogo.raiz.parentNode) dialogo.raiz.parentNode.removeChild(dialogo.raiz); dialogo = null;
-    if (gB) { dp.scene.remove(gB); [mCol, mBan].forEach(function (m?: T) { m.dispose(); }); geos.forEach(function (g?: T) { g.dispose(); }); mats.forEach(function (m?: T) { m.dispose(); }); gB = null; mCol = mBan = null; }
+    if (gB) { dp.scene.remove(gB); [mCol, mBan].forEach(function (m?: T) { m.dispose(); }); geos.forEach(function (g?: T) { g.dispose(); }); materiales.libera(); gB = null; mCol = mBan = null; }
     balizas = [];
   }
   function estado() {
