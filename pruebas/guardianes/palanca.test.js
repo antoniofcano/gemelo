@@ -84,7 +84,7 @@ test("el paseo la suma por el camino que ya hay (sin duplicar la física) y el a
   assert.match(PASEO, /var vel = velPaseo\(av, dt\)/, "la velocidad sigue saliendo de velPaseo (quad, pendiente, correr)");
   assert.match(PASEO, /if \(enQuad(\(\))? \|\| enDron(\(\))?\) gi = /, "en quad y dron el lado gira, como la cruceta");
   assert.match(PASEO, /ponPalanca\(0, 0\)/, "se suelta al salir del paseo y al perder el foco");
-  assert.match(lee("apps/web/motor/33_ajustes.js"), /"controles\.palanca": bool\(true\)/, "el ajuste vale sí por defecto");
+  assert.match(require("./_fuente").fuenteMotor("33_ajustes.js"), /"controles\.palanca": bool\(true\)/, "el ajuste vale sí por defecto");
 });
 
 test("la palanca nace venga de donde venga el paseo (no solo el botón «Pasear»), y si nipplejs no carga vuelve la cruceta", () => {

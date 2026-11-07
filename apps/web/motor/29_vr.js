@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
-// Expone: Vr, VRX, vrRig, vrDebugExtra, vrMano, vrRayoDe, vrCierra, vrAbre, vrFundido, vrAparece, creaLamina, panel, vrBajoRayo, vrRect, vrAj,
-//   PanelVR, vrPintaFicha, vrRecoloca, vrPulso, vrActualiza, vrFin
+// Expone: Vr, VRX, vrRig, vrDebugExtra, vrMano, vrRayoDe, vrCierra, vrAbre, vrFundido, vrAparece, creaLamina, vrBajoRayo, vrRect, vrAj, PanelVR,
+//   vrPintaFicha, vrRecoloca, vrPulso, vrActualiza, vrFin
 // Consume: 01_datos (D, $, fmt, VRP), 01a_aparato (Aparato), 02_mundo (suelo, copas), 02b_cola (Cola),
 //   02c_componentes (ComponentesPuro, Bus, Config), 02d_laminas (LaminasPuro, Laminas), 02e_entidades (EntidadesPuro, Entidades, Usables),
 //   02f_xr_perillas (XrPerillas), 02g_vr_presupuesto (VrControlPuro, VrPresupuesto), 02h_render (InfoDibujo), 02i_materiales (Materiales),

@@ -23,3 +23,6 @@ export type { DepsHudPersonal, HudPersonal } from "./hud-personal.ts";
 // A3-7a: el menú y la pantalla completa (antes la primera mitad de 24_pantalla.js), componente de todo mundo.
 export { ID_MENU_PANTALLA, creaPantalla, manifiestoPantalla } from "./pantalla.ts";
 export type { DepsPantalla, MenuPantalla } from "./pantalla.ts";
+// A3-7a: la Configuración (antes 33_ajustes.js), componente de todo mundo.
+export { AjustesPuro, ID_CONFIGURACION, creaAjustes, manifiestoAjustes } from "./ajustes.ts";
+export type { Ajustes, DepsAjustes } from "./ajustes.ts";

@@ -4,7 +4,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
-const FUENTE = lee("apps/web/motor/33_ajustes.js");
+const FUENTE = require("./_fuente").fuenteMotor("33_ajustes.js");
 function trozo() {
   const i = FUENTE.indexOf("// [puro:inicio]"), f = FUENTE.indexOf("// [puro:fin]");
   assert.ok(i >= 0 && f > i, "33_ajustes.js debe marcar su trozo puro con // [puro:inicio] y // [puro:fin]");

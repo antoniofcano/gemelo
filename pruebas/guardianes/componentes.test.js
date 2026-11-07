@@ -409,7 +409,7 @@ test("Capas.registra exige la procedencia (medido, deducido o ilustrativo: regla
 });
 
 test("Ajustes.registra: AjustesPuro.fusiona añade claves con prefijo propio, valida tipos y no pisa a nadie; retira las quita", () => {
-  const s = lee("apps/web/motor/33_ajustes.js"), A = new Function("\"use strict\";\n" + trozo(s, "// [puro:inicio]", "// [puro:fin]") + "\nreturn AjustesPuro;")();
+  const s = require("./_fuente").fuenteMotor("33_ajustes.js"), A = new Function("\"use strict\";\n" + trozo(s, "// [puro:inicio]", "// [puro:fin]") + "\nreturn AjustesPuro;")();
   const n0 = Object.keys(A.ESQUEMA).length;
   assert.deepStrictEqual(A.fusiona("juego", { dificultad: { tipo: "opc", def: "media", ops: ["facil", "media"] }, sonido: { tipo: "bool", def: true }, vel: { tipo: "num", def: 1, min: 0.5, max: 2, paso: 0.5 } }), []);
   assert.strictEqual(Object.keys(A.ESQUEMA).length, n0 + 3);

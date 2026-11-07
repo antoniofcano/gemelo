@@ -49,8 +49,8 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `medida:envio` | (nada) | `30_mide` (cambió el estado del envío) | `29_vr` (repinta la tarjeta) |
 | `medida:estado` | `{ res }` (pregunta: el medidor rellena `res` con `{ resultado, lineas, puedeEnviar, envio, textoEnvio }`) | `29_vr` | `30_mide` |
 | `medida:fin` | (nada) | `30_mide` (termina una medida dentro de VR) | `29_vr` (abre la tarjeta del resultado) |
-| `medida:inicia` | `{ segundos? }` | `33_ajustes` («Medir 60 s» de Configuración → Avanzado) | `30_mide` |
-| `medida:muestra` | `{ on }` | `33_ajustes` (cambia «Contador de rendimiento») | `30_mide` (enseña o esconde su caja) |
+| `medida:inicia` | `{ segundos? }` | `ui/ajustes` (antes 33_ajustes; «Medir 60 s» de Configuración → Avanzado) | `30_mide` |
+| `medida:muestra` | `{ on }` | `ui/ajustes` (antes 33_ajustes; cambia «Contador de rendimiento») | `30_mide` (enseña o esconde su caja) |
 | `mundo:aplica` | (nada) | `mundos/exterior/marcadores` (`aplica()`: cambió la exageración, el modo o los datos de las teselas) | `mundos/exterior/marcadores-lidar` (recoloca copas, anillos y desfase) |
 | `ndvi:cambia` | `{ lo, hi }` | `mundos/exterior/ndvi` (`pintaNdvi()` de `10_ndvi`, que es `Ndvi.pinta` desde MU5-n: cambió la fecha del campo o la escala relativa) | `mundos/exterior/capa-ndvi` (el componente de `10b_capa_ndvi`: rehace la textura, la leyenda y la gráfica) |
 | `mundo:hoy` | `{ linea: { txt, de, cuando } \| null, trabajo: { parcelas: [id], cuando } \| null }` | `53_mundo_hoy` (tras cada lectura buena de `/api/mundo/hoy`) | `44b_carteles` (la línea «Hoy en el olivar» del tablón), `mundos/exterior/trabajo-hoy` (antes 54_trabajo_hoy: un tractor en cada haza con tarea en curso, apagado por defecto) |

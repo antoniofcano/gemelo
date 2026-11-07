@@ -41,7 +41,7 @@ test("la perilla: defecto apagado, 1 enciende, lo raro avisa, sin MSAA nunca", (
 });
 
 test("el ajuste «vista.a2c» está en el esquema (apagado) y 02i lo lee de localStorage una vez, con try/catch", () => {
-  assert.match(lee("apps/web/motor/33_ajustes.js"), /"vista\.a2c": bool\(false\)/);
+  assert.match(require("./_fuente").fuenteMotor("33_ajustes.js"), /"vista\.a2c": bool\(false\)/);
   // MU5-0: la fábrica vive en apps/web/src/nucleo/materiales.ts; 02i (el talón) le presta el almacén y ella lo lee una vez, con try/catch
   assert.match(lee("apps/web/motor/02i_materiales.js"), /almacen: function \(\) \{ return window\.localStorage; \}/);
   const m = lee("apps/web/src/nucleo/materiales.ts");

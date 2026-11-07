@@ -15,7 +15,7 @@ const contratoModulos = require(path.join(__dirname, "..", "contrato_modulos.js"
 
 const sinCabecera = s => s.startsWith(contratoModulos.MARCA_I) ? s.slice(s.indexOf(contratoModulos.MARCA_F) + contratoModulos.MARCA_F.length + 1) : s;
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return s.slice(i, f); };
-const HAB = lee("apps/web/motor/47_habla.js"), GUI = lee("apps/web/motor/46_guiada.js"), VRJS = require("./_fuente").fuenteMotor("29_vr.js"), AJU = lee("apps/web/motor/33_ajustes.js");
+const HAB = lee("apps/web/motor/47_habla.js"), GUI = lee("apps/web/motor/46_guiada.js"), VRJS = require("./_fuente").fuenteMotor("29_vr.js"), AJU = require("./_fuente").fuenteMotor("33_ajustes.js");
 const PURO = trozo(HAB, "// [puro:inicio]", "// [puro:fin]"), MOTOR = trozo(HAB, "// [motor:inicio]", "// [motor:fin]");
 const H = new Function("\"use strict\";\n" + PURO + "\nreturn HablaPuro;")();
 const PVJS = lee("apps/web/motor/46b_primera_vez.js"), PV = new Function("\"use strict\";\n" + trozo(PVJS, "// [puro:inicio]", "// [puro:fin]") + "\nreturn PrimeraVezPuro;")();
@@ -499,7 +499,7 @@ test("F3j: el motor no habla con nada más que con su api, no lleva la versión 
   assert.match(m, /emite: \["habla:micro", "habla:mano", "habla:consentimiento"\]/); assert.deepStrictEqual(EVENTOS.eventos["habla:consentimiento"].emiten, ["47_habla"]);
   assert.deepStrictEqual(EVENTOS.eventos["habla:consentimiento"].datos.properties.accion.enum, ["acepta", "rechaza", "retira"]);
   assert.strictEqual(H.URL_CONSENTIMIENTO, "/api/presencia/voz/consentimiento");
-  const ajustes = lee("apps/web/motor/33_ajustes.js"); assert.match(ajustes, /c\.alClic \|\| ACCIONES\[c\.id\]/);
+  const ajustes = require("./_fuente").fuenteMotor("33_ajustes.js"); assert.match(ajustes, /c\.alClic \|\| ACCIONES\[c\.id\]/);
   const api = lee("contratos/api.openapi.yaml"); assert.ok(api.includes("  /api/presencia/voz/consentimiento:"));
 });
 

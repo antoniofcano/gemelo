@@ -596,7 +596,7 @@
         }
       },
       "emiten": [
-        "33_ajustes"
+        "ui/ajustes"
       ],
       "escuchan": [
         "30_mide"
@@ -616,7 +616,7 @@
         }
       },
       "emiten": [
-        "33_ajustes"
+        "ui/ajustes"
       ],
       "escuchan": [
         "30_mide"

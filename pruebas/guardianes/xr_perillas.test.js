@@ -83,7 +83,7 @@ test("cableado F2a: 03_escena pide multiviewStereo solo si XrPerillas.multiview(
 });
 
 test("el panel: la casilla «vr.multiview» existe en el esquema y solo se pinta en la build de VR; el talón de 02f presta el almacén y el núcleo lee el guardado una vez con try/catch", () => {
-  const aju = lee("apps/web/motor/33_ajustes.js");
+  const aju = require("./_fuente").fuenteMotor("33_ajustes.js");
   assert.match(aju, /"vr\.multiview": bool\(true\)/); assert.match(aju, /k: "vr\.multiview"[^\n]*soloBuild: "vr"/); assert.match(aju, /c\.soloBuild && \(typeof Render === "undefined" \|\| Render\.build !== c\.soloBuild\)\) return/);
   assert.match(lee("apps/web/motor/02f_xr_perillas.js"), /almacen: function \(\) \{ return window\.localStorage; \}/);
   assert.match(lee("apps/web/src/nucleo/xr-perillas.ts"), /getItem\("gemelo\.ajustes\.vr\.multiview"\)/);

@@ -32,7 +32,7 @@ test("orden de mando: la URL, luego el ajuste «vista.tono», luego neutro", () 
   assert.match(lee("apps/web/motor/02h_render.js"), /almacen: function \(\) \{ return window\.localStorage; \}/);
   assert.match(lee("apps/web/src/nucleo/render.ts"), /getItem\("gemelo\.ajustes\." \+ clave\)/);
   assert.match(lee("apps/web/src/nucleo/render.ts"), /ajusteGuardado\(d\.almacen, "vista\.tono"\)/);
-  assert.match(lee("apps/web/motor/33_ajustes.js"), /"vista\.tono": opc\("neutro", \["neutro", "agx", "aces", "neutral"\]\)/);
+  assert.match(require("./_fuente").fuenteMotor("33_ajustes.js"), /"vista\.tono": opc\("neutro", \["neutro", "agx", "aces", "neutral"\]\)/);
 });
 
 test("sin perilla: neutro, NoToneMapping y exposición 1", () => {
