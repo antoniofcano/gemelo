@@ -50,9 +50,11 @@ function mundo() {
   const documento = { createElement: () => { const cx = { n: 0 }, cv = { width: 0, height: 0, getContext: () => cx }; lienzos.push(cv); return cv; } };
   const VRX = { on: false, cab: new V3() }, renderer = { info: { render: { frame: 0 } } }, errores = [];
   const Bus = { on: (ev, f) => { (reg.bus[ev] = reg.bus[ev] || []).push(f); return () => {}; } };
-  const L = new Function("THREE", "scene", "camera", "renderer", "texColor", "VRX", "document", "performance", "Bus", "console",
+  // A3-7a: el material sale de la fábrica (Materiales.de("laminas-mundo").estandar), aquí un doble que crea el del THREE de mentira y cuenta lo que pide
+  const Materiales = { de: d => { reg.dueno = d; return { estandar: (c, o) => new THREE[c](o), libera: () => { reg.liberaFabrica = (reg.liberaFabrica || 0) + 1; return 0; } }; } };
+  const L = new Function("THREE", "scene", "camera", "renderer", "texColor", "VRX", "document", "performance", "Bus", "console", "Materiales",
     "\"use strict\";\n" + trozo("// [puro:inicio]", "// [puro:fin]") + trozo("// [motor:inicio]", "// [motor:fin]") + "\nreturn Laminas;")(THREE, scene, camera, renderer, t => t, VRX, documento, { now: () => 0 }, Bus,
-    { error: (...a) => errores.push(a.join(" ")) });
+    { error: (...a) => errores.push(a.join(" ")) }, Materiales);
   return { L, reg, lienzos, VRX, camera, renderer, errores };
 }
 // una lámina de 1 × 0,5 m con su firma en una variable

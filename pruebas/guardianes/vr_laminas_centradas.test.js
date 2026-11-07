@@ -124,8 +124,9 @@ function mundo(VRX, dirCam) {
   const camera = { matrixWorld: { p: [0, 1.6, 0] }, updateMatrixWorld() {}, getWorldDirection: v => v.set(dirCam.x, 0, dirCam.z) };
   const scene = { add() {}, remove() {} }, documento = { createElement: () => ({ width: 0, height: 0, getContext: () => ({}) }) };
   const Bus = { on: () => () => {} };
-  return new Function("THREE", "scene", "camera", "renderer", "texColor", "VRX", "document", "performance", "Bus", "console",
-    "\"use strict\";\n" + trozo(LAM, "// [puro:inicio]", "// [puro:fin]") + trozo(LAM, "// [motor:inicio]", "// [motor:fin]") + "\nreturn Laminas;")(THREE, scene, camera, { info: { render: { frame: 0 } } }, t => t, VRX, documento, { now: () => 0 }, Bus, console);
+  const Materiales = { de: () => ({ estandar: (c, o) => new THREE[c](o), libera: () => 0 }) };   // A3-7a: el material de la lámina sale de la fábrica (un doble con el THREE de aquí)
+  return new Function("THREE", "scene", "camera", "renderer", "texColor", "VRX", "document", "performance", "Bus", "console", "Materiales",
+    "\"use strict\";\n" + trozo(LAM, "// [puro:inicio]", "// [puro:fin]") + trozo(LAM, "// [motor:inicio]", "// [motor:fin]") + "\nreturn Laminas;")(THREE, scene, camera, { info: { render: { frame: 0 } } }, t => t, VRX, documento, { now: () => 0 }, Bus, console, Materiales);
 }
 test("Laminas.abre en VR: nace delante de VRX.mira aunque la cámara (corrompida tras actualizaPaseo) mire a otro lado; fuera de VR, la cámara", () => {
   const VRX = { on: true, cab: { x: 120, y: 300, z: -40 }, mira: P.miradaH(cuat(2, 0), 0.5) };

@@ -9,9 +9,9 @@ import type { T } from "./tipos.ts";
 
 export const ID_LAMINAS = "laminas-mundo";
 
-/** Lo que el talón de 02d le da: THREE y el Bus (02c); por getter, lo que se monta después (InfoDibujo, scene, camera, renderer, texColor y VRX) */
+/** Lo que el talón de 02d le da: THREE y el Bus (02c); por getter, lo que se monta después (la fábrica de materiales, InfoDibujo, scene, camera, renderer, texColor y VRX) */
 export interface DepsLaminas {
-  THREE: T; Bus: T; readonly InfoDibujo: T; readonly scene: T; readonly camera: T; readonly renderer: T; readonly texColor: (t: T) => T; readonly VRX: T; documento: T;
+  THREE: T; Bus: T; readonly Materiales: T; readonly InfoDibujo: T; readonly scene: T; readonly camera: T; readonly renderer: T; readonly texColor: (t: T) => T; readonly VRX: T; documento: T;
 }
 
   // ---------- las láminas (ADR-0023, C8; doc/sistema/COMPONENTES.md): un lienzo 2D como textura de un cartel en el mundo, anclado al mundo (no a la cabeza), a la
@@ -142,6 +142,9 @@ export function creaLaminas(dp: DepsLaminas) {
   // [motor:inicio] (lo evalúa también en Node pruebas/guardianes/laminas.test.js con un THREE de mentira, para contar lo que crea y lo que libera)
   var Laminas: T = (function () {
     var P: T = LaminasPuro, LS: T = {}, cuenta: T = { abiertas: 0, cerradas: 0, pintadas: 0 }, vC: T = new dp.THREE.Vector3(), vD: T = new dp.THREE.Vector3(), acum: T = 0, PERIODO: T = 0.5;
+    // MU5-n (A3-7a, segundo commit): el material de cada lámina es estándar, de la fábrica, con dueño «laminas-mundo» (Materiales, de 02i, se monta después: se pide al abrir la primera)
+    var M: T = null;
+    function materiales() { return M || (M = dp.Materiales.de("laminas-mundo")); }
     function enVR() { return !!dp.VRX.on; }
     function cabeza(v?: T) { if (enVR()) return v.copy(dp.VRX.cab); dp.camera.updateMatrixWorld(); return v.setFromMatrixPosition(dp.camera.matrixWorld); }
     // hacia dónde se mira, en horizontal: en VR, VRX.mira (la pose de la cabeza del XRFrame girada por el rig; la calcula 29_vr.js al leer la cabeza). NO camera.getWorldDirection:
@@ -173,7 +176,7 @@ export function creaLaminas(dp: DepsLaminas) {
       var modo: T = o.modo === "vr" || o.modo === "pantalla" ? o.modo : enVR() ? "vr" : "pantalla", md: T = P.medidas(o);
       var cv: T = document.createElement("canvas"); cv.width = md.w; cv.height = md.h;
       var tex: T = dp.texColor(new dp.THREE.CanvasTexture(cv)); tex.minFilter = dp.THREE.LinearFilter; tex.generateMipmaps = false;
-      var geo: T = new dp.THREE.PlaneGeometry(o.ancho, o.alto), mat: T = new dp.THREE.MeshBasicMaterial(o.encima ? { map: tex, transparent: true, depthTest: false, depthWrite: false, fog: false, toneMapped: false } : { map: tex, alphaTest: 0.5, fog: false, toneMapped: false });
+      var geo: T = new dp.THREE.PlaneGeometry(o.ancho, o.alto), mat: T = materiales().estandar("MeshBasicMaterial", o.encima ? { map: tex, transparent: true, depthTest: false, depthWrite: false, fog: false, toneMapped: false } : { map: tex, alphaTest: 0.5, fog: false, toneMapped: false });
       var m: T = new dp.THREE.Mesh(geo, mat); m.name = o.nombre || "lamina:" + o.id; m.renderOrder = o.encima ? 998 : 10;
       var h: T = cabeza(vC), g: T = mirada(vD);
       var dist: T = o.dist && o.dist[modo] != null ? o.dist[modo] : P.DIST[modo], bajo: T = o.bajo && o.bajo[modo] != null ? o.bajo[modo] : P.BAJO[modo];   // a la altura de los ojos y delante de la mirada; luego se queda ahí
@@ -261,7 +264,7 @@ export function creaLaminas(dp: DepsLaminas) {
     return { abre: abre, cierra: cierra, cierraTodas: cierraTodas, repinta: repinta, revisa: revisa, toca: toca, apunta: apunta, info: info, bajoRayo: bajoRayo, mueve: mueve, hay: function (id?: T) { return !!LS[id]; }, ids: function () { return Object.keys(LS); },
       cuenta: function () { return { abiertas: cuenta.abiertas, cerradas: cuenta.cerradas, pintadas: cuenta.pintadas, vivas: Object.keys(LS).length }; },
       // A3-7a: libera() cierra las que queden (como a mano: «cerrada»; cada una suelta malla, material, textura y lienzo) y se borra del Bus
-      libera: function () { cierraTodas("cerrada"); if (typeof quitaVr === "function") quitaVr(); quitaVr = null; } };
+      libera: function () { cierraTodas("cerrada"); if (M) M.libera(); if (typeof quitaVr === "function") quitaVr(); quitaVr = null; } };
   })();
   // [motor:fin]
   return Laminas;

@@ -190,8 +190,9 @@ function motor() {
   const TV = { lee: () => est.datos, alCambiar: f => { est.oyente = f; reg.oyentesTV++; return () => { reg.oyentesTV--; est.oyente = null; }; } };
   const VRX = { on: false, cab: new V3() };
   const renderer = { info: { render: { frame: 0 } } }, perf = { now: () => 0 }, Bus = { on: (ev, f) => { (reg.busNucleo[ev] = reg.busNucleo[ev] || []).push(f); return () => {}; } };
-  const Laminas = new Function("THREE", "scene", "camera", "renderer", "texColor", "VRX", "document", "performance", "Bus", "console",
-    "\"use strict\";\n" + trozo("// [puro:inicio]", "// [puro:fin]", LAMINAS) + trozo("// [motor:inicio]", "// [motor:fin]", LAMINAS) + "\nreturn Laminas;")(THREE, scene, camera, renderer, t => t, VRX, documento, perf, Bus, console);
+  const Materiales = { de: () => ({ estandar: (c, o) => new THREE[c](o), libera: () => 0 }) };   // A3-7a: el material de la lámina sale de la fábrica (un doble con el THREE de aquí)
+  const Laminas = new Function("THREE", "scene", "camera", "renderer", "texColor", "VRX", "document", "performance", "Bus", "console", "Materiales",
+    "\"use strict\";\n" + trozo("// [puro:inicio]", "// [puro:fin]", LAMINAS) + trozo("// [motor:inicio]", "// [motor:fin]", LAMINAS) + "\nreturn Laminas;")(THREE, scene, camera, renderer, t => t, VRX, documento, perf, Bus, console, Materiales);
   const FTM = fn(THREE, scene, camera, renderer, t => t, VRX, true, { aviso() {} }, () => est.ahora, () => ({ d: 1 }),
     documento, ventana, perf, TV, Teclas, PanelVR, Laminas);
   const FT = FTM(n);
