@@ -3,7 +3,7 @@
 //    palabra y baja la mano en todas las salas.
 //  · corteAuditoriaVoz: «la campaña y un año más» (campaña de octubre a septiembre), con propiedades.
 //  · Las rutas: Origin, sesión y forma antes de tocar la base.
-//  · La migración 0018 y la versión del aviso, de acuerdo con el motor (el texto vive en 47_habla.js).
+//  · La migración 0018 y la versión del aviso, de acuerdo con el motor (el texto vive en apps/web/src/red/voz/habla.ts, HablaPuro; antes 47_habla.js).
 // El recorrido contra PostGIS (aceptar, retirar, purgar de verdad) está en pruebas/integracion/voz_consentimiento.test.ts.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -104,8 +104,8 @@ test("rutas del consentimiento: sin Origin 403, sin sesión 401, forma mala 400 
 });
 
 test("la versión del aviso de la api es la del texto del motor (si cambia el texto, se suben las dos); la migración 0018 solo toca lo de la voz", () => {
-  const motor = lee("apps/web/motor/47_habla.js"), m = /AVISO_VERSION\s*=\s*(\d+)/.exec(motor);
-  assert.ok(m, "47_habla.js declara AVISO_VERSION");
+  const motor = lee("apps/web/src/red/voz/habla.ts"), m = /AVISO_VERSION(?:: any)?\s*=\s*(\d+)/.exec(motor);   // MU5-n (A3-6b): HablaPuro, antes en 47_habla.js
+  assert.ok(m, "red/voz/habla.ts declara AVISO_VERSION");
   assert.equal(Number(m![1]), VOZ_AVISO_VERSION);
   const sql = lee("apps/api/migraciones/0018_voz_consentimiento.sql");
   assert.match(sql, /CREATE TABLE voz_consentimientos \(\s*hogar_id\s+bigint PRIMARY KEY REFERENCES hogares \(id\) ON DELETE CASCADE/, "al borrar el hogar se borra su consentimiento");

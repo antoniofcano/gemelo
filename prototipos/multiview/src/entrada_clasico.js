@@ -1,4 +1,4 @@
-// modo clasico: three 0.186.1, WebGLRenderer, sin multiview (la referencia: lo que corre hoy en el Quest)
+// modo clasico: three 0.187.0, WebGLRenderer, sin multiview (la referencia: lo que corre hoy en el Quest)
 import * as THREE from "three";
 import { arranca } from "./humo.js";
 import { fabricaWebGL } from "./webgl.js";

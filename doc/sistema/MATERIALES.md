@@ -443,6 +443,22 @@ Vive junto al clásico en `vr.ts` (`defVineta`), está **apagada** (solo la dar�
 
 Ver MUNDOS §2 («Cómo quedó (MU5-n, A3-6c)») y COMPONENTES §6. Pruebas (Vitest, sin GPU: no hay `renderer.info`; se cuentan las creaciones y los «dispose» de three): `vr.test.ts` (diez sesiones sin crear geometrías, materiales ni texturas; `libera()` suelta todo), `mandos.test.ts` (diez sesiones con el modelo del mando: nada vivo, ni escuchas ni relojes), `ir-a.test.ts`, `llegada.test.ts`, `paseo.test.ts`, `camara.test.ts` y `palanca.test.ts`. **No probado:** en un navegador, en el Quest ni en el iPhone (esta tarea no abrió Chrome ni Docker).
 
+## 15. Lo hecho en A3-6b (2026-11-07): la voz, hablar y los corros, de todo mundo
+
+Tres módulos del legado pasan a `apps/web/src/` como componentes de **todo mundo** (`mundos: "todos"`, COMPONENTES §3.2; MUNDOS §2, «Cómo quedó (MU5-n, A3-6b)»). Qué toca de la receta del §5 a cada uno:
+
+| Módulo | 1.er commit (TS y componente) | 2.º commit (materiales por la fábrica) | 3.er commit (TSL apagada) |
+|---|---|---|---|
+| `45_voz.js` → `red/voz/voz.ts` (`voz-guiada`) | hecho (+ sale de su sala si se libera mientras entraba) | **no hace falta:** sin dibujo (Web Audio y `<audio>` ocultos) | **no hace falta** |
+| `47_habla.js` → `red/voz/habla.ts` (`HablaPuro`) y `mundos/comun/habla.ts` (`habla-guiada`) | hecho (+ lo que contesta la api tras liberar ya no vuelve a montar la caja ni la pestaña) | **no hace falta:** las láminas son de `Laminas` (02d) | **no hace falta:** sin sombreador propio |
+| `47b_corro.js` → `red/voz/corro.ts` (`CorroPuro`) y `mundos/comun/corro.ts` (`corro-voz`) | hecho (+ la voz sale del corro si se libera mientras entraba; nada de láminas tras liberar) | hecho: los dos `MeshBasicMaterial` (el halo sobre quien habla y el icono del corro) son **estándar** con dueño `corro-voz` (`Materiales.de(…).estandar`), con las mismas opciones; `libera()` suelta además lo del dueño | **no hace falta:** sin sombreador propio (el `WebGPURenderer` convierte los estándar solo, §2) |
+
+- **Cobertura (`Materiales.cobertura()`):** sin cambios (ningún `define` nuevo: no hay sombreadores propios).
+- **Fuera de la fábrica:** ninguna fila de `FUERA` que bajar (los dos materiales del corro no tenían sombreador).
+- **Pruebas:** `corro.test.ts` (Vitest, three de verdad): el dueño en la fábrica con sus dos materiales, los de siempre (transparentes, sin profundidad ni tone mapping), y nada tras liberar; con `dispose` de la geometría, los materiales y los dos lienzos. `voz.test.ts` y `habla.test.ts`, sus ciclos de vida (MUNDOS §2).
+
+**No probado:** nada de esto en un navegador, en iPhone ni en el Quest (esta tarea no abrió Chrome ni Docker); que la voz suene igual (sin cambio de código de audio, pero no se ha oído).
+
 ## 16. Lo hecho en A3-7a (2026-11-07): la interfaz (`ui/`), de todo mundo
 
 Trece módulos del legado pasan a `apps/web/src/ui/` (MUNDOS §1, la frontera nueva; COMPONENTES §6, «A3-7a»). Solo dos tienen materiales; ninguno tiene sombreador propio. Qué toca de la receta del §5 a cada uno:

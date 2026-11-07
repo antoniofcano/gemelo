@@ -43,12 +43,12 @@ const tiene = (s, x) => s.split(x).length - 1;
 test("cada modo usa el renderizador que dice (marcas del bundle) y una sola three", { skip: SALTO }, () => {
   const d = dist(), B = m => fs.readFileSync(path.join(d, m, "humo.js"), "utf8");
   const c = B("clasico"), s = B("super"), n = B("nuevo");
-  for (const [m, x, rev] of [["clasico", c, "186"], ["super", s, "185"], ["nuevo", n, "186"]]) {
+  for (const [m, x, rev] of [["clasico", c, "187"], ["super", s, "185"], ["nuevo", n, "187"]]) {
     assert.strictEqual(tiene(x, 'detail:{revision:"'), 1, m + ": debe llevar una sola three");
     assert.ok(x.includes('detail:{revision:"' + rev + '"}'), m + ": three r" + rev);
     assert.ok(x.includes('"' + m + '"'), m + ": __MODO__ inyectado");
   }
-  // clasico: three 0.186.1 con el WebGLRenderer, sin nada de multiview en el renderizador ni el WebGPURenderer
+  // clasico: three 0.187.0 con el WebGLRenderer, sin nada de multiview en el renderizador ni el WebGPURenderer
   assert.ok(c.includes("isWebGLRenderer"));
   for (const x of ["multiviewStereo", "isMultiview", "WebGPU XR does not support multiview", "forceWebGL"]) assert.ok(!c.includes(x), "clasico no debe llevar " + x);
   // super: super-three con su multiview en el WebGLRenderer clásico (WebGLRenderer.js:86 y webxr/WebXRManager.js:492)
@@ -97,7 +97,7 @@ async function cuenta(THREE, sombreador, p) {
   E.libera();
   return { llamadas, tri, recortables, plan: E.plan };
 }
-test("la escena con three 0.186.1, super-three 0.185.0 y three/webgpu dibuja lo que dice el reparto", { skip: SALTO }, async () => {
+test("la escena con three 0.187.0, super-three 0.185.0 y three/webgpu dibuja lo que dice el reparto", { skip: SALTO }, async () => {
   const p = { n: 200, tri: 200000 };
   const three = await import(pathToFileURL(path.join(NM, "three", "build", "three.module.js")).href);
   const superThree = await import(pathToFileURL(path.join(NM, "super-three", "build", "three.module.js")).href);
@@ -105,7 +105,7 @@ test("la escena con three 0.186.1, super-three 0.185.0 y three/webgpu dibuja lo 
   const tsl = await import(pathToFileURL(path.join(NM, "three", "build", "three.tsl.js")).href);
   const shader = (T, a, b) => new T.ShaderMaterial({ uniforms: { colorA: { value: a }, colorB: { value: b } } });
   const nodo = (T, a, b) => { const m = new T.MeshBasicNodeMaterial(); m.colorNode = tsl.mix(tsl.uniform(a), tsl.uniform(b), tsl.normalWorld.y); return m; };
-  assert.strictEqual(superThree.REVISION, "185"); assert.strictEqual(three.REVISION, "186");
+  assert.strictEqual(superThree.REVISION, "185"); assert.strictEqual(three.REVISION, "187");
   for (const [nombre, T, f] of [["three", three, shader], ["super-three", superThree, shader], ["three/webgpu", webgpu, nodo]]) {
     const r = await cuenta(T, f, p);
     assert.strictEqual(r.llamadas, r.plan.llamadas, nombre + ": mallas");

@@ -16,10 +16,10 @@ const { lee, path } = require("./_util");
 const contratoModulos = require(path.join(__dirname, "..", "contrato_modulos.js"));
 
 const sinCabecera = s => s.startsWith(contratoModulos.MARCA_I) ? s.slice(s.indexOf(contratoModulos.MARCA_F) + contratoModulos.MARCA_F.length + 1) : s;
-const VOZ = lee("apps/web/motor/45_voz.js"), RED = require("./_fuente").fuenteMotor("37_red.js");   // A3-6a: el talón y apps/web/src/red/salas.ts
+const VOZ = require("./_fuente").fuenteMotor("45_voz.js"), RED = require("./_fuente").fuenteMotor("37_red.js");   // A3-6a: el talón y apps/web/src/red/salas.ts; A3-6b: el de 45 y red/voz/voz.ts
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return s.slice(i, f); };
-const PURO = trozo(VOZ, "// [puro:inicio]", "// [puro:fin]"), MOTOR = trozo(VOZ, "// [motor:inicio]", "// [motor:fin]");
-const V = new Function("\"use strict\";\n" + PURO + "\nreturn VozPuro;")();
+// MU5-n (A3-6b): VozPuro y el motor (creaVoz) viven en apps/web/src/red/voz/voz.ts; 45_voz.js es su talón. Se prueban como los ve el legado (Mundos.<nombre>)
+const { VozPuro: V, creaVoz } = require("./_mundos");
 const { RedPuro } = require("./_mundos");   // MU5-n (A3-6a): la red vive en apps/web/src/red/salas.ts; 37_red.js es su talón
 const IFACES = JSON.parse(lee("contratos/interfaces.json"));
 const ROLES = JSON.parse(lee("contratos/livekit-roles.json"));
@@ -283,8 +283,7 @@ function montaVoz({ busqueda = "", nombre = "guiada-7", token = { url: "/rtc", t
   const g = { window: ventana, location: { search: busqueda }, document: documento, Aparato: aparatoDe({ userAgent: "Node" }), navigator: { userAgent: "Node", userActivation: gesto }, console: { warn() {}, error() {}, log() {} },
     fetch: (u, o) => { cuenta.fetch.push([u, o.method, JSON.parse(o.body)]); return Promise.resolve({ ok: estadoToken === 200, status: estadoToken, json: () => Promise.resolve(estadoToken === 200 ? token : { error: "guiada_solo_inscritos", mensaje: "Esta visita es para las familias apuntadas." }) }); },
     MediaStream: function (pistas) { this.pistas = pistas; }, PannerNode, THREE: { Quaternion: Q, Vector3: V3 }, camera: camara, VRX };
-  const nombres = Object.keys(g);
-  const VozMotor = new Function(...nombres, "\"use strict\";\n" + PURO + MOTOR + "\nreturn VozMotor;")(...nombres.map(k => g[k]));
+  const VozMotor = (n, R, P) => creaVoz(Object.assign({ consola: g.console }, g), n, R, P);   // A3-6b: las mismas dependencias, por argumento (las que da el talón)
   const api = VozMotor(n, R, P);
   return { api, sala, cuenta, emitidos, ventana, body, camara, VRX, gesto, n, limpias, g, desbloquea: () => ventana.dispara("pointerdown"), habla: e => (n.oy[e] || []).forEach(f => f({ lineas: [] })) };
 }
@@ -415,7 +414,8 @@ test("VozMotor: quién habla (voz:habla), salir suelta todo y libera cierra el A
 });
 
 test("el manifiesto de la voz: 0 llamadas de dibujo, consume la red y la presencia, bandera ?voz", () => {
-  const m = /Componentes\.registra\(\{([\s\S]*?)\n  \}\);/.exec(VOZ)[1];
-  assert.match(m, /id: "voz-guiada"/); assert.match(m, /presupuesto: \{ llamadas: 0, triangulos: 0 \}/); assert.match(m, /consume: \["Aparato", "Red", "Presencia", "VRX"\]/);
+  const m = /export function manifiestoVoz\(dp: DepsVoz\) \{\n  return \{([\s\S]*?)\n  \};/.exec(VOZ)[1];   // A3-6b: el manifiesto, en red/voz/voz.ts
+  assert.match(m, /mundos: "todos"/, "de todo mundo (COMPONENTES §3.2)");
+  assert.match(m, /id: ID_VOZ,/); assert.match(VOZ, /export const ID_VOZ = "voz-guiada";/); assert.match(m, /presupuesto: \{ llamadas: 0, triangulos: 0 \}/); assert.match(m, /consume: \["Aparato", "Red", "Presencia", "VRX"\]/);
   assert.match(m, /bandera: \{ defecto: true, url: "voz" \}/); assert.match(m, /emite: \["voz:habla", "voz:estado"\]/);
 });

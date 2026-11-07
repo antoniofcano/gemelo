@@ -6,7 +6,7 @@ const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return s.slice(i, f); };
 const PV = new Function("\"use strict\";\n" + trozo(lee("apps/web/motor/46b_primera_vez.js"), "// [puro:inicio]", "// [puro:fin]") + "\nreturn PrimeraVezPuro;")();
-const VozPuro = new Function("\"use strict\";\n" + trozo(lee("apps/web/motor/45_voz.js"), "// [puro:inicio]", "// [puro:fin]") + "\nreturn VozPuro;")();
+const { VozPuro } = require("./_mundos");   // MU5-n (A3-6b): la voz vive en apps/web/src/red/voz/voz.ts; 45_voz.js es su talón
 const todo = t => t.lineas.map(l => l.t + " " + l.txt).join(" ") + " " + t.pie;
 
 test("PrimeraVezPuro: sale la primera vez (y solo a familias y miembros de un corro), no la segunda", () => {
@@ -40,7 +40,7 @@ test("PrimeraVezPuro: cómo cortar el micro (pantalla, táctil y VR) según puls
   assert.match(cm, /Deja de apretar el botón «Hablar»/); assert.match(cm, /tecla T/); assert.match(cm, /gatillo izquierdo/);
   assert.match(cc, /un minuto sin hablar/); assert.match(cc, /salir del corro/); assert.doesNotMatch(cp, /minuto/);
   // lo que dice es lo que de verdad hay en el motor: el botón «Silenciarme» y la tecla T (47_habla.js) y el minuto de silencio (SILENCIO_S = 60)
-  const hab = lee("apps/web/motor/47_habla.js"); assert.ok(hab.includes('"Silenciarme"') && hab.includes('"KeyT"') && hab.includes("var SILENCIO_S = 60"), "los gestos que nombra existen en el motor");
+  const hab = require("./_fuente").fuenteMotorJs("47_habla.js");   // A3-6b: el talón y su .ts, sin las anotaciones de tipos assert.ok(hab.includes('"Silenciarme"') && hab.includes('"KeyT"') && hab.includes("var SILENCIO_S = 60"), "los gestos que nombra existen en el motor");
 });
 
 test("PrimeraVezPuro: dice que no se graba (ADR-0026 §5, ADR-0032) y no promete lo que no hay", () => {

@@ -16,11 +16,12 @@ const { lee } = require("./_util");
 const { aparatoDe } = require("./_aparato");
 
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return s.slice(i, f); };
-const VOZ = lee("apps/web/motor/45_voz.js"), HAB = lee("apps/web/motor/47_habla.js"), COR = lee("apps/web/motor/47b_corro.js"), LAMJS = require("./_fuente").fuenteMotor("02d_laminas.js");
-const V = new Function("\"use strict\";\n" + trozo(VOZ, "// [puro:inicio]", "// [puro:fin]") + "\nreturn VozPuro;")();
-const H = new Function("\"use strict\";\n" + trozo(HAB, "// [puro:inicio]", "// [puro:fin]") + "\nreturn HablaPuro;")();
-const PURO = trozo(COR, "// [puro:inicio]", "// [puro:fin]"), MOTOR = trozo(COR, "// [motor:inicio]", "// [motor:fin]");
-const C = new Function("\"use strict\";\n" + PURO + "\nreturn CorroPuro;")();
+const COR = require("./_fuente").fuenteMotor("47b_corro.js"), LAMJS = require("./_fuente").fuenteMotor("02d_laminas.js");
+const { VozPuro: V, creaVoz } = require("./_mundos");   // MU5-n (A3-6b): la voz vive en apps/web/src/red/voz/voz.ts; 45_voz.js es su talón
+const { HablaPuro: H } = require("./_mundos");   // MU5-n (A3-6b): vive en apps/web/src/red/voz/habla.ts; 47_habla.js es un talón
+// MU5-n (A3-6b): el talón, apps/web/src/mundos/comun/corro.ts (el componente) y red/voz/corro.ts (CorroPuro); se prueban como los ve el legado (Mundos.<nombre>)
+const MOTOR = trozo(COR, "// [motor:inicio]", "// [motor:fin]");
+const { CorroPuro: C, creaCorro } = require("./_mundos");
 const LaminasPuro = new Function("\"use strict\";\n" + trozo(LAMJS, "// [puro:inicio]", "// [puro:fin]") + "\nreturn LaminasPuro;")();
 const ROLES = JSON.parse(lee("contratos/livekit-roles.json")), EVENTOS = JSON.parse(lee("contratos/eventos.json")), IFACES = JSON.parse(lee("contratos/interfaces.json"));
 const espera = (ms = 0) => new Promise(r => setTimeout(r, ms));
@@ -80,9 +81,7 @@ function montaVoz({ nombre = SALA, estadoToken = 200 } = {}) {
     fetch: (u, o) => { fetchs.push([u, o.method, JSON.parse(o.body)]); return Promise.resolve({ ok: estadoToken === 200, status: estadoToken, json: () => Promise.resolve(estadoToken === 200 ? { url: "/rtc", token: "tk", sala: nombre, papel: "miembro" } : { error: "sin_corro", mensaje: "No estás en ningún corro." }) }); },
     MediaStream: function () {}, PannerNode: function () {}, THREE: { Quaternion: function () { this.setFromAxisAngle = () => this; this.multiply = () => this; }, Vector3: function () { this.copy = () => this; } },
     camera: { getWorldPosition() {}, getWorldQuaternion() {} }, VRX: { on: false } };
-  const nombres = Object.keys(g);
-  const VozMotor = new Function(...nombres, "\"use strict\";\n" + trozo(VOZ, "// [puro:inicio]", "// [puro:fin]") + trozo(VOZ, "// [motor:inicio]", "// [motor:fin]") + "\nreturn VozMotor;")(...nombres.map(k => g[k]));
-  return { api: VozMotor(n, R, { cabeza: () => null }), salas, fetchs, emitidos };
+  return { api: creaVoz(Object.assign({ consola: g.console }, g), n, R, { cabeza: () => null }), salas, fetchs, emitidos };   // A3-6b: las dependencias del talón, por argumento
 }
 
 test("VozMotor: Voz.entraCorro pide el token del corro (POST /api/presencia/corros/token) y se une con la clave «corro» de la red; solo si la sala es corro-<id>", async () => {
@@ -301,9 +300,8 @@ function montaCorro({ api = true, srvOpc = {}, vr = false, identidades = { [ANA_
     Laminas: { abre: o => { laminas[o.id] = o; return true; }, cierra: (id, mot) => { const o = laminas[id]; delete laminas[id]; if (o && o.alCierra) o.alCierra(mot); return true; }, hay: id => !!laminas[id], repinta: () => true },
     Entidades: { registra: d => { tipos[d.tipo] = d; return () => { delete tipos[d.tipo]; }; } },
     THREE: threeFalso(cuenta), scene: { add: () => { cuenta.escena++; }, remove: () => { cuenta.escena--; } }, camera: { getWorldQuaternion: q => q }, TextDecoder: class { decode(b) { return Buffer.from(b).toString("utf8"); } } };
-  const nombres = Object.keys(g);
-  const CorroMotor = new Function(...nombres, "\"use strict\";\n" + PURO + MOTOR + "\nreturn CorroMotor;")(...nombres.map(k => g[k]));
-  const m = CorroMotor(n, R, P, Vz);
+  g.Materiales = require("./_materiales").fabrica(g.THREE).Materiales;   // A3-6b (segundo commit): los halos y los iconos, por la fábrica de verdad (con el three de mentira)
+  const m = creaCorro(g, n, R, P, Vz);   // A3-6b: las mismas dependencias, por argumento (las que da el talón)
   const tic = async (dt = 0.25, k = 1) => { for (let i = 0; i < k; i++) { m.tarde(dt); await espera(); } await espera(); };
   return { m, srv, aj, marca, pres, voz, tema, visor, laminas, filas, tipos, emitidos, avisosHud, cuenta, VRX, n, tic, g, gancho: (a, x) => g.window.__corro(a, x),
     acciones: (id, d, modo = "pantalla") => pres.acc.flatMap(fn => fn(id, { alias: "Ana", distancia: d, modo })) };
@@ -487,10 +485,11 @@ test("en VR: la invitación es una lámina con dos zonas (izquierda «Ahora no»
 });
 
 test("el manifiesto, los eventos del catálogo y las interfaces: «corro-voz» con su bandera, presupuesto y eventos; sin innerHTML, sin otros hosts, sin grabar", () => {
-  const man = trozo(COR, "Componentes.registra({", "\n  });");
-  assert.match(man, /id: "corro-voz"/); assert.match(man, /bandera: \{ defecto: true, url: "corro" \}/); assert.match(man, /presupuesto: \{ llamadas: 3, triangulos: 26, texturasMB: 6 \}/);
-  assert.deepStrictEqual(EVENTOS.eventos["corro:estado"].emiten, ["47b_corro"]);
-  for (const e of ["voz:habla", "voz:estado", "depura:lineas"]) assert.ok(EVENTOS.eventos[e].escuchan.includes("47b_corro"), e);
+  const man = trozo(COR, "export function manifiestoCorro(", "\n  };");   // A3-6b: el manifiesto, en mundos/comun/corro.ts
+  assert.match(man, /mundos: "todos"/); assert.match(COR, /export const ID_CORRO = "corro-voz";/);
+  assert.match(man, /id: ID_CORRO,/); assert.match(man, /bandera: \{ defecto: true, url: "corro" \}/); assert.match(man, /presupuesto: \{ llamadas: 3, triangulos: 26, texturasMB: 6 \}/);
+  assert.deepStrictEqual(EVENTOS.eventos["corro:estado"].emiten, ["mundos/comun/corro"]);
+  for (const e of ["voz:habla", "voz:estado", "depura:lineas"]) assert.ok(EVENTOS.eventos[e].escuchan.includes("mundos/comun/corro"), e);
   assert.ok(EVENTOS.eventos["voz:estado"].datos.properties.papel.enum.includes("miembro")); assert.ok("corro" in EVENTOS.eventos["voz:estado"].datos.properties);
   for (const k of ["accionesPersona", "distancia", "repintaGente"]) assert.ok(IFACES.apis_de_componentes["presencia-compartida"].miembros.includes(k), k);
   for (const k of ["entraCorro", "silencia"]) assert.ok(IFACES.apis_de_componentes["voz-guiada"].miembros.includes(k), k);

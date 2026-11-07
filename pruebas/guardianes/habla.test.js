@@ -15,11 +15,12 @@ const contratoModulos = require(path.join(__dirname, "..", "contrato_modulos.js"
 
 const sinCabecera = s => s.startsWith(contratoModulos.MARCA_I) ? s.slice(s.indexOf(contratoModulos.MARCA_F) + contratoModulos.MARCA_F.length + 1) : s;
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return s.slice(i, f); };
-const HAB = lee("apps/web/motor/47_habla.js"), GUI = lee("apps/web/motor/46_guiada.js"), VRJS = require("./_fuente").fuenteMotor("29_vr.js"), AJU = require("./_fuente").fuenteMotor("33_ajustes.js");
-const PURO = trozo(HAB, "// [puro:inicio]", "// [puro:fin]"), MOTOR = trozo(HAB, "// [motor:inicio]", "// [motor:fin]");
-const H = new Function("\"use strict\";\n" + PURO + "\nreturn HablaPuro;")();
+const HAB = require("./_fuente").fuenteMotor("47_habla.js"), GUI = lee("apps/web/motor/46_guiada.js"), VRJS = require("./_fuente").fuenteMotor("29_vr.js"), AJU = require("./_fuente").fuenteMotor("33_ajustes.js");
+// MU5-n (A3-6b): el talón, apps/web/src/mundos/comun/habla.ts (el componente) y red/voz/habla.ts (HablaPuro); se prueban como los ve el legado (Mundos.<nombre>)
+const MOTOR = trozo(HAB, "// [motor:inicio]", "// [motor:fin]");
+const { HablaPuro: H, creaHabla } = require("./_mundos");
 const PVJS = lee("apps/web/motor/46b_primera_vez.js"), PV = new Function("\"use strict\";\n" + trozo(PVJS, "// [puro:inicio]", "// [puro:fin]") + "\nreturn PrimeraVezPuro;")();
-const VOZJS = lee("apps/web/motor/45_voz.js"), VozPuro = new Function("\"use strict\";\n" + trozo(VOZJS, "// [puro:inicio]", "// [puro:fin]") + "\nreturn VozPuro;")();
+const { VozPuro } = require("./_mundos");   // MU5-n (A3-6b): la voz vive en apps/web/src/red/voz/voz.ts; 45_voz.js es su talón
 const AjustesPuro = new Function("\"use strict\";\n" + trozo(AJU, "// [puro:inicio]", "// [puro:fin]") + "\nreturn AjustesPuro;")();
 const EVENTOS = JSON.parse(lee("contratos/eventos.json")), IFACES = JSON.parse(lee("contratos/interfaces.json"));
 const espera = (ms = 0) => new Promise(r => setTimeout(r, ms));
@@ -156,7 +157,7 @@ function montaHabla({ papel = "familia", puede = false, sala = "guiada-12", mano
     } };
   Object.assign(g, { PrimeraVezPuro: PV, ConfigPuro: { prefijoApi: () => "/api" }, D: {}, location: { search: "" } });   // con servidor: sin él, el consentimiento no se pregunta
   const nombres = Object.keys(g);
-  const HablaMotor = new Function(...nombres, "\"use strict\";\n" + PURO + MOTOR + "\nreturn HablaMotor;")(...nombres.map(k => g[k]));
+  const HablaMotor = (n, Vz, Gd) => creaHabla(g, n, Vz, Gd);   // A3-6b: las mismas dependencias, por argumento (las que da el talón)
   const api = HablaMotor(n, Vz, Gd);
   return { guardado, escribe, api, voz, guiada, emitidos, limpias, fetchs, consFetchs, cons, ajustesPinta, aplicas, filas, laminas, teclas, visor, ventana, VRX, n, tic: (dt = 0.25) => api.tarde(dt),
     caja: () => por(visor, "hablaCaja"), boton: () => por(visor, "hablaBoton"), silencio: () => por(visor, "hablaSilencio"), estado: () => por(visor, "hablaEstado"),
@@ -333,11 +334,11 @@ test("HablaMotor: la depuración dice el micro, el modo y la mano", () => {
 
 // ---------- el manifiesto, los eventos, la api «Guiada» y el enganche de 29_vr.js
 test("el manifiesto, los eventos del catálogo y la api de la guiada: «habla-guiada» con su bandera, presupuesto y eventos", () => {
-  const m = /Componentes\.registra\(\{([\s\S]*?)\n  \}\);/.exec(HAB)[1];
-  assert.match(m, /id: "habla-guiada"/); assert.match(m, /bandera: \{ defecto: true, url: "habla" \}/); assert.match(m, /presupuesto: \{ llamadas: 1, triangulos: 2, texturasMB: 4 \}/);
+  const m = /export function manifiestoHabla\(dp: DepsHabla\) \{\n  return \{([\s\S]*?)\n  \};/.exec(HAB)[1];   // A3-6b: el manifiesto, en mundos/comun/habla.ts
+  assert.match(m, /id: ID_HABLA,/); assert.match(HAB, /export const ID_HABLA = "habla-guiada";/); assert.match(m, /mundos: "todos"/); assert.match(m, /bandera: \{ defecto: true, url: "habla" \}/); assert.match(m, /presupuesto: \{ llamadas: 1, triangulos: 2, texturasMB: 4 \}/);
   assert.match(m, /consume: \["Aparato", "Voz", "Guiada"/);
-  for (const e of ["habla:micro", "habla:mano"]) assert.deepStrictEqual(EVENTOS.eventos[e].emiten, ["47_habla"], e);
-  for (const e of ["voz:estado", "guiada:palabra", "depura:lineas"]) assert.ok(EVENTOS.eventos[e].escuchan.includes("47_habla"), e);
+  for (const e of ["habla:micro", "habla:mano"]) assert.deepStrictEqual(EVENTOS.eventos[e].emiten, ["mundos/comun/habla"], e);
+  for (const e of ["voz:estado", "guiada:palabra", "depura:lineas"]) assert.ok(EVENTOS.eventos[e].escuchan.includes("mundos/comun/habla"), e);
   assert.deepStrictEqual(EVENTOS.eventos["habla:micro"].datos.properties.fuente.enum, ["boton", "tecla", "gatillo", "panel", "auto", "consentimiento", "silencio"], "consentimiento (F3j, al retirarlo) y silencio (F3k-2, un minuto sin hablar en un corro)");
   // 46 da lo que 47 lee: quién eres, el evento y la cola
   assert.match(GUI, /expone: \["Guiada"\]/); assert.match(GUI, /return \{ evento: ev, yo: yoId,/);
@@ -359,8 +360,10 @@ test("T está libre en Teclas (nadie la tiene reservada ni registrada) y el comp
   const nucleo = lee("apps/web/motor/02c_componentes.js"), reserv = /RESERVADAS = \{([\s\S]*?)\};/.exec(nucleo)[1];
   assert.ok(!/KeyT/.test(reserv), "KeyT no está reservada");
   const fs = require("node:fs"), dir = path.join(__dirname, "..", "..", "apps", "web", "motor");
-  const quien = fs.readdirSync(dir).filter(f => /\.js$/.test(f) && /KeyT/.test(fs.readFileSync(path.join(dir, f), "utf8"))); assert.deepStrictEqual(quien, ["47_habla.js"], "solo 47_habla toca KeyT");
-  const src = sinCabecera(HAB).replace(/\/\/.*$/gm, "");
+  const quien = fs.readdirSync(dir).filter(f => /\.js$/.test(f) && /KeyT/.test(fs.readFileSync(path.join(dir, f), "utf8"))); assert.deepStrictEqual(quien, [], "en el motor nadie toca KeyT (A3-6b: 47_habla es un talón)");
+  const enSrc = [], SRC = path.join(dir, "..", "src"), recorre = d => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) recorre(p); else if (/\.ts$/.test(e.name) && !/\.test\.ts$/.test(e.name) && /KeyT/.test(fs.readFileSync(p, "utf8"))) enSrc.push(path.relative(SRC, p).split(path.sep).join("/")); } };
+  recorre(SRC); assert.deepStrictEqual(enSrc, ["mundos/comun/habla.ts"], "solo el componente de hablar toca KeyT");
+  const src = MOTOR.replace(/\/\/.*$/gm, "");   // A3-6b: solo el motor (en el talón y en la interfaz de dependencias, fetch es el del legado)
   assert.ok(!/innerHTML|insertAdjacentHTML|outerHTML/.test(src)); assert.ok(!/MediaRecorder|Egress|captureStream|getUserMedia/.test(src), "no toca el micrófono: lo abre Voz");
   for (const u of src.match(/fetch\(([^,]+)/g) || []) assert.match(u, /"\/api\/presencia\/guiadas\/"|H\.URL_CONSENTIMIENTO/, "solo su api, del mismo origen");
 });
@@ -495,8 +498,8 @@ test("HablaMotor F3j en VR: el aviso es una lámina con dos zonas (izquierda «A
 });
 
 test("F3j: el motor no habla con nada más que con su api, no lleva la versión por su cuenta (es la de la api) y el manifiesto declara el evento nuevo", () => {
-  const m = /Componentes\.registra\(\{([\s\S]*?)\n  \}\);/.exec(HAB)[1];
-  assert.match(m, /emite: \["habla:micro", "habla:mano", "habla:consentimiento"\]/); assert.deepStrictEqual(EVENTOS.eventos["habla:consentimiento"].emiten, ["47_habla"]);
+  const m = /export function manifiestoHabla\(dp: DepsHabla\) \{\n  return \{([\s\S]*?)\n  \};/.exec(HAB)[1];   // A3-6b: el manifiesto, en mundos/comun/habla.ts
+  assert.match(m, /emite: \["habla:micro", "habla:mano", "habla:consentimiento"\]/); assert.deepStrictEqual(EVENTOS.eventos["habla:consentimiento"].emiten, ["mundos/comun/habla"]);
   assert.deepStrictEqual(EVENTOS.eventos["habla:consentimiento"].datos.properties.accion.enum, ["acepta", "rechaza", "retira"]);
   assert.strictEqual(H.URL_CONSENTIMIENTO, "/api/presencia/voz/consentimiento");
   const ajustes = require("./_fuente").fuenteMotor("33_ajustes.js"); assert.match(ajustes, /c\.alClic \|\| ACCIONES\[c\.id\]/);

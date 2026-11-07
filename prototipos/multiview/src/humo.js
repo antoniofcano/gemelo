@@ -24,7 +24,7 @@ function panelVR(THREE, camara) {
 
 export async function arranca(THREE, fabrica, modoBuild) {
   const p = lee(location.search, modoBuild), $ = id => document.getElementById(id);
-  const estado = $("estado"), botonMedir = $("medir"), botonCopiar = $("copiar"), salida = $("resultado");
+  const estado = $("estado"), botonMedir = $("medir"), botonCopiar = $("copiar"), botonBaja = $("descargar"), salida = $("resultado");
   const E = creaEscena(THREE, p, fabrica.sombreador);
   const lienzo = document.createElement("canvas"); document.body.appendChild(lienzo);
   const R = await fabrica.crea(THREE, p, lienzo);
@@ -40,12 +40,12 @@ export async function arranca(THREE, fabrica, modoBuild) {
 
   const sondaIni = sonda(R.gl);
   let sesion = null, ultimo = "";
-  const contexto = () => ({ fecha: new Date().toISOString().slice(0, 19).replace("T", " "), renderizador: fabrica.renderizador, p, plan: E.plan, sonda: sondaIni,
+  const contexto = () => ({ fecha: new Date().toISOString().slice(0, 19).replace("T", " "), renderizador: fabrica.renderizador + " · three r" + THREE.REVISION, p, plan: E.plan, sonda: sondaIni,
     sesion, ua: navigator.userAgent, vr: renderer.xr.isPresenting, seg: p.seg, calent: p.calent });
   const muestra = txt => {
     ultimo = txt; salida.textContent = txt; console.log(txt);
     panel.pinta(txt.split("\n"));
-    botonCopiar.hidden = renderer.xr.isPresenting;
+    botonCopiar.hidden = botonBaja.hidden = renderer.xr.isPresenting;
   };
   const medidor = creaMedidor(p.calent, p.seg, r => muestra(texto(r, contexto())));
   const cabecera = () => texto(null, contexto()).split("\n").slice(0, -1);
@@ -59,6 +59,12 @@ export async function arranca(THREE, fabrica, modoBuild) {
     try { await navigator.clipboard.writeText(ultimo); botonCopiar.textContent = "Copiado"; }
     catch (e) { const r = document.createRange(); r.selectNodeContents(salida); const s = getSelection(); s.removeAllRanges(); s.addRange(r); botonCopiar.textContent = "Seleccionado: copia a mano"; }
     setTimeout(() => { botonCopiar.textContent = "Copiar"; }, 2500);
+  };
+  // «Descargar»: el mismo texto como fichero local (Blob, sin red), por si el portapapeles no deja
+  botonBaja.onclick = () => {
+    const a = document.createElement("a"), url = URL.createObjectURL(new Blob([ultimo], { type: "text/plain;charset=utf-8" }));
+    a.href = url; a.download = "humo-" + p.modo + "-n" + p.n + (p.mv ? "" : "-sinmv") + ".txt"; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   renderer.xr.addEventListener("sessionstart", () => {
@@ -76,7 +82,7 @@ export async function arranca(THREE, fabrica, modoBuild) {
   renderer.xr.addEventListener("sessionend", () => {
     if (medidor.estado !== "hecho") medidor.para();
     estado.textContent = ultimo ? "Fuera de VR. Resultado abajo: «Copiar» y pégalo en el chat." : "Fuera de VR, sin medida completa.";
-    botonCopiar.hidden = !ultimo;
+    botonCopiar.hidden = botonBaja.hidden = !ultimo;
   });
   // en VR, el gatillo repite la medida (cuando la anterior terminó)
   for (let i = 0; i < 2; i++) renderer.xr.getController(i).addEventListener("select", () => {

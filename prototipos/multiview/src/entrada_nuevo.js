@@ -1,5 +1,5 @@
-// modo nuevo: three 0.186.1, WebGPURenderer({ forceWebGL: true, multiview }) (src/renderers/common/Renderer.js:105 «multiview = false» y :730
-// «this.xr = new XRManager( this, multiview )»; XRManager.js:1253 lo enciende si hay `OVR_multiview2` y capas). &mv=0: el mismo renderizador sin
+// modo nuevo: three 0.187.0, WebGPURenderer({ forceWebGL: true, multiview }) (src/renderers/common/Renderer.js:179 «multiview = false» y :824
+// «this.xr = new XRManager( this, multiview )»; XRManager.js:1256 lo enciende si hay `OVR_multiview2` y capas). &mv=0: el mismo renderizador sin
 // multiview (separa el coste del renderizador nuevo del ahorro del multiview). &directo=0: sin DirectRenderPipeline (con la pasada de salida
 // intermedia que añade con salida sRGB, MULTIVIEW.md §2.4). El sombreador propio, en TSL: el WebGPURenderer no ejecuta ShaderMaterial.
 import * as THREE from "three/webgpu";

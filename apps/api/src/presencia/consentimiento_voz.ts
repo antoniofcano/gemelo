@@ -2,7 +2,7 @@
 // auditoría de voz.
 //  · CONSENTIMIENTO. Antes de que una familia hable en una visita guiada, el hogar acepta un aviso (qué se trata, que no se graba, que puede dejar de hablar
 //    cuando quiera, dónde está la privacidad). Se guarda UNA fila por hogar con la versión del aviso aceptada (tabla voz_consentimientos, migración 0018).
-//    VOZ_AVISO_VERSION es la versión VIGENTE del texto: el texto vive en el motor (apps/web/motor/47_habla.js, HablaPuro.AVISO) y un guardián comprueba que
+//    VOZ_AVISO_VERSION es la versión VIGENTE del texto: el texto vive en el motor (apps/web/src/red/voz/habla.ts, HablaPuro.AVISO; antes 47_habla.js) y un guardián comprueba que
 //    las dos versiones coinciden. Si cambia el texto, se sube la versión en los dos sitios y todos los hogares vuelven a ver el aviso (su fila, de otra
 //    versión, ya no vale). Retirar = borrar la fila. Quién manda es esta api: la palabra no se da a un hogar sin consentimiento vigente (voz.ts, Palabra).
 //  · PLAZO (decisión 164, como la 100: «la campaña y un año más»). La campaña de aceituna va de octubre a septiembre; una fila de la auditoría de voz se

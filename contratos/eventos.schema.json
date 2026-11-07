@@ -20,8 +20,8 @@
           "descripcion": { "type": "string", "minLength": 10 },
           "datos": { "type": "object", "$comment": "esquema JSON (2020-12) de lo que lleva el evento; {} si no lleva nada" },
           "ejemplo": { "$comment": "MU2-5: unos datos de ejemplo que cumplen «datos» (lo comprueba componentes.test.js; las pruebas de Vitest los usan como fixture)" },
-          "emiten": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^(?:[0-9]{2}[a-z]{0,2}_[a-z0-9_]+|nucleo/[a-z][a-z0-9-]*|mundos/[a-z][a-z0-9-]*(?:/[a-z][a-z0-9-]*)*|red/[a-z][a-z0-9-]*|ui/[a-z][a-z0-9-]*)$", "$comment": "módulo de apps/web/motor/ sin .js, o nucleo/<x> para apps/web/src/nucleo/<x>.ts (MU2-5) y mundos/<ruta> para apps/web/src/mundos/<ruta>.ts (MU5-n), red/<x> y ui/<x> (A3-7a, apps/web/src/ui/<x>.ts): lo que migró a TypeScript" } },
-          "escuchan": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^(?:[0-9]{2}[a-z]{0,2}_[a-z0-9_]+|nucleo/[a-z][a-z0-9-]*|mundos/[a-z][a-z0-9-]*(?:/[a-z][a-z0-9-]*)*|red/[a-z][a-z0-9-]*|ui/[a-z][a-z0-9-]*)$" } }
+          "emiten": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^(?:[0-9]{2}[a-z]{0,2}_[a-z0-9_]+|nucleo/[a-z][a-z0-9-]*|mundos/[a-z][a-z0-9-]*(?:/[a-z][a-z0-9-]*)*|red/[a-z][a-z0-9-]*(?:/[a-z][a-z0-9-]*)*|ui/[a-z][a-z0-9-]*)$", "$comment": "módulo de apps/web/motor/ sin .js, o nucleo/<x> para apps/web/src/nucleo/<x>.ts (MU2-5) y mundos/<ruta> o red/<ruta> para apps/web/src/mundos/<ruta>.ts y apps/web/src/red/<ruta>.ts (MU5-n; red/<carpeta>/<x> desde A3-6b, la voz), y ui/<x> para apps/web/src/ui/<x>.ts (A3-7a, la interfaz): lo que migró a TypeScript" } },
+          "escuchan": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^(?:[0-9]{2}[a-z]{0,2}_[a-z0-9_]+|nucleo/[a-z][a-z0-9-]*|mundos/[a-z][a-z0-9-]*(?:/[a-z][a-z0-9-]*)*|red/[a-z][a-z0-9-]*(?:/[a-z][a-z0-9-]*)*|ui/[a-z][a-z0-9-]*)$" } }
         }
       }
     }

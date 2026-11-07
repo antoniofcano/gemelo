@@ -10,7 +10,7 @@ Una fila por hogar **y ámbito** en `voz_consentimientos` (clave `hogar_id, ambi
 
 ## La versión del texto
 
-- **El texto vive en el motor** (`HablaPuro.AVISO` en `47_habla.js`) y lleva `AVISO_VERSION`. La api tiene `VOZ_AVISO_VERSION`. **Tienen que ser el mismo número** (lo comprueba `voz_consentimiento.test.ts`).
+- **El texto vive en el motor** (`HablaPuro.AVISO` en `apps/web/src/red/voz/habla.ts`; antes `47_habla.js`, MU5-n A3-6b) y lleva `AVISO_VERSION`. La api tiene `VOZ_AVISO_VERSION`. **Tienen que ser el mismo número** (lo comprueba `voz_consentimiento.test.ts`).
 - Si cambia el texto, **se suben las dos en el mismo commit**: el consentimiento guardado con la versión vieja deja de valer (`aceptada: false`, `version_aceptada` distinta) y el aviso se vuelve a pedir a todos.
 - `PUT` lleva la versión que el cliente enseñó; si no es la vigente (una pestaña vieja), `409 version_distinta` y no se guarda nada.
 
@@ -34,7 +34,7 @@ Decisiones (ADR-0032): **210** (apagada por defecto, se activa por cuenta en Con
 
 - **Rutas:** las mismas, con `?ambito=cercania`: `GET`, `PUT { version, adulto: true }` y `DELETE /api/presencia/voz/consentimiento?ambito=cercania`. Sin `ambito`, `guiada` (como antes). `PUT` sin `adulto: true` → `409 falta_declaracion`; con otra versión → `409 version_distinta`. Auditoría `voz.consentimiento_dado` / `voz.consentimiento_retirado` con `{ version, ambito: "cercania" }`.
 - **Quién manda: la api.** Sin consentimiento `cercania` vigente, `PUT /api/presencia/corros/ajuste { activa: true }` da `409 sin_consentimiento`, nadie te puede invitar (`no_disponible`), no puedes invitar (`no_puedes`) y **no hay token** de la sala de un corro. **Retirarlo** borra la fila, **apaga el ajuste** y te **saca al momento** de tu corro (RemoveParticipant; si LiveKit no responde, tu token ya no se renueva).
-- **El texto vive en el motor** (F3k-3: `CorroPuro.AVISO` en `apps/web/motor/47b_corro.js`, como `HablaPuro.AVISO` para la guiada) con su `AVISO_VERSION` de cercanía; **tiene que ser el mismo número** que `VOZ_CERCANIA_AVISO_VERSION` (hoy, 1). Lo comparan `pruebas/guardianes/corro.test.js` (motor, api y este fichero; y que cada frase del motor está aquí tal cual) y `apps/api/pruebas/unidad/corro.test.ts` (api y este fichero). El motor lo enseña en Configuración → Voz al marcar la casilla y en la fila «Voz por cercanía» del panel de VR (pestaña «Comodidad»).
+- **El texto vive en el motor** (F3k-3: `CorroPuro.AVISO` en `apps/web/src/red/voz/corro.ts`, antes `47b_corro.js`, como `HablaPuro.AVISO` para la guiada) con su `AVISO_VERSION` de cercanía; **tiene que ser el mismo número** que `VOZ_CERCANIA_AVISO_VERSION` (hoy, 1). Lo comparan `pruebas/guardianes/corro.test.js` (motor, api y este fichero; y que cada frase del motor está aquí tal cual) y `apps/api/pruebas/unidad/corro.test.ts` (api y este fichero). El motor lo enseña en Configuración → Voz al marcar la casilla y en la fila «Voz por cercanía» del panel de VR (pestaña «Comodidad»).
 - **Base:** consentimiento (como la 163), específico de este ámbito: aceptar el de la guiada no vale para la cercanía ni al revés. Cada invitación aceptada es además un consentimiento por corro, que lo refuerza pero no lo sustituye (EIPD-VOZ §13.4).
 
 ### Aviso «cercania», versión 1 — texto PROPUESTO (BORRADOR pendiente de la asesoría)
@@ -68,5 +68,5 @@ Lo enseña el motor antes de activar la voz por cercanía (pantalla: diálogo mo
 
 - **Dónde se guarda que ya se vio:** en el aparato (ajuste `habla.tarjeta`, `localStorage`), no en la api: no es un dato del hogar ni hace falta que viaje; otro aparato la enseña una vez. Volver a leerla: Configuración → Hablar → «Cómo funciona mi micrófono» y, en VR, ese botón en la fila «Micrófono» del panel.
 - **Quién no la ve:** el guía y la oficina (hablan por su cargo, como con el aviso).
-- **Código:** `apps/web/motor/46b_primera_vez.js` (texto y reglas, puro) y `47_habla.js` (cuándo sale y cómo se pinta: diálogo en pantalla, lámina en VR). La cifra de 20 m es la de `45_voz.js` (`DIST_CORRO.corte`); `primera_vez.test.js` las compara.
+- **Código:** `apps/web/motor/46b_primera_vez.js` (texto y reglas, puro) y `47_habla.js` (cuándo sale y cómo se pinta: diálogo en pantalla, lámina en VR). La cifra de 20 m es la de `VozPuro` (`DIST_CORRO.corte`, en `apps/web/src/red/voz/voz.ts`; antes `45_voz.js`); `primera_vez.test.js` las compara.
 - **Nota de comodidad (regla 11):** probado solo en Node (lógica y montaje con DOM y lámina de mentira; que el texto cabe en el lienzo de VR, con una medida aproximada). **Chrome, iPhone y Quest: NO PROBADO** (tamaños de botón, foco, legibilidad de la lámina con el casco, que el toque con el rayo en la franja inferior la cierre).
