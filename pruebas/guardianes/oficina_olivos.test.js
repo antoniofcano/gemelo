@@ -72,7 +72,7 @@ test("los interruptores de componentes son ids de manifiestos que existen en el 
   const P = await importa("olivos_puro.js");
   // MU5-n: el motor con lo migrado a src/ (_fuente.js); un manifiesto de TypeScript lleva su id en una constante (`export const ID_X = "<id>";`)
   const motor = fs.readdirSync(path.join(RAIZ, "apps", "web", "motor")).filter(f => f.endsWith(".js")).map(f => require("./_fuente").fuenteMotor(f)).join("\n");
-  for (const c of P.COMPONENTES) assert.ok(new RegExp('id: "' + c.id + '", version|export const ID_\\w+ = "' + c.id + '";').test(motor), c.id + " es un componente del motor");
+  for (const c of P.COMPONENTES) assert.ok(new RegExp('id: "' + c.id + '", version|(?:export )?const ID_\\w+ = "' + c.id + '";').test(motor), c.id + " es un componente del motor");
   assert.strictEqual(new Set(P.COMPONENTES.map(c => c.id)).size, P.COMPONENTES.length);
 });
 

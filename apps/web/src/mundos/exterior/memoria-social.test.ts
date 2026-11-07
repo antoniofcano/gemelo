@@ -46,7 +46,7 @@ describe("lo social, los juegos y la oficina del exterior, montados y liberados"
     const sala = { escucha: () => () => { /* doble */ } };
     const previos = [dobleDe("red-salas", "Red", { sala: () => sala }), dobleDe("presencia-compartida", "Presencia", { yo: () => ({ oficial: false }), sala: () => "general", mensaje() { /* doble */ } }),
       manifiestoCaeLaCosecha({ Bus: bus }),
-      manifiestoJuegos({ D: { base: "/teselas/x/", finca_id: "cerro" }, Pausa: { pon: (k: string) => { pausas.add(k); return true; }, quita: (k: string) => { pausas.delete(k); }, activa: () => pausas.size > 0 },
+      manifiestoJuegos({ D: { base: "/teselas/x/", finca_id: "finca-x" }, Pausa: { pon: (k: string) => { pausas.add(k); return true; }, quita: (k: string) => { pausas.delete(k); }, activa: () => pausas.size > 0 },
         ConfigPuro: { prefijoApi: () => "/api/" }, Config: { tablaEpocas: () => null }, Teclas: { registra: () => () => { /* doble */ } }, Laminas, Hud, Ventanas, VRX: { on: false }, PanelVR: undefined } as A),
       manifiestoPersonalizacion({ THREE, D: { base: "/teselas/hituelo/", finca_id: "hituelo" }, Bus: bus, Laminas, Entidades, Usables: { refresca() { /* doble */ } },
         lienzo: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }) }, camera: { position: new THREE.Vector3() }, Estado: { exag: 1 }, HazasPuro: { prefijoApi: () => "/api/" },

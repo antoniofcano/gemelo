@@ -23,7 +23,7 @@ function monta(respuesta: () => Promise<unknown>) {
   vi.stubGlobal("location", { search: "" });
   const cuerpo = m.el("div"), contenedor = m.el("section"); contenedor.hidden = true; contenedor.appendChild(cuerpo);
   const dp = {
-    D: { base: "/teselas/x/", finca_id: "cerro" }, Pausa: { pon: (k: string) => { pausas.add(k); return true; }, quita: (k: string) => { pausas.delete(k); }, activa: () => pausas.size > 0 },
+    D: { base: "/teselas/x/", finca_id: "finca-x" }, Pausa: { pon: (k: string) => { pausas.add(k); return true; }, quita: (k: string) => { pausas.delete(k); }, activa: () => pausas.size > 0 },
     ConfigPuro: { prefijoApi: () => "/api/" }, Config: { tablaEpocas: () => null, epocaDeFecha: () => null }, Teclas: { registra: () => () => { quitados.tecla++; } },
     Laminas: { abre: () => true, cierra: () => true, hay: () => false, repinta() { /* doble */ }, info: () => null }, Hud: { icono: () => () => { quitados.icono++; }, alterna() { /* doble */ } },
     Ventanas: { registra: (_id: string, d: { construye(c: unknown): void }) => { d.construye(cuerpo); return () => { quitados.ventana++; }; }, abierta: () => null, cierra() { /* doble */ } },
