@@ -56,6 +56,7 @@ const TS_DE = {
   "24_pantalla.js": ["apps/web/src/ui/pantalla.ts", "apps/web/src/mundos/comun/transicion.ts"],   // el menú y la pantalla completa (ui/); la transición del mapa al paseo (comun/)
   // A3-7b1: el contenido del mundo, del exterior (apps/web/src/mundos/exterior/), que se lee como JavaScript sin tipos ni «dp.» (comoJsUi), como la interfaz
   "13b_hazas.js": "apps/web/src/mundos/exterior/hazas.ts",
+  "53_mundo_hoy.js": "apps/web/src/mundos/exterior/mundo-hoy.ts",
   // A3-2a: 07ab vive en varios ficheros (la escalera, el horneado, la cola, el sombreado, el lote y el módulo): se leen todos, en este orden
   // A3-6c: la VR y la locomoción, de todo mundo (apps/web/src/mundos/comun/)
   "36_mandos.js": "apps/web/src/mundos/comun/mandos.ts",

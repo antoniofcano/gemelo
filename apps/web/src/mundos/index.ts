@@ -144,3 +144,5 @@ export type { DepsTransicion, Transicion } from "./comun/transicion.ts";
 // A3-7b1 (MU5-n): el contenido del mundo, del EXTERIOR (parcelas, hazas, historia, vista de familia, fichas del tiempo y del mundo, «Hoy en el campo»), cada uno con su libera() de verdad.
 export { ID_HAZAS, HazasPuro, creaHazas, manifiestoHazas } from "./exterior/hazas.ts";
 export type { DepsHazas } from "./exterior/hazas.ts";
+export { ID_MUNDO_HOY, MundoHoyPuro, manifiestoMundoHoy } from "./exterior/mundo-hoy.ts";
+export type { DepsMundoHoy } from "./exterior/mundo-hoy.ts";

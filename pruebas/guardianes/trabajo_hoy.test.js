@@ -12,7 +12,7 @@ const { RAIZ, fs, lee } = require("./_util");
 const Mundos = require("./_mundos"), { fuenteMotor } = require("./_fuente"), { conFabrica } = require("./_materiales");   // 54 es un talón (MU5-n, A3-5): su código vive en mundos/exterior/trabajo-hoy.ts
 
 const trozo = (fuente, ini, fin) => { const i = fuente.indexOf(ini), f = fuente.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini); return fuente.slice(i, f); };
-const F53 = lee("apps/web/motor/53_mundo_hoy.js"), F54 = lee("apps/web/motor/54_trabajo_hoy.js"), F54TS = fuenteMotor("54_trabajo_hoy.js");
+const F53 = fuenteMotor("53_mundo_hoy.js"), F54 = lee("apps/web/motor/54_trabajo_hoy.js"), F54TS = fuenteMotor("54_trabajo_hoy.js");
 const MH = new Function("\"use strict\";\n" + trozo(F53, "// [puro:inicio]", "// [puro:fin]") + "\nreturn MundoHoyPuro;")();
 const P = Mundos.TrabajoHoyPuro;
 const EJEMPLO = JSON.parse(lee("contratos/mundo-hoy-ejemplo.json"));
@@ -171,6 +171,6 @@ test("higiene: sin fetch, sin HTML, sin personas; el evento está en el catálog
   const codigo = F54TS.split("\n").filter(l => !/^\s*\/\//.test(l)).join("\n");
   assert.ok(!/fetch\(|innerHTML|eval\(|new Function|XMLHttpRequest|document\./.test(codigo));
   const ev = JSON.parse(lee("contratos/eventos.json")).eventos["mundo:hoy"];
-  assert.ok(ev.escuchan.includes("mundos/exterior/trabajo-hoy") && ev.emiten.includes("53_mundo_hoy"));
+  assert.ok(ev.escuchan.includes("mundos/exterior/trabajo-hoy") && ev.emiten.includes("mundos/exterior/mundo-hoy"));
   assert.ok(ev.datos.properties.trabajo, "el payload documenta «trabajo»");
 });

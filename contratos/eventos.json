@@ -653,7 +653,7 @@
       ]
     },
     "mundo:hoy": {
-      "descripcion": "53_mundo_hoy.js acaba de leer /api/mundo/hoy (EV-3a): la línea corta de «Hoy en el olivar» para el tablón de la entrada (EV-3c): el trabajo de la semana agregado por tipo (nunca por persona) o el titular del aviso principal del campo; trabajo (F4b/W1, 54_trabajo_hoy.js) son las parcelas con alguna tarea en curso, sin personas, o null; linea es null si la lectura no está completa o no hay nada que decir. cuando es el instante de la fuente (ISO) o null. Los textos son datos: se pintan en un lienzo, nunca como HTML.",
+      "descripcion": "mundos/exterior/mundo-hoy.ts (antes 53_mundo_hoy.js) acaba de leer /api/mundo/hoy (EV-3a): la línea corta de «Hoy en el olivar» para el tablón de la entrada (EV-3c): el trabajo de la semana agregado por tipo (nunca por persona) o el titular del aviso principal del campo; trabajo (F4b/W1, 54_trabajo_hoy.js) son las parcelas con alguna tarea en curso, sin personas, o null; linea es null si la lectura no está completa o no hay nada que decir. cuando es el instante de la fuente (ISO) o null. Los textos son datos: se pintan en un lienzo, nunca como HTML.",
       "datos": {
         "type": "object",
         "required": [
@@ -713,7 +713,7 @@
         }
       },
       "emiten": [
-        "53_mundo_hoy"
+        "mundos/exterior/mundo-hoy"
       ],
       "escuchan": [
         "mundos/exterior/carteles",
