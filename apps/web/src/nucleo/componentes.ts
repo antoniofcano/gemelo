@@ -15,6 +15,14 @@
 //   · MU5-n (A3-6a): «mundos: "todos"» es un componente de TODO mundo (la red, la presencia, los avatares, el menú de muñeca): vive en cada uno de los de
 //     MUNDOS, también en los que se añadan después, así que sus fases corren en el que esté activo y solo se libera cuando no queda ningún mundo vivo.
 //   Hoy casi todos los componentes son del exterior y nadie emite esos eventos: no cambia nada visible.
+// A3-8b, el DOM fuera de su mundo: las fases de un componente no corrían fuera de su mundo, pero su DOM se quedaba en la página. Ahora el registro lo esconde, con UNA
+// sola forma para todos: el componente nombra sus raíces de DOM (en el manifiesto, «dom»: selectores de la plantilla o de lo que crea, con «sube» para esconder un
+// ancestro, como la casilla y su <label>; o por su contexto, n.dom(nodo), para lo que no tiene selector) y, mientras su mundo no es el activo (tras «mundo:sale» y en
+// otro mundo), el registro les pone el atributo data-fuera-de-mundo, que la plantilla esconde ([data-fuera-de-mundo] { display: none !important }, plantilla.css).
+// Al entrar de nuevo en su mundo se lo quita y cada nodo queda como estaba: no se toca ni hidden, ni style, ni nada del componente, así que lo que el usuario había
+// cerrado sigue cerrado y lo que tenía abierto (una ventana flotante) vuelve abierto. Esconder no destruye ni libera nada (el exterior se congela, decisión 218).
+// Los selectores se resuelven al esconder (lo que el componente cree después, si no lo nombra con n.dom, no se esconde hasta el siguiente cambio de mundo). Un nodo
+// que nombran dos componentes se esconde mientras uno de ellos lo tenga escondido (se cuentan). Los de «todos» no se esconden nunca.
 // Nada de aquí lee globales al cargarse: el Bus, el Reparto, el reloj, la URL, el documento y la consola entran por argumento de creaComponentes.
 import type { IdMundo } from "./mundos.ts";
 
@@ -46,7 +54,16 @@ export interface ContextoComponente {
   on(ev: string, fn: (datos?: any) => void): () => void;
   emite(ev: string, datos?: unknown): number;
   api(id: string): ApiComponente | null;
+  /** A3-8b: un nodo que crea el componente y que se esconde fuera de su mundo (como los de «dom» del manifiesto); devuelve el mismo nodo. Si su mundo no es el activo, se esconde ya. Opcional en el tipo (los dobles de contexto de las pruebas no lo traen); el registro lo da siempre */
+  dom?<E extends NodoDom | null | undefined>(el: E): E;
 }
+
+/** A3-8b: un nodo de DOM que el registro esconde fuera de su mundo (con el atributo ATRIBUTO_FUERA; ver la cabecera) */
+export interface NodoDom { setAttribute(k: string, v: string): void; removeAttribute(k: string): void; closest?(sel: string): NodoDom | null }
+/** A3-8b: una raíz de DOM del manifiesto: un selector, o un selector y el ancestro que se esconde de verdad (sube: «label» para una casilla, como en vista-familia) */
+export type RaizDom = string | { sel: string; sube: string };
+/** A3-8b: el atributo que esconde un nodo fuera de su mundo; la plantilla lo esconde con display: none !important (plantilla.css) */
+export const ATRIBUTO_FUERA = "data-fuera-de-mundo";
 
 export interface Bandera { defecto: boolean; url?: string; valor?: string }
 export interface PresupuestoComponente { llamadas: number; triangulos: number; texturasMB?: number }
@@ -68,6 +85,8 @@ export interface Manifiesto {
   cultivo?: string | string[];
   /** MU2-5: los mundos en los que vive; sin el campo, el exterior; «todos» (A3-6a): en cada mundo, también los que se añadan */
   mundos?: MundosComponente;
+  /** A3-8b: sus raíces de DOM, que se esconden mientras su mundo no es el activo (selectores; con «sube», el ancestro de cada uno) */
+  dom?: RaizDom[];
 }
 
 /** El bloque «componentes» de la configuración (contratos/config.schema.json). */
@@ -81,6 +100,8 @@ const esObjeto = (v: unknown): v is Suelto => !!v && typeof v === "object";
 function esLista(v: unknown): v is string[] { return Array.isArray(v) && v.every(x => typeof x === "string" && x.length > 0); }
 function num(v: unknown): v is number { return typeof v === "number" && isFinite(v) && v >= 0; }
 const esMundo = (v: unknown): v is IdMundo => typeof v === "string" && (MUNDOS as readonly string[]).indexOf(v) >= 0;
+const conTexto = (v: unknown): v is string => typeof v === "string" && v.trim().length > 0;
+const esRaiz = (v: unknown): v is RaizDom => conTexto(v) || (esObjeto(v) && conTexto(v.sel) && conTexto(v.sube) && Object.keys(v).length === 2);
 
 /** El manifiesto: devuelve la lista de errores (vacía si vale). */
 function valida(d: unknown): string[] {
@@ -111,6 +132,7 @@ function valida(d: unknown): string[] {
   const m = d.mundos;
   if (m !== undefined && m !== TODOS && !(Array.isArray(m) && m.length > 0 && m.every(esMundo) && new Set(m).size === m.length))
     e.push("mundos: lista sin repetir de " + MUNDOS.join(", ") + " o \"" + TODOS + "\" (sin el campo, el exterior)");
+  if (d.dom !== undefined && !(Array.isArray(d.dom) && d.dom.every(esRaiz))) e.push("dom: lista de selectores o { sel, sube } (A3-8b)");
   return e;
 }
 
@@ -196,7 +218,7 @@ export interface DepsComponentes {
   /** location.search, leída al arrancar */
   busqueda?(): string;
   /** para el <script type="application/json" id="config"> de la página (su bloque «componentes») */
-  documento?: { getElementById(id: string): { textContent: string | null } | null } | null;
+  documento?: { getElementById(id: string): { textContent: string | null } | null; querySelectorAll?(sel: string): ArrayLike<NodoDom> } | null;
   consola?: { error(...a: unknown[]): void; warn(...a: unknown[]): void } | null;
 }
 
@@ -209,6 +231,8 @@ export interface FilaResumen {
 interface Registro {
   def: Manifiesto; activo: boolean; api: ApiComponente | null; motivo: string; origen: string;
   limpia: (() => void)[]; est: Partial<Record<Fase, EstadoFase>>; n: number; ciclo?: string; rp?: number;
+  /** A3-8b: los nodos que nombró por n.dom y los que tiene escondidos ahora (los de n.dom y los de «dom» resueltos al esconder) */
+  nodos: NodoDom[]; ocultos: NodoDom[];
 }
 
 /** Datos de «mundo:entra» y «mundo:sale» (contratos/eventos.json; AvisoMundo de nucleo/mundos.ts). */
@@ -230,7 +254,7 @@ export function creaComponentes(deps: DepsComponentes) {
     let e = P.valida(def);
     if (!e.length && C.has(def.id)) e = ["id repetido: " + def.id];
     if (e.length) { error("[Componentes] manifiesto no válido (" + (def && def.id) + "): " + e.join("; ")); return false; }
-    defs.push(def); C.set(def.id, { def, activo: false, api: null, motivo: "sin arrancar", origen: "", limpia: [], est: {}, n: 0 });
+    defs.push(def); C.set(def.id, { def, activo: false, api: null, motivo: "sin arrancar", origen: "", limpia: [], est: {}, n: 0, nodos: [], ocultos: [] });
     if (arrancado) { ordena(); decide(def.id); }   // un componente que llega tarde (import() perezoso) se monta al registrarse
     return true;
   }
@@ -248,6 +272,7 @@ export function creaComponentes(deps: DepsComponentes) {
       on(ev, fn) { return n.limpia(bus.on(ev, fn)); },
       emite(ev, datos) { return bus.emite(ev, datos); },
       api,
+      dom(el) { if (el) { if (c.nodos.indexOf(el) < 0) c.nodos.push(el); if (fueraDe(c.def)) esconde(c, el); } return el; },
     };
     return n;
   }
@@ -266,9 +291,11 @@ export function creaComponentes(deps: DepsComponentes) {
     try {
       const r = c.def.monta(n);
       c.api = r && typeof r === "object" ? r : {}; c.activo = true; c.motivo = ""; c.n++;
+      aplicaDom(c);   // A3-8b: montado mientras su mundo no es el activo (llega tarde, o entra con otro): su DOM, escondido desde ya
       const fs = c.def.fases || {}, k = ordenIds.indexOf(id);
       for (const f of Object.keys(fs) as Fase[]) { const per = fs[f] as number; c.est[f] = { acum: per > 0 ? per * ((k + 1) % 4) / 4 : 0 }; }   // repartir los «tarde» entre fotogramas
     } catch (e) {
+      muestraDom(c); c.nodos = [];   // A3-8b: lo que nombró con n.dom antes de fallar, sin esconder
       for (const fn of c.limpia.splice(0)) { try { fn(); } catch { /* sigue */ } }
       c.motivo = "error al montar: " + ((e && (e as Error).message) || e); error("[Componentes] " + id, e);
       return false;
@@ -283,6 +310,7 @@ export function creaComponentes(deps: DepsComponentes) {
     for (const d of defs) if (d.id !== id && reg(d.id).activo && (d.consume || []).some(nm => c.def.expone.indexOf(nm) >= 0)) libera(d.id, "sin " + id);
     try { c.def.libera(c.api); } catch (e) { error("[Componentes] libera " + id, e); }
     for (const fn of c.limpia.splice(0).reverse()) { try { fn(); } catch { /* sigue */ } }
+    muestraDom(c); c.nodos = [];   // A3-8b: lo que quede en la página (la plantilla) vuelve a verse; lo suyo ya lo soltó el componente
     c.activo = false; c.api = null; c.motivo = motivo || "apagado";
     bus.emite("componentes:cambia", { id, activo: false });
     return true;
@@ -352,20 +380,64 @@ export function creaComponentes(deps: DepsComponentes) {
     });
   }
 
+  // ---------- A3-8b: el DOM de los componentes que no son del mundo activo, escondido (ver la cabecera)
+  const marcas = new Map<NodoDom, number>();   // cuántos componentes tienen escondido cada nodo
+  // ¿su DOM se esconde? Si no es de todo mundo y su mundo no es el activo (sin mundo activo, entre «mundo:sale» y «mundo:entra», tampoco se ve)
+  function fueraDe(d: Manifiesto): boolean { return !P.deTodos(d) && !P.deMundo(d, activoMundo); }
+  function esconde(c: Registro, el: NodoDom): void {
+    if (c.ocultos.indexOf(el) >= 0) return;
+    c.ocultos.push(el);
+    const k = marcas.get(el) || 0; marcas.set(el, k + 1);
+    if (!k) { try { el.setAttribute(ATRIBUTO_FUERA, ""); } catch (e) { error("[Componentes] dom de " + c.def.id, e); } }
+  }
+  function muestraDom(c: Registro): void {
+    for (const el of c.ocultos.splice(0)) {
+      const k = (marcas.get(el) || 1) - 1;
+      if (k > 0) { marcas.set(el, k); continue; }
+      marcas.delete(el);
+      try { el.removeAttribute(ATRIBUTO_FUERA); } catch (e) { error("[Componentes] dom de " + c.def.id, e); }
+    }
+  }
+  // sus raíces de ahora: las de n.dom y las del manifiesto, resueltas en el documento (con «sube», el ancestro de cada una)
+  function raices(c: Registro): NodoDom[] {
+    const out = c.nodos.slice(), doc = deps.documento;
+    if (!c.def.dom || !doc || typeof doc.querySelectorAll !== "function") return out;
+    for (const r of c.def.dom) {
+      const sel = typeof r === "string" ? r : r.sel, sube = typeof r === "string" ? "" : r.sube;
+      let l: ArrayLike<NodoDom>;
+      try { l = doc.querySelectorAll(sel); } catch (e) { error("[Componentes] dom de " + c.def.id + " («" + sel + "»)", e); continue; }
+      for (let i = 0; i < l.length; i++) {
+        let el: NodoDom | null = l[i] as NodoDom;
+        if (sube) el = el.closest ? el.closest(sube) : null;
+        if (el && out.indexOf(el) < 0) out.push(el);
+      }
+    }
+    return out;
+  }
+  function aplicaDom(c: Registro): void {
+    if (c.activo && fueraDe(c.def)) { for (const el of raices(c)) esconde(c, el); }
+    else muestraDom(c);
+  }
+  function aplicaTodos(): void { for (const id of ordenIds) { const c = reg(id); if (c.activo || c.ocultos.length) aplicaDom(c); } }
+  /** A3-8b: cuántos nodos de DOM están escondidos ahora por estar fuera de su mundo (pruebas y ?debug) */
+  function domOculto(): number { return marcas.size; }
+
   // ---------- MU2-5: el filtro por mundo
   // «mundo:entra»: ese mundo pasa a ser el activo (sus componentes vuelven a correr sus fases) y, si no estaba cargado, se montan los suyos
   function alEntrar(datos?: AvisoLeido): void {
     const id = datos && datos.id;
     if (!esMundo(id)) return;
     activoMundo = id;
-    if (vivos.has(id)) return;
-    vivos.add(id);
-    if (arrancado) for (const cid of ordenIds.slice()) { const c = reg(cid); if (!c.activo && P.deMundo(c.def, id)) decide(cid); }
+    if (!vivos.has(id)) {
+      vivos.add(id);
+      if (arrancado) for (const cid of ordenIds.slice()) { const c = reg(cid); if (!c.activo && P.deMundo(c.def, id)) decide(cid); }
+    }
+    aplicaTodos();   // A3-8b: el DOM de los suyos vuelve como estaba; el de los demás, escondido
   }
   // «mundo:sale»: el que sale queda congelado (sus componentes, montados pero sin fases) y, hasta el siguiente «mundo:entra», no hay mundo activo
   function alSalir(datos?: AvisoLeido): void {
     const id = datos && datos.id;
-    if (esMundo(id) && activoMundo === id) activoMundo = null;
+    if (esMundo(id) && activoMundo === id) { activoMundo = null; aplicaTodos(); }   // A3-8b: a oscuras, el DOM de los que no son de todo mundo, escondido
   }
   /** El mundo se ha liberado (dispose de todo; MU2-6 lo llama al liberar un mundo): se liberan los componentes que se quedan sin ningún mundo vivo. */
   function liberaMundo(id: IdMundo): number {
@@ -392,6 +464,7 @@ export function creaComponentes(deps: DepsComponentes) {
     resumen,
     mundo,
     liberaMundo,
+    domOculto,
   };
 }
 

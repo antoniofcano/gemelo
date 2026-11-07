@@ -201,6 +201,7 @@ export function manifiestoAvesMes(d: DepsAvesMes): Manifiesto {
     presupuesto: { llamadas: 0, triangulos: 0 },   // DOM: una ventana y un icono; nada en la escena 3D
     fases: {},
     mundos: ["exterior"],
+    dom: ["#ventana-aves", "[data-abre=\"aves\"]"],   // A3-8b: su ventana y sus iconos, escondidos fuera del exterior (COMPONENTES §3.2)
     monta: function (n) { return creaAvesMes(d, n); },
     libera: function (api) { if (api) (api as AvesMes).libera(); }
   };

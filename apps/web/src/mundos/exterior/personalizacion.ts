@@ -525,6 +525,7 @@ export function manifiestoPersonalizacion(dp: DepsPersonalizacion): Manifiesto {
     presupuesto: { llamadas: 1, triangulos: 2, texturasMB: 1 },
     fases: { mundo: 0, tarde: 0.4 },
     mundos: ["exterior"],
+    dom: ["#rotulosOlivos", "#personalizaPanel"],   // A3-8b: los nombres sobre los olivos y su recuadro, escondidos fuera del exterior (COMPONENTES §3.2)
     monta: function (n) { return creaPersonalizacion(dp, n as T); },
     actualiza: { mundo: function (dt, _t, api: T) { api.actualiza("mundo", dt); }, tarde: function (dt, _t, api: T) { api.actualiza("tarde", dt); } },
     libera: function (api: T) { if (api) api.libera(); }

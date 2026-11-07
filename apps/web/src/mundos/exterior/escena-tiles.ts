@@ -417,6 +417,7 @@ export function manifiestoEscena3D(escena: Escena3D): Manifiesto {
     bandera: { defecto: true },
     presupuesto: { llamadas: 0, triangulos: 0 },   // lo que dibuja el tileset lo cuenta pruebas/presupuesto.json («lejos», «cerca») y, en VR, el tope del perfil (02l_tope_tiles)
     mundos: ["exterior"],
+    dom: ["#sinEscena"],   // A3-8b: el aviso «Esta finca no tiene escena», escondido fuera del exterior (COMPONENTES §3.2)
     monta: function () { return escena; },
     libera: function (api) { if (api) (api as Escena3D).libera(); }
   };

@@ -203,6 +203,7 @@ export function manifiestoMundoHoy(dp: DepsMundoHoy): Manifiesto {
     bandera: { defecto: true, url: "mundohoy" },
     presupuesto: { llamadas: 0, triangulos: 0 },   // DOM: una tarjeta en Tiempo y estación; nada en la escena 3D
     mundos: ["exterior"],
+    dom: ["#tHoyCampo"],   // A3-8b: la tarjeta «Hoy en el campo», escondida fuera del exterior (COMPONENTES §3.2)
     monta: function (n?: T) { return MundoHoyMotor(n); },
     libera: function (api?: T) { if (api) (api as { libera(): void }).libera(); }
   };

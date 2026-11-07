@@ -460,6 +460,7 @@ export function manifiestoJuegos(dp: DepsJuegos): Manifiesto {
     presupuesto: { llamadas: 0, triangulos: 0 },   // nada en la escena 3D: un canvas 2D por encima y el mundo en pausa (sin render) mientras se juega
     fases: { pausa: 0, mundo: 0 },
     mundos: ["exterior"],
+    dom: ["#ventana-juegos", "[data-abre=\"juegos\"]", "#juegoCapa"],   // A3-8b: su ventana, sus iconos y la capa de la partida, escondidos fuera del exterior
     monta: function (n) { return creaJuegos(dp, n as T); },
     actualiza: { pausa: function (dt, _t, api: T) { api.turno(dt); }, mundo: function (dt, _t, api: T) { api.turnoVR(dt); } },
     libera: function (api: T) { if (api) api.libera(); }
