@@ -62,7 +62,7 @@ Son tres. Pasados a TSL, desbloquean a casi todos:
 | 23 | `mundos/comun/avatares.ts` (antes `26b_avatares.js`) | `vrm-fundido` | MToon + `encadena` | fundido por tramado | sí (MToon) | no | no | no | M-A (`MToonNodeMaterial`) — **TSL parcial, apagada (MU5-n, A3-6a):** `MeshStandardNodeMaterial` con el tramado por `maskNode`, sin el sombreado toon de MToon (§13) |
 | 24 | `apps/web/src/mundos/comun/vr.ts` (antes `29_vr.js`) | `vineta-vr` | `ShaderMaterial` | viñeta de confort | no | no | no | no | B — **hecho (MU5-n, A3-6c):** `define("vineta-vr", { clasico, tsl })`, la TSL apagada (§14) |
 | 25 | `mundos/comun/presencia.ts` (antes `38_presencia_compartida.js`) | `nombres-presencia` | `ShaderMaterial` (instanciado) | nombres de un atlas, de cara a la cámara | no | no | no | no | M (de cara a la cámara **por ojo**) — **TSL parcial, apagada (MU5-n, A3-6a):** `MeshBasicNodeMaterial` con el atlas por instancia; falta ponerlo de cara a la cámara por ojo (§13) |
-| 26 | `44_lindes.js` | `lindes-acerca` | `LineMaterial` + parche | lindes acercadas a la cámara | sí | no | no | no | M (`Line2NodeMaterial`) — **hecho (MU5-n, A3-3):** `define("lindes-acerca", { clasico, tsl })`, la TSL apagada y **parcial** (§10.1) |
+| 26 | `44_lindes.js` | `lindes-acerca` | `LineMaterial` + parche | lindes acercadas a la cámara | sí | no | no | no | M (`Line2NodeMaterial`) — **TSL completa para la pantalla (A4-0), sin capturas**, apagada; compila sin GPU; el ancho por ojo no hace falta (§10.1) |
 | — | `nucleo/materiales.ts` | `ejemplo-tsl` | Basic + parche / `MeshBasicNodeMaterial` | el ejemplo de la ruta (§3): color · `uBrillo` | sí | no | no | no | hecho |
 
 ### 1.4 Los recuentos
@@ -320,8 +320,9 @@ Todas viven junto a su clásico (una sola fuente), están **apagadas** (solo las
 - **`arroyo`** (`MeshBasicNodeMaterial`): el mismo cálculo que el fragmento (borde, lecho de arena con ruido por celda, agua que se ensancha con `uAgua` y fluye con `uT`, luz del día) en nodos, con los mismos uniformes (releídos en cada objeto) y el estado de dibujo del clásico (transparente, dos caras, sin profundidad, desplazamiento de polígono, sin niebla ni tonemapping). **Sin diferencias conocidas, sin comprobar dibujado.**
 - **`baliza`** (`MeshBasicNodeMaterial` aditivo): la columna que se apaga hacia arriba (con `positionLocal.y`), el latido con `uT` y el pulso de la alerta, con los mismos uniformes y el estado de dibujo del clásico. **Sin diferencias conocidas, sin comprobar dibujado.**
 - **`lindes-acerca`** (`Line2NodeMaterial`): los parámetros del `LineMaterial` (color, ancho en píxeles, opacidad, profundidad).
-  - **falta:** el acercamiento de profundidad (`uAcerca`: cada extremo del tramo se acerca al ojo una fracción de su distancia), así que habrá más riesgo de parpadeo donde el tileset sube sobre la linde (para MU6: pasarlo a un `positionNode`);
-  - **falta:** el ancho × 1,5 por ojo en VR (el `onBeforeRender` que mide el viewport de cada ojo); la `Line2NodeMaterial` mide el del renderizador. **[NO VERIFICADO]** cuál es el ancho cómodo en el Quest.
+  - **(A4-0) el acercamiento de profundidad** (`uAcerca`, 1 − acerca) en su `positionNode`: el clásico escala hacia el ojo los dos extremos del tramo en el espacio de la vista; la TSL escala el vértice ya ensanchado (lo que three pone en `positionLocal` antes de `positionNode`), con la cámara llevada al espacio del objeto. En perspectiva, escalar una posición de la vista no mueve su proyección, así que da lo mismo en la pantalla y la misma profundidad [DEDUCIDO, sin capturas];
+  - **(A4-0) el ancho:** con la TSL, `resolucion()` (el `onBeforeRender` de cada malla) pone el `linewidth` del material, que no tiene `uniforms` (antes habría fallado); la `Line2NodeMaterial` mide sola el viewport. **El ancho × 1,5 por ojo en VR no se ha comprobado y no hace falta:** la VR no usará la TSL (el Quest se queda en super-three, decisión 231);
+  - **compilado (solo Node):** en un `LineSegments2` de `three/addons/lines/webgpu` con su `LineSegmentsGeometry`, con los dos constructores (`lindes.test.ts`).
 
 ### 10.2 Los ciclos de vida (`libera()`)
 
