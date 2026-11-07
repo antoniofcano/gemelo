@@ -152,3 +152,5 @@ export { ID_FICHAS_MUNDO, FichasMundoPuro, manifiestoFichasMundo } from "./exter
 export type { DepsFichasMundo } from "./exterior/fichas-mundo.ts";
 export { ID_FICHAS_TIEMPO, FichasTiempoPuro, manifiestoFichasTiempo } from "./exterior/fichas-tiempo.ts";
 export type { DepsFichasTiempo } from "./exterior/fichas-tiempo.ts";
+export { ID_PARCELAS, creaParcelas, manifiestoParcelas } from "./exterior/parcelas.ts";
+export type { DepsParcelas, Parcelas } from "./exterior/parcelas.ts";

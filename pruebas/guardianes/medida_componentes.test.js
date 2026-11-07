@@ -31,7 +31,7 @@ test("los manifiestos salen del código del motor, con su bandera y su presupues
     // ?tocar=0 son sus banderas propias (no las del componente); lo que dibujan (la línea y el anillo, solo con destino) va en el presupuesto de la escena
     "camara-orbital", "ir-a", "anillo-llegada", "palanca-tactil",
     // A3-7b1: el contenido del exterior que el legado usa por su nombre desde que se monta (las hazas: 31b, 31c, 42, 44 y 44b leen Hazas)
-    "hazas-mundo"];
+    "hazas-mundo", "selector-parcelas"];
   for (const c of ms) { if (SIN_BANDERA.includes(c.id)) { assert.ok(!c.url && c.presupuesto.llamadas === 0 && c.presupuesto.triangulos === 0, c.id + ": solo ciclo de vida"); continue; } assert.ok(c.url, c.id + " tiene bandera de URL (si no, no se puede medir con y sin)"); }
   for (const id of SIN_BANDERA) assert.ok(ms.some(c => c.id === id), id + " está entre los manifiestos");
 });
