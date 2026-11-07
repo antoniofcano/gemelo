@@ -23,6 +23,7 @@
 // Nada de aquí importa three ni lee globales al cargarse: THREE, D, el Mundo, la Cola del exterior, la cámara, el parche del tiempo (15_tiempo), el
 // ruido vn2 (21_suelo) y el suelo de fotos (04f, que se monta después: por eso va por funciones) entran por argumento.
 import type { Manifiesto } from "../../nucleo/componentes.ts";
+import { MaterialesPuro } from "../../nucleo/materiales.ts";
 import type { CtxTsl, DefMaterial, MaterialMin } from "../../nucleo/materiales.ts";
 import type { Trabajo } from "../../nucleo/cola.ts";
 import type { Tesela } from "./teselas.ts";
@@ -65,7 +66,11 @@ export interface SueloFotosMin {
   activo: boolean; U: { uFot: Uniforme; uFotK: Uniforme };
   campo(t: Tesela): TexturaMin; rueNeutro(): TexturaMin; actualiza(): void; libera(): void;
 }
-export interface SueloFotosPuroMin { parcheGlsl(cab: string, color: string, TS: number): { cab: string; color: string } }
+export interface SueloFotosPuroMin {
+  parcheGlsl(cab: string, color: string, TS: number): { cab: string; color: string };
+  /** A4-0: los mismos en nodos, para la variante TSL (apagada) */
+  tsl?(T: unknown, e: unknown): { fotA: unknown; aplica(suelo: unknown): { rgb: unknown; a: unknown } };
+}
 /** Una malla de three (lo que se recorre de un glb). */
 interface MallaMin { isMesh?: boolean; isInstancedMesh?: boolean; material?: MaterialTerreno | null }
 export interface RaizGlb { traverse(f: (o: MallaMin) => void): void }
@@ -339,64 +344,147 @@ export function creaSombreadoTiles(deps: DepsTerreno) {
       return m as MaterialMin;
     }
   });
-  // ---- MU5-n, tercer commit: la variante TSL del terreno (MATERIALES §1, fila 1; dificultad A), APAGADA: solo la usaría el WebGPURenderer (MU6), que
-  // hoy no se monta. PARCIAL (MATERIALES §5 lo admite si se dice qué falta; aquí, en el §1.5): lleva el color de la tierra (el suelo de la tesela o el
-  // mosaico), la hierba según el NDVI del suelo (uG) con su ruido y sus motas, el material de tierra en cuatro octavas, el paso a lineal, el tinte del
-  // maestro (matSuelo.color, el mismo objeto), el modo Ortofoto, la capa NDVI encima (uNdviMap, uNdviOn, tras la niebla, como el clásico), la exageración
-  // por UN.uExag (para la posición de muestreo, como el clásico) y la niebla de la escena (fog = true). NO lleva: la sombra de nubes ni la escarcha (son de
-  // parcheTiempo, fila 2), el detalle de la ortofoto del suelo abierto (uDet: rodadas, caminos, gravilla, hojarasca), el relieve fino (pBump con dFdx),
-  // el suelo de fotos (?suelo=fotos) ni la vista de depuración (uDetDbg). Construye un NodeMaterial con sus nodos (lo prueba Vitest con three/webgpu de
-  // verdad); NO se ha compilado ni dibujado: las capturas clásico frente a TSL son de MU6.
-  // Los uniformes son los mismos objetos { value } que los del clásico (UN y los de la tesela): cada nodo relee su valor en cada objeto (onObjectUpdate).
+  // ---- MU5-n, tercer commit (A3-1a) y A4-0: la variante TSL del terreno (MATERIALES §1, fila 1; dificultad A), APAGADA: solo la usaría el WebGPURenderer
+  // (MU6). Desde A4-0 lleva TODO lo del parche clásico (MATERIALES §1.5): el color de la tierra (el suelo de la tesela o el mosaico), el detalle de la ortofoto
+  // en el suelo abierto (uDet: abierto, rodadas, caminos y su dirección, surcos, estrías, gravilla y hojarasca), la hierba según el NDVI del suelo, el material
+  // de tierra, el relieve fino (pBump con las derivadas de hSuelo: normalNode), el suelo de fotos (?suelo=fotos: SueloFotosPuro.tsl, en suelo-fotos.ts), el
+  // paso a lineal y el tinte del maestro (matSuelo.color, el mismo objeto); tras la luz, el modo Ortofoto, el grano, la sombra de nubes y la escarcha (los nodos
+  // del tiempo), la capa NDVI y la vista de depuración (uDetDbg). Compila sin GPU (WGSL y GLSL, terreno.test.ts con prueba-tsl.ts); NO se ha dibujado: las
+  // capturas clásico frente a TSL son de MU6, y hasta entonces no se puede decir que sea equivalente.
+  // Lo que difiere: el color ancho (uGnd) se lee siempre, también lejos (el clásico, solo con uDet = 1): una lectura más, el mismo resultado. Los select de
+  // TSL con lecturas en sus ramas salen como if/else (comprobado en el WGSL), así que la dirección del camino solo se lee donde hay camino cerca. Los uniformes son los mismos objetos { value } que los del clásico (UN y los de la tesela): cada nodo relee su valor en cada objeto
+  // (onObjectUpdate); las texturas, con MaterialesPuro.releeTextura en el nodo que se muestrea (onObjectUpdate no vale en una textura: antes de A4-0 la TSL se
+// quedaba con la textura del primer dibujo).
   function tslTerreno(o: OpcTerreno, c: CtxTsl): MaterialMin {
     const W = c.THREE as Record<string, unknown>, T = c.TSL as TslMin, u = o.u;
     const Lambert = W["MeshLambertNodeMaterial"] as new () => MaterialMin & Record<string, unknown>;
     const Datos = W["DataTexture"] as new (d: Uint8Array, w: number, h: number) => TexturaMin;
-    const neutro = new Datos(new Uint8Array([143, 128, 128, 255]), 1, 1); neutro.needsUpdate = true;
+    const DatosArr = W["DataArrayTexture"] as new (d: Uint8Array, w: number, h: number, n: number) => TexturaMin;
+    const neutro = neutroTsl(Datos);
     const num = (x: Uniforme | undefined, d: number): TslNodo => T.uniform(x ? x.value as number : d).onObjectUpdate(function () { return x ? x.value as number : d; });
     const vec = (x: Uniforme | undefined): TslNodo => T.uniform((x as Uniforme).value);   // Vector2/Vector4/Color: el mismo objeto, que se mueve en su sitio
-    const tex = (x: Uniforme | undefined): TslNodo => { const n = T.texture((x && x.value) || neutro); n.onObjectUpdate(function () { return (x && x.value) || neutro; }); return n; };
+    /** lee la textura de un uniforme en uv (ajusta: .bias(…)); el valor se relee en el nodo final. Se construye con el hueco de su nombre, no con su valor: three
+     *  junta en UNA sola ligadura las texturas que al construir son la misma (el mismo uuid), y aquí empiezan siendo la misma muchas (el ruido neutro en uRui y
+     *  uGnd, el vacío en uSue, uMos, uG y uNdviMap): después cada una seguiría la textura de la primera. releeTextura pone la de verdad antes de dibujar */
+    const lee = (nombre: string, x: Uniforme | undefined, uv: TslNodo, ajusta?: (n: TslNodo) => TslNodo): TslNodo => {
+      const h = hueco(nombre, Datos); let n = T.texture(h, uv); if (ajusta) n = ajusta(n);
+      return MaterialesPuro.releeTextura(n, function () { return (x && x.value) || neutro; });
+    };
     const uExag = num(UN.uExag, 1), uTiene = num(u["uTiene"], 0), uHierba = num(UN.uHierba, 1), uNdviOn = num(UN.uNdviOn, 0), uModoOrto = num(UN.uModoOrto, 0);
+    const uDet = num(u["uDet"], 0), uDetK = num(UN.uDetK, 1), uBumpK = num(UN.uBumpK, 1), uDetDbg = num(UN.uDetDbg, 0), uBias2 = num(u["uBias2"], 0);
     const uTile = vec(u["uTile"]), uMosBox = vec(UN.uMosBox), uGBox = vec(UN.uGBox), uCua = vec(u["uCua"]), uOrtoTint = vec(UN.uOrtoTint);
-    const uSue = tex(u["uSue"]), uRui = tex(u["uRui"]), uMos = tex(UN.uMos), uG = tex(UN.uG), uNdviMap = tex(UN.uNdviMap), uOrt = tex(u["uOrt"]);
     // dh/dn: el ruido de valor del GLSL de siempre
     const dh = T.Fn(function (a: TslNodo[]) { const p = a[0] as TslNodo; return T.fract(T.sin(T.dot(p, T.vec2(41.3, 289.1))).mul(17391.7)); });
     const dn = T.Fn(function (a: TslNodo[]) {
       const p = a[0] as TslNodo, i = T.floor(p), f0 = T.fract(p), f = f0.mul(f0).mul(T.float(3).sub(f0.mul(2)));
       return T.mix(T.mix(dh(i), dh(i.add(T.vec2(1, 0))), f.x), T.mix(dh(i.add(T.vec2(0, 1))), dh(i.add(T.vec2(1, 1))), f.x), f.y);
     });
+    const uno = T.float(1);
     const wp = T.positionWorld, vWP = T.vec3(wp.x, wp.y.div(uExag), wp.z), xz = T.vec2(vWP.x, vWP.z);
     const lc = T.vec2(vWP.x.sub(uTile.x), vWP.z.negate().sub(uTile.y));
-    const dc = T.length(T.positionView), cerca = T.float(1).sub(T.smoothstep(12, 60, dc)), cercaM = T.float(1).sub(T.smoothstep(3, 18, dc));
-    const sueloTesela = uSue.sample(lc.div(SRS).add(1).div(NS2)).rgb;
-    const mosaicoRgb = uMos.sample(T.vec2(vWP.x.sub(uMosBox.x).div(uMosBox.z), T.float(1).sub(uMosBox.y.add(vWP.z).div(uMosBox.w)))).rgb.mul(0.9);
-    const sc = T.select(uTiene.greaterThan(0.5), sueloTesela, mosaicoRgb);
-    const ru = uRui.sample(lc.add(1).div(N2));
-    const g = uG.sample(T.vec2(vWP.x.sub(uGBox.x).div(uGBox.z), uGBox.y.add(vWP.z).div(uGBox.w))).r.mul(1.3).sub(0.3);
-    const cov = T.clamp(T.clamp(g.sub(S0).div(V0 - S0), 0, 1).mul(ru.r).mul(1.6), 0, 1), vig = T.clamp(g.sub(0.3).div(0.3), 0, 1), nn = ru.g.mul(0.4).add(0.8), m = cov.mul(0.78).mul(uHierba);
+    const dc = T.length(T.positionView), cerca = uno.sub(T.smoothstep(12, 60, dc)), cercaM = uno.sub(T.smoothstep(3, 18, dc)), cercaR = uno.sub(T.smoothstep(30, 110, dc));
+    const sueloTesela = lee("uSue", u["uSue"], lc.div(SRS).add(1).div(NS2)).rgb;
+    const mosaicoRgb = lee("uMos", UN.uMos, T.vec2(vWP.x.sub(uMosBox.x).div(uMosBox.z), uno.sub(uMosBox.y.add(vWP.z).div(uMosBox.w)))).rgb.mul(0.9);
+    const sc0 = T.select(uTiene.greaterThan(0.5), sueloTesela, mosaicoRgb);
+    const ru = lee("uRui", u["uRui"], lc.add(1).div(N2));
+    // ---- el detalle de la ortofoto en el suelo abierto (uDet). Dos funciones con su «if (uDet > 0,5)», como el clásico. Lo de fuera que usan, a variables
+    // antes del if: un nodo que se construye por primera vez dentro de un bloque se escribe dentro de él, y fuera se leería sin valor
+    const uvO = T.vec2(vWP.x.sub(uCua.x).div(uCua.z), uno.sub(vWP.z.negate().sub(uCua.y).div(uCua.z)));
+    const LM = T.vec3(0.299, 0.587, 0.114), gw = lee("uGnd", u["uGnd"], lc.div(TS)).rgb, lw = T.dot(gw, LM).add(0.03);
+    const det = T.Fn(function () {   // → (abierto, rodada, tono)
+      const r = T.vec3(0, 1, 1).toVar(), uv = T.vec2(uvO).toVar(), l_w = T.float(lw).toVar();
+      T.If(uDet.greaterThan(0.5), function () {
+        const l0 = T.dot(lee("uOrt", u["uOrt"], uv).rgb, LM).add(0.03), l2 = T.dot(lee("uOrt", u["uOrt"], uv, (n) => n.bias(uBias2)).rgb, LM).add(0.03), l4 = T.dot(lee("uOrt", u["uOrt"], uv, (n) => n.bias(uBias2.add(1))).rgb, LM).add(0.03);
+        const ab = T.min(T.min(T.smoothstep(0.72, 0.86, l0.div(l_w)), T.smoothstep(0.8, 0.93, l2.div(l_w))), T.smoothstep(0.86, 0.97, l4.div(l_w))).mul(uDetK);
+        r.assign(T.vec3(ab, T.clamp(l0.div(l2), 0.7, 1.5), T.clamp(l2.div(l_w), 0.8, 1.8)));
+      });
+      return r;
+    })();
+    const abierto = det.x, rodada = det.y, tono = det.z, desnudo = T.smoothstep(1.05, 1.3, tono).mul(abierto), camino = T.smoothstep(1.04, 1.22, tono).mul(abierto);
+    const dir = T.Fn(function () {   // → (dirT.x, dirT.y, coh): la dirección del camino, del gradiente de claridad a ~4 m
+      const r = T.vec3(1, 0, 0).toVar(), uv = T.vec2(uvO).toVar(), cam = T.float(camino).toVar(), cR = T.float(cercaR).toVar();
+      T.If(uDet.greaterThan(0.5), function () {
+        const dg = T.float(3).div(uCua.z), b = uBias2.add(1), dx = T.vec2(dg, 0), dy = T.vec2(0, dg.negate());
+        const l = (d: TslNodo) => T.dot(lee("uOrt", u["uOrt"], uv.add(d), (n) => n.bias(b)).rgb, LM);
+        const gg = T.vec2(l(dx).sub(l(dx.negate())), l(dy).sub(l(dy.negate()))), gl = T.length(gg);
+        const vale = cam.greaterThan(0.02).and(cR.greaterThan(0.01));
+        r.assign(T.select(vale, T.vec3(T.select(gl.greaterThan(1e-4), T.vec2(gg.y.negate(), gg.x).div(gl), T.vec2(1, 0)), T.smoothstep(0.004, 0.03, gl)), T.vec3(1, 0, 0)));
+      });
+      return r;
+    })();
+    const dirT = T.vec2(dir.x, dir.y), coh = dir.z;
+    const sc = T.select(uDet.greaterThan(0.5), T.mix(sc0, gw, 0.85), sc0);
+    // ---- la hierba según el NDVI del suelo
+    const g = lee("uG", UN.uG, T.vec2(vWP.x.sub(uGBox.x).div(uGBox.z), uGBox.y.add(vWP.z).div(uGBox.w))).r.mul(1.3).sub(0.3);
+    const cov = T.clamp(T.clamp(g.sub(S0).div(V0 - S0), 0, 1).mul(ru.r).mul(1.6), 0, 1), vig = T.clamp(g.sub(0.3).div(0.3), 0, 1), nn = ru.g.mul(0.4).add(0.8);
+    const m = cov.mul(0.78).mul(uHierba).mul(uno.sub(desnudo.mul(0.9)));
     const gr = T.vec3(T.float(0.66).sub(vig.mul(0.36)), T.float(0.58).sub(vig.mul(0.1)), T.float(0.34).sub(vig.mul(0.17))).mul(nn)
       .mul(T.float(0.82).add(T.float(0.36).mul(dn(T.vec2(vWP.x.mul(14), vWP.z.mul(3)).add(T.vec2(dn(xz.mul(0.5)).mul(3), 0)))).mul(cerca.mul(0.5).add(0.5))))
-      .mul(T.float(1).add(T.float(0.22).mul(dn(xz.mul(0.6).add(4)).sub(0.5)).mul(T.float(1).sub(vig))));
+      .mul(uno.add(T.float(0.22).mul(dn(xz.mul(0.6).add(4)).sub(0.5)).mul(uno.sub(vig))));
     const nM = dn(xz.mul(0.045)), nm = dn(xz.mul(0.19).add(3.1)), nf = dn(xz.mul(0.9).add(9.7)), nu = dn(xz.mul(3.7).add(1.3)), nuu = dn(xz.mul(13).add(5.9));
-    const tierra = T.vec3(T.float(1).add(nM.sub(0.5).mul(0.1)).add(nm.sub(0.5).mul(0.05)), T.float(1).add(nM.sub(0.5).mul(0.03)), T.float(1).sub(nM.sub(0.5).mul(0.1)).sub(nm.sub(0.5).mul(0.05)))
-      .mul(T.float(0.86).add(T.float(0.28).mul(nm.mul(0.5).add(nf.mul(0.3)).add(nu.mul(0.2).mul(cerca)).add(nuu.mul(0.1).mul(cercaM)))));
-    const suelo = sc.mul(ru.b.mul(0.1).add(0.94)).mul(T.float(1).sub(m)).add(gr.mul(m)).mul(tierra);
+    let suelo: TslNodo = sc.mul(ru.b.mul(0.1).add(0.94)).mul(uno.sub(m)).add(gr.mul(m));
+    // el detalle: la rodada reforzada en los caminos, los surcos sintéticos orientados con el camino y las estrías
+    suelo = suelo.mul(T.mix(uno, T.clamp(T.pow(rodada, camino.mul(2.4).add(1.15)).mul(T.pow(tono, 0.9)), 0.45, 1.9), abierto));
+    const aa = T.dot(lc, dirT), cc = T.dot(lc, T.vec2(dirT.y.negate(), dirT.x)), ph = cc.mul(4.19).add(dn(T.vec2(aa.mul(0.07), 1.7)).mul(2.5)).add(dn(T.vec2(aa.mul(0.31), 8.1)).mul(1.2));
+    const gro = T.smoothstep(0.3, 0.92, T.cos(ph)).mul(dn(T.vec2(aa.mul(0.22), cc.mul(0.5))).mul(0.6).add(0.4)), ruts = gro.mul(camino).mul(coh).mul(cercaR);
+    const estr = dn(T.vec2(aa.mul(0.5), cc.mul(7))).sub(0.5).mul(camino).mul(cerca);
+    suelo = suelo.mul(uno.sub(ruts.mul(0.5))).mul(uno.add(estr.mul(0.55)));
+    // el material de tierra en cuatro octavas
+    suelo = suelo.mul(T.vec3(uno.add(nM.sub(0.5).mul(0.1)).add(nm.sub(0.5).mul(0.05)), uno.add(nM.sub(0.5).mul(0.03)), uno.sub(nM.sub(0.5).mul(0.1)).sub(nm.sub(0.5).mul(0.05)))
+      .mul(T.float(0.86).add(T.float(0.28).mul(nm.mul(0.5).add(nf.mul(0.3)).add(nu.mul(0.2).mul(cerca)).add(nuu.mul(0.1).mul(cercaM))))));
+    // ?suelo=fotos (EV-1s): sus nodos, de suelo-fotos.ts (una sola fuente con su GLSL), si está activo al crear el material, como el clásico
+    const SF = fotos(), SFP = SF && deps.sueloFotosPuro ? deps.sueloFotosPuro() : null;
+    const FT = SF && SFP && SFP.tsl ? SFP.tsl(T, { uFot: SF.U.uFot, uFotK: SF.U.uFotK, uRue: u["uRue"], neutro, neutroArr: neutroArr(DatosArr), hueco: (nombre: string) => hueco(nombre, Datos), huecoArr: () => huecoArr(DatosArr), dn, dh, lc, vWP, dc, abierto, tono, desnudo, camino, TS }) : null;
+    // la gravilla (con las fotos, solo donde no llegan: × (1 − fotA)) y la hojarasca bajo los olivos
+    const fi = T.floor(xz.mul(9)), grano = T.step(0.82, dh(fi)).mul(dh(fi.add(3.3)).sub(0.35));
+    suelo = suelo.mul(uno.add(grano.mul(0.55).mul(T.clamp(desnudo.add(camino).add(uno.sub(m).mul(0.3)), 0, 1)).mul(cercaM).mul(FT ? uno.sub(FT.fotA) : uno)));
+    const lit = uno.sub(abierto).mul(uDetK).mul(T.step(0.5, uDet));
+    suelo = T.mix(suelo, T.vec3(0.3, 0.25, 0.18).mul(dn(xz.mul(5)).mul(0.55).add(0.72)).mul(nm.mul(0.36).add(0.82)), lit.mul(0.5).mul(cerca.mul(0.5).add(0.5)));
+    let hSuelo: TslNodo = ruts.mul(-0.055).add(nf.sub(0.5).mul(0.014).mul(cerca)).add(nu.sub(0.5).mul(0.007).mul(cercaM)).add(grano.mul(0.004).mul(cercaM)).add(rodada.sub(1).mul(0.03).mul(camino).mul(cercaR));
+    if (FT) { const r = FT.aplica(suelo); suelo = r.rgb; hSuelo = hSuelo.add(r.a); }
     const mat = new Lambert();
     mat["color"] = matSuelo.color;   // el tinte del día (15_tiempo lo mueve en su sitio): el mismo objeto que el clásico
     mat["colorNode"] = T.materialColor.mul(T.sRGBTransferEOTF(T.max(suelo, T.vec3(0))));   // colores «como se ven» → lineal al entrar en la luz
     mat["fog"] = true;
-    // tras la luz y la niebla (output): el modo Ortofoto, el grano del suelo y la capa NDVI encima, como el final del fragmento clásico
-    const uvO = T.vec2(vWP.x.sub(uCua.x).div(uCua.z), T.float(1).sub(vWP.z.negate().sub(uCua.y).div(uCua.z)));
+    // el relieve fino: pBump(-vViewPosition, normal, (dFdx, dFdy)(hSuelo) · uBumpK · fundido con la distancia), en el espacio de la vista, como el clásico
+    const vp = T.positionView, s1 = T.dFdx(vp), s2 = T.dFdy(vp), n0 = T.normalView, r1 = T.cross(s2, n0), r2 = T.cross(n0, s1), dd0 = T.dot(s1, r1);
+    const kB = uBumpK.mul(uno.sub(T.smoothstep(25, 90, dc))), dH = T.vec2(T.dFdx(hSuelo), T.dFdy(hSuelo)).mul(kB);
+    mat["normalNode"] = T.normalize(T.abs(dd0).mul(n0).sub(T.sign(dd0).mul(r1.mul(dH.x).add(r2.mul(dH.y)))));
+    // tras la luz y la niebla (output): el modo Ortofoto, el grano del suelo (menos en lo abierto), el tiempo, la capa NDVI y la vista de depuración, como el final del clásico
     const dd = dn(xz.mul(0.9)).mul(0.45).add(dn(xz.mul(3.3)).mul(0.3)).add(dn(xz.mul(12)).mul(0.25));
-    const luz0 = T.select(uModoOrto.greaterThan(0.5), uOrt.sample(uvO).rgb.mul(T.sRGBTransferOETF(uOrtoTint)), T.output.rgb).mul(dd.mul(0.36).add(0.82));
-    // A3-4: la sombra de nubes y la escarcha de parcheTiempo (fila 2) en vWP.xz, tras la luz y antes de la capa NDVI (en el clásico, las dos líneas del tiempo van
-    // antes que la capa en <dithering_fragment>), si se dan los nodos del tiempo; sin ellos, como antes
+    const luz0 = T.select(uModoOrto.greaterThan(0.5), lee("uOrt", u["uOrt"], uvO).rgb.mul(T.sRGBTransferOETF(uOrtoTint)), T.output.rgb)
+      .mul(uno.sub(uno.sub(dd.mul(0.36).add(0.82)).mul(uno.sub(abierto.mul(0.6)))));
+    // A3-4: la sombra de nubes y la escarcha de parcheTiempo (fila 2) en vWP.xz, tras la luz y antes de la capa NDVI, si se dan los nodos del tiempo
     const nt = deps.tiempoTsl ? deps.tiempoTsl() : null, NT = nt ? nt(T) : null;
     const luz = NT ? NT.aplica(luz0, NT.enVertice(NT.sombra(xz))) as TslNodo : luz0;
-    const un = T.vec2(vWP.x.sub(uGBox.x).div(uGBox.z), T.float(1).sub(uGBox.y.add(vWP.z).div(uGBox.w)));
-    const nd = uNdviMap.sample(un), dentro = T.step(0, un.x).mul(T.step(un.x, 1)).mul(T.step(0, un.y)).mul(T.step(un.y, 1));
-    mat["outputNode"] = T.vec4(T.mix(luz, nd.rgb, nd.a.mul(0.8).mul(uNdviOn).mul(dentro)), T.output.a);
+    const un = T.vec2(vWP.x.sub(uGBox.x).div(uGBox.z), uno.sub(uGBox.y.add(vWP.z).div(uGBox.w)));
+    const nd = lee("uNdviMap", UN.uNdviMap, un), dentro = T.step(0, un.x).mul(T.step(un.x, 1)).mul(T.step(0, un.y)).mul(T.step(un.y, 1));
+    const conNdvi = T.mix(luz, nd.rgb, nd.a.mul(0.8).mul(uNdviOn).mul(dentro));
+    const depura = T.select(uDetDbg.lessThan(1.5), T.vec3(abierto), T.select(uDetDbg.lessThan(2.5), T.vec3(T.clamp(tono.sub(0.5), 0, 1)),
+      T.select(uDetDbg.lessThan(3.5), T.vec3(T.clamp(rodada.sub(0.5), 0, 1)), T.vec3(ruts, camino, coh))));
+    mat["outputNode"] = T.vec4(T.select(uDetDbg.greaterThan(0.5), depura, conNdvi), T.output.a);
     return mat;
+  }
+  // las texturas neutras de la TSL (el ruido de 1 píxel de three/webgpu y el array del suelo de fotos mientras no llegan sus láminas): una para todos los glb,
+  // las suelta libera() (antes de A4-0, la TSL creaba una por glb y no la soltaba nadie)
+  let neu0: TexturaMin | null = null, arr0: TexturaMin | null = null;
+  const huecos: Record<string, TexturaMin> = {};   // un hueco por nombre de textura (ver lee() en tslTerreno), los mismos para todos los glb
+  function hueco(nombre: string, Datos: new (d: Uint8Array, w: number, h: number) => TexturaMin): TexturaMin {
+    let h = huecos[nombre]; if (!h) { h = huecos[nombre] = new Datos(new Uint8Array([143, 128, 128, 255]), 1, 1); h.needsUpdate = true; }
+    return h;
+  }
+  function neutroTsl(Datos: new (d: Uint8Array, w: number, h: number) => TexturaMin): TexturaMin {
+    if (!neu0) { neu0 = new Datos(new Uint8Array([143, 128, 128, 255]), 1, 1); neu0.needsUpdate = true; }
+    return neu0;
+  }
+  let harr0: TexturaMin | null = null;
+  function huecoArr(DatosArr: new (d: Uint8Array, w: number, h: number, n: number) => TexturaMin): TexturaMin {
+    if (!harr0) { harr0 = new DatosArr(new Uint8Array([128, 128, 128, 128]), 1, 1, 1); harr0.needsUpdate = true; }
+    return harr0;
+  }
+  function neutroArr(DatosArr: new (d: Uint8Array, w: number, h: number, n: number) => TexturaMin): TexturaMin {
+    if (!arr0) { arr0 = new DatosArr(new Uint8Array([128, 128, 128, 128]), 1, 1, 1); arr0.needsUpdate = true; }
+    return arr0;
   }
   fabrica.define(TERRENO, { tsl: tslTerreno });   // una sola fuente: el clásico y el TSL en el mismo fichero
   function material(u: Record<string, Uniforme>): MaterialTerreno { return mats.crea(TERRENO, { u: u }) as unknown as MaterialTerreno; }
@@ -439,6 +527,8 @@ export function creaSombreadoTiles(deps: DepsTerreno) {
     if (mos) { if (UN.uMos.value === mos) UN.uMos.value = null; mos.dispose(); mos = null; }
     Mundo.lista.forEach(function (t) { sueltaTexturas(t, true); });   // L2-05: las texturas de cada tesela del Mundo (y sus uniformes)
     if (RUI0) { RUI0.dispose(); RUI0 = null; }
+    if (neu0) { neu0.dispose(); neu0 = null; } if (arr0) { arr0.dispose(); arr0 = null; } if (harr0) { harr0.dispose(); harr0 = null; }
+    for (const k of Object.keys(huecos)) { (huecos[k] as TexturaMin).dispose(); delete huecos[k]; }
     mats.libera();   // lo que quede de este dueño en la fábrica (lo suelto por suelta() ya salió de su lista)
   }
   function resumen(): { glb: number; conTesela: number; conDetalle: number } { return { glb: vivos.length, conTesela: vivos.filter(function (v) { return v.mt; }).length, conDetalle: vivos.filter(function (v) { return v.u["uDet"] && (v.u["uDet"] as Uniforme).value; }).length }; }
