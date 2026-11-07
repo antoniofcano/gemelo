@@ -17,11 +17,13 @@ const fabrica = {
     return m;
   },
   async crea(THREE, p, lienzo) {
-    const renderer = new THREE.WebGPURenderer({ canvas: lienzo, antialias: p.msaa, forceWebGL: true, multiview: p.mv });
+    const renderer = new THREE.WebGPURenderer({ canvas: lienzo, antialias: p.msaa, forceWebGL: p.api !== "webgpu", multiview: p.mv });
     await renderer.init();
+    const webgpu = !!(renderer.backend && renderer.backend.isWebGPUBackend);   // con api=webgpu y sin navigator.gpu, three cae a WebGL en silencio: se dice el real
     const tubo = p.directo ? new THREE.DirectRenderPipeline(renderer) : null;
     return {
       renderer,
+      backend: webgpu ? "WebGPU" : "WebGL",
       gl: renderer.backend && renderer.backend.gl,
       dibuja: tubo ? (escena, camara) => tubo.render(escena, camara) : (escena, camara) => renderer.render(escena, camara),
       multiviewActivo() { return typeof renderer.xr.useMultiview === "function" ? renderer.xr.useMultiview() : null; },

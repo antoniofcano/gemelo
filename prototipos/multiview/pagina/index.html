@@ -14,6 +14,9 @@
   #ficha a { color: var(--acento); }
   #resultado { white-space: pre-wrap; font: 12px/1.35 ui-monospace, monospace; color: var(--texto); max-height: 45vh; overflow: auto; margin: 8px 0 0; }
   #ficha button { font: inherit; padding: 8px 14px; margin: 8px 8px 0 0; border-radius: 6px; border: 1px solid var(--acento); background: transparent; color: var(--texto); }
+  body.pantalla canvas { margin: 0; }
+  body.pantalla #ficha { position: static; max-width: none; border-radius: 0; border-width: 1px 0 0; }
+  #ficha button:disabled { opacity: .5; }
   #ficha button[hidden] { display: none; }
 </style>
 </head>
@@ -22,6 +25,7 @@
   <h1>Humo multiview</h1>
   <p id="estado">Cargando…</p>
   <p>Casos: <a href="?modo=clasico">clásico</a> · <a href="?modo=super">super-three</a> · <a href="?modo=nuevo">nuevo</a> · <a href="?modo=nuevo&amp;mv=0">nuevo sin multiview</a> — y <code>&amp;n=100|200|400</code>, <code>&amp;msaa=0|1</code>.</p>
+  <p>Fuera de VR (iPhone y escritorio, <code>&amp;vista=pantalla</code>): <a href="?modo=clasico&amp;vista=pantalla">clásico</a> · <a href="?modo=nuevo&amp;vista=pantalla">nuevo (WebGL)</a> · <a href="?modo=nuevo&amp;vista=pantalla&amp;api=webgpu">nuevo (WebGPU)</a> — y <code>&amp;n=200|400</code>.</p>
   <button id="medir" type="button" hidden>Medir en pantalla</button>
   <button id="copiar" type="button" hidden>Copiar</button>
   <button id="descargar" type="button" hidden>Descargar .txt</button>

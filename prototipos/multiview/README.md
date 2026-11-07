@@ -43,6 +43,30 @@ WebXR solo funciona en un origen seguro: `http://<IP>` no deja entrar en VR. Par
 1. En el ordenador: `npm run build` y `npm run sirve:red`. Vite escribe las direcciones «Network»; la buena es la de la Wi-Fi (la del ordenador en la red de casa, como `https://192.168.x.y:4173/`). La primera vez, Windows puede pedir permiso en el cortafuegos para Node: hay que permitirlo en redes privadas.
 2. En el Quest, abrir `https://<IP>:4173/?modo=clasico&n=200`. El casco avisa una vez de que la conexión no es privada (el certificado es autofirmado, de `@vitejs/plugin-basic-ssl`): «Avanzado» → «Continuar». A partir de ahí, las mismas URLs y la misma medida de arriba, cambiando `http://localhost:4173` por `https://<IP>:4173`.
 
+## Guía para Antonio: la prueba fuera de VR (A4-1, iPhone y escritorio)
+
+Decisión 232 ([DECISIONS-PENDING](../../doc/rumbo/DECISIONS-PENDING.md)): el renderizador nuevo pasa a ser el de la pantalla por defecto **solo si no es más lento que el clásico en el iPhone y en el escritorio**. Esta guía mide eso con la misma escena de humo, dibujada en la pantalla (`&vista=pantalla`: sin WebXR y sin multiview, que fuera de VR no aplica). El modo VR de arriba no cambia. **No probado** en ningún navegador todavía (A4-1 solo se comprobó en Node): si algo falla al arrancar, la ficha enseña el error; pásalo tal cual.
+
+**Los modos fuera de VR** (todos con three 0.187.0; `super` también corre en pantalla pero no hace falta):
+
+| Modo | URL (añade `&vista=pantalla`) | Qué es |
+|---|---|---|
+| clásico | `/?modo=clasico` | `WebGLRenderer`, la referencia |
+| nuevo con WebGL | `/?modo=nuevo` | `WebGPURenderer({ forceWebGL: true })` |
+| nuevo con WebGPU | `/?modo=nuevo&api=webgpu` | `WebGPURenderer` con su backend nativo, si el navegador trae `navigator.gpu` (Safari de iOS 26 lo trae **[NO VERIFICADO]**). Si no hay, three cae a WebGL **en silencio**: la ficha lo avisa y el texto trae «API gráfica pedida … real …»; esa medida no vale como WebGPU. |
+
+**1. Servirlo (en el ordenador, una vez).** `cd prototipos/multiview && npm ci && npm run build`, luego `npm run sirve:red`. Vite escribe las direcciones «Network»: la buena es la de la Wi-Fi de casa (`https://192.168.x.y:4173/`). Es el mismo certificado autofirmado que con el Quest; la primera vez, Windows puede pedir permiso a Node en redes privadas. El iPhone y el ordenador, en la misma Wi-Fi. Para el escritorio, abre esa misma dirección https en Chrome (así los dos aparatos usan la misma página).
+
+**2. En el iPhone.** Safari → `https://<IP>:4173/?modo=clasico&vista=pantalla&n=200` → aviso de conexión no privada → «Mostrar detalles» → «visitar este sitio web». Pantalla desbloqueada, **modo de bajo consumo apagado** (con él iOS rebaja los fotogramas y la medida no vale), sin otras apps abiertas y con el iPhone templado (ni recién sacado del cargador ni al sol).
+
+**3. Medir, en este orden** (todas con `&vista=pantalla`): 1) clásico `n=200`, 2) nuevo con WebGL `n=200`, 3) nuevo con WebGPU `n=200` (si la ficha dice que hay), y lo mismo con `n=400`. En cada una: comprobar que la línea de estado dice el renderizador esperado y pulsar **Medir**. Dura **63 s** (3 s de calentamiento y 60 s de medida): sin tocar la pantalla ni cambiar de app (si la pestaña se oculta, esos fotogramas se descartan y el texto lo dice). El Wake Lock mantiene la pantalla encendida si el navegador lo da; si no, el texto dice «no disponible» o «rechazado» y hay que evitar que se apague (ajuste de bloqueo automático en «Nunca» mientras dura). Son hasta 6 medidas por aparato, unos 10 minutos con las esperas. Conviene repetir la primera al final para ver cuánto varía el aparato al calentarse.
+
+**4. Qué copiar.** Al terminar salen **Copiar** y **Descargar .txt**. Pega los textos (cada uno trae el caso, el lienzo, la API real, el Wake Lock, el aparato, mediana, p95, p99 y peor del intervalo, ms de JS y de `render()`, llamadas y triángulos). Lo mismo en el escritorio (Chrome, pestaña visible, sin otras ventanas pesadas), y todo a la conversación.
+
+**5. El lienzo es comparable.** Mide siempre **390 × 360 px CSS a densidad 3** (1170 × 1080 px), no el de la ventana ni el del aparato: el iPhone y el escritorio dibujan los mismos píxeles. Cada texto lo apunta (`Lienzo: …`, con la densidad real del aparato aparte). Para otro tamaño, `&ancho=…&alto=…&dpr=…`, y solo se comparan medidas con los mismos valores. Ojo: el intervalo entre fotogramas en pantalla lo topa el refresco (60 Hz, ~16,7 ms, en el iPhone y en casi todos los escritorios): lo que distingue a los renderizadores es sobre todo el ms de `render()` y de JS; el intervalo solo importa si alguno no llega a 60 fps.
+
+**6. Criterio (decisión 232).** El renderizador nuevo pasa a ser el de la pantalla por defecto solo si **no es más lento que el clásico** en **mediana y p95 de `render()` y del intervalo**, con `n=200` y `n=400`, **en el iPhone y en el escritorio**. Si cualquiera de las cuatro cifras sale peor (más allá de lo que varía repetir la medida), el nuevo queda listo y apagado tras `?renderer=webgpu` y A4 se cierra igual. El nuevo con WebGPU nativo se mira aparte: no condiciona la decisión (el Quest usa el backend WebGL), pero si fuera claramente mejor en el iPhone es un dato para el plan.
+
 ## Los tres modos
 
 Dos three no pueden convivir en una página (sus clases no son las mismas y `instanceof` falla), así que son **tres builds de Vite** de la misma escena. `index.html` + `elige.js` cargan la que pida `?modo=`.
@@ -67,6 +91,9 @@ Versiones fijadas en `package.json` de esta carpeta (`three` 0.187.0, `super-thr
 | `msaa` | 1 | antialias del contexto y de la capa XR |
 | `mv` | 1 | multiview (solo `super` y `nuevo`) |
 | `directo` | 1 | `DirectRenderPipeline` (solo `nuevo`) |
+| `vista` | `vr` | `pantalla`: sin WebXR ni multiview, el mismo dibujo en un lienzo de la página (A4-1) |
+| `api` | `webgl` | solo `nuevo` con `vista=pantalla`: `webgpu` pide el backend nativo (se apunta el real) |
+| `ancho`, `alto`, `dpr` | 390, 360 y 3 | solo `vista=pantalla`: lienzo en px CSS y densidad fijos, para comparar aparatos |
 | `escala`, `fov` | 0,9 y 1 | `setFramebufferScaleFactor` y `setFoveation`, como el gemelo (Q0b) |
 | `seg`, `calent` | 60 y 3 | duración de la medida y calentamiento, en s |
 

@@ -75,12 +75,36 @@ test("reparto: n llamadas por ojo exactas y triángulos a menos de un 10 % de lo
 test("parámetros de la URL: valores por defecto, límites, y en clasico no hay multiview", { skip: SALTO }, async () => {
   const P = await imp("src/plan.js");
   const d = P.lee("", "super");
-  assert.deepStrictEqual(d, { modo: "super", n: 200, tri: 200000, msaa: true, mv: true, directo: false, escala: 0.9, fov: 1, seg: 60, calent: 3 });
+  assert.deepStrictEqual(d, { modo: "super", vista: "vr", api: "webgl", ancho: 390, alto: 360, dpr: 3, n: 200, tri: 200000, msaa: true, mv: true, directo: false, escala: 0.9, fov: 1, seg: 60, calent: 3 });
   assert.strictEqual(P.lee("?mv=1", "clasico").mv, false);
   assert.deepStrictEqual([P.lee("?mv=0", "nuevo").mv, P.lee("?directo=0", "nuevo").directo, P.lee("", "nuevo").directo], [false, false, true]);
   assert.strictEqual(P.lee("?msaa=0", "clasico").msaa, false);
   assert.deepStrictEqual([P.lee("?n=5").n, P.lee("?n=99999").n, P.lee("?n=abc").n, P.lee("?n=400").n], [10, 2000, 200, 400]);
   assert.strictEqual(P.lee("?modo=nuevo", "clasico").modo, "clasico", "manda la build, no la URL");
+});
+
+test("A4-1, vista=pantalla: sin multiview ni DirectRenderPipeline, lienzo y densidad fijos, backend WebGL o WebGPU solo en nuevo", { skip: SALTO }, async () => {
+  const P = await imp("src/plan.js");
+  assert.strictEqual(P.lee("", "nuevo").vista, "vr"); assert.strictEqual(P.lee("?vista=otra", "nuevo").vista, "vr");
+  const n = P.lee("?vista=pantalla&mv=1&directo=1", "nuevo");
+  assert.deepStrictEqual([n.vista, n.mv, n.directo, n.api, n.ancho, n.alto, n.dpr, n.seg, n.calent], ["pantalla", false, false, "webgl", 390, 360, 3, 60, 3]);
+  assert.strictEqual(P.lee("?vista=pantalla&api=webgpu", "nuevo").api, "webgpu");
+  assert.strictEqual(P.lee("?vista=pantalla&api=webgpu", "clasico").api, "webgl", "api solo existe en nuevo");
+  assert.strictEqual(P.lee("?vista=pantalla", "super").mv, false);
+  assert.strictEqual(P.lee("?vista=pantalla&dpr=9&ancho=1", "clasico").dpr, 4);
+  assert.strictEqual(P.lee("?vista=pantalla&ancho=1", "clasico").ancho, 100);
+  // el modo VR de siempre no cambia
+  assert.deepStrictEqual([P.lee("", "nuevo").mv, P.lee("", "nuevo").directo], [true, true]);
+});
+
+test("A4-1: cada build lleva el modo pantalla (Wake Lock, lienzo fijo) y cada renderizador sigue siendo el suyo (backend pedido solo en nuevo)", { skip: SALTO }, () => {
+  const d = dist(), B = m => fs.readFileSync(path.join(d, m, "humo.js"), "utf8");
+  for (const m of ["clasico", "super", "nuevo"]) { const x = B(m); assert.ok(x.includes("wakeLock") && x.includes("vista") && x.includes("pantalla"), m + ": modo pantalla"); }
+  // WebGPU nativo: solo el nuevo lo lleva (el WebGPURenderer con su backend); clasico y super no
+  assert.ok(B("nuevo").includes("requestAdapter"), "nuevo: backend WebGPU");
+  for (const m of ["clasico", "super"]) assert.ok(!B(m).includes("requestAdapter"), m + " no debe llevar el backend WebGPU");
+  assert.ok(lee("prototipos/multiview/src/entrada_nuevo.js").includes('forceWebGL: p.api !== "webgpu"'), "nuevo: forceWebGL salvo api=webgpu");
+  assert.ok(!lee("prototipos/multiview/src/webgl.js").includes("WebGPURenderer"), "los modos WebGL no pueden llevar el WebGPURenderer");
 });
 
 // la escena de verdad con cada three: tantas mallas como llamadas, los triángulos del reparto, nada recortado por el frustum
@@ -137,6 +161,14 @@ test("medidor y texto: estadística de MideEst (30_mide.js) y lectura de RenderP
     "MAX_VIEWS_OVR 2", "renderer.render() (ms): mediana 2.5", "402 llamadas", "p95"]) assert.ok(t.includes(x), "falta «" + x + "» en:\n" + t);
   assert.ok(!/Mozilla|X11/.test(t), "el agente de usuario va resumido (MideEst.resumeUA)");
   assert.strictEqual(M.sonda(null).webgl2, null);
+  // A4-1: el texto de la vista pantalla (lienzo, densidad, API real, Wake Lock) y sin las líneas de VR
+  const pp = { modo: "nuevo", vista: "pantalla", api: "webgpu", n: 200, tri: 200000, msaa: true, mv: false, directo: false, escala: 0.9, fov: 1 };
+  const tp = M.texto(fin, { fecha: "2026-11-07 12:00:00", renderizador: "three WebGPURenderer (forceWebGL) · three r187", p: pp, plan: { llamadas: 200, triangulos: 200120 }, sonda: {}, sesion: null,
+    ua: "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 Version/26.0 Mobile/15E148 Safari/604.1", plataforma: "iPhone", vr: false, seg: 60, calent: 3,
+    pantalla: { ancho: 390, alto: 360, dpr: 3, dprAparato: 3, px: "1170×1080", pantalla: "390×844", apiPedida: "WebGPU", apiReal: "WebGL", gpu: false, wake: "no disponible en este navegador" } });
+  for (const x of ["vista pantalla (sin WebXR, sin multiview)", "Lienzo: 390×360 px CSS · densidad usada 3 (la del aparato: 3) → 1170×1080 px", "API gráfica pedida WebGPU, real WebGL", "navigator.gpu no",
+    "Wake Lock): no disponible", "plataforma iPhone", "renderer.render() (ms): mediana 2.5", "Intervalo (ms)", "p99"]) assert.ok(tp.includes(x), "falta «" + x + "» en:\n" + tp);
+  assert.ok(!/multiview pedido|Por encima de 13,9|los dos ojos|por ojo/.test(tp), "sin lo de VR:\n" + tp);
 });
 
 test("sin datos de la finca, rutas locales ni envíos: el prototipo es sintético y no manda nada a ningún sitio", () => {

@@ -37,10 +37,16 @@ const sn = v => (v === true ? "sí" : v === false ? "no" : "n/d");
 export function texto(e, c) {
   const L = [], p = c.p;
   L.push("Humo multiview (F2b) · " + c.fecha);
-  L.push("Modo: " + p.modo + " · " + c.renderizador + " · multiview pedido " + sn(p.mv) + (p.modo === "nuevo" ? " · DirectRenderPipeline " + sn(p.directo) : ""));
-  L.push("Caso: n=" + p.n + " llamadas por ojo · tri=" + p.tri + " por ojo · msaa " + sn(p.msaa) + " · escala " + p.escala + " · foveación " + p.fov);
-  L.push("Escena (esperado por ojo): " + c.plan.llamadas + " llamadas + 1 del panel · " + c.plan.triangulos + " triángulos");
-  L.push("Aparato: " + (c.vr ? "VR" : "pantalla") + " · " + MideEst.resumeUA(c.ua) + (c.sesion && c.sesion.frecuencia ? " · " + c.sesion.frecuencia + " Hz" : ""));
+  const pant = p.vista === "pantalla";
+  L.push("Modo: " + p.modo + " · " + c.renderizador + (pant ? " · vista pantalla (sin WebXR, sin multiview)" : " · multiview pedido " + sn(p.mv)) + (p.modo === "nuevo" && !pant ? " · DirectRenderPipeline " + sn(p.directo) : ""));
+  L.push(pant ? "Caso: n=" + p.n + " llamadas · tri=" + p.tri + " · msaa " + sn(p.msaa)
+    : "Caso: n=" + p.n + " llamadas por ojo · tri=" + p.tri + " por ojo · msaa " + sn(p.msaa) + " · escala " + p.escala + " · foveación " + p.fov);
+  L.push(pant ? "Escena (esperado): " + c.plan.llamadas + " llamadas · " + c.plan.triangulos + " triángulos"
+    : "Escena (esperado por ojo): " + c.plan.llamadas + " llamadas + 1 del panel · " + c.plan.triangulos + " triángulos");
+  if (pant && c.pantalla) { const q = c.pantalla;
+    L.push("Lienzo: " + q.ancho + "×" + q.alto + " px CSS · densidad usada " + q.dpr + " (la del aparato: " + q.dprAparato + ") → " + q.px + " px · pantalla " + q.pantalla +
+      " · API gráfica pedida " + q.apiPedida + ", real " + q.apiReal + " · navigator.gpu " + sn(q.gpu) + " · pantalla encendida (Wake Lock): " + q.wake); }
+  L.push("Aparato: " + (c.vr ? "VR" : "pantalla") + " · " + MideEst.resumeUA(c.ua) + (c.plataforma ? " · plataforma " + c.plataforma : "") + (c.sesion && c.sesion.frecuencia ? " · " + c.sesion.frecuencia + " Hz" : ""));
   if (c.sesion) L.push("Sesión XR: multiview activo " + sn(c.sesion.multiview) + " · capa " + (c.sesion.capa || "n/d") + (c.sesion.capas != null ? " (textureArrayLength " + c.sesion.capas + ")" : "") +
     " · foveación de la capa " + (c.sesion.foveacion == null ? "n/d" : c.sesion.foveacion));
   const s = c.sonda || {};
@@ -51,8 +57,8 @@ export function texto(e, c) {
   L.push("Intervalo (ms): mediana " + f1(e.ms.mediana) + " · p95 " + f1(e.ms.p95) + " · p99 " + f1(e.ms.p99) + " · peor " + f1(e.ms.peor));
   L.push("JS por fotograma (ms): mediana " + f1(e.js.mediana) + " · p95 " + f1(e.js.p95) + " · peor " + f1(e.js.peor));
   if (e.rd) L.push("  de ellos, renderer.render() (ms): mediana " + f1(e.rd.mediana) + " · p95 " + f1(e.rd.p95) + " · peor " + f1(e.rd.peor));
-  if (e.ll || e.tr) L.push("Por fotograma (mediana, renderer.info, los dos ojos): " + Math.round(e.ll.mediana) + " llamadas · " + Math.round(e.tr.mediana) + " triángulos");
-  L.push("Por encima de 13,9 ms: " + e.sobre + " (" + f1(e.pctSobre) + " %) · p95 ≤ 13,9 ms: " + sn(e.ms.p95 <= 13.9));
+  if (e.ll || e.tr) L.push("Por fotograma (mediana, renderer.info" + (pant ? "" : ", los dos ojos") + "): " + Math.round(e.ll.mediana) + " llamadas · " + Math.round(e.tr.mediana) + " triángulos");
+  if (!pant) L.push("Por encima de 13,9 ms: " + e.sobre + " (" + f1(e.pctSobre) + " %) · p95 ≤ 13,9 ms: " + sn(e.ms.p95 <= 13.9));
   return L.join("\n");
 }
 

@@ -25,36 +25,62 @@ function panelVR(THREE, camara) {
 export async function arranca(THREE, fabrica, modoBuild) {
   const p = lee(location.search, modoBuild), $ = id => document.getElementById(id);
   const estado = $("estado"), botonMedir = $("medir"), botonCopiar = $("copiar"), botonBaja = $("descargar"), salida = $("resultado");
+  const pantalla = p.vista === "pantalla";   // A4-1: sin WebXR, el mismo dibujo en un lienzo de tamaño y densidad fijos
+  if (pantalla) document.body.classList.add("pantalla");
   const E = creaEscena(THREE, p, fabrica.sombreador);
   const lienzo = document.createElement("canvas"); document.body.appendChild(lienzo);
   const R = await fabrica.crea(THREE, p, lienzo);
   const renderer = R.renderer;
-  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-  const tamaño = () => { renderer.setSize(window.innerWidth, window.innerHeight); E.camara.aspect = window.innerWidth / window.innerHeight; E.camara.updateProjectionMatrix(); };
+  // pantalla: tamaño en CSS y densidad FIJOS (por defecto 390 × 360 a densidad 3: 1170 × 1080 px en el iPhone y en el escritorio), no los de la ventana,
+  // para que las medidas de aparatos distintos dibujen los mismos píxeles; la densidad real del aparato se apunta aparte
+  const tamaño = pantalla
+    ? () => { renderer.setPixelRatio(p.dpr); renderer.setSize(p.ancho, p.alto); E.camara.aspect = p.ancho / p.alto; E.camara.updateProjectionMatrix(); }
+    : () => { renderer.setSize(window.innerWidth, window.innerHeight); E.camara.aspect = window.innerWidth / window.innerHeight; E.camara.updateProjectionMatrix(); };
+  if (!pantalla) renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   tamaño(); window.addEventListener("resize", tamaño);
-  renderer.xr.enabled = true;
-  renderer.xr.setReferenceSpaceType("local-floor");
-  renderer.xr.setFramebufferScaleFactor(p.escala);
-  renderer.xr.setFoveation(p.fov);
-  const panel = panelVR(THREE, E.camara); E.escena.add(panel.malla);
+  if (!pantalla) {
+    renderer.xr.enabled = true;
+    renderer.xr.setReferenceSpaceType("local-floor");
+    renderer.xr.setFramebufferScaleFactor(p.escala);
+    renderer.xr.setFoveation(p.fov);
+  }
+  const panel = panelVR(THREE, E.camara); if (!pantalla) E.escena.add(panel.malla);
+  // pantalla: que no se apague mientras mide (Wake Lock; en Safari de iOS 16.4+ y en Chrome; si no está o lo niega, se apunta y se avisa)
+  let wake = navigator.wakeLock ? "no pedido aún" : "no disponible en este navegador", cerrojo = null;
+  const pideWake = async () => {
+    if (!navigator.wakeLock) return;
+    try { cerrojo = await navigator.wakeLock.request("screen"); wake = "activo"; cerrojo.addEventListener("release", () => { if (wake === "activo") wake = "soltado por el sistema"; }); }
+    catch (e) { wake = "rechazado (" + (e && e.name) + "): evita que la pantalla se apague a mano"; }
+  };
+  const suelta = () => { if (cerrojo) { cerrojo.release().catch(() => {}); cerrojo = null; } if (wake === "activo") wake = "activo mientras midió"; };
+  const gpu = typeof navigator.gpu !== "undefined";
+  const datosPantalla = () => !pantalla ? null : { ancho: p.ancho, alto: p.alto, dpr: p.dpr, dprAparato: window.devicePixelRatio || 1,
+    px: Math.round(p.ancho * p.dpr) + "×" + Math.round(p.alto * p.dpr), pantalla: screen.width + "×" + screen.height,
+    apiPedida: fabrica.renderizador.includes("WebGPURenderer") ? (p.api === "webgpu" ? "WebGPU" : "WebGL forzado") : "WebGL", apiReal: R.backend || "WebGL", gpu, wake };
 
   const sondaIni = sonda(R.gl);
   let sesion = null, ultimo = "";
   const contexto = () => ({ fecha: new Date().toISOString().slice(0, 19).replace("T", " "), renderizador: fabrica.renderizador + " · three r" + THREE.REVISION, p, plan: E.plan, sonda: sondaIni,
-    sesion, ua: navigator.userAgent, vr: renderer.xr.isPresenting, seg: p.seg, calent: p.calent });
+    sesion, ua: navigator.userAgent, plataforma: navigator.platform || null, pantalla: datosPantalla(), vr: renderer.xr.isPresenting, seg: p.seg, calent: p.calent });
   const muestra = txt => {
     ultimo = txt; salida.textContent = txt; console.log(txt);
     panel.pinta(txt.split("\n"));
     botonCopiar.hidden = botonBaja.hidden = renderer.xr.isPresenting;
+    if (pantalla) { suelta(); botonMedir.disabled = false; botonMedir.textContent = "Medir otra vez"; estado.textContent = "Medida hecha. Pulsa «Copiar» (o «Descargar .txt») y pégala en el chat."; }
   };
   const medidor = creaMedidor(p.calent, p.seg, r => muestra(texto(r, contexto())));
   const cabecera = () => texto(null, contexto()).split("\n").slice(0, -1);
 
   // los botones: VR (VRButton de la misma three: pide local-floor, bounded-floor y layers), medir en pantalla y copiar
   const { VRButton } = fabrica;
-  document.body.appendChild(VRButton.createButton(renderer));
+  if (!pantalla) document.body.appendChild(VRButton.createButton(renderer));
   botonMedir.hidden = false;
-  botonMedir.onclick = () => { medidor.arma(); estado.textContent = "Midiendo en pantalla (no vale como fps de VR)…"; };
+  botonMedir.textContent = pantalla ? "Medir (" + p.calent + " s + " + p.seg + " s)" : "Medir en pantalla";
+  botonMedir.onclick = async () => {
+    if (pantalla) { botonMedir.disabled = true; botonCopiar.hidden = botonBaja.hidden = true; await pideWake(); }
+    medidor.arma();
+    estado.textContent = pantalla ? "Midiendo " + p.seg + " s (más " + p.calent + " s de calentamiento). No toques la pantalla ni cambies de aplicación. Wake Lock: " + wake + "." : "Midiendo en pantalla (no vale como fps de VR)…";
+  };
   botonCopiar.onclick = async () => {
     try { await navigator.clipboard.writeText(ultimo); botonCopiar.textContent = "Copiado"; }
     catch (e) { const r = document.createRange(); r.selectNodeContents(salida); const s = getSelection(); s.removeAllRanges(); s.addRange(r); botonCopiar.textContent = "Seleccionado: copia a mano"; }
@@ -63,11 +89,11 @@ export async function arranca(THREE, fabrica, modoBuild) {
   // «Descargar»: el mismo texto como fichero local (Blob, sin red), por si el portapapeles no deja
   botonBaja.onclick = () => {
     const a = document.createElement("a"), url = URL.createObjectURL(new Blob([ultimo], { type: "text/plain;charset=utf-8" }));
-    a.href = url; a.download = "humo-" + p.modo + "-n" + p.n + (p.mv ? "" : "-sinmv") + ".txt"; document.body.appendChild(a); a.click(); a.remove();
+    a.href = url; a.download = "humo-" + (pantalla ? "pantalla-" + p.modo + "-" + p.api : p.modo) + "-n" + p.n + (p.mv || pantalla ? "" : "-sinmv") + ".txt"; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
-  renderer.xr.addEventListener("sessionstart", () => {
+  if (!pantalla) renderer.xr.addEventListener("sessionstart", () => {
     const s = renderer.xr.getSession(), capa = renderer.xr.getBaseLayer ? renderer.xr.getBaseLayer() : null;
     sesion = {
       multiview: R.multiviewActivo(),
@@ -79,13 +105,13 @@ export async function arranca(THREE, fabrica, modoBuild) {
     medidor.arma(); panel.pinta(cabecera().concat(["", "Calentando " + p.calent + " s y midiendo " + p.seg + " s…", "Quédate quieto mirando al frente."]));
     estado.textContent = "En VR: midiendo.";
   });
-  renderer.xr.addEventListener("sessionend", () => {
+  if (!pantalla) renderer.xr.addEventListener("sessionend", () => {
     if (medidor.estado !== "hecho") medidor.para();
     estado.textContent = ultimo ? "Fuera de VR. Resultado abajo: «Copiar» y pégalo en el chat." : "Fuera de VR, sin medida completa.";
     botonCopiar.hidden = botonBaja.hidden = !ultimo;
   });
   // en VR, el gatillo repite la medida (cuando la anterior terminó)
-  for (let i = 0; i < 2; i++) renderer.xr.getController(i).addEventListener("select", () => {
+  for (let i = 0; i < (pantalla ? 0 : 2); i++) renderer.xr.getController(i).addEventListener("select", () => {
     if (medidor.estado === "hecho" || medidor.estado === "parado") { medidor.arma(); panel.pinta(cabecera().concat(["", "Otra vez: calentando y midiendo…"])); }
   });
 
@@ -97,7 +123,8 @@ export async function arranca(THREE, fabrica, modoBuild) {
     const r0 = performance.now(); R.dibuja(E.escena, E.camara); const r1 = performance.now();
     medidor.fotograma(intervalo, performance.now() - t0, r1 - r0, renderer.info, document.hidden);
   });
-  estado.textContent = "Listo: " + fabrica.renderizador + ". Entra en VR (la medida empieza sola) o mide en pantalla.";
+  estado.textContent = pantalla ? "Listo: " + fabrica.renderizador + (R.backend ? " · backend " + R.backend : "") + (p.api === "webgpu" && R.backend !== "WebGPU" ? " (¡pediste WebGPU y no hay: es WebGL!)" : "") + ". Pulsa «Medir»."
+    : "Listo: " + fabrica.renderizador + ". Entra en VR (la medida empieza sola) o mide en pantalla.";
   panel.pinta(cabecera());
   salida.textContent = cabecera().join("\n");
   console.log("humo multiview: modo=" + p.modo + " · " + fabrica.renderizador + " · three r" + THREE.REVISION, p, E.plan, sondaIni);
