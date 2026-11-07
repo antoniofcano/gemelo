@@ -19,7 +19,7 @@ const HAB = require("./_fuente").fuenteMotor("47_habla.js"), GUI = lee("apps/web
 // MU5-n (A3-6b): el talón, apps/web/src/mundos/comun/habla.ts (el componente) y red/voz/habla.ts (HablaPuro); se prueban como los ve el legado (Mundos.<nombre>)
 const MOTOR = trozo(HAB, "// [motor:inicio]", "// [motor:fin]");
 const { HablaPuro: H, creaHabla } = require("./_mundos");
-const PVJS = lee("apps/web/motor/46b_primera_vez.js"), PV = new Function("\"use strict\";\n" + trozo(PVJS, "// [puro:inicio]", "// [puro:fin]") + "\nreturn PrimeraVezPuro;")();
+const { PrimeraVezPuro: PV } = require("./_mundos");   // A3-7b2: la tarjeta vive en apps/web/src/red/voz/primera-vez.ts; 46b es su talón
 const { VozPuro } = require("./_mundos");   // MU5-n (A3-6b): la voz vive en apps/web/src/red/voz/voz.ts; 45_voz.js es su talón
 const AjustesPuro = new Function("\"use strict\";\n" + trozo(AJU, "// [puro:inicio]", "// [puro:fin]") + "\nreturn AjustesPuro;")();
 const EVENTOS = JSON.parse(lee("contratos/eventos.json")), IFACES = JSON.parse(lee("contratos/interfaces.json"));
