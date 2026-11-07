@@ -20,3 +20,6 @@ export type { DepsHud, Hud } from "./hud.ts";
 // A3-7a: lo tuyo en pantalla (antes 31b_hud_personal.js), componente de todo mundo; su libera() para su reloj (L2-11).
 export { HudPersonalPuro, ID_HUD_PERSONAL, creaHudPersonal, manifiestoHudPersonal } from "./hud-personal.ts";
 export type { DepsHudPersonal, HudPersonal } from "./hud-personal.ts";
+// A3-7a: el menú y la pantalla completa (antes la primera mitad de 24_pantalla.js), componente de todo mundo.
+export { ID_MENU_PANTALLA, creaPantalla, manifiestoPantalla } from "./pantalla.ts";
+export type { DepsPantalla, MenuPantalla } from "./pantalla.ts";

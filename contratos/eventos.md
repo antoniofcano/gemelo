@@ -62,11 +62,11 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `prevision:alterna` | `{ abre? }` | `15_tiempo` (botón de la ventana Tiempo) | `35_fichas_tiempo` (la lámina de la previsión) |
 | `red:estado` | `{ sala, estado, motivo? }` | `red/salas` (antes 37_red, A3-6a; una sala cambia de estado: `conectando`, `dentro`, `reconectando`, `fuera` con su motivo) | `45_voz` (F3f: se engancha sola a una sala que entra en una guiada); quien está en la sala lo sigue con `sala.al("estado")` |
 | `sonido:baliza` | `{ completa? }` | `19_balizas` (al llegar a una baliza) | `20_sonido` (campanilla o arpegio) |
-| `sonido:golpe` | — | `24_pantalla` (el aterrizaje del paseo) | `20_sonido` |
+| `sonido:golpe` | — | `mundos/comun/transicion` (antes 24_pantalla; el aterrizaje del paseo) | `20_sonido` |
 | `sonido:juego` | `{ que, cadena? }` | `41_cae_la_cosecha` | `20_sonido` (notas cortas sintetizadas) |
 | `perros:amenaza` | `{ x, y, res }` (pregunta: quien escuche rellena `res` con `{ x, y }` o lo deja en `null`) | `mundos/exterior/fauna` | `mundos/exterior/perros` |
-| `perros:llegan` | (nada) | `24_pantalla`, `29_vr` | `mundos/exterior/perros` |
-| `polvo:emite` | `{ x, y, h, vx?, vy?, vz?, tam?, vida? }` | `24_pantalla`, `mundos/exterior/perros` | `mundos/exterior/huellas-polvo` (antes 22b_huellas_polvo) |
+| `perros:llegan` | (nada) | `mundos/comun/transicion` (antes 24_pantalla), `29_vr` | `mundos/exterior/perros` |
+| `polvo:emite` | `{ x, y, h, vx?, vy?, vz?, tam?, vida? }` | `mundos/comun/transicion` (antes 24_pantalla), `mundos/exterior/perros` | `mundos/exterior/huellas-polvo` (antes 22b_huellas_polvo) |
 | `sonido:ladrido` | `{ grave? }` | `mundos/exterior/perros` | `20_sonido` |
 | `usable:cerca` | `{ id \| null }` | `02e_entidades` (`Usables.actualiza`, al pasear: cambia lo más cercano dentro de su radio) | (nadie todavía: `19_balizas` lo lee con `Usables.cercano()`) |
 | `usable:elige` | `{ id, tipo, como }` | `02e_entidades` (toque, clic, rayo y gatillo, tecla) | (nadie todavía) |

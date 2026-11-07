@@ -851,13 +851,13 @@
     "perros:llegan": {
       "descripcion": "El muñequito acaba de aterrizar (o se entra en VR sin haber paseado): los perros salen de entre los olivos corriendo hacia él. Sin perros, no pasa nada.",
       "datos": {},
-      "emiten": ["24_pantalla", "mundos/comun/vr-sesion"],
+      "emiten": ["mundos/comun/transicion", "mundos/comun/vr-sesion"],
       "escuchan": ["mundos/exterior/perros"]
     },
     "polvo:emite": {
       "descripcion": "Una bocanada de polvo en { x (este), y (norte) } en metros del mundo, a altura h, con velocidad (vx, vy, vz), tamaño y vida en segundos. La dibuja quien lleve el polvo (huellas y polvo); sin él, no se ve.",
       "datos": { "type": "object", "required": ["x", "y", "h"], "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "h": { "type": "number" }, "vx": { "type": "number" }, "vy": { "type": "number" }, "vz": { "type": "number" }, "tam": { "type": "number" }, "vida": { "type": "number" } } },
-      "emiten": ["24_pantalla", "mundos/exterior/perros"],
+      "emiten": ["mundos/comun/transicion", "mundos/exterior/perros"],
       "escuchan": ["mundos/exterior/huellas-polvo"]
     },
     "prevision:alterna": {
@@ -945,7 +945,7 @@
         }
       },
       "emiten": [
-        "24_pantalla",
+        "mundos/comun/transicion",
         "mundos/exterior/perros"
       ],
       "escuchan": [
@@ -1043,7 +1043,7 @@
       "descripcion": "El muñequito aterriza tras la caída del paseo: un golpe sordo y su rebote.",
       "datos": {},
       "emiten": [
-        "24_pantalla"
+        "mundos/comun/transicion"
       ],
       "escuchan": [
         "mundos/exterior/sonido"

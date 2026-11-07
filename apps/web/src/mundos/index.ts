@@ -132,3 +132,6 @@ export { ID_CAMARA, creaCamara, manifiestoCamara } from "./comun/camara.ts";
 export type { Camara, DepsCamara } from "./comun/camara.ts";
 export { ID_PALANCA, creaPalanca, manifiestoPalanca } from "./comun/palanca.ts";
 export type { DepsPalanca, Palanca } from "./comun/palanca.ts";
+// A3-7a (MU5-n): la transición del mapa al paseo (antes la segunda mitad de 24_pantalla.js), de la locomoción de todo mundo; no es un componente (nada que soltar).
+export { creaTransicion } from "./comun/transicion.ts";
+export type { DepsTransicion, Transicion } from "./comun/transicion.ts";

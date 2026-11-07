@@ -6,7 +6,7 @@ const test = require("node:test"), assert = require("node:assert");
 const { lee, RAIZ } = require("./_util");
 const fs = require("fs"), path = require("path");
 
-const HUD = require("./_fuente").fuenteMotor("31_hud.js"), PANT = lee("apps/web/motor/24_pantalla.js"), PL = lee("apps/web/plantilla.html");
+const HUD = require("./_fuente").fuenteMotor("31_hud.js"), PANT = require("./_fuente").fuenteMotor("24_pantalla.js"), PL = lee("apps/web/plantilla.html");
 const P = (() => {
   const i = HUD.indexOf("// [puro:inicio]"), f = HUD.indexOf("// [puro:fin]");
   return new Function("\"use strict\";\n" + HUD.slice(i, f) + "\nreturn HudPuro;")();
@@ -50,7 +50,7 @@ test("pantalla completa: Fullscreen API sobre la página con gesto, Keyboard Loc
   assert.match(PANT, /raiz\.requestFullscreen \? raiz\.requestFullscreen\(\{ navigationUI: "hide" \}\) : raiz\.webkitRequestFullscreen\(\)/);
   assert.match(PANT, /k\.lock\(\["Escape"\]\)/);
   assert.match(PANT, /Compartir → «Añadir a pantalla de inicio»/);
-  assert.match(PANT, /b\.addEventListener\("click", function \(\) \{ ponPantalla\(\); \}\)/, "solo con un gesto (clic o tecla F, que hace clic)");
+  assert.match(PANT, /(?:b\.addEventListener\(|escucha\(b, )"click", function \(\) \{ ponPantalla\(\); \}\)/, "solo con un gesto (clic o tecla F, que hace clic)");   // A3-7a: escucha(b, …) es el addEventListener del soltador
   assert.doesNotMatch(PANT, /orientation\.lock/, "la orientación no se bloquea");
 });
 
