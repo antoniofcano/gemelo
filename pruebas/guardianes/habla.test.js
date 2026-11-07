@@ -357,7 +357,7 @@ test("29_vr.js: el gatillo izquierdo (botón 0) va a VRX.voz cada fotograma y, m
 });
 
 test("T está libre en Teclas (nadie la tiene reservada ni registrada) y el componente no usa innerHTML, ni pide nada fuera de su origen, ni graba", () => {
-  const nucleo = lee("apps/web/motor/02c_componentes.js"), reserv = /RESERVADAS = \{([\s\S]*?)\};/.exec(nucleo)[1];
+  const nucleo = lee("apps/web/src/nucleo/teclas.ts"), reserv = /RESERVADAS: Record<string, string> = \{([\s\S]*?)\};/.exec(nucleo)[1];   // MU5-n (A3-8a): las Teclas, en el núcleo (02c es su talón)
   assert.ok(!/KeyT/.test(reserv), "KeyT no está reservada");
   const fs = require("node:fs"), dir = path.join(__dirname, "..", "..", "apps", "web", "motor");
   const quien = fs.readdirSync(dir).filter(f => /\.js$/.test(f) && /KeyT/.test(fs.readFileSync(path.join(dir, f), "utf8"))); assert.deepStrictEqual(quien, [], "en el motor nadie toca KeyT (A3-6b: 47_habla es un talón)");

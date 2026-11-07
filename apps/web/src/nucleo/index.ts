@@ -23,4 +23,18 @@ export type { AvisoMundo, ContextoBase, DepsWorldManager, EstadoCambio, Fundido 
 export { aplicaAmbiente, aplicaCamara } from "./ambiente.ts";
 export type { Ambiente, CamaraAmbiente, ColorAmbiente, EscenaAmbiente, LuzAmbiente, NieblaAmbiente } from "./ambiente.ts";
 export { ComponentesPuro, creaComponentes } from "./componentes.ts";
+export { creaBus, creaReparto, creaPausa } from "./bus.ts";
+export type { Bus, Reparto, Pausa, ConsolaBus } from "./bus.ts";
+export { creaTeclas } from "./teclas.ts";
+export type { Teclas, DepsTeclas, TeclaEvento } from "./teclas.ts";
+export { ConfigPuro, creaConfig } from "./config.ts";
+export type { Config, DepsConfig, EstadoConfig, LecturaConfig, Param, TablaEpocas } from "./config.ts";
+export { AparatoPuro, creaAparato } from "./aparato.ts";
+export { TopeTilesPuro } from "./tope-tiles.ts";
+export type { EstadoTope, MuestraTope } from "./tope-tiles.ts";
+export { Estaticos } from "./estaticos.ts";
+export type { Objeto3DMin } from "./estaticos.ts";
+export { creaFusionaGeometrias } from "./geometria.ts";
+export type { ThreeGeometria, ParteGeometria } from "./geometria.ts";
+export type { Aparato, ClaseAparato, Clasificacion, Capacidades, Politica, DepsAparato, EnlaceAparato } from "./aparato.ts";
 export type { ApiComponente, BusComponentes, Componentes, ContextoComponente, DepsComponentes, Fase, FilaResumen, Manifiesto } from "./componentes.ts";

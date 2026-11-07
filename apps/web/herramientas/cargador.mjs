@@ -2,24 +2,29 @@
 // CLÁSICO y externo (assets/cargador-<huella>.js, 'self': la CSP no cambia, sin scripts en línea) decide ANTES de cargar three cuál de las dos builds
 // inyecta, porque dos three no pueden convivir en una página. Reglas:
 //   · la decisión es eligeBuild() de builds.mjs (la misma función, copiada tal cual al cargador) con la clase de AparatoPuro.clasifica
-//     (el trozo [puro] de motor/01a_aparato.js, también copiado tal cual: UNA sola detección del aparato);
+//     (el trozo [puro] de src/nucleo/aparato.ts, antes motor/01a_aparato.js, también copiado tal cual sin los tipos: UNA sola detección del aparato);
 //   · el manifiesto va DENTRO del cargador (sin petición extra ni carrera) y también suelto en builds.json, para herramientas y para leer de vuelta;
 //   · si la build de VR no carga (404, red, error en un import estático de su entrada), se cae a la de pantalla; un fallo DESPUÉS de empezar a
 //     ejecutarse no se puede deshacer (three ya está en la página): eso lo cubre la prueba en el Quest, no el cargador.
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { stripTypeScriptTypes } from "node:module";
 import { fileURLToPath } from "node:url";
 import { eligeBuild } from "./builds.mjs";
 
 const WEB = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
-/** El trozo puro de 01a_aparato.js (entre «[puro:inicio]» y «[puro:fin]»): la clasificación del aparato, sin tocar el motor */
+/** El trozo puro de la detección del aparato (entre «[puro:inicio]» y «[puro:fin]»): la clasificación, sin tocar el motor. MU5-n (A3-8a): vive en
+ *  src/nucleo/aparato.ts (antes, motor/01a_aparato.js); se copia como el JavaScript que sale de él, sin los tipos (stripTypeScriptTypes de Node, que los
+ *  cambia por espacios), porque el cargador es un script clásico */
 export function fuenteAparatoPuro(web = WEB) {
-  const t = fs.readFileSync(path.join(web, "motor", "01a_aparato.js"), "utf8");
+  const t = fs.readFileSync(path.join(web, "src", "nucleo", "aparato.ts"), "utf8");
   const a = t.indexOf("// [puro:inicio]"), b = t.indexOf("// [puro:fin]");
-  if (a < 0 || b < a) throw new Error("01a_aparato.js ya no tiene el trozo [puro:inicio]…[puro:fin] que copia el cargador");
-  return t.slice(t.indexOf("\n", a) + 1, b);
+  if (a < 0 || b < a) throw new Error("src/nucleo/aparato.ts ya no tiene el trozo [puro:inicio]…[puro:fin] que copia el cargador");
+  const avisa = process.emitWarning;
+  process.emitWarning = () => {};   // «experimental»: no ensucia la salida de la build
+  try { return stripTypeScriptTypes(t.slice(t.indexOf("\n", a) + 1, b)); } finally { process.emitWarning = avisa; }
 }
 
 /** Lo que Vite escribe en la página de una build: la entrada (script module), las precargas (modulepreload) y las hojas de estilo; y las etiquetas tal cual */

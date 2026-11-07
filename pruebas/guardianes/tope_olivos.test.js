@@ -11,8 +11,7 @@ const fc = require("fast-check");
 const { lee } = require("./_util");
 
 function trozo(src, ini, fin) { const i = src.indexOf(ini), f = src.indexOf(fin); assert.ok(i >= 0 && f > i, "debe marcar " + ini + " … " + fin); return src.slice(i, f); }
-const PURO = (f) => trozo(lee(f), "// [puro:inicio]", "// [puro:fin]");
-const T = new Function("\"use strict\";\n" + PURO("apps/web/motor/02l_tope_tiles.js") + "\nreturn TopeTilesPuro;")();
+const T = require("./_nucleo").TopeTilesPuro;   // A3-8a: el lazo de Q0k vive en apps/web/src/nucleo/tope-tiles.ts (talón 02l_tope_tiles.js)
 const O = require("./_mundos").creaTopeOlivosPuro(T);   // A3-2b: el lazo de Q0n vive en apps/web/src/mundos/exterior/tope-olivos.ts (recibe el de Q0k)
 const D = O.DEF, MU = T.DEF.MUESTRA;
 

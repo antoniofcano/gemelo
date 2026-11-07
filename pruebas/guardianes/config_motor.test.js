@@ -1,6 +1,6 @@
 "use strict";
-// La configuración versionada en el motor (C6 de ADR-0023, OF6 de doc/sistema/OFICINA.md): ConfigPuro y Config de apps/web/motor/02c_componentes.js,
-// en Node y sin navegador:
+// La configuración versionada en el motor (C6 de ADR-0023, OF6 de doc/sistema/OFICINA.md): ConfigPuro y Config (apps/web/src/nucleo/config.ts; su talón,
+// apps/web/motor/02c_componentes.js), en Node y sin navegador. MU5-n (A3-8a): los umbrales y la lectura pasaron a Vitest (apps/web/src/nucleo/config.test.ts):
 //   · los límites del motor (ConfigPuro.LIMITES) son los de contratos/config.schema.json, y los máximos de gafas, los VR_PERFILES[].tri de 29_vr.js;
 //   · precedencia URL > configuración > código, recorte a los límites (enteros, «solo baja» en gafas), umbrales que van juntos y con sus reglas;
 //   · épocas: la tabla de la configuración solo si cubre los 366 días; la época de cada día, igual que apps/web/olivo/epocas.js;
@@ -13,9 +13,8 @@ const { RAIZ, lee, path } = require("./_util");
 const contratoModulos = require(path.join(RAIZ, "pruebas", "contrato_modulos.js"));
 
 const NUCLEO = lee("apps/web/motor/02c_componentes.js");
-const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas"); return s.slice(i, f); };
 const Nucleo = require("./_nucleo");   // MU2-5: ComponentesPuro y Componentes salen del núcleo de TypeScript (apps/web/src/nucleo/componentes.ts)
-const { ConfigPuro: P } = new Function("Nucleo", "\"use strict\";\n" + trozo(NUCLEO, "// [puro:inicio]", "// [puro:fin]") + "\nreturn { ConfigPuro };")(Nucleo);
+const P = Nucleo.ConfigPuro;   // MU5-n (A3-8a): ConfigPuro y Config viven en apps/web/src/nucleo/config.ts (02c_componentes.js es su talón)
 const json = f => JSON.parse(lee(f));
 const ESQ = json("contratos/config.schema.json"), EJ = json("contratos/config-ejemplo.json"), CAL = json("contratos/epocas-calendario.json");
 const VR_TRI = [...require("./_fuente").fuenteMotor("29_vr.js").match(/var VR_PERFILES = \[(.*?)\];/)[1].matchAll(/tri: (\d+)/g)].map(m => Number(m[1]));
@@ -68,16 +67,7 @@ test("precedencia URL > configuración > código, y recorte a los límites", () 
   assert.strictEqual(P.param(cfg, "escalera.desconocido", 7).origen, "codigo");
 });
 
-test("umbrales: van juntos, recortados, con E1 ≤ E0/1,5 y E2 ≤ E1/1,5; si no, los del código", () => {
-  const C = [700, 250, 90], u = x => ({ v: 1, escalera: { umbralesPx: x } });
-  assert.deepStrictEqual(P.umbrales(u({ e0: 800, e1: 300, e2: 100 }), C), { v: [800, 300, 100], origen: "config" });
-  assert.deepStrictEqual(P.umbrales(u({ e0: 5000, e1: 300, e2: 100 }), C).v, [2000, 300, 100], "recortados");
-  assert.strictEqual(P.umbrales(u({ e0: 700, e1: 600, e2: 90 }), C).origen, "codigo");
-  assert.match(P.umbrales(u({ e0: 700, e1: 250, e2: 200 }), C).motivo, /incoherentes/);
-  assert.strictEqual(P.umbrales(u({ e0: 700 }), C).origen, "codigo", "a medias, no");
-  assert.deepStrictEqual(P.umbrales(u({ e0: 800, e1: 300, e2: 100 }), C, [900, 300, 80]), { v: [900, 300, 80], origen: "url" });
-  assert.deepStrictEqual(P.umbrales(null, C), { v: C, origen: "codigo" });
-});
+// los umbrales y la lectura (sin servidor, 200, 401/404/503, sin red, rara o tarde): MU5-n (A3-8a), en Vitest con el código (apps/web/src/nucleo/config.test.ts)
 
 test("épocas: la tabla de la configuración solo si cubre los 366 días; la de la finca reemplaza a la común; la época de cada día como epocas.js", async () => {
   const E = await import(pathToFileURL(path.join(RAIZ, "apps", "web", "olivo", "epocas.js")).href);
@@ -95,44 +85,8 @@ test("épocas: la tabla de la configuración solo si cubre los 366 días; la de 
   assert.strictEqual(P.tablaEpocas({ v: 1 }, "hituelo"), null);
 });
 
-// ---------- la lectura
-const respuesta = (status, cuerpo) => ({ status, json: () => Promise.resolve(cuerpo) });
-test("lectura: sin servidor no pide; 200 → la configuración; 401/404/503, sin red, rara o tarde → el código; nunca escribe en consola", async () => {
-  const consola = ["error", "warn", "log"].map(k => [k, console[k]]), escritos = [];
-  for (const [k] of consola) console[k] = (...a) => escritos.push(k + ": " + a.join(" "));
-  try {
-    let pedidas = [];
-    const f = r => (u, o) => { pedidas.push([u, o]); return typeof r === "function" ? r() : Promise.resolve(r); };
-    assert.strictEqual(P.prefijoApi("", "datos/"), null); assert.strictEqual(P.prefijoApi("", "/teselas/hituelo/"), "/api/");
-    assert.strictEqual(P.prefijoApi("?api=/prueba/", "datos/"), "/prueba/"); assert.strictEqual(P.prefijoApi("?api=https://otro.example/", "/teselas/x/"), null, "nunca otro host");
-    let r = await P.lee({ fetch: f(respuesta(200, {})), prefijo: null });
-    assert.deepStrictEqual([r.cfg, r.estado.motivo, pedidas.length], [null, "sin servidor", 0]);
-    r = await P.lee({ fetch: f(respuesta(200, { version: 7, estado: "publicada", config: EJ })), prefijo: "/api/" });
-    assert.deepStrictEqual([r.cfg, r.estado.origen, r.estado.version, r.estado.estadoVersion], [EJ, "servidor", 7, "publicada"]);
-    assert.strictEqual(pedidas[0][0], "/api/config"); assert.strictEqual(pedidas[0][1].credentials, "same-origin");
-    r = await P.lee({ fetch: f(respuesta(200, { version: null, estado: null, config: { v: 1 } })), prefijo: "/api/" });
-    assert.deepStrictEqual([r.cfg, r.estado.origen, r.estado.motivo], [{ v: 1 }, "codigo", "sin versión publicada"]);
-    for (const s of [401, 404, 503, 500]) {
-      r = await P.lee({ fetch: f(respuesta(s, {})), prefijo: "/api/" });
-      assert.deepStrictEqual([r.cfg, r.estado.motivo], [null, "http " + s]);
-    }
-    r = await P.lee({ fetch: f(() => Promise.reject(new TypeError("Failed to fetch"))), prefijo: "/api/" });
-    assert.deepStrictEqual([r.cfg, r.estado.motivo], [null, "sin red o respuesta ilegible"]);
-    r = await P.lee({ fetch: f({ status: 200, json: () => Promise.reject(new SyntaxError("x")) }), prefijo: "/api/" });
-    assert.strictEqual(r.cfg, null);
-    for (const raro of [null, [], { config: { v: 2 } }, { config: { v: 1, componentes: { A: { activo: 1 } } } }, { config: { v: 1, escalera: [] } }]) {
-      r = await P.lee({ fetch: f(respuesta(200, raro)), prefijo: "/api/" });
-      assert.strictEqual(r.cfg, null, JSON.stringify(raro));
-    }
-    r = await P.lee({ fetch: f(() => new Promise(res => setTimeout(() => res(respuesta(200, { version: 1, config: EJ })), 300))), prefijo: "/api/", espera: 50 });
-    assert.deepStrictEqual([r.cfg, r.tarde], [null, true], "lo que llega tarde se ignora");
-    assert.match(r.estado.motivo, /tarde/);
-    await new Promise(res => setTimeout(res, 320));
-  } finally { for (const [k, fn] of consola) console[k] = fn; }
-  assert.deepStrictEqual(escritos, [], "ni un error ni un aviso en consola");
-});
-
 // ---------- Config entero, con 02c en una ventana de mentira
+const respuesta = (status, cuerpo) => ({ status, json: () => Promise.resolve(cuerpo) });
 function nucleo({ base = "/teselas/hituelo/", busqueda = "", fetch: fetchFn } = {}) {
   const errores = [], consola = { error: (...a) => errores.push(a.join(" ")), warn: (...a) => errores.push(a.join(" ")), log() {} };
   const f = new Function("window", "location", "document", "console", "D", "fetch", "Nucleo", "\"use strict\";\n" + sinCabecera(NUCLEO) + "\nreturn { Componentes, Config };");

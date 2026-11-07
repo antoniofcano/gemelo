@@ -47,9 +47,7 @@ test("la sección está en la barra lateral y en la página, con sus pestañas y
 
 test("los límites de la oficina son los del esquema y los del motor; los máximos de gafas, los del código", async () => {
   const P = await importa("olivos_puro.js");
-  const motor = lee("apps/web/motor/02c_componentes.js");
-  const ini = motor.indexOf("// [puro:inicio]"), fin = motor.indexOf("// [puro:fin]");
-  const { ConfigPuro } = new Function("Nucleo", "\"use strict\";\n" + motor.slice(ini, fin) + "\nreturn { ConfigPuro };")(require("./_nucleo"));   // MU2-5: ComponentesPuro sale del núcleo
+  const { ConfigPuro } = require("./_nucleo");   // MU5-n (A3-8a): ConfigPuro vive en apps/web/src/nucleo/config.ts (02c_componentes.js es su talón)
   const VR_TRI = [...require("./_fuente").fuenteMotor("29_vr.js").match(/var VR_PERFILES = \[(.*?)\];/)[1].matchAll(/tri: (\d+)/g)].map(m => Number(m[1]));
   assert.deepStrictEqual(P.GAFAS_MAX, VR_TRI, "los máximos de gafas son los VR_PERFILES[].tri del código");
   const esc = ESQ.properties.escalera.properties, vistos = new Set();

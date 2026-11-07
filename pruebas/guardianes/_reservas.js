@@ -68,7 +68,7 @@ function reservas(src, fn, inicio) {
 
 /** Las funciones del bucle, por módulo (de apps/web/motor/; las claves «src/…» son de apps/web/src/, el núcleo en TypeScript). «inicio» localiza la función (debe ser único en el fichero). Solo lo que corre a cada fotograma. */
 const BUCLE = {
-  "02l_tope_tiles.js": [["paso (Q0k)", "function paso(s, m)"]],   // el lazo del tope del tileset: cada 0,25 s en VR
+  "src/nucleo/tope-tiles.ts": [["paso (Q0k)", "function paso(s: EstadoTope, m: MuestraTope)"]],   // el lazo del tope del tileset: cada 0,25 s en VR (A3-8a: antes en 02l_tope_tiles.js)
   "src/mundos/exterior/escena-tiles.ts": [["muestraTope", "function muestraTope("], ["sumaVisible", "function sumaVisible("]],   // A3-1b: 04b es un talón de este módulo
   "src/mundos/exterior/tope-olivos.ts": [["paso (Q0n, puro)", "function paso(s: any, m: any)"], ["TopeOlivos.paso", "function paso(dt: any, tri: any,"]],   // A3-2b: 02m es un talón de este módulo   // Q0n: el lazo de los olivos del motor, cada 0,25 s en VR
   "src/mundos/exterior/arboles.ts": [["muestraTopeOlivos", "function muestraTopeOlivos("]],   // A3-2b: 07b es un talón de este módulo
@@ -76,7 +76,7 @@ const BUCLE = {
   "src/ui/minimapa.ts": [["actualizaRastro", "function actualizaRastro("]],   // A3-7a: 17_minimapa es un talón de este módulo
   "src/mundos/exterior/balizas.ts": [["firmaCambia", "function firmaCambia("]],   // A3-3: 19_balizas es un talón de este módulo
   "src/mundos/exterior/perros.ts": [["amenazaEn", "function amenazaEn("], ["actualizaPerros", "function actualizaPerros("], ["empacaPerros", "function empacaPerros("]],   // A3-5: 25_perros es un talón de este módulo
-  "02c_componentes.js": [["Bus.emite", "function emite(ev, datos)"], ["Reparto.pasa", "function pasa(i, q)"], ["Reparto.ini", "function ini(t)"]],   // Q0h: el reparto del JS por bloque, cada fotograma medido
+  "src/nucleo/bus.ts": [["Bus.emite", "function emite(ev: string, datos?: unknown)"], ["Reparto.pasa", "function pasa(i: number, q: number)"], ["Reparto.ini", "function ini(t: number)"]],   // Q0h: el reparto del JS por bloque, cada fotograma medido (A3-8a: antes en 02c_componentes.js)
   "src/nucleo/presupuesto.ts": [["VrPresupuesto.mueve", "function mueve("], ["VrControlPuro.decide", "function decide("], ["VrControlPuro.holgura", "function holgura("], ["VrControlPuro.escalaVr", "function escalaVr("], ["completa", "function completa("], ["nSube", "function nSube("]],   // Q0c-a y A1-12: cada fotograma en VR (antes en 02g_vr_presupuesto.js)
   "src/nucleo/mundos.ts": [["WorldManager.actualiza", "function actualiza("]],   // MU2-3: el gestor llama al mundo activo cada fotograma
   "src/mundos/exterior.ts": [["Exterior.actualiza", "actualiza(dt: number, t: number): void"]],   // MU2-3: el exterior recorre sus pasos cada fotograma

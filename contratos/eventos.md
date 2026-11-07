@@ -1,6 +1,6 @@
 # Eventos del motor (`Bus`, versión 1)
 
-Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md), [COMPONENTES](../doc/sistema/COMPONENTES.md)) no se llaman por su nombre: se hablan por el **bus de eventos** del núcleo (`apps/web/motor/02c_componentes.js`). Catálogo: [`eventos.json`](eventos.json); su forma: [`eventos.schema.json`](eventos.schema.json).
+Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md), [COMPONENTES](../doc/sistema/COMPONENTES.md)) no se llaman por su nombre: se hablan por el **bus de eventos** del núcleo (`apps/web/src/nucleo/bus.ts`, que crea el talón `apps/web/motor/02c_componentes.js`). Catálogo: [`eventos.json`](eventos.json); su forma: [`eventos.schema.json`](eventos.schema.json).
 
 ## Cómo se usa
 
@@ -54,7 +54,7 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `mundo:aplica` | (nada) | `mundos/exterior/marcadores` (`aplica()`: cambió la exageración, el modo o los datos de las teselas) | `mundos/exterior/marcadores-lidar` (recoloca copas, anillos y desfase) |
 | `ndvi:cambia` | `{ lo, hi }` | `mundos/exterior/ndvi` (`pintaNdvi()` de `10_ndvi`, que es `Ndvi.pinta` desde MU5-n: cambió la fecha del campo o la escala relativa) | `mundos/exterior/capa-ndvi` (el componente de `10b_capa_ndvi`: rehace la textura, la leyenda y la gráfica) |
 | `mundo:hoy` | `{ linea: { txt, de, cuando } \| null, trabajo: { parcelas: [id], cuando } \| null }` | `mundos/exterior/mundo-hoy` (antes 53_mundo_hoy; tras cada lectura buena de `/api/mundo/hoy`) | `44b_carteles` (la línea «Hoy en el olivar» del tablón), `mundos/exterior/trabajo-hoy` (antes 54_trabajo_hoy: un tractor en cada haza con tarea en curso, apagado por defecto) |
-| `mundo:pausa` | `{ activa }` | `02c_componentes` (`Pausa.pon` / `Pausa.quita`) | (nadie todavía) |
+| `mundo:pausa` | `{ activa }` | `nucleo/bus` (`Pausa.pon` / `Pausa.quita`) | (nadie todavía) |
 | `mundo:entra` | `{ id, desde, hacia }` (`desde` null al arrancar; en una vuelta atrás, el de antes entra desde el que falló) | `nucleo/mundos` (el gestor, por `deps.avisa`, tras `entra()`; MU2-5: aún sin cablear al motor) | `nucleo/componentes` (ese mundo pasa a activo: corren las fases de sus componentes y, si no estaba cargado, se montan) |
 | `mundo:sale` | `{ id, desde, hacia }` (`id` = `desde`) | `nucleo/mundos` (el gestor, tras `sale()` y `congela()`; aún sin cablear) | `nucleo/componentes` (hasta el siguiente `mundo:entra` no corre ninguna fase) |
 | `voz:estado` | `{ sala, dentro, guiada, corro, papel, puede, micro, turno, modo, auriculares, bloqueado, voces, hablan, callados, motivo }` | `red/voz/voz` (antes 45_voz) (F3d: algo cambió en la voz de la guiada; F3k-2: o en la de un corro, `corro` true y papel `miembro`; `callados`, a quién has silenciado tú) | `ui/hud-personal` (antes 31b_hud_personal; EV2-A4: el botón Hablar de lo tuyo en pantalla), `ui/guiada` (antes 46_guiada; F3f: vuelve a leer la sala enseguida), `mundos/comun/habla` (antes 47_habla) (F3e: el indicador del micro, el botón Hablar, la háptica y la lámina de VR), `mundos/comun/corro` (antes 47b_corro) (F3k-3: sin corro, olvida quién hablaba) |

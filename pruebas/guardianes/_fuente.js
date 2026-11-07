@@ -84,6 +84,12 @@ const TS_DE = {
   "21_suelo.js": "apps/web/src/mundos/exterior/hierba.ts",   // A3-4
   "20_sonido.js": "apps/web/src/mundos/exterior/sonido.ts",   // A3-4
   "23_estacion.js": "apps/web/src/mundos/exterior/estacion.ts",   // A3-4
+  // A3-8a: el núcleo de arranque, en apps/web/src/nucleo/ (se lee con sus tipos, como el resto del núcleo)
+  "02c_componentes.js": ["componentes.ts", "bus.ts", "teclas.ts", "config.ts"].map(f => "apps/web/src/nucleo/" + f),
+  "01a_aparato.js": "apps/web/src/nucleo/aparato.ts",
+  "02l_tope_tiles.js": "apps/web/src/nucleo/tope-tiles.ts",
+  "02j_estaticos.js": "apps/web/src/nucleo/estaticos.ts",
+  "02k_fusiona.js": "apps/web/src/nucleo/geometria.ts",
   "15_tiempo.js": ["tiempo.ts", "tiempo-puro.ts", "tiempo-parche.ts", "tiempo-cielo.ts", "tiempo-lluvia.ts", "tiempo-barrera.ts", "tiempo-paso.ts", "tiempo-fichas.ts"].map(f => "apps/web/src/mundos/exterior/" + f),
 };
 /** A3-6c: los .ts de mundos/comun/ (la VR y la locomoción) se leen como el JavaScript que sale de ellos: sin los tipos (stripTypeScriptTypes de Node, que los cambia por

@@ -135,9 +135,6 @@ test("los talones de apps/web/motor/ tienen la forma de MUNDOS §9.3 (marca, cab
 // sea una función declarada, que se iza. Al migrar, `function x` pasa a `var x = Y.x` y deja de izarse: aquí se ve (08_marcadores pasaba colocaBarrera y
 // recoloreaSuelo). Es un análisis léxico: los `x: x` que van dentro de una función que corre más tarde no son problema y se anotan con su motivo.
 const IZADO_OK = {
-  "02c_componentes.js:listo": "el return de Config: es su propio listo, no el de 08",
-  "02c_componentes.js:quita": "el return de Pausa: es su propio quita, no el de 16_vida",
-  "02c_componentes.js:pon": "el return de Pausa: es su propio pon, no el de 09_camara (que desde A3-6c es un alias de Camara.pon, no una function izada)",
   "12b_llegada.js:enDron": "dentro de window.__llegada, que se llama en las pruebas, con todo cargado",
   "13b_hazas.js:lindes": "el return de Hazas: es su función local lindes(), no la de 15"
 };

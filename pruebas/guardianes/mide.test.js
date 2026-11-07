@@ -462,7 +462,8 @@ test("Q0h: coste cero sin medir: ni una lectura de reloj nueva en el bucle fuera
   assert.strictEqual((act.match(/deps\.ahora\(\)|performance\.now\(\)/g) || []).length, 1, "una sola lectura de reloj en Componentes.actualiza, dentro de la rama de medir");
   assert.match(lee("apps/web/motor/02c_componentes.js"), /var Componentes = Nucleo\.creaComponentes\(\{[\s\S]*?reparto: Reparto,\n\s*ahora: function \(\) \{ return performance\.now\(\); \},/, "02c le da el Reparto y el reloj");
   // las funciones del reparto no reservan
-  const R = require("./_reservas"), rs = R.recuenta()["02c_componentes.js"];
+  const R = require("./_reservas"), rs = R.recuenta()["src/nucleo/bus.ts"];   // MU5-n (A3-8a): el Reparto vive en apps/web/src/nucleo/bus.ts (02c es su talón)
+  assert.match(lee("apps/web/motor/02c_componentes.js"), /var Reparto = Nucleo\.creaReparto\(\{ ahora: function \(\) \{ return performance\.now\(\); \} \}\);/, "02c le da al Reparto el reloj de siempre");
   assert.deepStrictEqual(rs.faltan, []); assert.strictEqual(rs.total, 0, JSON.stringify(rs.detalle));
   assert.ok(Object.keys(rs.porFn).includes("Reparto.pasa") && Object.keys(rs.porFn).includes("Reparto.ini"));
   // y el medidor lo apaga al terminar y al liberar

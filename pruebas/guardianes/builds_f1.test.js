@@ -110,9 +110,8 @@ test("eligeBuild: el Quest carga la vr solo si se publicó; ?build= la fuerza (s
   assert.strictEqual(B.eligeBuild("escritorio", "?mide=60&build=vr", true), "vr");
   assert.strictEqual(B.eligeBuild("escritorio", "?build=vr", false), "pantalla");
   assert.strictEqual(B.buildPedida({}), "pantalla"); assert.strictEqual(B.buildPedida({ GEMELO_BUILD: "vr" }), "vr");
-  // la clase sale de la ÚNICA detección del aparato (01a_aparato.js, AparatoPuro.clasifica): la del Quest 3 de verdad
-  const P = lee("apps/web/motor/01a_aparato.js"), i = P.indexOf("// [puro:inicio]"), f = P.indexOf("// [puro:fin]");
-  const AparatoPuro = new Function(P.slice(i, f) + "\nreturn AparatoPuro;")();
+  // la clase sale de la ÚNICA detección del aparato (AparatoPuro.clasifica; MU5-n, A3-8a: en apps/web/src/nucleo/aparato.ts, talón 01a_aparato.js): la del Quest 3 de verdad
+  const { AparatoPuro } = require("./_nucleo");
   const ua = "Mozilla/5.0 (X11; Linux x86_64; Quest 3) AppleWebKit/537.36 (KHTML, like Gecko) OculusBrowser/41.0 Chrome/132.0 VR Safari/537.36";
   assert.strictEqual(B.eligeBuild(AparatoPuro.clasifica(ua, 0, 8).clase, "", true), "vr");
 });

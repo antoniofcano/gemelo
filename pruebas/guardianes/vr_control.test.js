@@ -21,7 +21,7 @@ const xr = busqueda => Nucleo.creaXrPerillas({ busqueda });
 test("tabla por aparato: una fila por modelo de 01a_aparato, dentro de los límites de las perillas de 02f, y 29_vr la usa", () => {
   assert.deepStrictEqual(Object.keys(C.APARATOS).sort(), ["defecto", "quest-2", "quest-3", "quest-3s", "quest-pro"]);
   // los modelos son los que clasifica 01a_aparato (la tabla y el detector hablan igual)
-  const A = lee("apps/web/motor/01a_aparato.js"), nombres = new Function(trozo(A, "var NOMBRES =", "var EXTENSIONES").replace("var NOMBRES =", "return ") .replace(/;\s*$/, ";"))();
+  const nombres = Nucleo.AparatoPuro.NOMBRES;   // MU5-n (A3-8a): el detector vive en apps/web/src/nucleo/aparato.ts (talón 01a_aparato.js)
   assert.deepStrictEqual(Object.keys(nombres).sort(), Object.keys(C.APARATOS).filter(k => k !== "defecto").sort());
   // las filas [SUPUESTO], la fila por defecto y la copia: en Vitest (presupuesto.test.ts)
   // todas las filas respetan el margen entre sube y baja y caen dentro de los límites de las perillas

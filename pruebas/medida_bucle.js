@@ -58,11 +58,11 @@ function compara(titulo, n, hazAntes, hazAhora) {
 
   // ---- 4 · Bus.emite con 6 oyentes (lo que hace un evento de fotograma: «mundo:...», «perros:amenaza»…)
   {
-    const src = lee("apps/web/motor/02c_componentes.js"), a = src.indexOf("var Bus = (function () {"), b = src.indexOf("\n\n  // el mundo en pausa"), nuevoSrc = src.slice(a, b);
     const antesSrc = require("fs").readFileSync(require("path").join(__dirname, "guardianes", "bucle_equivalencia.test.js"), "utf8");
     const i0 = antesSrc.indexOf("const BUS_ANTES = `") + "const BUS_ANTES = `".length, i1 = antesSrc.indexOf("`;", i0), viejoSrc = antesSrc.slice(i0, i1);
-    const mk = (codigo) => () => { const Bus = new Function("console", codigo + "\nreturn Bus;")(console); let acum = 0; for (let k = 0; k < 6; k++) Bus.on("f", (d) => { acum += d; }); return (i) => Bus.emite("f", i & 7); };
-    compara("4 Bus.emite, 6 oyentes", 300000, mk(viejoSrc), mk(nuevoSrc));
+    // MU5-n (A3-8a): el Bus de ahora es el del núcleo (apps/web/src/nucleo/bus.ts), el que crea el talón 02c
+    const mk = (crea) => () => { const Bus = crea(); let acum = 0; for (let k = 0; k < 6; k++) Bus.on("f", (d) => { acum += d; }); return (i) => Bus.emite("f", i & 7); };
+    compara("4 Bus.emite, 6 oyentes", 300000, mk(() => new Function("console", viejoSrc + "\nreturn Bus;")(console)), mk(() => require("./guardianes/_nucleo").creaBus({ consola: console })));
   }
 
   // ---- 5a · actualizaPerros: dos perros paseando contigo (con conejos y olivos de mentira), más 3 preguntas «perros:amenaza» por fotograma

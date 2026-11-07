@@ -265,7 +265,7 @@ test("en el código: P por Teclas (que filtra campos, Ctrl/Alt/Cmd y repetición
   assert.ok(!/document\.addEventListener|window\.addEventListener/.test(codigo), "ni eventos propios en document ni teclado propio");
   assert.match(lee("apps/web/src/mundos/exterior/tiempo.ts"), /bus\.emite\("prevision:alterna"\)/);   // MU5-n (A3-4): 15_tiempo.js pasó a src/mundos/exterior/tiempo*.ts
   assert.ok(!/KeyP/.test(require("./_fuente").fuenteMotor("12_paseo.js") + require("./_fuente").fuenteMotor("31_hud.js")), "la P no la usa nadie más");
-  assert.ok(!/KeyP/.test(lee("apps/web/motor/02c_componentes.js")), "ni está reservada");
+  assert.ok(!/KeyP/.test(lee("apps/web/motor/02c_componentes.js") + lee("apps/web/src/nucleo/teclas.ts")), "ni está reservada");   // A3-8a: las Teclas, en el núcleo
 });
 
 // ---------- en el navegador (Cerro del fixture con el cliente web, por HTTP). Chrome por lanza(): el compartido de la puerta o uno propio dentro del turno.

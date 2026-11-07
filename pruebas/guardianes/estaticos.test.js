@@ -1,5 +1,5 @@
 "use strict";
-// AG-1.15: objetos estáticos sin recomponer la matriz (apps/web/motor/02j_estaticos.js), en Node y sin navegador, con el three de verdad.
+// AG-1.15: objetos estáticos sin recomponer la matriz (apps/web/src/nucleo/estaticos.ts, talón apps/web/motor/02j_estaticos.js), en Node y sin navegador, con el three de verdad.
 //   · equivalencia: tras colocar y tras cambiar la exageración (1 → 3 → 1,5 → 1), la matriz del mundo de cada objeto congelado es la MISMA que con
 //     matrixAutoUpdate = true. Se comprueba con el código de verdad de 18_paisaje (colocaPaisaje), 15_tiempo (barreras) y 39_oficina_mundo (balizas
 //     oficiales), cada uno dos veces: con Estaticos de verdad y con un Estaticos que no congela nada;
@@ -35,24 +35,7 @@ function igualesMundo(a, b, que) {
 }
 const EXAG = [1, 3, 1.5, 1];
 
-// ---------------------------------------------------------------- el módulo suelto
-test("Estaticos.congela: congela el subárbol, deja la matriz del mundo al día y es idempotente; excepto deja en automático lo que se mueve", () => {
-  const E = estaticosReal(), raiz = new THREE.Group(), hijo = new THREE.Group(), nieto = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial()), movil = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
-  raiz.add(hijo); hijo.add(nieto); hijo.add(movil);
-  raiz.position.set(1, 2, 3); hijo.position.set(10, 0, 0); hijo.rotation.y = 0.5; nieto.position.set(0, 5, 0); nieto.scale.set(2, 3, 4);
-  const ref = raiz.clone(); ref.updateMatrixWorld(true);
-  assert.strictEqual(E.congela(raiz, [movil]), raiz);
-  assert.ok(!raiz.matrixAutoUpdate && !hijo.matrixAutoUpdate && !nieto.matrixAutoUpdate && movil.matrixAutoUpdate);
-  assert.strictEqual(JSON.stringify(E.congelados(raiz)), JSON.stringify({ congelados: 3, automaticos: 1 }));
-  const rn = ref.children[0].children[0];
-  for (let k = 0; k < 16; k++) assert.ok(Math.abs(nieto.matrixWorld.elements[k] - rn.matrixWorld.elements[k]) < 1e-12);
-  // el móvil sigue su movimiento aunque su padre esté congelado
-  movil.position.set(7, 0, 0); raiz.updateMatrixWorld(); assert.ok(Math.abs(movil.matrixWorld.elements[12] - (1 + 10 + 7 * Math.cos(0.5))) < 1e-9);
-  // recolocar + congela otra vez: lo congelado sigue lo que se le cambió (y solo entonces)
-  nieto.position.set(0, 9, 0); raiz.updateMatrixWorld(); assert.strictEqual(nieto.matrixWorld.elements[13], 7, "sin congela, el cambio no se ve (por eso cada sitio llama a congela al colocar)");
-  E.congela(raiz, [movil]); assert.strictEqual(nieto.matrixWorld.elements[13], 11);
-  E.congela(null);   // tolerante
-});
+// ---------------------------------------------------------------- el módulo suelto: MU5-n (A3-8a), en Vitest con el código (apps/web/src/nucleo/estaticos.test.ts)
 
 // ---------------------------------------------------------------- 18_paisaje: el código de verdad, con y sin congelar
 const PAISAJE = {

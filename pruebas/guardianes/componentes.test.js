@@ -20,8 +20,6 @@ const NUCLEO = lee("apps/web/motor/02c_componentes.js");
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return s.slice(i, f); };
 const Nucleo = require("./_nucleo");   // el núcleo de TypeScript (MUNDOS §9.3): ComponentesPuro y creaComponentes (MU2-5)
 const P = Nucleo.ComponentesPuro;
-// el Bus sigue en el legado (02c): se evalúa su trozo tal cual, entre «var Bus» y la Pausa
-const BusPuro = new Function("\"use strict\";\n" + trozo(NUCLEO, "  var Bus = (function () {", "\n\n  // el mundo en pausa") + "\nreturn Bus;")();
 const NUCLEO_TS = path.join(RAIZ, "apps", "web", "src", "nucleo");
 const json = f => JSON.parse(lee(f));
 const ajv = new Ajv2020({ strict: true, strictRequired: false, allErrors: true });
@@ -66,14 +64,7 @@ test("la configuración del servidor: contratos/config.schema.json y validaConfi
   }
 });
 
-test("el Bus: on devuelve quita, emite cuenta oyentes, hay; un oyente que falla no corta a los demás", () => {
-  const vistos = [], err = console.error; console.error = () => {};
-  try {
-    const q1 = BusPuro.on("a:b", d => vistos.push("1" + d)), q2 = BusPuro.on("a:b", () => { throw new Error("x"); }); BusPuro.on("a:b", d => vistos.push("3" + d));
-    assert.ok(BusPuro.hay("a:b")); assert.strictEqual(BusPuro.emite("a:b", "!"), 3); assert.deepStrictEqual(vistos, ["1!", "3!"]);
-    q1(); q2(); q1(); assert.strictEqual(BusPuro.emite("a:b", "?"), 1); assert.strictEqual(BusPuro.emite("nadie:escucha"), 0); assert.ok(!BusPuro.hay("nadie:escucha"));
-  } finally { console.error = err; }
-});
+// el Bus suelto (on, emite, hay, un oyente que falla): MU5-n (A3-8a), en Vitest con su código (apps/web/src/nucleo/bus.test.ts)
 
 // ---------- el registro de verdad, en Node: 02c entero con una ventana de mentira (y, si se pide, ficheros componente del motor)
 function nucleo({ busqueda = "", config = null, extra = "", globales = {} } = {}) {

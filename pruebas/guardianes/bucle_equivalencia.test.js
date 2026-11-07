@@ -110,7 +110,7 @@ const BUS_ANTES = `var Bus = (function () {
     return { on: on, emite: emite, hay: hay };
   })();`;
 function creaBus(codigo, consola) { return new Function("console", codigo + "\nreturn Bus;")(consola); }
-const busNuevo = (consola) => creaBus(trozo("02c_componentes.js", "var Bus = (function () {", "\n\n  // el mundo en pausa") , consola);
+const busNuevo = (consola) => require("./_nucleo").creaBus({ consola });   // MU5-n (A3-8a): el Bus vive en apps/web/src/nucleo/bus.ts (02c es su talón)
 const busAntes = (consola) => creaBus(BUS_ANTES, consola);
 const ambos = (fn) => { for (const [nombre, mk] of [["antes", busAntes], ["ahora", busNuevo]]) { const log = [], errores = []; fn(mk({ error: (...a) => errores.push(a) }), log, errores, nombre); } };
 
@@ -180,7 +180,7 @@ test("Bus: miles de operaciones al azar (alta, baja, emisión anidada, fallos) d
   for (let sem = 1; sem <= 8; sem++) { const a = corre(busAntes, sem), b = corre(busNuevo, sem); assert.ok(a.length > 3000, "hay actividad"); assert.deepStrictEqual(b, a, "semilla " + sem); }
 });
 test("Bus.emite no reserva por emisión: sin cierre, sin slice ni forEach", () => {
-  const cu = R.cuerpo(trozo("02c_componentes.js", "var Bus = (function () {", "\n\n  // el mundo en pausa"), "function emite(");
+  const cu = R.cuerpo(lee("apps/web/src/nucleo/bus.ts"), "function emite(");   // A3-8a: el Bus, en el núcleo
   assert.deepStrictEqual(R.reservas("function emite(ev, datos) {" + cu + "}", "emite", "function emite(").map(x => x.que), [], "emite no debe reservar (el error va en un try aparte, solo si falla)");
 });
 

@@ -198,6 +198,8 @@ export interface DepsComponentes {
   /** para el <script type="application/json" id="config"> de la página (su bloque «componentes») */
   documento?: { getElementById(id: string): { textContent: string | null } | null } | null;
   consola?: { error(...a: unknown[]): void; warn(...a: unknown[]): void } | null;
+  /** MU5-n (A3-8a): donde se publica window.__componentes (el resumen, para las pruebas y ?debug); sin ella, no se publica */
+  ventana?: { __componentes?: () => FilaResumen[] } | null;
 }
 
 /** Una fila del resumen (window.__componentes, ?debug). */
@@ -380,6 +382,9 @@ export function creaComponentes(deps: DepsComponentes) {
   bus.on("mundo:entra", alEntrar);
   bus.on("mundo:sale", alSalir);
 
+  // MU5-n (A3-8a): pruebas (antes lo publicaba 02c_componentes.js)
+  var ventana = deps.ventana;
+  if (ventana) ventana.__componentes = function () { return resumen(); };
   return {
     registra,
     arranca,

@@ -262,7 +262,7 @@ test("window.__g (gancho de las pruebas) publica los miembros del contrato", () 
 test("los ganchos window.__* de depuración existen donde dice el contrato", () => {
   for (const [n, def] of Object.entries(IFACES.ganchos_window)) {
     if (def.tipo !== "function") continue;
-    assert.match(fuenteMotor(def.modulo), new RegExp("window\\." + n + " = function"), n + " no está en " + def.modulo);
+    assert.match(fuenteMotor(def.modulo), new RegExp("(?:window|ventana)\\." + n + " = function"), n + " no está en " + def.modulo);   // A3-8a: el núcleo la recibe por argumento, como «ventana»
   }
 });
 
