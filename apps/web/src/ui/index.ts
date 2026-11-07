@@ -29,3 +29,6 @@ export type { Ajustes, DepsAjustes } from "./ajustes.ts";
 // A3-7a: el minimapa (antes 17_minimapa.js), componente SOLO DEL EXTERIOR (dibuja la finca, que le llega por argumento).
 export { ID_MINIMAPA, creaMinimapa, manifiestoMinimapa } from "./minimapa.ts";
 export type { DepsMinimapa, MinimapaUI } from "./minimapa.ts";
+// A3-7a: los ganchos de las pruebas, window.__g (antes 27_debug.js); no es un componente.
+export { creaGanchos } from "./ganchos.ts";
+export type { DepsGanchos, Ganchos } from "./ganchos.ts";

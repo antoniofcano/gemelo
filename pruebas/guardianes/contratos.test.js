@@ -255,7 +255,7 @@ for (const [nombre, def] of Object.entries(IFACES.interfaces)) {
 }
 
 test("window.__g (gancho de las pruebas) publica los miembros del contrato", () => {
-  const f = lee("apps/web/motor/27_debug.js"), real = claves(f, f.indexOf("window.__g = ")).sort();
+  const f = fuenteMotor("27_debug.js"), real = claves(f, f.indexOf("window.__g = ")).sort();
   assert.deepStrictEqual(real, IFACES.ganchos_window.__g.miembros.slice().sort());
 });
 

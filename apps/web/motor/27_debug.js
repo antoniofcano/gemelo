@@ -4,30 +4,14 @@
 //   04b_escena3d (Escena3D), 04c_olivos_tiles (OlivosTiles), 04f_suelo_fotos (SueloFotos), 07a_catalogo (Catalogo), 07ab_generados (Generados),
 //   07ac_lejanos (Lejanos), 07b_arboles (Arboles), 08_marcadores (listo, aplica), 09_camara (objetivo, orb, pon),
 //   12_paseo (paseando, teclas, pp, entraPaseo, salePaseo)
-// Nota: Publica window.__g, el gancho de las pruebas (contrato en doc/sistema/CONTRATOS.md).
+// Nota: Talón (MU5-n, A3-7a) de apps/web/src/ui/ganchos.ts: publica window.__g, el gancho de las pruebas (contrato en doc/sistema/CONTRATOS.md). No es un componente.
 // ===============================================================================
-
-  // ---------- ganchos de depuración y de prueba (solo lectura/ajuste de cámara; ?debug muestra el contador)
-  // pendientes(): la Cola más la cola propia de los olivos generados (?olivos=gen) y, con ?olivos=escalera, la capa de lejanos hasta que esté (07ac):
-  // lo espera mide() de las pruebas antes de medir
-  // sinDibujo(true) deja el bucle sin pintar el mundo (renderer.render no hace nada; sinDibujo(false) lo devuelve): para las pruebas de Chrome que miran el DOM y no el dibujo 3D
-  // (PB8; antes cada una se parcheaba a mano). No toca nada más: la lógica del fotograma sigue corriendo. Devuelve si queda sin dibujo
-  var renderOriginal = null;
-  function sinDibujo(si) {
-    if (si && !renderOriginal) { renderOriginal = renderer.render; renderer.render = function () {}; }
-    else if (!si && renderOriginal) { renderer.render = renderOriginal; renderOriginal = null; }
-    return !!renderOriginal;
-  }
-  // infoDibujo(): lo dibujado con la misma forma para los dos renderizadores (InfoDibujo de 02h_render, F1 de ADR-0031)
-  window.__g = {
-    sinDibujo: sinDibujo,
-    infoDibujo: function () { return InfoDibujo.lee(renderer); },
-    Arboles: Arboles, Catalogo: Catalogo, Escena3D: Escena3D, OlivosTiles: OlivosTiles, Cola: Cola, SueloFotos: SueloFotos, copas: copas, suelo: suelo, Mundo: Mundo, orb: orb, objetivo: objetivo, camera: camera, renderer: renderer, scene: scene, pon: pon,
-    listo: function () { return listo; }, modo: function () { return Estado.modo; }, Generados: Generados,
-    pendientes: function () { return Cola.pendientes() + Generados.pendientes() + Lejanos.pendientes(); },
-    ponExag: function (v) { Estado.exag = v; aplica(); }, aplica: aplica,
-    paseoEn: function (x, y, ang) { if (!paseando) entraPaseo(); pp.x = x; pp.y = y; pp.ang = ang || 0; },
-    paseoSale: function () { if (paseando) salePaseo(); },
-    paseoTecla: function (d, v) { teclas[d] = !!v; },
-    paseoEstado: function () { return { paseando: paseando, x: pp.x, y: pp.y, ang: pp.ang }; }
-  };
+  // ---------- ganchos de depuración y de prueba: window.__g (contrato en doc/sistema/CONTRATOS.md), solo lectura y ajuste de cámara; sinDibujo para las pruebas de DOM.
+  // MU5-n (A3-7a): migrado a TypeScript; el código vive en apps/web/src/ui/ganchos.ts. No es un componente (nada que soltar; vive lo que la página). Aquí solo se cablea
+  // lo del legado: lo de siempre por valor, al cargarse, como antes; lo que cambia (paseando, teclas, listo), por getter.
+  // [talón] apps/web/src/ui/ganchos.ts
+  var Ganchos = Interfaz.creaGanchos({
+    Arboles: Arboles, Catalogo: Catalogo, Escena3D: Escena3D, OlivosTiles: OlivosTiles, Cola: Cola, SueloFotos: SueloFotos, Generados: Generados, Lejanos: Lejanos, Mundo: Mundo,
+    InfoDibujo: InfoDibujo, Estado: Estado, copas: copas, suelo: suelo, orb: orb, objetivo: objetivo, camera: camera, renderer: renderer, scene: scene, pon: pon, aplica: aplica,
+    entraPaseo: entraPaseo, salePaseo: salePaseo, pp: pp, get paseando() { return paseando; }, get teclas() { return teclas; }, get listo() { return listo; }, ventana: window
+  });
