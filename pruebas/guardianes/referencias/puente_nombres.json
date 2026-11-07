@@ -3,7 +3,7 @@
  "expone": {
   "01_datos.js": ["D","$","tinta","fmt","b64","i16","RES","x0","yN","ANCHO","ALTO","EXT","FOG0","FOG1","DIST_MAX","DIST_INI","DEPURA","VRP","FACTOR_R8","FACTOR_R8_GEN","factorCopaDeConfig","ESC_R8"],
   "01a_aparato.js": ["Aparato"],
-  "02_mundo.js": ["Mundo","suelo","copaAlta","kcor","tinte","aviva","colorEn","copas","cIn","marc","med"],
+  "02_mundo.js": ["Mundo","suelo","copaAlta","TinteOrto","aviva","colorEn","copas","cIn","marc","med"],
   "02b_cola.js": ["CargaPuro","Cola","ColaExt"],
   "02c_componentes.js": ["ComponentesPuro","Reparto","Bus","Pausa","ConfigPuro","Teclas","Componentes","Config"],
   "02d_laminas.js": ["LaminasPuro","Laminas"],
@@ -32,7 +32,7 @@
   "08_marcadores.js": ["Marcadores","gLinde","aplica","capas","aplicaLuego"],
   "08b_marcadores_lidar.js": [],
   "09_camara.js": ["objetivo","orb","camara","sensMirar","pon"],
-  "10_ndvi.js": ["Ndvi","NDV","rampa","pintaNdvi","ndviRel","ndviIdx"],
+  "10_ndvi.js": ["Ndvi","NDV","rampa","pintaNdvi","ndviRel","FechaNdvi"],
   "10b_capa_ndvi.js": [],
   "11_sol.js": [],
   "12_paseo.js": ["paseando","persona","teclas","primera","Paseo","pp","camPos","PalancaPuro","ponPalanca","giraPalanca","entraPaseo","salePaseo","actualizaPaseo"],

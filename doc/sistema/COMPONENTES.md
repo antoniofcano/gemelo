@@ -75,7 +75,7 @@ Lo común: **un manifiesto** que se lee antes de ejecutar, **fases** en lugar de
 
 Lo que hoy es `01_datos` a `09_camara` más `Cola`, la escena y las entradas: `D`, `Mundo`, `Cola`, `renderer/scene/camera`, cámara y modos de movimiento, `Escena3D`, `Ajustes` (motor) y los servicios nuevos de abajo. Sus interfaces van a `contratos/interfaces.json` como hoy. El núcleo es lo único que un componente puede consumir **por nombre**; el resto, por el registro o el bus.
 
-Servicios nuevos del núcleo (un fichero, `apps/web/motor/02c_componentes.js`, más un enganche en `90_final.js`):
+Servicios nuevos del núcleo (un fichero, `apps/web/motor/02c_componentes.js`, más un enganche en `90_final.js`; desde A3-8a ese fichero es un talón y el código vive en `apps/web/src/nucleo/componentes.ts`, `bus.ts`, `teclas.ts` y `config.ts`):
 
 - **`Componentes`**: `registra(def)`, `arranca()` (en `90_final`, tras montar todos los ficheros), `actualiza(fase, dt, t)`, `activo(id)`, `api(id)`, `libera(id)`, `resumen()`.
 - **`Bus`**: `on(evento, fn) → quita`, `emite(evento, datos)`. Eventos con nombre `dominio:accion` (`tiempo:cambia`, `baliza:abre`, `ventana:abre`, `ajuste:cambia`, `vr:entra`, `vr:sale`, `entidad:usa`). Sustituye a los `CustomEvent` de `document` y, con el tiempo, a los `alCambiar` sueltos (que se quedan como envoltorio).
@@ -507,7 +507,7 @@ Decisiones 163 y 164, [contrato](../../contratos/voz-consentimiento.md), [EIPD-V
 
 ### Aparato (AG-0.3): una sola detección del aparato
 
-`apps/web/motor/01a_aparato.js` (monta justo tras `01_datos.js`, antes de todo lo que lo consume) expone **`Aparato`**; es el **único** fichero del motor que lee `navigator.userAgent`, `deviceMemory`, `hardwareConcurrency` y `maxTouchPoints` (lo vigila `pruebas/guardianes/aparato.test.js`). Antes lo hacían ocho ficheros con reglas distintas y `07b_arboles` no reconocía las Quest.
+`apps/web/motor/01a_aparato.js` (monta justo tras `01_datos.js`, antes de todo lo que lo consume) expone **`Aparato`**; desde A3-8a es un talón de `apps/web/src/nucleo/aparato.ts` (`AparatoPuro`, que el cargador copia sin tipos, y `creaAparato`), el **único** sitio del cliente que lee `navigator.userAgent`, `deviceMemory`, `hardwareConcurrency` y `maxTouchPoints` (lo vigila `pruebas/guardianes/aparato.test.js`). Antes lo hacían ocho ficheros con reglas distintas y `07b_arboles` no reconocía las Quest.
 
 | Llamada | Qué da |
 |---|---|

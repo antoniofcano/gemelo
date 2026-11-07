@@ -22,6 +22,10 @@ export { creaSombreadoTiles, uniformesTerreno, hash } from "./exterior/terreno.t
 export { creaMaestrosTerreno } from "./exterior/terreno-maestros.ts";   // A3-8a: los maestros matSuelo y matOrto (antes, a mano en 04d)
 export type { DepsTerreno, DepsUniformes, SombreadoTiles, UniformesTerreno, ThreeTerreno, SueloFotosMin, SueloFotosPuroMin } from "./exterior/terreno.ts";
 export { creaNdvi, rampa, u8aI16 } from "./exterior/ndvi.ts";
+export { creaFechaNdvi } from "./exterior/ndvi-panel.ts";   // A3-8a: la fecha del NDVI y las casillas del panel (antes, en 10_ndvi)
+export type { DepsFechaNdvi, FechaNdvi } from "./exterior/ndvi-panel.ts";
+export { creaTinteOrto, creaCopas } from "./exterior/orto-tinte.ts";   // A3-8a: el color de la ortofoto y el registro de árboles (antes, en 02_mundo)
+export type { DepsTinteOrto, TinteOrto, Copa, Marca, FilaCopa } from "./exterior/orto-tinte.ts";
 export type { DepsNdvi, DatosNdvi, IndiceNdvi, Ndvi } from "./exterior/ndvi.ts";
 export { manifiestoCapaNdvi } from "./exterior/capa-ndvi.ts";
 export type { DepsCapaNdvi } from "./exterior/capa-ndvi.ts";

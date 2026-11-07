@@ -34,7 +34,8 @@ function mundo(extra) {
     lienzos.push(cv); return cv;
   } };
   const g = { THREE, Bus: bus(), D: { ndvi: { w: 4, h: 2, fechas: FECHAS, media: [0.45, 0.5], b64: "x" } }, $, b64: () => [], i16: () => Int16Array.from(DATOS), fmt: (v, d) => v.toFixed(d),
-    document: documento, ANCHO: 40, ALTO: 20, x0: 0, yN: 20, tinte: false, Mundos: MUNDOS, aplicaLuego() { g.reaplicado++; }, reaplicado: 0, Estado: { exag: 1, modo: "gem", calidad: 1 },
+    // A3-8a: el tinte es TinteOrto.E.tinte (02_mundo, orto-tinte.ts) y la fecha, FechaNdvi.E.idx (10_ndvi, ndvi-panel.ts)
+    document: documento, ANCHO: 40, ALTO: 20, x0: 0, yN: 20, TinteOrto: { E: { kcor: 1, tinte: false } }, Mundos: MUNDOS, aplicaLuego() { g.reaplicado++; }, reaplicado: 0, Estado: { exag: 1, modo: "gem", calidad: 1 },
     gArboles: {}, gFollaje: {}, gSombras: {}, nube: {}, UN: { uNdviOn: { value: 0 }, uNdviMap: { value: null } } };
   return { g: Object.assign(g, extra), dom, $, lienzos };
 }
@@ -43,7 +44,7 @@ function monta(m, conCapa) {
   const defs = [], ctx = vm.createContext(m.g);
   m.g.Componentes = { registra: d => { defs.push(d); return true; } };
   vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/10_ndvi.js") + (conCapa ? lee("apps/web/motor/10b_capa_ndvi.js") : "") +
-    "\nglobalThis.__n = { pintaNdvi, ndviRel, rampa, idx: () => ndviIdx, pon: i => { ndviIdx = i; }, NDV, escala: () => Ndvi.escala() };", ctx, { filename: "10_ndvi+10b" });
+    "\nglobalThis.__n = { pintaNdvi, ndviRel, rampa, idx: () => FechaNdvi.E.idx, pon: i => { FechaNdvi.pon(i); }, NDV, escala: () => Ndvi.escala() };", ctx, { filename: "10_ndvi+10b" });
   return { def: defs[0], n: m.g.__n };
 }
 
@@ -60,7 +61,7 @@ test("núcleo sin el componente (?capandvi=0): la escala, ndviRel y el tinte fun
   assert.strictEqual(n.idx(), 1, "arranca en la última fecha");
   assert.strictEqual(m.$("ndviSel").max, 1);
   m.$("cTinte").checked = true; m.$("cTinte").dispara("change");
-  assert.strictEqual(m.g.tinte, true); assert.strictEqual(m.g.reaplicado, 1, "el tinte reaplica");
+  assert.strictEqual(m.g.TinteOrto.E.tinte, true); assert.strictEqual(m.g.reaplicado, 1, "el tinte reaplica");
   // percentiles 5 y 95 de 100, 200, 300, 400, 500, 600, 700, 900 (milésimas): los mismos índices de siempre
   assert.ok(Math.abs(n.escala().lo - 0.1) < 1e-9); assert.ok(Math.abs(n.escala().hi - 0.9) < 1e-9);
   assert.ok(Math.abs(n.ndviRel(5, 15)) < 1e-9, "ndviRel lee la escala del núcleo: la celda del mínimo da 0"); assert.ok(Math.abs(n.ndviRel(35, 5) - 1) < 0.01, "y la del máximo, casi 1 (se recorta 0,001 celdas antes del borde)");

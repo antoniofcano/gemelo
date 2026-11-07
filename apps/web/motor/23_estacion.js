@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: EST, bbchEn, construyeFrutosLista, hoyMadrid, objetivoMundo, actualizaOlivo
 // Consume: 01_datos ($), 02c_componentes (Componentes), 02i_materiales (Materiales), 03_escena (renderer, SRGB, Estado), 04d_sombreado_tiles (hash),
-//   06_arboles (gFollaje), 07_follaje (matHojaG, matHojaP), 10_ndvi (NDV, ndviIdx), 13_parcelas (parcelas), 14_historia (OT),
+//   06_arboles (gFollaje), 07_follaje (matHojaG, matHojaP), 10_ndvi (NDV, FechaNdvi), 13_parcelas (parcelas), 14_historia (OT),
 //   15_tiempo (TiempoPuro, ahoraMs, TM, fmtHora, fmtClaveDia, num1, objetivoMundoBase, aplicaMundo, esc), 21_suelo (SN)
 // Nota: Publica además window.__otDebug (depuración del olivo estacional).
 // ===============================================================================
@@ -11,7 +11,7 @@
   // [talón] apps/web/src/mundos/exterior/estacion.ts
   var Estacion = Mundos.creaEstacion({
     THREE: THREE, $: $, Materiales: Materiales, renderer: renderer, SRGB: SRGB, Estado: Estado, hash: hash, gFollaje: gFollaje, matHojaG: matHojaG, matHojaP: matHojaP,
-    NDV: NDV, ndviIdx: function () { return ndviIdx; }, SN: SN, parcelas: parcelas, OT: OT,
+    NDV: NDV, ndviIdx: function () { return FechaNdvi.E.idx; }, SN: SN, parcelas: parcelas, OT: OT,
     TiempoPuro: TiempoPuro, ahoraMs: ahoraMs, TM: TM, fmtHora: fmtHora, fmtClaveDia: fmtClaveDia, num1: num1, esc: esc, objetivoMundoBase: objetivoMundoBase, aplicaMundo: aplicaMundo,
     ventana: window, temporizador: { setTimeout: function (f, ms) { return setTimeout(f, ms); }, clearTimeout: function (id) { clearTimeout(id); } }, Evento: Event
   });

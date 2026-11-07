@@ -19,11 +19,11 @@ const EN_ESTADO = ["exag", "modo", "calidad"];
 // están en Estado. Solo puede encoger. Entre paréntesis, quién las declara y quién más las escribe (de la salida de `compartidas`).
 const PENDIENTES = [
   "primera",       // 12_paseo; la escriben 16_vida y 29_vr
-  "ndviIdx",       // 10_ndvi; la escribe 14_historia
+  // "ndviIdx" (10_ndvi; la escribía 14_historia) salió en A3-8a: es FechaNdvi.E.idx (14 la cambia con FechaNdvi.pon)
   "instSombra",    // 18_paisaje; la escribe 07_follaje
-  "kcor",          // 02_mundo; la escribe 09_camara
+  // "kcor" (02_mundo; la escribía 09_camara) salió en A3-8a: es TinteOrto.E.kcor
   // "listo" (08_marcadores; la escribía 90_final) salió en A3-8a: es Marcadores.listo() / ponListo()
-  "tinte",         // 02_mundo; la escribe 10_ndvi (la escala del NDVI, antes ndLo y ndHi de 02_mundo, vive desde MU5-n en src/mundos/exterior/ndvi.ts)
+  // "tinte" (02_mundo; la escribía 10_ndvi) salió en A3-8a: es TinteOrto.E.tinte
   "aguaNivel",     // 18_paisaje (escribe y lee él; leen 20_sonido y 22_huellas)
   "OT", "VIVO",    // 14_historia
   "enDron", "enQuad", "tVida", "vq",   // 16_vida

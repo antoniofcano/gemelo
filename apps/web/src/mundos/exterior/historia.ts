@@ -382,7 +382,7 @@ export type Historia = ReturnType<typeof creaHistoria>;
  *  devuelve ese mismo objeto y libera() llama a su libera(). */
 export function manifiestoHistoria(api: { libera(): void }): Manifiesto {
   return {
-    id: ID_HISTORIA, version: 1, consume: ["Materiales", "Estaticos", "paseando", "ndviIdx"], expone: [], eventos: { escucha: [], emite: [] }, bandera: { defecto: true }, presupuesto: { llamadas: 0, triangulos: 0 },
+    id: ID_HISTORIA, version: 1, consume: ["Materiales", "Estaticos", "paseando", "FechaNdvi"], expone: [], eventos: { escucha: [], emite: [] }, bandera: { defecto: true }, presupuesto: { llamadas: 0, triangulos: 0 },
     fases: {}, mundos: ["exterior"], monta: function () { return api; }, libera: function () { api.libera(); }
   };
 }

@@ -5,7 +5,7 @@
 //   02c_componentes (ComponentesPuro, Bus, Config), 02d_laminas (LaminasPuro, Laminas), 02e_entidades (EntidadesPuro, Entidades, Usables),
 //   02f_xr_perillas (XrPerillas), 02g_vr_presupuesto (VrControlPuro, VrPresupuesto), 02h_render (InfoDibujo), 02i_materiales (Materiales),
 //   03_escena (renderer, scene, camera, sol, texColor, Estado), 04b_escena3d (Escena3D), 04d_sombreado_tiles (UN), 07b_arboles (Arboles),
-//   09_camara (pon), 10_ndvi (NDV, ndviIdx), 12_paseo (paseando, persona, teclas, primera, pp, entraPaseo, salePaseo, actualizaPaseo),
+//   09_camara (pon), 10_ndvi (NDV, FechaNdvi), 12_paseo (paseando, persona, teclas, primera, pp, entraPaseo, salePaseo, actualizaPaseo),
 //   12b_llegada (Llegada), 13_parcelas (parcelas, fincas), 15_tiempo (meta, pasoHoraMundo, horaMundoTexto), 22_huellas (pendFactor),
 //   24_pantalla (TR), 33_ajustes (Ajustes), 90_final (tamano, gm, cuadro, bucle)
 // Nota: Publica además window.__vrDebug, __vrOlivo, __vrBotones, __vrVuelo y VR_ESTADO (depuración y pruebas VR).
@@ -21,7 +21,7 @@
     suelo: suelo, copas: function () { return copas; }, Cola: Cola, ComponentesPuro: ComponentesPuro, Bus: Bus, Config: Config, LaminasPuro: LaminasPuro, Laminas: Laminas,
     EntidadesPuro: EntidadesPuro, Entidades: Entidades, Usables: Usables, XrPerillas: XrPerillas, VrControlPuro: VrControlPuro, VrPresupuesto: VrPresupuesto, InfoDibujo: InfoDibujo,
     Materiales: Materiales, UN: UN, Arboles: Arboles, Escena3D: Escena3D, pon: function (m) { pon(m); },
-    NDV: function () { return NDV; }, ndviIdx: function () { return ndviIdx; }, parcelas: function () { return parcelas; }, fincas: function () { return fincas; }, meta: meta,
+    NDV: function () { return NDV; }, ndviIdx: function () { return FechaNdvi.E.idx; }, parcelas: function () { return parcelas; }, fincas: function () { return fincas; }, meta: meta,
     pasoHoraMundo: function (d) { pasoHoraMundo(d); }, horaMundoTexto: function () { return horaMundoTexto(); },
     paseando: function () { return paseando; }, primera: function () { return primera; }, ponPrimera: function (v) { primera = v; }, persona: function () { return persona; },
     teclas: function () { return teclas; }, pp: pp, entraPaseo: function () { entraPaseo(); }, salePaseo: function () { salePaseo(); }, actualizaPaseo: function (dt) { actualizaPaseo(dt); },

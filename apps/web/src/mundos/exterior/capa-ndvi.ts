@@ -69,7 +69,7 @@ export function manifiestoCapaNdvi(deps: () => DepsCapaNdvi): Manifiesto {
   }
   return {
     id: "capa-ndvi", version: 1,
-    consume: ["NDV", "ndviIdx", "rampa", "pintaNdvi", "fmt", "UN"],
+    consume: ["NDV", "FechaNdvi", "rampa", "pintaNdvi", "fmt", "UN"],
     expone: [],
     eventos: { escucha: ["ndvi:cambia"], emite: [] },
     bandera: { defecto: true, url: "capandvi" },
