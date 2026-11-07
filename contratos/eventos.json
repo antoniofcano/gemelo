@@ -1113,7 +1113,7 @@
         }
       },
       "emiten": [
-        "02e_entidades"
+        "ui/entidades"
       ],
       "escuchan": []
     },
@@ -1139,7 +1139,7 @@
         }
       },
       "emiten": [
-        "02e_entidades"
+        "ui/entidades"
       ],
       "escuchan": [
         "42_personalizacion"
@@ -1163,7 +1163,7 @@
         }
       },
       "emiten": [
-        "02e_entidades"
+        "ui/entidades"
       ],
       "escuchan": [
         "42_personalizacion"
@@ -1187,7 +1187,7 @@
         }
       },
       "emiten": [
-        "02e_entidades"
+        "ui/entidades"
       ],
       "escuchan": []
     },

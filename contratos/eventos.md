@@ -68,10 +68,10 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `perros:llegan` | (nada) | `mundos/comun/transicion` (antes 24_pantalla), `29_vr` | `mundos/exterior/perros` |
 | `polvo:emite` | `{ x, y, h, vx?, vy?, vz?, tam?, vida? }` | `mundos/comun/transicion` (antes 24_pantalla), `mundos/exterior/perros` | `mundos/exterior/huellas-polvo` (antes 22b_huellas_polvo) |
 | `sonido:ladrido` | `{ grave? }` | `mundos/exterior/perros` | `20_sonido` |
-| `usable:cerca` | `{ id \| null }` | `02e_entidades` (`Usables.actualiza`, al pasear: cambia lo más cercano dentro de su radio) | (nadie todavía: `19_balizas` lo lee con `Usables.cercano()`) |
-| `usable:elige` | `{ id, tipo, como }` | `02e_entidades` (toque, clic, rayo y gatillo, tecla) | (nadie todavía) |
-| `usable:suelta` | `{ id, motivo }` | `02e_entidades` | (nadie todavía) |
-| `usable:usa` | `{ id, accion }` | `02e_entidades` (una acción de la ficha: «Ir a esta baliza», «Ir con») | (nadie todavía) |
+| `usable:cerca` | `{ id \| null }` | `ui/entidades` (antes 02e_entidades) (`Usables.actualiza`, al pasear: cambia lo más cercano dentro de su radio) | (nadie todavía: `19_balizas` lo lee con `Usables.cercano()`) |
+| `usable:elige` | `{ id, tipo, como }` | `ui/entidades` (antes 02e_entidades) (toque, clic, rayo y gatillo, tecla) | (nadie todavía) |
+| `usable:suelta` | `{ id, motivo }` | `ui/entidades` (antes 02e_entidades) | (nadie todavía) |
+| `usable:usa` | `{ id, accion }` | `ui/entidades` (antes 02e_entidades) (una acción de la ficha: «Ir a esta baliza», «Ir con») | (nadie todavía) |
 | `vr:entra` | — | `29_vr` | `40_juegos` (cierra el juego abierto: en VR no hay juegos hasta C9b) |
 | `vr:sale` | — | `29_vr` | `ui/laminas` (antes 02d_laminas; cierra las láminas de VR), `40_juegos` (cierra el juego en lámina) |
 

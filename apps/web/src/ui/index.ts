@@ -41,3 +41,6 @@ export type { DepsMide } from "./mide.ts";
 // A3-7a: las láminas (antes 02d_laminas.js), componente de todo mundo.
 export { ID_LAMINAS, LaminasPuro, creaLaminas, manifiestoLaminas } from "./laminas.ts";
 export type { DepsLaminas, Laminas } from "./laminas.ts";
+// A3-7a: Entidades y Usables (antes 02e_entidades.js; EntidadesPuro sigue en nucleo/entidades.ts), componente de todo mundo.
+export { ID_USABLES, creaEntidades, manifiestoEntidades } from "./entidades.ts";
+export type { DepsEntidades, EntidadesUsables } from "./entidades.ts";
