@@ -19,7 +19,7 @@ const SALTO_VITE = SALTO_ST || (!fs.existsSync(VITE) || !fs.existsSync(path.join
 const CHUNKS = d => path.join(d, "src/renderers/shaders/ShaderChunk");
 const MOTOR = path.join(WEB, "motor"), OLIVO = path.join(WEB, "olivo");
 /** MU5-n: el código migrado del motor, en apps/web/src/ (los .ts sin las pruebas) */
-function tsDeSrc(dir) { const o = []; for (const e of fs.readdirSync(dir, { withFileTypes: true })) { const p = path.join(dir, e.name); if (e.isDirectory()) o.push(...tsDeSrc(p)); else if (e.name.endsWith(".ts") && !e.name.endsWith(".test.ts")) o.push(p); } return o; }
+function tsDeSrc(dir) { const o = []; for (const e of fs.readdirSync(dir, { withFileTypes: true })) { const p = path.join(dir, e.name); if (e.isDirectory()) o.push(...tsDeSrc(p)); else if (e.name.endsWith(".ts") && !e.name.endsWith(".test.ts") && !e.name.endsWith(".d.ts")) o.push(p); } return o; }
 const fuentes = () => [...fs.readdirSync(MOTOR).filter(f => f.endsWith(".js")).map(f => path.join(MOTOR, f)), ...fs.readdirSync(OLIVO).filter(f => f.endsWith(".js")).map(f => path.join(OLIVO, f)), ...tsDeSrc(path.join(WEB, "src"))];   // MU5-n: también lo migrado a src/
 
 test("super-three: versión exacta (la de BUILDS.vr), instalada, MIT", async t => {

@@ -53,6 +53,7 @@ const NOTAS = {
 };
 
 function lee(dir = SRC0) {
+  if (typeof dir === "object") return dir;   // A3-8c: { nombre: texto } ya leídos (los pasos de apps/web/src/arranque.ts, pruebas/guardianes/_pasos.js)
   const fich = fs.readdirSync(dir).filter(f => f.endsWith(".js")).sort();
   const txt = {};
   for (const f of fich) {

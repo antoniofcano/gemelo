@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import fs from "node:fs";
 import { buildPedida, aliasThree, salida, carpetaThree } from "./herramientas/builds.mjs";
 import { multiviewSubeTexturas } from "./herramientas/parche_multiview.mjs";
+import { quitaPasos, ARRANQUE } from "./herramientas/pasos.mjs";
 
 const WEB = path.dirname(fileURLToPath(import.meta.url));
 // ADR-0031 (enmienda 2026-11-04): dos builds del mismo motor. Sin GEMELO_BUILD, la de pantalla, exactamente la de siempre (three de package.json, dist/);
@@ -16,6 +17,23 @@ const BUILD = buildPedida(process.env);
 export const NUCLEO = path.join(WEB, "src", "nucleo", "index.ts");
 export const MUNDOS = path.join(WEB, "src", "mundos", "index.ts");
 export const UI = path.join(WEB, "src", "ui", "index.ts");   // A3-7a: la interfaz (Interfaz.<nombre> en el legado)
+// A3-8c: la entrada del cliente (src/arranque.ts), que importa la que escribe genera_motor.mjs (`import "@gemelo/arranque"`)
+export { ARRANQUE };
+// la raíz de Vite: la carpeta que escribe genera_motor.mjs
+const RAIZ_WEB = process.env.GEMELO_WEB_RAIZ || path.join(WEB, ".generado");
+// ADR-0023 (genera_motor.mjs --sin): quita del arranque los pasos que pide <raíz>/entrada/sin.json (lo escribe genera_motor.mjs solo con --sin). Va «pre»
+// para ver el TypeScript con sus comentarios (las marcas // [paso: …]) antes de que esbuild los quite. Sin el fichero, no toca nada
+function sinPasos() {
+  return {
+    name: "gemelo-sin-pasos",
+    enforce: "pre",
+    transform(code, id) {
+      if (path.normalize(id.split("?")[0]) !== path.normalize(ARRANQUE)) return null;
+      const f = path.join(RAIZ_WEB, "entrada", "sin.json");
+      return fs.existsSync(f) ? { code: quitaPasos(code, JSON.parse(fs.readFileSync(f, "utf8"))), map: null } : null;
+    },
+  };
+}
 // el constructor de olivos (ADR-0017), que el motor pide con import("gemelo-olivo") solo con ?olivos=gen; si apps/web/olivo no está instalado
 // (cd apps/web/olivo && npm i), un sustituto vacío: el build no falla y el motor dibuja lo de siempre
 const OLIVO = fs.existsSync(path.join(WEB, "olivo", "node_modules", "three-gen", "package.json")) ? path.join(WEB, "olivo", "index.js") : path.join(WEB, "olivo", "sin_olivo.js");
@@ -58,7 +76,7 @@ const VERSION = (() => { try { return fs.readFileSync(path.join(WEB, "..", "..",
 
 export default defineConfig({
   define: { __GEMELO_VERSION__: JSON.stringify(VERSION), __GEMELO_BUILD__: JSON.stringify(BUILD) },   // __GEMELO_BUILD__: Render.build (02h_render)
-  root: process.env.GEMELO_WEB_RAIZ || path.join(WEB, ".generado"),
+  root: RAIZ_WEB,
   base: "./",
   // el manifiesto de aplicación web y su icono (decisión 90: en el iPhone, «Añadir a pantalla de inicio» abre la finca sin las barras de Safari);
   // la raíz es una carpeta generada, así que la carpeta pública se dice aquí
@@ -76,6 +94,7 @@ export default defineConfig({
       { find: /^@gemelo\/mundos$/, replacement: MUNDOS },
       // A3-7a: la interfaz (ui/), que ni el núcleo ni los mundos pueden importar: su propio alias, detrás del de los mundos (genera_motor.mjs: IMPORTA_UI)
       { find: /^@gemelo\/ui$/, replacement: UI },
+      { find: /^@gemelo\/arranque$/, replacement: ARRANQUE },   // A3-8c: la entrada del cliente (genera_motor.mjs: ENTRADA_TS)
       { find: /^gemelo-olivo$/, replacement: OLIVO },
       // V12: las tipografías del mismo origen (@fontsource, OFL-1.1) que entran por el @import de plantilla.css, que puede estar fuera de apps/web
       { find: /^@fontsource\//, replacement: path.join(WEB, "node_modules", "@fontsource") + "/" },
@@ -91,6 +110,7 @@ export default defineConfig({
     ],
   },
   plugins: [
+    sinPasos(),
     perfilesXrSinCdn(),
     multiviewSubeTexturas(),   // super-three 0.185.0: sube las texturas que el multiview aplaza y nunca subía (herramientas/parche_multiview.mjs)
     viteStaticCopy({

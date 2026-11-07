@@ -54,13 +54,15 @@ test("dependency-cruiser DETECTA cada frontera rota (árbol temporal)", { skip: 
     f("src/ui/a.ts", 'import "../../motor/legado.ts";\n');                  // src-no-importa-del-legado
     f("src/ui/b.ts", 'import "../mundos/comun/hoja.ts";\n');               // ui-solo-importa-de-nucleo-y-datos (A3-7a): ni mundos/comun/…
     f("src/ui/d.ts", 'import "../red/hoja.ts";\n');                        // …ni red/
+    f("src/arranque.ts", 'import "./nucleo/hoja.ts";\n');                   // la entrada (A3-8c)…
+    f("src/nucleo/e.ts", 'import "../arranque.ts";\n');                    // …nadie-importa-el-arranque
     f("src/ui/c1.ts",'import "./c2.ts";\nexport const c1 = 1;\n');         // sin-ciclos
     f("src/ui/c2.ts", 'import "./c1.ts";\nexport const c2 = 2;\n');
     const r = corre(CRUISER(), ["--config", CONFIG, "--output-type", "json", "src"], dir);
     const salida = JSON.parse(r.stdout);
     const detectadas = new Set(salida.summary.violations.map(v => v.rule.name));
     for (const regla of ["sin-ciclos", "nucleo-no-importa-de-nadie", "datos-no-importa-de-nadie", "red-solo-importa-de-datos",
-      "mundos-no-importa-de-ui", "un-mundo-no-importa-a-otro", "src-no-importa-del-legado", "ui-solo-importa-de-nucleo-y-datos"]) {
+      "mundos-no-importa-de-ui", "un-mundo-no-importa-a-otro", "src-no-importa-del-legado", "ui-solo-importa-de-nucleo-y-datos", "nadie-importa-el-arranque"]) {
       assert.ok(detectadas.has(regla), `no detecta la regla ${regla}; detectadas: ${[...detectadas].join(", ")}`);
     }
     // A3-7a: las dos de ui/ (a mundos/comun/ y a red/) saltan las dos

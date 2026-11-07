@@ -6,6 +6,7 @@
 //   red/     importa solo de datos          mundos/  importa de nucleo, datos y red; un mundo no importa a otro
 //   ui/      (A3-7a) importa solo de nucleo y datos; nadie de src/ importa de ui
 //   motor/   (legado) fuera de src/: nada de src/ lo importa
+//   arranque.ts (A3-8c) la entrada del cliente: importa de todos y nadie de src/ la importa
 //   mundos/comun/ (A3-6a) no es un mundo: lo de todo mundo que dibuja (la presencia, los avatares, el muñeco); lo puede usar cualquier mundo y no importa de ninguno
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
@@ -65,6 +66,13 @@ module.exports = {
       severity: "error",
       from: { path: "^src/", pathNot: "^src/nucleo/(render|materiales)" },
       to: { path: "node_modules/three/build/three\\.(webgpu|tsl)" },
+    },
+    {
+      name: "nadie-importa-el-arranque",
+      comment: "src/arranque.ts (A3-8c) es la entrada del cliente: crea los objetos en orden y los cablea. Importa de todos y nadie lo importa (lo importa solo la entrada que escribe genera_motor.mjs).",
+      severity: "error",
+      from: { path: "^src/", pathNot: "^src/arranque\\.ts$" },
+      to: { path: "^src/arranque\\.ts$" },
     },
     {
       name: "src-no-importa-del-legado",

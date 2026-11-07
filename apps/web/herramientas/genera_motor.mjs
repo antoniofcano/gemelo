@@ -12,6 +12,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { quitaPasos, leeArranque, nombrePaso } from "./pasos.mjs";
 
 const WEB = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const MOTOR = path.join(WEB, "motor");
@@ -32,6 +33,12 @@ export const IMPORTA_CSS = 'import "./plantilla.css";\n';
 export function entradaMotor(sin = []) {
   return IMPORTA_THREE + IMPORTA_NUCLEO + IMPORTA_MUNDOS + IMPORTA_UI + IMPORTA_CSS + concatenaMotor(sin);
 }
+
+// A3-8c: la entrada nueva. El cliente arranca desde apps/web/src/arranque.ts (TypeScript, alias «@gemelo/arranque» de vite.config.js): Vite lo empaqueta
+// directamente, sin concatenar nada. Mientras convive con el legado (primer paso de A3-8c), GEMELO_ENTRADA=ts la elige; sin la variable, la concatenación de siempre.
+export const ENTRADA_TS = IMPORTA_CSS + 'import "@gemelo/arranque";\n';
+/** ¿Qué entrada se escribe? «ts» (apps/web/src/arranque.ts) o «legado» (la concatenación de motor/) */
+export const entradaPedida = (env = process.env) => env.GEMELO_ENTRADA === "ts" ? "ts" : "legado";
 
 /** Escapa un texto para contenido HTML (L9-04): el nombre de la finca y los textos del índice no pueden cerrar etiquetas ni meter marcado */
 export function escapaHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]); }
@@ -71,13 +78,19 @@ export function textosFinca(cab, T) {
   return cab;
 }
 
-export function genera(datos, dest, sin = []) {
+export function genera(datos, dest, sin = [], entrada = entradaPedida()) {
   const D = fs.readFileSync(datos, "utf8");
   const J = JSON.parse(D);                                                     // falla aquí, y no en el navegador, si el JSON está roto
   fs.mkdirSync(path.join(dest, "entrada"), { recursive: true });
   // V12: los estilos van en un .css del mismo origen (la CSP no deja <style> ni style="…" en línea) y las tipografías @fontsource entran por su @import
   fs.copyFileSync(path.join(WEB, "plantilla.css"), path.join(dest, "entrada", "plantilla.css"));
-  fs.writeFileSync(path.join(dest, "entrada", "motor.generado.js"), entradaMotor(sin));
+  // con la entrada nueva, --sin no concatena: deja en entrada/sin.json los pasos que el plugin «gemelo-sin-pasos» de vite.config.js quita del arranque
+  const sinJson = path.join(dest, "entrada", "sin.json");
+  fs.rmSync(sinJson, { force: true });
+  if (entrada === "ts") {
+    if (sin.length) { quitaPasos(leeArranque(), sin); fs.writeFileSync(sinJson, JSON.stringify(sin.map(nombrePaso)) + "\n"); }   // falla aquí si alguno no es un paso
+    fs.writeFileSync(path.join(dest, "entrada", "motor.generado.js"), ENTRADA_TS);
+  } else fs.writeFileSync(path.join(dest, "entrada", "motor.generado.js"), entradaMotor(sin));
   let plantilla = fs.readFileSync(path.join(WEB, "plantilla.html"), "utf8");
   if (J.textos) plantilla = textosFinca(plantilla, J.textos);
   const html = '<!doctype html>\n<html lang="es">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n</head>\n<body>\n' +

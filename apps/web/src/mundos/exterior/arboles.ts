@@ -295,7 +295,7 @@ export function creaArboles(d: DepsArboles) {
     var kd = claveActual(); sucio = true; construyeSombras(); if (kd === claveDib) return;
     claveDib = kd; Object.keys(celdas).forEach(function (k: any) { var c = celdas[k]; ColaExt.cancela("C" + k); if (c.g && c.kd !== kd) c.sucia = true; });
   }
-  function actualiza(dt: any, forzar: any) { sync();
+  function actualiza(dt: any, forzar?: any) { sync();
     if (!listo0) return;
     // ?olivos=gen: los generados avanzan su cola propia (con una parte del presupuesto de la Cola: la mitad, el 30 % si faltan celdas de nivel 0, y todo
     // si la Cola no tiene nada) y su fundido; al colocar un lote o acabar el fundido, se reparte de nuevo. Sin la bandera, no hace nada y no gasta
