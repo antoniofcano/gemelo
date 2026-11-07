@@ -346,7 +346,7 @@
       "descripcion": "EV2-A4: el botón «Hablar» de lo tuyo en pantalla (HUD; EV2-A3: y el de la muñeca en VR): abre o cierra el micrófono de esta sesión, como el botón de la caja de la visita guiada en modo «pulsar» (con su aviso de voz si falta el consentimiento). Fuera de una visita guiada, o sin la palabra, nadie hace nada.",
       "datos": {},
       "emiten": [
-        "31b_hud_personal",
+        "ui/hud-personal",
         "mundos/comun/muneca"
       ],
       "escuchan": [
@@ -1283,7 +1283,7 @@
         "45_voz"
       ],
       "escuchan": [
-        "31b_hud_personal",
+        "ui/hud-personal",
         "mundos/comun/muneca",
         "46_guiada",
         "47_habla",

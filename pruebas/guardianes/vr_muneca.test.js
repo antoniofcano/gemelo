@@ -8,7 +8,7 @@ const { lee } = require("./_util");
 
 function trozo(fuente, ini, fin) { const i = fuente.indexOf(ini), f = fuente.indexOf(fin, i); assert.ok(i >= 0 && f > i, "debe marcar " + ini + " … " + fin); return fuente.slice(i, f); }
 const MUN = require("./_fuente").fuenteMotorJs("31c_muneca.js"),   // A3-6a: el talón y apps/web/src/mundos/comun/muneca.ts, sin las anotaciones de tipos
-  VR = require("./_fuente").fuenteMotor("29_vr.js"), HUDP = lee("apps/web/motor/31b_hud_personal.js"), AJU = lee("apps/web/motor/33_ajustes.js");
+  VR = require("./_fuente").fuenteMotor("29_vr.js"), HUDP = require("./_fuente").fuenteMotor("31b_hud_personal.js"), AJU = lee("apps/web/motor/33_ajustes.js");
 const MP = require("./_mundos").MunecaPuro;   // A3-6a
 const HP = new Function("\"use strict\";\n" + trozo(HUDP, "// [puro:inicio]", "// [puro:fin]") + "\nreturn HudPersonalPuro;")();
 const LP = new Function("\"use strict\";\n" + trozo(lee("apps/web/motor/02d_laminas.js"), "// [puro:inicio]", "// [puro:fin]") + "\nreturn LaminasPuro;")();

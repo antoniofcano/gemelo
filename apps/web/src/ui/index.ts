@@ -17,3 +17,6 @@ export type { DepsVentanas, Ventanas } from "./ventanas.ts";
 // A3-7a: el HUD (antes 31_hud.js), componente de todo mundo; su libera() para sus relojes (L2-11).
 export { HudPuro, ID_HUD, creaHud, manifiestoHud } from "./hud.ts";
 export type { DepsHud, Hud } from "./hud.ts";
+// A3-7a: lo tuyo en pantalla (antes 31b_hud_personal.js), componente de todo mundo; su libera() para su reloj (L2-11).
+export { HudPersonalPuro, ID_HUD_PERSONAL, creaHudPersonal, manifiestoHudPersonal } from "./hud-personal.ts";
+export type { DepsHudPersonal, HudPersonal } from "./hud-personal.ts";

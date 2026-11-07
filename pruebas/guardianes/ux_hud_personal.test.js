@@ -5,7 +5,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
-const FUENTE = lee("apps/web/motor/31b_hud_personal.js"), PL = lee("apps/web/plantilla.html"), css = lee("apps/web/plantilla.css");
+const FUENTE = require("./_fuente").fuenteMotor("31b_hud_personal.js"), PL = lee("apps/web/plantilla.html"), css = lee("apps/web/plantilla.css");
 function puro(nombre) {
   const i = FUENTE.indexOf("// [puro:inicio]"), f = FUENTE.indexOf("// [puro:fin]");
   assert.ok(i >= 0 && f > i, "31b_hud_personal.js debe marcar su trozo puro con // [puro:inicio] y // [puro:fin]");
