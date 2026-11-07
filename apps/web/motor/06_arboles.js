@@ -7,6 +7,7 @@
   // ---------- los olivos del modo Gemelo: copa con la forma real medida (8 radios) y tronco debajo (nivel 0, por celdas de 64 m; ver Arboles). MU5-n (A3-2b): migrado a TypeScript;
   // el código vive en apps/web/src/mundos/exterior/arboles-l0.ts (los grupos gArboles y gSombras, los materiales del nivel 0, arbolesG, radioEn y la entidad «olivo»), componente
   // «arboles-l0» de los mundos ["exterior"] con un libera() que suelta los grupos, la entidad y los materiales (lo registra 90_final.js, como los de A3-1a). L5-01: el tronco del nivel 0 ya no comparte nombre con el del paisaje.
+  // [talón] apps/web/src/mundos/exterior/arboles-l0.ts
   var Arboles0 = Mundos.creaArbolesL0({
     THREE: THREE, scene: scene, camera: camera, Estaticos: Estaticos, Materiales: Materiales, Entidades: Entidades, Estado: Estado, D: D, fmt: fmt, FACTOR_R8: FACTOR_R8, ESC_R8: ESC_R8,
     suelo: suelo, aviva: aviva, colorEn: colorEn, hash: hash, copas: copas, marc: marc, colorVertSRGB: colorVertSRGB,

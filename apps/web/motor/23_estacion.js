@@ -7,7 +7,8 @@
 // ===============================================================================
   // ---------- el olivo estacional: la fecha de la estación (el deslizador de la fecha del campo) manda en el sol, el clima, el color de la copa y la fenología.
   // MU5-n (A3-4): migrado a TypeScript; el código vive en apps/web/src/mundos/exterior/estacion.ts, componente «estacion-olivo» de los mundos ["exterior"] con un
-  // libera() que lo suelta todo. Aquí quedan, como extracción parcial, el cableado y los nombres que leen otros módulos (07, 15, 18, 44b y 90).
+  // libera() que lo suelta todo. Aquí quedan, como talón (A3-8a: ya lo era, solo le faltaba la marca), el cableado y los nombres que leen otros módulos (07, 15, 18, 44b y 90).
+  // [talón] apps/web/src/mundos/exterior/estacion.ts
   var Estacion = Mundos.creaEstacion({
     THREE: THREE, $: $, Materiales: Materiales, renderer: renderer, SRGB: SRGB, Estado: Estado, hash: hash, gFollaje: gFollaje, matHojaG: matHojaG, matHojaP: matHojaP,
     NDV: NDV, ndviIdx: function () { return ndviIdx; }, SN: SN, parcelas: parcelas, OT: OT,

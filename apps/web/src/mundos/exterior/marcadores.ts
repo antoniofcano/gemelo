@@ -1,4 +1,5 @@
-// La linde y lo que cuelga del terreno al aplicar (MU5-n, A3-2b; antes apps/web/motor/08_marcadores.js, que queda como talón con `listo`, que escribe 90_final).
+// La linde y lo que cuelga del terreno al aplicar (MU5-n, A3-2b; antes apps/web/motor/08_marcadores.js, que queda como talón). A3-8a: `listo` (¿ya están los datos
+// de las teselas?) era una primitiva de ese talón que escribía 90_final; ahora es estado de aquí: ponListo() lo pone (90_final, al cargar las teselas) y listo() lo dice.
 // Las copas del LiDAR, los anillos de OlivarTrack y el desfase son el componente «marcadores-lidar» (marcadores-lidar.ts): aplica() les avisa con «mundo:aplica» y
 // capas() con «capas:cambia»; sin él (?marcadores=0) esas tres casillas no hacen nada.
 // aplica() es el punto único por el que un cambio de exageración, de modo o de datos llega a todo lo que cuelga del terreno: el uniforme del relieve, la nube, los
@@ -27,8 +28,8 @@ export interface DepsMarcadores {
   gArboles: ConVisible; gFollaje: ConVisible; gSombras: ConVisible;
   Arboles: { refresca(): void };
   pintaNube(): void; colocaBarrera(k: number): void; colocaPaisaje(): void; colocaBalizas(): void; recoloreaSuelo(): void;
-  /** ¿ya están los datos de las teselas? (lo escribe 90_final en el legado: va por función) */
-  listo(): boolean;
+  /** ¿ya están los datos de las teselas? Si se da, manda (las pruebas); si no (el talón, desde A3-8a), el estado es de aquí: ponListo() y listo() */
+  listo?(): boolean;
   /** requestAnimationFrame (se inyecta para probar sin navegador) */
   raf(f: () => void): void;
 }
@@ -47,7 +48,9 @@ export function creaMarcadores(d: DepsMarcadores) {
   gLinde.name = "lindes"; d.scene.add(gLinde);   // el nombre lo usa el desglose de llamadas de las pruebas
   // (las lindes son ahora una barrera de luz: ver el bloque del tiempo)
   const tmp = new THREE.Object3D();
-  let suelto = false;
+  let suelto = false, listoPropio = false;
+  function estaListo(): boolean { return d.listo ? d.listo() : listoPropio; }
+  function ponListo(): void { listoPropio = true; }
   function marcadores(): void {
     d.D.parcelas.forEach(function (_pr, k) {
       d.colocaBarrera(k);
@@ -55,7 +58,7 @@ export function creaMarcadores(d: DepsMarcadores) {
     bus.emite("mundo:aplica");   // el componente de los marcadores recoloca copas, anillos y desfase
   }
   function aplica(): void {
-    if (!d.listo()) return;
+    if (!estaListo()) return;
     UN.uExag.value = Estado.exag; if (Estado.modo === "nube") d.pintaNube(); if (Estado.modo === "gem") d.Arboles.refresca(); marcadores(); d.colocaPaisaje(); d.colocaBalizas(); d.recoloreaSuelo();
     UN.uModoOrto.value = Estado.modo === "orto" ? 1 : 0;   // el relieve (04d) pinta la ortofoto del glb tal cual
     d.nube.visible = Estado.modo === "nube"; d.gArboles.visible = Estado.modo === "gem"; d.gFollaje.visible = Estado.modo === "gem"; d.gSombras.visible = Estado.modo === "gem";
@@ -68,6 +71,6 @@ export function creaMarcadores(d: DepsMarcadores) {
   function aplicaLuego(): void { if (pendiente || suelto) return; pendiente = true; d.raf(function () { pendiente = false; aplica(); }); }
   /** quita el grupo de las lindes de la escena; después, aplicaLuego ya no hace nada. Llamarlo dos veces no rompe. */
   function libera(): void { if (suelto) return; suelto = true; d.scene.remove(gLinde); }
-  return { gLinde, tmp, aplica, capas, aplicaLuego, libera };
+  return { gLinde, tmp, aplica, capas, aplicaLuego, libera, listo: estaListo, ponListo };
 }
 export type Marcadores = ReturnType<typeof creaMarcadores>;

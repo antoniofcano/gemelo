@@ -9,12 +9,12 @@
   // impostores; la cola propia; el sombreado y el fundido; el lote; y el módulo con su estado), componente «olivos-generados» de los mundos ["exterior"], con un libera() que
   // suelta el lote, los materiales con sus texturas, el trabajador, la cola propia y la caché de recetas. Lo mueve 07b_arboles.js (actualiza y paso). Aquí solo se cablea lo
   // del legado: lo que cambia después de cargarse (FACTOR_R8_GEN, el renderer, la escena, quien pasea, fetch) se pide en cada uso, y el import() del constructor se queda
-  // escrito aquí para que Vite lo trocee como antes. parcheTiempo (15_tiempo) va después en el montaje: es una función declarada (se iza) y solo se llama al compilar.
+  // escrito aquí para que Vite lo trocee como antes. parcheTiempo (15_tiempo) va después en el montaje: se pide al usarlo (A3-8a), y solo se llama al compilar.
   // [talón] apps/web/src/mundos/exterior/generados.ts
   var Escalera = Mundos.Escalera;
   var Generados = Mundos.creaGenerados({
     THREE: THREE, D: D, VRP: VRP, Aparato: Aparato, Config: Config, Materiales: Materiales, gArboles: gArboles, camera: camera, Estado: Estado, suelo: suelo,
-    factorR8Gen: function () { return FACTOR_R8_GEN; }, factorCopaDeConfig: factorCopaDeConfig, parcheTiempo: parcheTiempo, tiempoTsl: function () { return typeof nodosTiempoTsl === "function" ? nodosTiempoTsl : null; },   // A3-4: los nodos del tiempo (15_tiempo) para la TSL apagada
+    factorR8Gen: function () { return FACTOR_R8_GEN; }, factorCopaDeConfig: factorCopaDeConfig, parcheTiempo: function (sh, viento) { parcheTiempo(sh, viento); }, tiempoTsl: function () { return typeof nodosTiempoTsl === "function" ? nodosTiempoTsl : null; },   // A3-4: los nodos del tiempo (15_tiempo) para la TSL apagada
     busqueda: location.search, reloj: performance, consola: console, ventana: typeof window !== "undefined" ? window : null,
     cargaConstructor: function () { return typeof window !== "undefined" && window.OlivoGen ? Promise.resolve(window.OlivoGen) : import("gemelo-olivo"); },
     renderer: function () { return typeof renderer !== "undefined" ? renderer : null; },

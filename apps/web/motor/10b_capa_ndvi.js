@@ -7,6 +7,7 @@
   // su gráfica anual. MU5-n (A3-1a): el componente pasó a TypeScript, apps/web/src/mundos/exterior/capa-ndvi.ts (Mundos.manifiestoCapaNdvi), del exterior
   // y con su libera() (la textura, dispose). Aquí queda su registro: lo que necesita del legado se lo da la función al montarse (tras todos los módulos).
   // ?capandvi=0 la apaga: el terreno no se tiñe, y las casillas siguen en el menú.
+  // [talón] apps/web/src/mundos/exterior/capa-ndvi.ts
   Componentes.registra(Mundos.manifiestoCapaNdvi(function () {
     return { THREE: THREE, $: $, fmt: fmt, documento: document, UN: UN, NDV: NDV, idx: function () { return ndviIdx; }, rampa: rampa, pintaNdvi: pintaNdvi };
   }));

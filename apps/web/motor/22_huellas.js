@@ -5,7 +5,7 @@
   // ---------- huellas, polvo y pendiente: el suelo se deja marcar y el quad y el paso se adaptan al terreno. MU5-n (A3-5): migrado a TypeScript; el código vive en
   // apps/web/src/mundos/exterior/huellas.ts (pendienteRumbo, pendFactor, quadInc, inclinaQuad y sueloSeco; sin recursos que soltar, así que no es un componente). Aquí solo se cablea
   // lo del legado. (Las huellas y el polvo son el componente «huellas-polvo»: 22b_huellas_polvo.js.)
-  // (no lleva la marca de talón porque expone alias sueltos: pendienteRumbo, pendFactor, quadInc, inclinaQuad y sueloSeco)
+  // [talón] apps/web/src/mundos/exterior/huellas.ts
   var Huellas = Mundos.creaHuellas({
     suelo: suelo, Estado: Estado, pp: pp, quad: function () { return quad; }, cur: cur,
     aguaNivel: function () { return aguaNivel; },   // 18_paisaje: un valor que cambia

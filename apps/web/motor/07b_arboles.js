@@ -12,6 +12,7 @@
   // entera viven en apps/web/src/mundos/exterior/arboles.ts, componente «arboles» de los mundos ["exterior"] con un libera() que suelta los trabajos de la Cola, las celdas y las mallas
   // instanciadas (lo registra 90_final.js, como los de A3-1a). L1-04: el nivel 0 cuenta en TOPE_TRI. Lo que cambia fuera de este módulo (paseando, kcor, tinte, ndviIdx, objetivo, orb, pp,
   // VRX, Ajustes) entra por getters: muchos se cargan después de 07b. Aquí se cablea lo del legado.
+  // [talón] apps/web/src/mundos/exterior/arboles.ts
   var Arboles = Mundos.creaArboles({
     THREE: THREE, FACTOR_R8: FACTOR_R8, busqueda: location.search, Aparato: Aparato, Config: Config, Mundo: Mundo, Cola: Cola, ColaExt: ColaExt, CargaPuro: CargaPuro, XrPerillas: XrPerillas,
     VrControlPuro: VrControlPuro, InfoDibujo: InfoDibujo, Estaticos: Estaticos, TopeTilesPuro: TopeTilesPuro, TopeOlivos: TopeOlivos, OlivosTiles: OlivosTiles, Catalogo: Catalogo,

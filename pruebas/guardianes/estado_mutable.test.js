@@ -22,7 +22,7 @@ const PENDIENTES = [
   "ndviIdx",       // 10_ndvi; la escribe 14_historia
   "instSombra",    // 18_paisaje; la escribe 07_follaje
   "kcor",          // 02_mundo; la escribe 09_camara
-  "listo",         // 08_marcadores; la escribe 90_final
+  // "listo" (08_marcadores; la escribía 90_final) salió en A3-8a: es Marcadores.listo() / ponListo()
   "tinte",         // 02_mundo; la escribe 10_ndvi (la escala del NDVI, antes ndLo y ndHi de 02_mundo, vive desde MU5-n en src/mundos/exterior/ndvi.ts)
   "aguaNivel",     // 18_paisaje (escribe y lee él; leen 20_sonido y 22_huellas)
   "OT", "VIVO",    // 14_historia
@@ -30,7 +30,7 @@ const PENDIENTES = [
   "FACTOR_R8", "FACTOR_R8_GEN",        // 01_datos
   "fincaSel", "parcelaSel",            // 13_parcelas
   "paseando", "persona", "teclas",     // 12_paseo
-  "tMundo",        // 15_tiempo
+  // "tMundo" (15_tiempo) salió en A3-8a: 18_paisaje lo lee de Tiempo.tMundo()
 ];
 
 // ---------- ámbitos (solo los de función: var, parámetros, declaraciones de función, el nombre de una función con nombre y el de un catch)

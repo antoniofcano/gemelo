@@ -55,7 +55,7 @@ test("18_paisaje: los árboles que no son olivo se apuntan y el escalón los rec
 test("08b_marcadores_lidar: anillos y octaedros se apuntan, recortan por su radio y se olvidan al liberar", () => {
   const copas = [], marc = []; for (let i = 0; i < 400; i++) { copas.push({ x: i * 2, y: 0, h: 4 }); marc.push({ x: i * 2 + 1, y: 0, par: -1 }); }
   const defs = [], Bus = { on() { return () => {}; } }, scene = new THREE.Scene();
-  const c = ctx({ scene, $: () => ({ checked: true }), colorCss: () => 0x58b6e8, cIn: copas, marc, copas, suelo: () => 100, Estado: { exag: 1 }, listo: true, Componentes: { registra: d => defs.push(d) } });
+  const c = ctx({ scene, $: () => ({ checked: true }), colorCss: () => 0x58b6e8, cIn: copas, marc, copas, suelo: () => 100, Estado: { exag: 1 }, Marcadores: { listo: () => true }, Componentes: { registra: d => defs.push(d) } });
   corre(c, "08b_marcadores_lidar.js");
   const apiM = defs[0].monta({ on: () => () => {} });
   const V = vm.runInContext("VrPresupuesto", c), mc = scene.children[0].children[0], mm = scene.children[1].children[0];

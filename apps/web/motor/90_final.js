@@ -4,7 +4,7 @@
 //   02c_componentes (Reparto, Bus, Pausa, Componentes), 02d_laminas (Laminas), 02e_entidades (Usables), 02f_xr_perillas (XrPerillas),
 //   02h_render (Render), 02i_materiales (Materiales), 03_escena (visor, renderer, scene, camera, hemi, sol, colorCss, Estado),
 //   04b_escena3d (Escena3D), 04d_sombreado_tiles (SombreadoTiles), 05_nube (actualizaNubeTeselas, actualizaNube), 06_arboles (Arboles0),
-//   07_follaje (Follaje), 07ac_lejanos (Lejanos), 07b_arboles (Arboles), 08_marcadores (listo, aplica), 09_camara (objetivo, camara),
+//   07_follaje (Follaje), 07ac_lejanos (Lejanos), 07b_arboles (Arboles), 08_marcadores (Marcadores, aplica), 09_camara (objetivo, camara),
 //   10_ndvi (Ndvi), 12_paseo (paseando, persona, Paseo, pp, actualizaPaseo), 15_tiempo (actualizaTiempo), 16_vida (Vida, actualizaVida),
 //   17_minimapa (actualizaMinimapa), 18_paisaje (actualizaPaisaje), 19_balizas (actualizaBalizas), 21_suelo (actualizaSuelo, recoloreaSuelo),
 //   23_estacion (actualizaOlivo), 24_pantalla (transEntrada, transSalida), 28_depura (depuraCuadro),
@@ -15,7 +15,7 @@
   function tamano() { if (renderer.xr.isPresenting) return; var w = visor.clientWidth, h = visor.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / Math.max(h, 1); camera.updateProjectionMatrix(); }
   window.addEventListener("resize", tamano); tamano();
   Mundo.alCargar(function (t) { Arboles.tileCargada(t); });
-  Mundo.arranca(function () { Arboles.inicia(); actualizaNubeTeselas(camera.position.x, camera.position.y, camera.position.z); Cola.vacia(10000); recoloreaSuelo(); listo = true; aplica();
+  Mundo.arranca(function () { Arboles.inicia(); actualizaNubeTeselas(camera.position.x, camera.position.y, camera.position.z); Cola.vacia(10000); recoloreaSuelo(); Marcadores.ponListo(); aplica();
     if (/[?&]mundo=vacio(&|$)/.test(location.search)) gm.cambia("vacio").then(function (r) { if (!r.ok) console.error("?mundo=vacio: no se ha podido entrar", r); }); });   // MU2-6/MU2-8: con el exterior ya cargado, al vacío
   var actualizaCarga = Mundos.creaCargaTeselas({ mundo: Mundo, camara: camera, objetivo: objetivo, paseando: function () { return paseando; } });   // el paso «carga de teselas» del exterior
   // un fotograma: lo hace el bucle de la ventana o, en VR, el de las gafas (29_vr.js: vrActualiza). A1-14 (MUNDOS §9.4 fila 8): el bucle vive en apps/web/src/nucleo/bucle.ts (dt, pausa, reparto, ms del render,

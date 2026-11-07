@@ -7,7 +7,8 @@
 // ===============================================================================
   // ---------- el suelo según el NDVI (dónde hay tierra desnuda y dónde hierba, y cómo de vigorosa) y las matas de hierba y las piedras alrededor de donde miras.
   // MU5-n (A3-4): migrado a TypeScript; el código vive en apps/web/src/mundos/exterior/hierba.ts, componente «hierba-suelo» de los mundos ["exterior"] con un
-  // libera() que lo suelta todo (L2-05). Aquí quedan, como extracción parcial, el cableado y los nombres que leen otros módulos (04d, 08, 22, 23 y 90).
+  // libera() que lo suelta todo (L2-05). Aquí quedan, como talón (A3-8a), el cableado y los nombres que leen otros módulos (04d, 08, 22, 23 y 90).
+  // [talón] apps/web/src/mundos/exterior/hierba.ts
   var Hierba = Mundos.creaHierba({
     THREE: THREE, D: D, i16: i16, x0: x0, yN: yN, ANCHO: ANCHO, ALTO: ALTO, VRP: VRP, $: $, suelo: suelo, scene: scene, Estado: Estado, texColor: texColor, colorVertSRGB: colorVertSRGB,
     Materiales: Materiales, Estaticos: Estaticos, hash: hash, UN: UN, objetivo: objetivo, orb: orb, NDV: NDV, ndviIdx: function () { return ndviIdx; },
@@ -17,5 +18,5 @@
     lienzo: function () { return document.createElement("canvas"); }
   });
   var SN = Hierba.SN, vn2 = Hierba.vn2, cubierta = Hierba.cubierta, actualizaSuelo = Hierba.actualizaSuelo;
-  function recoloreaSuelo() { Hierba.recoloreaSuelo(); }   // declarada (se iza): 08_marcadores, antes en el montaje, se la pasa a su fábrica al cargarse
+  var recoloreaSuelo = Hierba.recoloreaSuelo;   // A3-8a: ya no hace falta izarla (08_marcadores, antes en el montaje, la pide por función al usarla)
   Componentes.registra(Mundos.manifiestoHierba(Hierba));

@@ -5,7 +5,7 @@
   // ---------- el catálogo de olivos-tipo (ADR-0012; contrato de entrada en contratos/olivos-tipo.md): de dónde sacan los niveles 1 y 2 su geometría. MU5-n (A3-2a): migrado a
   // TypeScript; el código vive en apps/web/src/mundos/exterior/catalogo.ts (las formas por procedimiento del tipo −1, sus dos materiales instanciados y el registro de los modelos
   // glb, con un libera() que lo suelta todo), componente «catalogo-olivos» de los mundos ["exterior"]. 07b_arboles.js lo pide al montarse. parcheTiempo (15_tiempo) va después en el
-  // montaje: es una función declarada (se iza) y solo se llama al compilar. Aquí solo se cablea lo del legado.
+  // montaje: se pide al usarlo (A3-8a: ya no se iza) y solo se llama al compilar. Aquí solo se cablea lo del legado.
   // [talón] apps/web/src/mundos/exterior/catalogo.ts
-  var Catalogo = Mundos.creaCatalogo({ THREE: THREE, hash: hash, parcheTiempo: parcheTiempo, Materiales: Materiales, tiempoTsl: function () { return typeof nodosTiempoTsl === "function" ? nodosTiempoTsl : null; } });
+  var Catalogo = Mundos.creaCatalogo({ THREE: THREE, hash: hash, parcheTiempo: function (sh, viento) { parcheTiempo(sh, viento); }, Materiales: Materiales, tiempoTsl: function () { return typeof nodosTiempoTsl === "function" ? nodosTiempoTsl : null; } });
   Componentes.registra(Mundos.manifiestoCatalogo(Catalogo));

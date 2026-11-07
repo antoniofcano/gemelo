@@ -19,6 +19,7 @@ export type { DepsEscena3D, Escena3D, LimitesLru } from "./exterior/escena-tiles
 export { creaMundo, RADIO_SUELTA, RADIO_CARGA } from "./exterior/teselas.ts";
 export type { DepsMundo, Mundo, Tesela, DatosMundo, Mosaico, EstadoOrto, EstadoTeselas } from "./exterior/teselas.ts";
 export { creaSombreadoTiles, uniformesTerreno, hash } from "./exterior/terreno.ts";
+export { creaMaestrosTerreno } from "./exterior/terreno-maestros.ts";   // A3-8a: los maestros matSuelo y matOrto (antes, a mano en 04d)
 export type { DepsTerreno, DepsUniformes, SombreadoTiles, UniformesTerreno, ThreeTerreno, SueloFotosMin, SueloFotosPuroMin } from "./exterior/terreno.ts";
 export { creaNdvi, rampa, u8aI16 } from "./exterior/ndvi.ts";
 export type { DepsNdvi, DatosNdvi, IndiceNdvi, Ndvi } from "./exterior/ndvi.ts";

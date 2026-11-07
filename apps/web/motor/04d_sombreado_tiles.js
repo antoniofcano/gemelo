@@ -6,11 +6,13 @@
   // ---------- el sombreado del relieve (F1d, T5; T8 fase 2: la única escena es la 3D Tiles). MU5-n (A3-1a): el sombreado pasó a TypeScript,
   // apps/web/src/mundos/exterior/terreno.ts (Mundos.creaSombreadoTiles, Mundos.uniformesTerreno, Mundos.hash), con su libera() completo (L2-05: también las
   // texturas de cada tesela del Mundo) y su componente («terreno-sombreado», del exterior; lo registra 90_final.js). Cada glb del tileset cambia su
-  // material por un Lambert con el parche del terreno al cargarse (load-model de 04b_escena3d.js). Aquí quedan, como extracción parcial, los «maestros»
+  // material por un Lambert con el parche del terreno al cargarse (load-model de 04b_escena3d.js). Aquí quedan, como talón (A3-8a; antes, extracción parcial), los «maestros»
   // matSuelo y matOrto (el ciclo del día les pone el color; el relieve de los glb comparte el de matSuelo) y lo que leen por su nombre 04e, 08, 14, 15,
   // 21 y otros: hash, UN y SombreadoTiles. Sin tileset no crea nada (04b no lo llama).
+  // [talón] apps/web/src/mundos/exterior/terreno.ts
   var hash = Mundos.hash;
-  var matSuelo = Materiales.estandar("MeshLambertMaterial", {}), matOrto = Materiales.estandar("MeshBasicMaterial", { color: 0xffffff });   // «maestros»: el ciclo del día les pone el color; el relieve de los glb comparte el de matSuelo
+  var Maestros = Mundos.creaMaestrosTerreno(Materiales);   // A3-8a: los «maestros» (src/mundos/exterior/terreno-maestros.ts): el ciclo del día les pone el color; el relieve de los glb comparte el de matSuelo
+  var matSuelo = Maestros.matSuelo, matOrto = Maestros.matOrto;
   var UN = Mundos.uniformesTerreno({ THREE: THREE, D: D, x0: x0, yN: yN, ANCHO: ANCHO, ALTO: ALTO, tinteOrto: matOrto.color });   // uniformes compartidos por todo el relieve (y por quien sigue la exageración: 08, 14, 15...)
   var SombreadoTiles = Mundos.creaSombreadoTiles({
     THREE: THREE, RES: RES, mundo: Mundo, suelo: suelo, cola: ColaExt, camara: camera, UN: UN, matSuelo: matSuelo,

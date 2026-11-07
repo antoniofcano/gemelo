@@ -110,7 +110,7 @@ test("15_tiempo no toca la escena con el exterior congelado: lo que escribe en e
   const i = fin.indexOf("var exterior = Mundos.creaExterior("), j = fin.indexOf("], antesDelRender:", i), k = fin.indexOf(llamadas[0]);
   assert.ok(i >= 0 && j > i && k > i && k < j, "la llamada a actualizaTiempo está en los pasos del exterior");
   // y 15_tiempo.js solo la reexpone (llama a Tiempo.actualiza, el paso de tiempo-paso.ts)
-  assert.match(sinCabecera(lee("apps/web/motor/15_tiempo.js")), /function actualizaTiempo\(dt, tms\) \{ Tiempo\.actualiza\(dt, tms\); tMundo = Tiempo\.tMundo\(\); \}/);
+  assert.match(sinCabecera(lee("apps/web/motor/15_tiempo.js")), /^  var actualizaTiempo = Tiempo\.actualiza;/m);   // A3-8a: un talón (el reloj de lo que se mueve lo da Tiempo.tMundo())
   const otros = fs.readdirSync(path.join(RAIZ, "apps", "web", "motor")).filter(f => f.endsWith(".js") && f !== "15_tiempo.js" && f !== "90_final.js")
     .filter(f => /actualizaTiempo\(/.test(sinCabecera(lee("apps/web/motor/" + f))));
   assert.deepStrictEqual(otros, [], "nadie más llama a actualizaTiempo");

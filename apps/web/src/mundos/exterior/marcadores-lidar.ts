@@ -91,7 +91,7 @@ export type MarcadoresLidar = ReturnType<typeof creaMarcadoresLidar>;
 export function manifiestoMarcadoresLidar(d: DepsMarcadoresLidar): Manifiesto {
   return {
     id: ID_MARCADORES_LIDAR, version: 1,
-    consume: ["Estaticos", "scene", "colorCss", "cIn", "marc", "copas", "suelo", "Estado", "listo", "VrPresupuesto"],
+    consume: ["Estaticos", "scene", "colorCss", "cIn", "marc", "copas", "suelo", "Estado", "Marcadores", "VrPresupuesto"],
     expone: [],
     eventos: { escucha: ["mundo:aplica", "capas:cambia"], emite: [] },
     bandera: { defecto: true, url: "marcadores" },

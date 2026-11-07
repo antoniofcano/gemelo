@@ -7,5 +7,6 @@
   // (los dos atlas de O8b) o, de salvaguarda, con un sustituto horneado en el navegador. MU5-n (A3-2b): migrado a TypeScript; el código y la explicación entera viven en
   // apps/web/src/mundos/exterior/lejanos.ts, componente «lejanos» de los mundos ["exterior"] con un libera() que suelta la malla, los materiales, las texturas (y los ImageBitmap
   // de los atlas, L2-08), el blanco del horneado y el trabajo de la Cola (lo registra 90_final.js, como los de A3-1a). Aquí se cablea lo del legado.
+  // [talón] apps/web/src/mundos/exterior/lejanos.ts
   var Lejanos = Mundos.creaLejanos({ THREE: THREE, renderer: renderer, Estado: Estado, gArboles: gArboles, Materiales: Materiales, ColaExt: typeof ColaExt !== "undefined" ? ColaExt : null, Generados: Generados,
     fetch: function (u, o) { return fetch(u, o); }, crearBitmap: function (b, o) { return createImageBitmap(b, o); } });   // los atlas de impostores (mismo origen)

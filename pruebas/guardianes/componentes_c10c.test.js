@@ -178,7 +178,8 @@ function mundoMarc(nCopas, nMarc, extra) {
   for (let i = 0; i < nMarc; i++) marc.push({ x: copas[i].x + 1, y: copas[i].y, par: i % 5 ? i : -1 });
   const estado = { listo: false, exag: 1 };
   const g = Object.assign({ THREE, scene, Bus, $: id => cas[id], colorCss: () => 0x58b6e8, cIn, marc, copas, suelo: () => 100, location: { search: "" } }, extra || {});
-  Object.defineProperty(g, "listo", { get: () => estado.listo }); g.Estado = { get exag() { return estado.exag; } };   // exag vive en Estado (A1-13)
+  g.Marcadores = { listo: () => estado.listo };   // A3-8a: listo es estado de Marcadores (08_marcadores, marcadores.ts)
+  g.Estado = { get exag() { return estado.exag; } };   // exag vive en Estado (A1-13)
   return { g, Bus, scene, cas, estado };
 }
 
@@ -224,7 +225,7 @@ test("marcadores-lidar: montado tarde (ya estaba listo) coloca al momento; sin m
   const g = { THREE, Bus, scene: new THREE.Scene(), D: { parcelas: [{}, {}] }, $: id => ({ cLinde: { checked: true }, notaModo: { textContent: "" }, cSolo: null }[id] || { checked: false, textContent: "" }),
     colocaBarrera: k => gl.push(k), nube: {}, gArboles: {}, gFollaje: {}, gSombras: {}, Arboles: { refresca() {} }, pintaNube() {}, colocaPaisaje() {}, colocaBalizas() {}, recoloreaSuelo() {},
     UN: { uExag: {}, uModoOrto: {} }, Estado: { exag: 1, modo: "gem", calidad: 1 }, requestAnimationFrame: f => f() };
-  const nucleo = vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/08_marcadores.js") + "\nlisto = true; aplica(); ({ gl: gLinde });", vm.createContext(conFabrica(g)));
+  const nucleo = vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/08_marcadores.js") + "\nMarcadores.ponListo(); aplica(); ({ gl: gLinde });", vm.createContext(conFabrica(g)));
   assert.ok(nucleo.gl.isGroup); assert.strictEqual(gl.join(), "0,1", "las barreras de las parcelas siguen siendo del núcleo");
   assert.strictEqual(vistos.join(), "mundo:aplica,capas:cambia", "aplica avisa y nadie lo atiende: no se rompe");
 });

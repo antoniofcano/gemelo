@@ -11,8 +11,8 @@
   // kcor, tinte y ndviIdx los reescriben 09_camara y 10_ndvi (primitivas del legado, no pueden ser importaciones, MUNDOS §9.3): entran como funciones que los leen en cada uso.
   // [talón] apps/web/src/mundos/exterior/nube.ts
   var Nube = Mundos.creaNube({
-    THREE: THREE, Mundo: Mundo, suelo: suelo, copaAlta: copaAlta, aviva: aviva, colorEn: colorEn, hash: hash, parcheTiempo: parcheTiempo,
-    kcor: function () { return kcor; }, tinte: function () { return tinte; }, ndviIdx: function () { return ndviIdx; },   // parcheTiempo es una función declarada (se iza) y solo se llama al compilar
+    THREE: THREE, Mundo: Mundo, suelo: suelo, copaAlta: copaAlta, aviva: aviva, colorEn: colorEn, hash: hash, parcheTiempo: function (sh, viento) { parcheTiempo(sh, viento); },
+    kcor: function () { return kcor; }, tinte: function () { return tinte; }, ndviIdx: function () { return ndviIdx; },   // parcheTiempo (15_tiempo, después en el montaje) se pide al usarlo: solo se llama al compilar
     ColaExt: ColaExt, Materiales: Materiales, Estaticos: Estaticos, scene: scene, camera: camera, Estado: Estado
   });
   var ALTO_MAX = Nube.ALTO_MAX, nube = Nube.nube, pintaNube = Nube.pintaNube, actualizaNubeTeselas = Nube.actualizaNubeTeselas, actualizaNube = Nube.actualizaNube;
