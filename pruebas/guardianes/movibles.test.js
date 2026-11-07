@@ -125,7 +125,7 @@ test("el chat usa Movibles, sigue con sus ids (#presenciaGente, «Volver a entra
 });
 
 test("el minimapa usa Movibles, la brújula ya no lo oculta y M lo pliega", () => {
-  const S = lee("apps/web/motor/17_minimapa.js");
+  const S = require("./_fuente").fuenteMotor("17_minimapa.js");
   assert.match(S, /Movibles\.hazMovible\(wrap, asa, "mapa"/);
   assert.doesNotMatch(S, /bru\.addEventListener/);
   assert.match(S, /e\.code !== "KeyM"[\s\S]{0,200}plega\(!mini\.oculto\)/);

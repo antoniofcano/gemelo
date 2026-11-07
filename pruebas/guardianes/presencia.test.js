@@ -277,7 +277,7 @@ test("ir con alguien: junto a la linde de la finca, dentro (3 m de margen); y si
   const S = Encuentro.punto({ x: 100, y: 100 }, { x: 100, y: 100 }, [], EXT); assert.ok(Math.abs(S.x - 100) < 1e-9 && S.y < 100, "encima de ella: por el sur");
 });
 test("ir con alguien y minimapa: en la página, solo con la bandera; con ella, solo a quien se dibuja (de la sala, con pose, sin bloquear)", () => {
-  const M = lee("apps/web/motor/17_minimapa.js"), F = require("./_fuente").fuenteMotorJs("38_presencia_compartida.js");   // A3-6a: el talón y apps/web/src/mundos/comun/presencia.ts (sin las anotaciones de tipos)
+  const M = require("./_fuente").fuenteMotor("17_minimapa.js"), F = require("./_fuente").fuenteMotorJs("38_presencia_compartida.js");   // A3-6a: el talón y apps/web/src/mundos/comun/presencia.ts (sin las anotaciones de tipos)
   // C5: el minimapa no nombra a la presencia: pinta las entidades «persona» (las registra la presencia solo con su bandera) e «Ir con» es su acción «ir»
   assert.match(M, /var gente = Entidades\.lista\("persona"\);[^\n]*\n\s*if \(gente\) \{/, "el minimapa solo pinta a los demás si hay tipo «persona» (presencia activa)");
   assert.match(M, /Usables\.usa\(mejor\.id, "ir"\)/, "el segundo toque va con esa persona por su acción «ir»");

@@ -55,7 +55,7 @@ for (const [nombre, guion] of [
 }
 /** El texto de una función (declaración entera) de un módulo del motor. */
 function fuente(modulo, inicio) {
-  const src = lee("apps/web/motor/" + modulo), i = src.indexOf(inicio), cu = R.cuerpo(src, inicio);
+  const src = require("./_fuente").fuenteMotor(modulo), i = src.indexOf(inicio), cu = R.cuerpo(src, inicio);   // A3-7a: el talón y su .ts (17_minimapa vive en ui/minimapa.ts)
   assert.ok(i >= 0 && cu !== null, modulo + ": no se encuentra " + inicio);
   return src.slice(i, src.indexOf(cu, i) + cu.length + 1);
 }

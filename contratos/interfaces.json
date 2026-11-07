@@ -21,7 +21,7 @@
     "Bus": { "modulo": "02c_componentes.js", "miembros": ["on", "emite", "hay"] },
     "Config": { "modulo": "02c_componentes.js", "miembros": ["listo", "al", "param", "umbrales", "tablaEpocas", "epocaDeFecha", "estado"] },
     "Teclas": { "modulo": "02c_componentes.js", "miembros": ["registra", "dueno", "RESERVADAS"] },
-    "Minimapa": { "modulo": "17_minimapa.js", "miembros": ["capa", "pinta", "cuantas"] },
+    "Minimapa": { "modulo": "17_minimapa.js", "fuente": "apps/web/src/ui/minimapa.ts", "puente": "Interfaz", "miembros": ["capa", "pinta", "cuantas", "olvida"] },
     "PanelVR": { "modulo": "29_vr.js", "fuente": "apps/web/src/mundos/comun/vr-panel.ts", "fabrica": "creaPanelVR", "de": "Vr", "fabricaDe": "creaVr", "miembros": ["filas", "visibles", "tapa", "tapado", "debug", "cierra", "alFotograma", "alGatillo", "fotograma", "gatillo", "conmutaPanel", "conmutaVineta", "abierto", "repinta", "rumbo", "enVR"] },
     "Hud": { "modulo": "31_hud.js", "fuente": "apps/web/src/ui/hud.ts", "puente": "Interfaz", "miembros": ["aviso", "zonasProhibidas", "modo", "cierraDesplegable", "alterna", "ponModo", "icono", "alInicio", "libera"] },
     "Ventanas": { "modulo": "32_ventanas.js", "fuente": "apps/web/src/ui/ventanas.ts", "puente": "Interfaz", "miembros": ["abre", "cierra", "abierta", "pestana", "recorrido", "registra", "libera"] },

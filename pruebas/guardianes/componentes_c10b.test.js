@@ -105,7 +105,7 @@ test("fauna-olivar: sin montar nadie responde (los perros no persiguen a nadie) 
   const v = fuenteMotor("16_vida.js").replace(/\/\/.*$/gm, "");
   assert.ok(!/\b(conejos|bandada|posadas|empacaAves)\b/.test(v), "16_vida.js sigue nombrando la fauna");
   assert.match(v, /bus\.emite\("paseo:entra"\)/); assert.match(v, /bus\.emite\("paseo:sale"\)/);   // A3-5: 16_vida es un talón de mundos/exterior/vida.ts, que llama bus a su Bus
-  assert.ok(!/\bconejos\b/.test(lee("apps/web/motor/17_minimapa.js").replace(/^\s*\/\/.*$/gm, "")), "17_minimapa.js sigue nombrando los conejos");
+  assert.ok(!/\bconejos\b/.test(require("./_fuente").fuenteMotor("17_minimapa.js").replace(/^\s*\/\/.*$/gm, "")), "17_minimapa.js sigue nombrando los conejos");
 });
 
 /** dos mandos con grip y mano de three, sin WebXR */

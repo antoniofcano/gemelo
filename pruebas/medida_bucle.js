@@ -79,7 +79,7 @@ function compara(titulo, n, hazAntes, hazAhora) {
   // ---- 5b · el rastro del minimapa: caminar sin parar (el rastro lleno, 240 puntos)  ·  5c · la firma de las balizas
   {
     const A = function (mini, pp) { var u = mini.rastro[mini.rastro.length - 1]; if (u && Math.hypot(u[0] - pp.x, u[1] - pp.y) > 25) mini.rastro.length = 0; if (!u || Math.hypot(u[0] - pp.x, u[1] - pp.y) > 2.5) { mini.rastro.push([pp.x, pp.y]); if (mini.rastro.length > 240) mini.rastro.shift(); } };
-    const nuevo = new Function("mini", "pp", R.cuerpo(lee("apps/web/motor/17_minimapa.js"), "function actualizaRastro(") && lee("apps/web/motor/17_minimapa.js").slice(lee("apps/web/motor/17_minimapa.js").indexOf("function actualizaRastro("), lee("apps/web/motor/17_minimapa.js").indexOf("  function actualizaMinimapa(")) + "\nreturn actualizaRastro;");
+    const nuevo = new Function("mini", "pp", R.cuerpo(require("./guardianes/_fuente").fuenteMotor("17_minimapa.js"), "function actualizaRastro(") && require("./guardianes/_fuente").fuenteMotor("17_minimapa.js").slice(require("./guardianes/_fuente").fuenteMotor("17_minimapa.js").indexOf("function actualizaRastro("), require("./guardianes/_fuente").fuenteMotor("17_minimapa.js").indexOf("  function actualizaMinimapa(")) + "\nreturn actualizaRastro;");
     const mk = (f) => () => { const mini = { rastro: [] }, pp = { x: 0, y: 0 }, paso = f === A ? () => A(mini, pp) : nuevo(mini, pp); return (i) => { pp.x += Math.cos(i * 0.001) * 2.6; pp.y += Math.sin(i * 0.001) * 2.6; paso(); }; };
     compara("5b rastro del minimapa (andando)", 200000, mk(A), mk(nuevo));
     const OT = { fecha_consulta: "2026-11-03" }, Dd = { ot: OT }, VIVO = { vigia: [1, 2, 3] };

@@ -26,3 +26,6 @@ export type { DepsPantalla, MenuPantalla } from "./pantalla.ts";
 // A3-7a: la Configuración (antes 33_ajustes.js), componente de todo mundo.
 export { AjustesPuro, ID_CONFIGURACION, creaAjustes, manifiestoAjustes } from "./ajustes.ts";
 export type { Ajustes, DepsAjustes } from "./ajustes.ts";
+// A3-7a: el minimapa (antes 17_minimapa.js), componente SOLO DEL EXTERIOR (dibuja la finca, que le llega por argumento).
+export { ID_MINIMAPA, creaMinimapa, manifiestoMinimapa } from "./minimapa.ts";
+export type { DepsMinimapa, MinimapaUI } from "./minimapa.ts";

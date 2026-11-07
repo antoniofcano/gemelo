@@ -73,7 +73,7 @@ const BUCLE = {
   "src/mundos/exterior/tope-olivos.ts": [["paso (Q0n, puro)", "function paso(s: any, m: any)"], ["TopeOlivos.paso", "function paso(dt: any, tri: any,"]],   // A3-2b: 02m es un talón de este módulo   // Q0n: el lazo de los olivos del motor, cada 0,25 s en VR
   "src/mundos/exterior/arboles.ts": [["muestraTopeOlivos", "function muestraTopeOlivos("]],   // A3-2b: 07b es un talón de este módulo
   "30_mide.js": [["causasDelFotograma", "function causasDelFotograma("], ["bits", "function bits("], ["apuntaReparto", "function apuntaReparto("]],   // Q0g: la autopsia de los fotogramas lentos, cada fotograma medido
-  "17_minimapa.js": [["actualizaRastro", "function actualizaRastro("]],
+  "src/ui/minimapa.ts": [["actualizaRastro", "function actualizaRastro("]],   // A3-7a: 17_minimapa es un talón de este módulo
   "src/mundos/exterior/balizas.ts": [["firmaCambia", "function firmaCambia("]],   // A3-3: 19_balizas es un talón de este módulo
   "src/mundos/exterior/perros.ts": [["amenazaEn", "function amenazaEn("], ["actualizaPerros", "function actualizaPerros("], ["empacaPerros", "function empacaPerros("]],   // A3-5: 25_perros es un talón de este módulo
   "02c_componentes.js": [["Bus.emite", "function emite(ev, datos)"], ["Reparto.pasa", "function pasa(i, q)"], ["Reparto.ini", "function ini(t)"]],   // Q0h: el reparto del JS por bloque, cada fotograma medido
