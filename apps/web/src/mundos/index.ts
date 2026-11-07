@@ -149,9 +149,10 @@ export type { DepsTransicion, Transicion } from "./comun/transicion.ts";
 // A3-7b2 (MU5-n): la personalización de los árboles (antes 42_personalizacion.js), componente del exterior; su libera() cancela las peticiones en vuelo.
 export { ID_PERSONALIZACION, creaPersonalizacion, manifiestoPersonalizacion } from "./exterior/personalizacion.ts";
 export type { DepsPersonalizacion, Personalizacion } from "./exterior/personalizacion.ts";
-// A3-7b2 (MU5-n): el mundo en modo oficina (antes 39_oficina_mundo.js), componente del exterior; su libera() cancela las peticiones en vuelo.
-export { ID_OFICINA_MUNDO, creaOficinaMundo, manifiestoOficinaMundo } from "./exterior/oficina-mundo.ts";
-export type { DepsOficinaMundo, OficinaMundo } from "./exterior/oficina-mundo.ts";
+// A3-7b2 (MU5-n): el mundo en modo oficina (antes 39_oficina_mundo.js). A3-8b lo parte en dos: los anuncios, las invitaciones y el panel, de todo mundo, en ui/oficina-mundo.ts
+// (Interfaz); aquí, las balizas oficiales, componente del exterior; su libera() cancela sus peticiones en vuelo.
+export { ID_OFICINA_BALIZAS, creaOficinaBalizas, manifiestoOficinaBalizas } from "./exterior/oficina-balizas.ts";
+export type { DepsOficinaBalizas, OficinaBalizas } from "./exterior/oficina-balizas.ts";
 // A3-7b2 (MU5-n): «Cae la cosecha» (antes 41_cae_la_cosecha.js), el juego casual del olivar, componente del exterior.
 export { ID_CAE_LA_COSECHA, manifiestoCaeLaCosecha } from "./exterior/cae-la-cosecha.ts";
 export type { DepsCaeLaCosecha } from "./exterior/cae-la-cosecha.ts";

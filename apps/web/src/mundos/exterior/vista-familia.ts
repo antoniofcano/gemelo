@@ -101,6 +101,8 @@ export function manifiestoVistaFamilia(dp: DepsVistaFamilia): Manifiesto {
     bandera: { defecto: true, url: "vista" },
     presupuesto: { llamadas: 0, triangulos: 0 },
     mundos: ["exterior"],
+    // A3-8b: los controles del exterior que toca (los que esconde para la familia y la casilla que rotula), escondidos fuera del exterior en cualquier vista (COMPONENTES §3.2)
+    dom: VistaFamiliaPuro.OCULTA.concat(VistaFamiliaPuro.ROTULOS).map(function (d?: T) { return d.sube ? { sel: "#" + d.id, sube: d.sube } : "#" + d.id; }),
     monta: function (n?: T) { return VistaFamiliaMotor(n); },
     libera: function (api?: T) { if (api) api.libera(); }
   };

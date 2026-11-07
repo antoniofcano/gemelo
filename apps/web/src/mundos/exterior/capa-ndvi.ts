@@ -75,6 +75,7 @@ export function manifiestoCapaNdvi(deps: () => DepsCapaNdvi): Manifiesto {
     bandera: { defecto: true, url: "capandvi" },
     presupuesto: { llamadas: 0, triangulos: 0, texturasMB: 1 },   // no añade mallas: la dibuja el sombreador del terreno. [SUPUESTO] 1 MB = textura RGBA de hasta 500 × 500 celdas de 10 m (5 km de lado), sin mipmaps; la rejilla de la maqueta, medida en componentes_c10d.test.js
     fases: {}, actualiza: {}, mundos: ["exterior"],
+    dom: [{ sel: "#cNdvi", sube: "label" }, "#bNdvi"],   // A3-8b: su casilla y su leyenda de «Capas y vista», escondidas fuera del exterior (COMPONENTES §3.2)
     monta: function (n) { return CapaNdviMotor(n); },
     libera: function () { if (suelta) suelta(); suelta = null; }
   };

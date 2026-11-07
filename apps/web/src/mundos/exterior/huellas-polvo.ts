@@ -7,6 +7,7 @@
 import type { ContextoComponente, Manifiesto } from "../../nucleo/componentes.ts";
 import type { DefMaterial, Materiales, MaterialMin } from "../../nucleo/materiales.ts";
 import type { LecturaVida, T3 } from "./vida-tipos.ts";
+import { centroPunto, espejoSprites, uvPunto } from "./puntos-tsl.ts";
 
 export interface DepsHuellasPolvo extends LecturaVida {
   THREE: T3;
@@ -90,10 +91,14 @@ export function defPolvo(): DefMaterial<OpcSombreador> {
       const u = opc.uniforms as T3, uColor = T.uniform(u["uColor"].value), uLuz = T.uniform(u["uLuz"].value).onObjectUpdate(function () { return u["uLuz"].value; });
       const uNow = T.uniform(u["uNow"].value).onObjectUpdate(function () { return u["uNow"].value; });
       const e = T.clamp(uNow.sub(T.attribute("aBorn", "float")).div(T.attribute("aVida", "float")), 0, 1), vA = T.float(1).sub(e).mul(T.float(1).sub(e));
-      const d = T.length(T.pointUV.sub(0.5)).mul(2.0), disco = T.float(1).sub(T.smoothstep(0.1, 1.0, d));   // el smoothstep(1.0, 0.1, d) de GLSL
-      const m = new M({ transparent: true, depthWrite: false }) as MaterialMin & { colorNode: unknown; opacityNode: unknown; sizeNode: unknown };
+      const d = T.length(uvPunto(T).sub(0.5)).mul(2.0), disco = T.float(1).sub(T.smoothstep(0.1, 1.0, d));   // el smoothstep(1.0, 0.1, d) de GLSL
+      // A4-0: sin la atenuación de three (el clásico es un ShaderMaterial: la suya va en la cuenta), con el centro del punto (también en el espejo de sprites) y el
+      // tamaño en píxeles de la pantalla: gl_PointSize va en píxeles del dispositivo y three multiplica el sizeNode por screenDPR
+      const m = new M({ transparent: true, depthWrite: false, sizeAttenuation: false }) as MaterialMin & { colorNode: unknown; opacityNode: unknown; sizeNode: unknown; positionNode: unknown };
       m.colorNode = uColor.mul(uLuz); m.opacityNode = disco.mul(vA).mul(0.62);
-      m.sizeNode = T.attribute("aTam", "float").mul(T.float(1).add(e.mul(2.4))).mul(T.float(520).div(T.max(1, T.positionView.z.negate())));
+      m.positionNode = centroPunto(T);
+      const mvz = T.positionView.z;   // la del centro del punto (positionNode), también en el espejo
+      m.sizeNode = T.attribute("aTam", "float").mul(T.float(1).add(e.mul(2.4))).mul(T.float(520).div(T.max(1, mvz.negate()))).div(T.screenDPR);
       return m;
     }
   };
@@ -128,6 +133,7 @@ export function creaHuellasPolvo(d: DepsHuellasPolvo, n: ContextoComponente) {
   var uPolvo = { uNow: { value: 0 }, uColor: { value: new THREE.Color(0xb89e74) }, uLuz: { value: 1 } };
   var matPolvo: any = materiales.crea(MATERIAL_POLVO, { uniforms: uPolvo });   // el clásico es el ShaderMaterial de siempre (defPolvo, arriba)
   var puntosPolvo: any = new THREE.Points(geoPv, matPolvo); puntosPolvo.frustumCulled = false; puntosPolvo.visible = false; puntosPolvo.renderOrder = 7; scene.add(puntosPolvo);
+  if (matPolvo && matPolvo.isNodeMaterial) espejoSprites(THREE, puntosPolvo);   // A4-0: con la TSL (MU6), sprites instanciados (puntos-tsl.ts)
   function emitePolvo(x: any, y: any, h: any, vx: any, vy: any, vz: any, tam: any, vida: any) {
     var i = pvSig++ % NPV; pvPos[i * 3] = x; pvPos[i * 3 + 1] = h; pvPos[i * 3 + 2] = -y; pvVel[i * 3] = vx; pvVel[i * 3 + 1] = vy; pvVel[i * 3 + 2] = -vz; pvBorn[i] = tVida(); pvVida[i] = vida; pvTam[i] = tam;
     pvFin = Math.max(pvFin, tVida() + vida); puntosPolvo.visible = true;

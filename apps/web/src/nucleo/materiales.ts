@@ -146,7 +146,18 @@ export const DEF_EJEMPLO: DefMaterial<OpcEjemplo> = {
   }
 };
 
-export const MaterialesPuro = { eligeA2c, eligeCartulina, encadenaPropia, rutaDe, estadoDe, CARTULINA_DEFECTO, EJEMPLO_TSL };
+/** A4-0: que una textura de TSL (un TextureNode de three/tsl) relea en cada objeto el valor de un uniforme del clásico ({ value }), antes de dibujar.
+ *  onObjectUpdate NO vale en una textura: TextureNode.setup() (three r186) vuelve a poner su updateType (NONE, u OBJECT con su propio update si lleva matriz
+ *  o flipY) y el nuestro se pierde; el updateBefore no lo toca. Va en el nodo que se muestrea (sample, bias, grad o depth lo clonan, y el clon no lleva nada de
+ *  esto). Lo prueban prueba-tsl.test.ts y las pruebas de cada variante (compila(…).actualiza()). */
+function releeTextura<N>(nodo: N, lee: () => unknown): N {
+  const n = nodo as unknown as { updateBeforeType?: string; updateBefore?: () => void; value?: unknown };
+  n.updateBeforeType = "object";
+  n.updateBefore = function () { const v = lee(); if (v) n.value = v; };
+  return nodo;
+}
+
+export const MaterialesPuro = { eligeA2c, eligeCartulina, encadenaPropia, rutaDe, estadoDe, releeTextura, CARTULINA_DEFECTO, EJEMPLO_TSL };
 
 // ---------------------------------------------------------------- la fábrica
 

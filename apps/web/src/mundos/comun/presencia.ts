@@ -8,6 +8,7 @@
 import { BufferPose, PoseCodec } from "../../red/pose.ts";
 import { Aspecto, AutoPresencia, Chat, Reintento, SalaPose } from "../../red/sala.ts";
 import { Muneco } from "./muneco.ts";
+import { columnaInstancia } from "./instancia-tsl.ts";
 
 /** Lo que el legado le da (el talón de 38_presencia_compartida.js). Los de solo lectura cambian en el legado: el talón los da con getters. */
 export interface DepsPresencia {
@@ -43,11 +44,12 @@ export function defNombres() {
         fragmentShader: "uniform sampler2D uMapa; varying vec2 vUv;\nvoid main(){ vec4 t = texture2D(uMapa, vUv); if (t.a < 0.04) discard; gl_FragColor = t;\n#include <colorspace_fragment>\n}"
       });
     },
-    // MU5-n (A3-6a, tercer commit): la variante TSL, APAGADA (solo la daría la fábrica con el WebGPURenderer, MU6; hoy nadie la usa) y PARCIAL (MATERIALES §13.1).
+    // MU5-n (A3-6a, tercer commit) y A4-0: la variante TSL, APAGADA (solo la daría la fábrica con el WebGPURenderer, MU6; hoy nadie la usa; MATERIALES §13.1).
     // Un MeshBasicNodeMaterial transparente, sin escribir profundidad y sin niebla, con la celda del atlas de cada instancia (aCelda) leída del MISMO atlas y la MISMA
     // rejilla (los { value } de opc.uniforms: la textura y el Vector2 son los objetos del componente) y el descarte por alfa (alphaTest 0,04, el «t.a < 0.04» del GLSL).
-    // FALTA: ponerlo de cara a la cámara (el clásico lo hace en su vertexShader, con la escala de la instancia); sin vertexNode, cada nombre sería un plano con la
-    // orientación de su instanceMatrix. En VR tiene que hacerse POR OJO (multiview): es lo que da la M de MATERIALES §1. Se mide y se compara en MU6.
+    // A4-0: de cara a la cámara, como el vertexShader del clásico (vertexNode: el centro de la instancia en la vista y la esquina por la escala de la instancia), con la
+    // matriz de instancia de su copia (comun/instancia-tsl.ts, coste sin medir). En VR tendría que ser POR OJO (multiview), pero la VR no usará la TSL (el Quest se queda
+    // en super-three, decisión 231): no se ha comprobado y no hace falta. Se compara en MU6.
     tsl: function (opc: { uniforms: Record<string, { value: any }> }, c: { THREE: any; TSL: any }) {
       const T = c.TSL, u = opc.uniforms, mapa = u["uMapa"]!.value, rej = T.uniform(u["uRej"]!.value);   // el mismo Vector2: si la rejilla cambia, la TSL la ve
       const celda = T.attribute("aCelda", "float"), col = T.mod(celda, rej.x), fila = T.floor(celda.div(rej.x));
@@ -55,6 +57,9 @@ export function defNombres() {
       const t = T.texture(mapa, vUv);
       const m = new c.THREE["MeshBasicNodeMaterial"]({ transparent: true, depthWrite: false, fog: false, alphaTest: 0.04 });
       m.colorNode = t.rgb; m.opacityNode = t.a;
+      // c = modelViewMatrix · instanceMatrix · (0, 0, 0, 1); e = |instanceMatrix[0].xyz|; c.xy += position.xy · e; gl_Position = projectionMatrix · c
+      const c0 = columnaInstancia(c.THREE, T, 0), c3 = columnaInstancia(c.THREE, T, 3), cv = T.modelViewMatrix.mul(T.vec4(c3.xyz, 1)), e = T.length(c0.xyz);
+      m.vertexNode = T.cameraProjectionMatrix.mul(T.vec4(cv.xy.add(T.positionGeometry.xy.mul(e)), cv.z, cv.w));
       return m;
     }
   };

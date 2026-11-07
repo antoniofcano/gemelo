@@ -254,7 +254,10 @@ Exterior, molino y bodega en un solo PWA, cada uno con su sala de red; TypeScrip
 | A3-7a | El marco de la interfaz (`02d`, `02e`, `17`, `24`, `27`, `28`, `30`, `31`, `31b`, `32`, `32b`, `33`, `34`) a `apps/web/src/ui/`; L2-11 | A3-6 | ligera · opus | 2 d | ✅ 2026-11-07: frontera `ui/` (alias `@gemelo/ui`, `Interfaz.<x>`); L6-01, L6-03, L6-04 al banco; legado 5.381 |
 | A3-7b1 | El contenido del mundo (`13`, `13b`, `14`, `35`, `48`, `51`, `53`) a TypeScript | A3-7a | ligera · sonnet | 2 d | ✅ 2026-11-07: siete componentes del exterior; varios hallazgos L3 y L6 al banco; legado 1.569 |
 | A3-7b2 | Lo social, los juegos y la oficina (`39`, `40`, `41`, `42`, `43`, `46`, `46b`, `49`) a TypeScript | A3-7a | ligera · sonnet | 2 d | ✅ 2026-11-07: L6-13, L6-12 (mitad), L2-08 y un `TypeError` de balizas; L6-08, L6-16 y la trampa de foco al banco; legado 2.978 |
-| A3-8 | **Cierre de A3:** quitar la IIFE, el puente y los talones (0 líneas en `apps/web/motor/`); partir `oficina-mundo` (anuncios, invitaciones y panel de todo mundo; balizas del exterior); **ocultar al congelar el exterior el DOM que es suyo** (los nombres de la personalización sobre los olivos, los chips de parcelas, la ventana de la historia, la tarjeta de «Hoy» y los controles que oculta la vista de familia se quedan a la vista con `?mundo=vacio`) | A3-7b1, A3-7b2 | ligera · opus | 2-3 d | ⬜ |
+| A3-8b | Ocultar el DOM del exterior al congelarlo (`dom` en el manifiesto) y partir `oficina-mundo` | A3-7 | ligera · opus | 1½ d | ✅ 2026-11-07: pendientes los atajos 1-4 y J estando fuera y la cruceta del móvil |
+| A3-8a | Que el legado no tenga código propio (núcleo de arranque y extracciones parciales) | A3-7 | ligera · opus | 1½ d | ⏳ |
+| A3-8c | Quitar la IIFE, la concatenación y `apps/web/motor/` | A3-8a | ligera · opus | 2 d | ⬜ |
+| A4-0 | Completar las variantes TSL (MU6) | MU5-0 | ligera · opus | 2 d | ✅ 2026-11-07: todas salvo `vrm-fundido`; compilan sin GPU; capturas en el banco (MATERIALES §19) |
 | MU5-0 | Fábrica `nucleo/materiales`: da el material clásico y, con `?renderer=webgpu`, el TSL; los estándar valen en los dos sin cambio | MU2-7 | ligera · opus | 1 d | ✅ 2026-11-06: `nucleo/materiales.ts`, 22 de 30 sombreadores por la fábrica, 8 fuera con trinquete; receta en MATERIALES §5; legado 18.707 |
 
 ## Tablero de tareas (desde el 2026-10-29)

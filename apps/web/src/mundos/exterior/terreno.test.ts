@@ -41,7 +41,7 @@ function monta(THREE: ThreeTerreno & Record<string, unknown>, materiales?: DepsT
   };
   const D = { ts: TS, orto_px: 512, mosaico: { x0: 0, yN: 0, w: 1, h: 1, res: 1 } };
   const T = THREE as unknown as { MeshLambertMaterial: new () => { color: unknown } };
-  const matSuelo = new T.MeshLambertMaterial(), UN = uniformesTerreno({ THREE, D, x0: 0, yN: 0, ANCHO: 1000, ALTO: 1000, tinteOrto: {} });
+  const matSuelo = new T.MeshLambertMaterial(), UN = uniformesTerreno({ THREE, D, x0: 0, yN: 0, ANCHO: 1000, ALTO: 1000, tinteOrto: new (THREE as unknown as { Color: new () => unknown }).Color() });
   const deps: DepsTerreno = {
     THREE, RES: 1, mundo, suelo: () => 0, UN, matSuelo, materiales: materiales || creaMateriales({ THREE: THREE as unknown as ThreeMin }), parcheTiempo: () => {}, vn2: () => 0.5, ahora: () => 1e6,
     cola: { pon: (k, _p, gen, fin) => { cola.push({ k, gen, fin }); return true; }, cancela: (k) => { const i = cola.findIndex((c) => c.k === k); if (i >= 0) cola.splice(i, 1); } },
@@ -166,6 +166,55 @@ describe("MU5-n, tercer commit: la variante TSL del terreno (apagada, parcial)",
     m.S.modelo(g.raiz, g.tile); m.corre();
     const mat = g.malla.material as unknown as Record<string, unknown> & { isNodeMaterial?: boolean };
     expect(mat.isNodeMaterial).toBe(true); expect(mat["outputNode"]).toBeTruthy(); expect(pedidos.length).toBe(1);
+    m.S.libera();
+  });
+});
+
+describe("A4-0: la TSL del terreno, completa, compila (WGSL y GLSL, sin GPU: prueba-tsl.ts)", () => {
+  it("con los nodos del tiempo: el detalle del suelo abierto (lecturas con sesgo), el relieve fino (derivadas) y la vista de depuración entran en el sombreador", async () => {
+    const { cargaNodos, compila } = await import("../../nucleo/prueba-tsl.ts");
+    const n = await cargaNodos();
+    const { creaParcheTiempo } = await import("./tiempo-parche.ts");
+    const P = creaParcheTiempo({ THREE: C.THREE, colorVertSRGB: () => {} });
+    const F = creaMateriales({ THREE: C.THREE as unknown as ThreeMin, render: { tipo: "nuevo" }, nodos: () => ({ THREE: n.W, TSL: n.T }) });
+    const m = monta(C.THREE, F, { tiempoTsl: () => (TS: unknown) => P.nodosTsl(TS) }), g = m.glb(0, 256);
+    m.S.modelo(g.raiz, g.tile); m.corre();
+    const mat = g.malla.material as unknown as Record<string, unknown>;
+    expect(mat["normalNode"]).toBeTruthy();   // pBump
+    const c = compila(n, mat);
+    expect(c.wgsl.fragmento).toMatch(/textureSampleBias/);   // el detalle de la ortofoto (o2, o4 y la dirección del camino)
+    expect(c.wgsl.fragmento).toMatch(/dpdx/); expect(c.glsl.fragmento).toMatch(/dFdx/);   // el relieve fino
+    expect(c.wgsl.fragmento).not.toMatch(/textureSampleGrad/);   // sin ?suelo=fotos, nada del suelo de fotos
+    m.S.libera();
+  });
+  it("las texturas de la tesela se releen en el nodo que se muestrea: cuando llegan los datos de la tesela, el sombreador lee la nueva (antes de A4-0 se quedaba con la neutra)", async () => {
+    const { cargaNodos, compila } = await import("../../nucleo/prueba-tsl.ts");
+    const n = await cargaNodos();
+    const F = creaMateriales({ THREE: C.THREE as unknown as ThreeMin, render: { tipo: "nuevo" }, nodos: () => ({ THREE: n.W, TSL: n.T }) });
+    const m = monta(C.THREE, F), g = m.glb(0, 256);
+    m.S.modelo(g.raiz, g.tile);   // sin correr la cola: el ruido de la tesela aún es el neutro
+    const c = compila(n, g.malla.material); c.actualiza();
+    const antes = c.texturas();
+    m.corre();   // llega el ruido de la tesela (uRui)
+    const rui = (m.lista[0] as Tesela)["rui"]; expect(rui).toBeTruthy();
+    expect(antes).not.toContain(rui);
+    c.actualiza(); expect(c.texturas()).toContain(rui);
+    m.S.libera();
+  });
+  it("con ?suelo=fotos: el suelo de fotos (SueloFotosPuro.tsl) entra con sus lecturas del array (textureSampleGrad) y el campo del ruedo", async () => {
+    const { cargaNodos, compila } = await import("../../nucleo/prueba-tsl.ts");
+    const { SueloFotosPuro } = await import("./suelo-fotos.ts");
+    const n = await cargaNodos();
+    const Arr = n.W.DataArrayTexture, T2 = n.W.DataTexture;
+    const lam = new Arr(new Uint8Array(4 * SueloFotosPuro.CAPAS), 1, 1, SueloFotosPuro.CAPAS), campo = new T2(new Uint8Array(4), 1, 1);
+    const SF = { activo: true, U: { uFot: { value: lam }, uFotK: { value: 1 } }, campo: () => campo, rueNeutro: () => campo, actualiza() {}, libera() {} };
+    const F = creaMateriales({ THREE: C.THREE as unknown as ThreeMin, render: { tipo: "nuevo" }, nodos: () => ({ THREE: n.W, TSL: n.T }) });
+    const m = monta(C.THREE, F, { sueloFotos: () => SF as never, sueloFotosPuro: () => SueloFotosPuro as never }), g = m.glb(0, 256);
+    m.S.modelo(g.raiz, g.tile); m.corre();
+    const c = compila(n, g.malla.material); c.actualiza();
+    expect(c.wgsl.fragmento).toMatch(/textureSampleGrad/); expect(c.wgsl.fragmento).toMatch(/texture_2d_array/);
+    expect(c.glsl.fragmento).toMatch(/textureGrad/); expect(c.glsl.fragmento).toMatch(/sampler2DArray/);
+    expect(c.texturas()).toContain(lam); expect(c.texturas()).toContain(campo);   // los MISMOS { value } que el clásico (uFot y el uRue de la tesela)
     m.S.libera();
   });
 });

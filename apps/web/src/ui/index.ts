@@ -53,3 +53,7 @@ export type { Agenda, DepsAgenda } from "./agenda.ts";
 // A3-7b2: la visita guiada (antes 46_guiada.js), componente de todo mundo; su libera() cancela además las peticiones a la api en vuelo.
 export { ID_GUIADA, creaGuiada, manifiestoGuiada } from "./guiada.ts";
 export type { DepsGuiada, Guiada } from "./guiada.ts";
+// A3-8b: el mundo en modo oficina (antes 39_oficina_mundo.js y, en A3-7b2, mundos/exterior/oficina-mundo.ts): los anuncios, las invitaciones y el panel, componente de todo mundo.
+// Las balizas oficiales, del exterior, son otro componente (Mundos.manifiestoOficinaBalizas), que consume este.
+export { ID_OFICINA_MUNDO, OficinaMundoPuro, creaOficinaMundo, manifiestoOficinaMundo } from "./oficina-mundo.ts";
+export type { DepsOficinaMundo, OficinaMundo } from "./oficina-mundo.ts";

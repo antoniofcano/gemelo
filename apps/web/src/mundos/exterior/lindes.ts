@@ -197,14 +197,20 @@ export const DEF_LINDES: DefMaterial<OpcLindes> = {
     mat.onBeforeCompile = o.parche; mat.customProgramCacheKey = function () { return "lindes-hazas-acerca"; };
     return mat;
   },
-  // MU5-n, tercer commit: la variante TSL, APAGADA (solo con el WebGPURenderer, que hasta MU6 no existe; nadie la usa hoy) y PARCIAL, no equivalente al clásico: la
-  // Line2NodeMaterial de three/webgpu (el LineMaterial de la versión nueva) con los mismos parámetros (color, ancho en píxeles, opacidad, escritura de profundidad).
-  // FALTA el acercamiento de profundidad (uAcerca: acercar cada extremo del tramo al ojo una fracción de su distancia), así que habrá más riesgo de parpadeo donde el tileset
-  // sube sobre la linde; y el ancho × VR_ANCHO por ojo (el onBeforeRender que mide el viewport de cada ojo): la Line2NodeMaterial mide el viewport del renderizador. Para
-  // MU6: portar uAcerca a un positionNode y decidir el ancho en VR con la medida del Quest (no probado)
+  // MU5-n, tercer commit (A3-3) y A4-0: la variante TSL, APAGADA (solo con el WebGPURenderer, MU6; nadie la usa hoy): la Line2NodeMaterial de three/webgpu (el
+  // LineMaterial de la versión nueva) con los mismos parámetros (color, ancho en píxeles, opacidad, escritura de profundidad) y (A4-0) el acercamiento de profundidad
+  // (uAcerca) en su positionNode: el clásico escala hacia el ojo los dos extremos del tramo en el espacio de la vista; aquí se escala el vértice ya ensanchado (lo que
+  // three pone en positionLocal antes de positionNode), que da lo mismo en la pantalla (en perspectiva, escalar la posición en la vista no mueve su proyección) y la
+  // misma profundidad. El ancho × VR_ANCHO por ojo: con la TSL, resolucion() pone el linewidth del material (la Line2NodeMaterial mide sola el viewport); la VR no
+  // usará la TSL (el Quest se queda en super-three: decisión 231), así que el ancho por ojo no se ha comprobado y no hace falta. NO se puede decir que sea equivalente
+  // hasta las capturas de MU6.
   tsl: function (o, c) {
-    const Linea2 = c.THREE["Line2NodeMaterial"] as new (opc: unknown) => MaterialMin;
-    return new Linea2(o.params);
+    const Linea2 = c.THREE["Line2NodeMaterial"] as new (opc: unknown) => MaterialMin & { positionNode?: unknown };
+    const T = c.TSL as Record<string, any>;   // eslint-disable-line @typescript-eslint/no-explicit-any
+    const m = new Linea2(o.params), k = T["uniform"](1 - o.acerca);   // el uAcerca del clásico (1 − acerca), constante
+    const ojo = T["modelWorldMatrixInverse"].mul(T["vec4"](T["cameraPosition"], 1)).xyz;   // la cámara en el espacio del objeto
+    m.positionNode = ojo.add(T["positionLocal"].sub(ojo).mul(k));   // = inversa(modelView) · (uAcerca · (modelView · p))
+    return m;
   }
 };
 
@@ -258,6 +264,7 @@ export function creaLindes(d: DepsLindes) {
     function resolucion(o: T3, base: number) {
       return function (r: Cualquiera, _escena: unknown, cam: Cualquiera): void {
         const u = o.material.uniforms, v = cam && cam.viewport;
+        if (o.material.isNodeMaterial) { o.material.linewidth = P.ancho(base, !!(v && v.z > 0)); return; }   // A4-0: la TSL (MU6) no tiene uniforms: mide sola el viewport
         if (v && v.z > 0) { u.resolution.value.set(v.z, v.w); u.linewidth.value = P.ancho(base, true); }
         else { r.getViewport(vp); u.resolution.value.set(vp.z, vp.w); u.linewidth.value = P.ancho(base, false); }
       };

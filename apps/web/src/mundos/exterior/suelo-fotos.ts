@@ -17,6 +17,7 @@
 // Sin la bandera este módulo no carga nada, no crea texturas y 04d no cambia ni una letra de su sombreador.
 // Del legado recibe por argumento lo que necesita (THREE, Aparato, Mundo, copas, ColaExt, renderer, la URL, el ajuste guardado, imágenes y lienzos, el KTX2Loader); no lee globales.
 import type { Manifiesto } from "../../nucleo/componentes.ts";
+import { MaterialesPuro } from "../../nucleo/materiales.ts";
 
 // three no trae tipos en el repo (como en ambiente.ts y presupuesto.ts): de él solo se toca lo mínimo, sin tiparlo
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -153,7 +154,73 @@ function parcheGlsl(cab: string, color: string, TS: number): { cab: string; colo
   (Object.keys(ANCLAS) as (keyof typeof ANCLAS)[]).forEach(function (k) { if (color.split(ANCLAS[k]).length !== 2) throw new Error("04f_suelo_fotos: el ancla «" + ANCLAS[k] + "» no está una vez en el sombreado de 04d"); });
   return { cab: cab + g.cab, color: color.replace(ANCLAS.pre, g.pre + ANCLAS.pre).replace(ANCLAS.grano, "(1.0 - m) * 0.3, 0.0, 1.0) * cercaM * (1.0 - fotA);").replace(ANCLAS.color, g.color + ANCLAS.color) };
 }
-export const SueloFotosPuro = { CLASES, METROS, VARIANTES, BASE, CAPAS, PX, FUNDIDO, RUE_GN, decide, ficheros, presupuesto, campoRuedo, glsl, parcheGlsl,
+// ---- A4-0: el MISMO suelo de fotos en nodos (TSL), para la variante del terreno (MATERIALES §1.5); APAGADO: solo con el WebGPURenderer (MU6). Las mismas
+// cuentas que glsl() (una sola fuente de las constantes: CLASES, METROS, BASE, VARIANTES, FUNDIDO, RUE_M) y los MISMOS { value } (uFot, uFotK y el uRue de la
+// tesela). Lo que cambia por fuerza en nodos: el bucle de las dos clases que más pesan va desenrollado con select; FOT_M[c] y fotNiv(c, i), con select por clase;
+// el campo del ruedo (uRue) se lee FUERA del «if (fotA > 0,003)», para que sus derivadas implícitas estén definidas (three apaga en WGSL el aviso de
+// uniformidad de las derivadas, no el problema): una lectura más por píxel donde las fotos no llegan. Las demás son textureGrad (derivadas a mano), como el GLSL.
+// e: lo que pone el terreno (dn y dh, su ruido; lc, vWP, dc y las máscaras del detalle). Devuelve fotA (el grano lo usa) y aplica(suelo) → vec4(suelo, Δh).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function tsl(T: any, e: T3): { fotA: T3; aplica(suelo: T3): T3 } {
+  const lee = function (x: { value: T3 }, d: T3) { return function () { return (x && x.value) || d; }; };
+  const uFotK = T.uniform(e.uFotK.value).onObjectUpdate(function () { return e.uFotK.value; });
+  const elige = function (c: T3, lista: readonly number[]): T3 { let r = T.float(lista[0] as number); for (let k = 1; k < lista.length; k++) r = T.select(c.greaterThan(k - 0.5), T.float(lista[k] as number), r); return r; };
+  const fotNiv = function (c: T3, i: T3): T3 { return elige(c, BASE).add(T.mod(i, elige(c, VARIANTES))); };
+  // la lámina de la variante, el sitio y las derivadas: textureGrad sobre el array (con el valor de uFot releído en el nodo que se muestrea: sample/depth/grad clonan)
+  const lamina = function (uv: T3, capa: T3, gx: T3, gy: T3): T3 { const n = T.texture(e.huecoArr(), uv).depth(capa.add(0.5)).grad(gx, gy); return MaterialesPuro.releeTextura(n, lee(e.uFot, e.neutroArr)); };
+  const fotVar = function (capa: T3, p: T3, gx: T3, gy: T3): T3 {
+    const k = e.dn(p.mul(0.37).add(capa.mul(3.7))).mul(6), i = T.floor(k), f = T.fract(k);
+    const oa = T.fract(T.sin(T.vec2(3.1, 7.7).mul(i.add(capa))).mul(43.7)), ob = T.fract(T.sin(T.vec2(3.1, 7.7).mul(i.add(1).add(capa))).mul(43.7));
+    const a = lamina(p.add(oa), fotNiv(capa, i), gx, gy), b = lamina(p.add(ob), fotNiv(capa, i.add(1)), gx, gy), t = T.smoothstep(0.2, 0.8, f);
+    return T.mix(a, b, t).sub(0.5).div(T.sqrt(t.mul(t).add(T.float(1).sub(t).mul(T.float(1).sub(t))))).add(0.5);
+  };
+  const fotCapa = function (capa: T3, pw: T3, dx: T3, dy: T3): T3 { const m = elige(capa, METROS); return fotVar(capa, pw.div(m), dx.div(m), dy.div(m)); };
+  const fotA = uFotK.mul(T.float(1).sub(T.smoothstep(FUNDIDO[0] as number, FUNDIDO[1] as number, e.dc)));
+  const fdx = T.dFdx(T.vec2(e.vWP.x, e.vWP.z)).mul(T.vec2(1, -1)), fdy = T.dFdy(T.vec2(e.vWP.x, e.vWP.z)).mul(T.vec2(1, -1));
+  const aplica = function (suelo0: T3): T3 {
+    return T.Fn(function () {
+      // todo lo de fuera, a variables ANTES del if: un nodo que se construye por primera vez dentro de un bloque se queda dentro de él
+      const suelo = T.vec3(suelo0).toVar(), dh = T.float(0).toVar(), fa = T.float(fotA).toVar(), gx = T.vec2(fdx).toVar(), gy = T.vec2(fdy).toVar();
+      const rue = MaterialesPuro.releeTextura(T.texture(e.hueco("uRue"), e.lc.div(e.TS)), lee(e.uRue, e.neutro));   // con su hueco, no con su valor (terreno.ts, lee())
+      const dR = rue.r.mul(2 * RUE_M).sub(RUE_M).toVar(), ab = T.float(e.abierto).toVar(), to = T.float(e.tono).toVar(), de = T.float(e.desnudo).toVar(), ca = T.float(e.camino).toVar();
+      const pw = T.vec2(e.vWP.x, e.vWP.z.negate()).toVar();
+      T.If(fa.greaterThan(0.003), function () {
+        const fnA = e.dn(pw.mul(0.55).add(1.7)), fnB = e.dn(pw.mul(1.9).add(5.3));
+        const wRue = T.float(1).sub(T.smoothstep(-0.8, 0.4, dR.add(fnA.sub(0.5).mul(1.6))));
+        const wHoj = T.clamp(T.float(1).sub(T.smoothstep(0.4, 1.6, T.abs(dR.add(0.5).add(fnB.sub(0.5).mul(1.2))))).add(wRue.mul(0.7).mul(T.smoothstep(0.55, 0.8, fnB))), 0, 1).mul(T.float(1).sub(ca).mul(0.65).add(0.35));
+        const fuera = T.float(1).sub(T.max(wRue, wHoj)), wCam = ca.mul(fuera), wCom = ab.mul(T.float(1).sub(T.smoothstep(0.86, 0.98, to))).mul(T.float(1).sub(ca)).mul(fuera), wTie = de.mul(T.float(1).sub(ca)).mul(fuera);
+        const w = [T.max(0, fuera.sub(wCam).sub(wCom).sub(wTie)).add(0.03), wHoj, wTie, wCom, wRue.mul(T.float(1).sub(wHoj)), wCam];
+        // las dos clases que más pesan (el bucle del GLSL, desenrollado: el mismo orden y los mismos empates)
+        let b1: T3 = T.float(-1), b2: T3 = T.float(-1), c1: T3 = T.float(0), c2: T3 = T.float(0);
+        for (let q = 0; q < w.length; q++) {
+          const v = w[q], g1 = v.greaterThan(b1), g2 = v.greaterThan(b2);
+          const nb2 = T.select(g1, b1, T.select(g2, v, b2)), nc2 = T.select(g1, c1, T.select(g2, T.float(q), c2));
+          b1 = T.select(g1, v, b1); c1 = T.select(g1, T.float(q), c1); b2 = nb2; c2 = nc2;
+        }
+        const cl1 = T.float(c1).toVar(), cl2 = T.float(c2).toVar(), t2 = T.float(b2).div(T.max(T.float(b1).add(b2), 1e-4)).toVar();
+        const tx = T.vec4(fotCapa(cl1, pw, gx, gy)).toVar();
+        T.If(t2.greaterThan(0.03), function () { tx.assign(T.mix(tx, fotCapa(cl2, pw, gx, gy), t2).sub(0.5).div(T.sqrt(t2.mul(t2).add(T.float(1).sub(t2).mul(T.float(1).sub(t2))))).add(0.5)); });
+        suelo.assign(suelo.mul(T.mix(T.vec3(1), tx.rgb.mul(2), fa))); dh.addAssign(fa.mul(0.012).mul(tx.a.sub(0.5)));
+        // piedras sueltas (calcomanías de caliza, ilustrativas)
+        const ce = T.floor(pw.div(0.9)).toVar(), fr = pw.sub(ce.mul(0.9)), pr = T.float(0.03).add(T.float(0.12).mul(wTie.add(wCam).add(w[4])));
+        T.If(e.dh(ce.add(17.3)).lessThan(pr), function () {
+          const c0 = T.vec2(e.dh(ce.add(3.1)), e.dh(ce.add(8.9))).mul(0.5).add(0.25).mul(0.9), rr = T.float(0.06).add(T.float(0.18).mul(e.dh(ce.add(5.5)))), an = e.dh(ce.add(1.1)).mul(6.2832);
+          const d0 = fr.sub(c0), dd = T.vec2(T.cos(an).mul(d0.x).sub(T.sin(an).mul(d0.y)), T.sin(an).mul(d0.x).add(T.cos(an).mul(d0.y)).mul(1.6));
+          const esP = T.float(1).sub(T.smoothstep(0.8, 1.0, T.length(dd).div(rr).add(e.dn(pw.mul(9)).sub(0.5).mul(0.35)))).toVar();
+          T.If(esP.greaterThan(0), function () {
+            const mP = METROS[6] as number, tp = lamina(pw.div(mP).add(ce.mul(0.37)), fotNiv(T.float(6), T.floor(e.dh(ce.add(2.9)).mul(6))), gx.div(mP), gy.div(mP));
+            suelo.assign(T.mix(suelo, T.mix(suelo, T.vec3(0.7, 0.66, 0.6), 0.55).mul(tp.rgb).mul(2), esP.mul(fa)));
+            dh.addAssign(fa.mul(esP).mul(T.float(0.02).add(T.float(0.015).mul(tp.a.sub(0.5)))));
+          });
+        });
+      });
+      return T.vec4(suelo, dh);
+    })();
+  };
+  return { fotA, aplica };
+}
+
+export const SueloFotosPuro = { CLASES, METROS, VARIANTES, BASE, CAPAS, PX, FUNDIDO, RUE_GN, RUE_M, decide, ficheros, presupuesto, campoRuedo, glsl, parcheGlsl, tsl,
   BASIS, ktx2, formato, orden, cargaEnOrden, ktx2Vale, bytesNiveles };
 
 // ---------------------------------------------------------------- lo que toca THREE y el DOM

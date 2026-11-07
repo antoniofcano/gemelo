@@ -103,6 +103,25 @@ describe("catálogo de olivos-tipo (componente del exterior)", () => {
     expect((C.geometria(C.SIN, 1, 0)[0]!.mat as Nm).isNodeMaterial).toBe(true);
   });
 
+  it("A4-0: las TSL compilan en una malla instanciada con color por vértice y por instancia (WGSL y GLSL, sin GPU); la semilla sale de la matriz de cada olivo, no de su índice", async () => {
+    const { cargaNodos, compila } = await import("../../nucleo/prueba-tsl.ts");
+    const { creaParcheTiempo } = await import("./tiempo-parche.ts");
+    const n = await cargaNodos(), P = creaParcheTiempo({ THREE, colorVertSRGB: () => {} });
+    const F = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: { tipo: "nuevo" }, nodos: () => ({ THREE: n.W, TSL: n.T }) });
+    F.define(MATERIAL_COPA_L1, DEF_COPA_L1); F.define(MATERIAL_TRONCO_L1, DEF_TRONCO_L1);
+    const tiempo = () => (T: unknown) => P.nodosTsl(T);
+    for (const nombre of [MATERIAL_COPA_L1, MATERIAL_TRONCO_L1]) {
+      const geo = new n.W.BoxGeometry(1, 1, 1); geo.setAttribute("color", new n.W.BufferAttribute(new Float32Array(geo.attributes.position.count * 3), 3));
+      const malla = new n.W.InstancedMesh(geo, F.crea(nombre, { parche: () => {}, tiempo }), 8); malla.setColorAt(0, new n.W.Color(0.5, 0.5, 0.5));
+      const c = compila(n, malla.material, { hecho: malla });
+      expect(c.wgsl.fragmento).toMatch(/sRGBTransferEOTF/);   // el color por vértice y por instancia, de sRGB a lineal
+      if (nombre === MATERIAL_COPA_L1) {
+        expect(c.wgsl.fragmento).toMatch(/discard/);   // la silueta rota (maskNode)
+        expect(c.wgsl.vertice).toMatch(/dot\( vec2<f32>\( nodeAttribute\d+\.x, nodeAttribute\d+\.z \), vec2<f32>\( 12\.9898, 78\.233 \) \)/);   // la semilla, de la traslación de la matriz (un atributo por instancia)
+        malla.instanceMatrix.needsUpdate = true; c.actualiza();   // la copia de la matriz sigue a la de verdad (su versión)
+      }
+    }
+  });
   it("el manifiesto vale, es de los mundos [exterior], monta el mismo objeto y su libera lo suelta", () => {
     const { C } = monta(), man = manifiestoCatalogo(C);
     expect(ComponentesPuro.valida(man)).toEqual([]); expect(man.id).toBe("catalogo-olivos"); expect(man.mundos).toEqual(["exterior"]);

@@ -88,7 +88,7 @@ describe("la hierba y las piedras del exterior", () => {
     expect(iMata.material.customProgramCacheKey()).toBe(iMata.material.onBeforeCompile.toString()); expect(iPiedra.material.color.getHex()).toBe(0xffffff);
     H.libera(); expect(F.duenos()).toEqual({}); expect(F.a2c.n).toBe(0);
   });
-  it("las variantes TSL (apagadas y PARCIALES): solo con el renderizador nuevo; con three/webgpu y three/tsl de verdad, MeshLambertNodeMaterial con sus nodos", async () => {
+  it("las variantes TSL (apagadas): solo con el renderizador nuevo; con three/webgpu y three/tsl de verdad, MeshLambertNodeMaterial con sus nodos", async () => {
     const W: A = await import(/* @vite-ignore */ "three/webgpu" as string), TSL: A = await import(/* @vite-ignore */ "three/tsl" as string);
     const { DEF_MATAS, DEF_PIEDRAS } = await import("./hierba.ts");
     const hoy = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: { tipo: "clasico", pedido: "" }, nodos: () => ({ THREE: W, TSL }) });
@@ -102,6 +102,22 @@ describe("la hierba y las piedras del exterior", () => {
     expect(ma.colorNode && ma.maskNode && ma.positionNode && ma.outputNode).toBeTruthy();
     expect(pi.isMeshLambertNodeMaterial).toBe(true); expect(pi.colorNode && pi.outputNode).toBeTruthy(); expect(pi.positionNode).toBeFalsy();
     const sin: A = F.crea("matas", { map, parche: () => {} }); expect(sin.outputNode).toBeFalsy();   // sin los uniformes del tiempo, sin nubes ni viento
+  });
+  it("A4-0: las TSL compilan (WGSL y GLSL, sin GPU) en mallas instanciadas con color por instancia: el vaivén antes de la instancia y la semilla de la piedra por su posición", async () => {
+    const { cargaNodos, compila } = await import("../../nucleo/prueba-tsl.ts");
+    const { DEF_MATAS, DEF_PIEDRAS } = await import("./hierba.ts");
+    const n = await cargaNodos(), W = n.W, P = creaParcheTiempo({ THREE: W, colorVertSRGB: () => {} }), u = { uSombra: P.uSombra, uViento: P.uViento };
+    const F = creaMateriales({ THREE: W as unknown as ThreeMin, render: { tipo: "nuevo" }, nodos: () => ({ THREE: W, TSL: n.T }) });
+    F.define("matas", DEF_MATAS); F.define("piedras", DEF_PIEDRAS);
+    const malla = (mat: A, conTile: boolean) => {
+      const g = new W.PlaneGeometry(1, 1); if (conTile) g.setAttribute("aTile", new W.InstancedBufferAttribute(new Float32Array(4), 1));
+      const m = new W.InstancedMesh(g, mat, 4); m.setColorAt(0, new W.Color(0.6, 0.5, 0.4)); return m;
+    };
+    const ma: A = F.crea("matas", { map: new W.Texture(), parche: () => {}, u }), cm = compila(n, ma, { hecho: malla(ma, true) });
+    expect(cm.wgsl.fragmento).toMatch(/sRGBTransferEOTF/);   // el color por instancia, a lineal
+    expect((cm.wgsl.vertice.match(/nodeAttribute\d+ : vec4<f32>/g) || []).length).toBe(4);   // la matriz de instancia (aplicaInstancia), una vez cada columna
+    const pi: A = F.crea("piedras", { parche: () => {}, u }), cp = compila(n, pi, { hecho: malla(pi, false) });
+    expect(cp.wgsl.vertice).toMatch(/0\.137/);   // la semilla del clásico: fract(m[3].x · 0,137 + m[3].z · 0,311)
   });
   it("el manifiesto vale, es de los mundos [exterior], monta el mismo objeto y su libera lo suelta", () => {
     const { H, scene } = monta(), man = manifiestoHierba(H);

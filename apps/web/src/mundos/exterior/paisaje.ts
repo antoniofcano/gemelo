@@ -72,8 +72,9 @@ export const DEF_ARROYO: DefMaterial<OpcArroyo> = {
     const uLuz = uniform(1).onObjectUpdate(function () { return u.uLuz.value; }), uArena = uniform(u.uArena.value).onObjectUpdate(function () { return u.uArena.value; });
     const vV = attribute("aV", "float"), vU = attribute("aU", "float");
     const hh = function (p: unknown) { return fract(sin(dot(p, vec2(127.1, 311.7))).mul(43758.5453)); };
-    const borde = smoothstep(1.0, 0.62, abs(vV)), lecho = uArena.mul(mix(0.72, 1.12, hh(floor(vec2(vU.mul(1.4), vV.mul(7.0))))));
-    const anchoA = uAgua.mul(0.78), agua = smoothstep(anchoA.add(0.12), anchoA.sub(0.12), abs(vV)).mul(step(0.01, uAgua));
+    // A4-0: los smoothstep al revés del GLSL, como 1 − smoothstep (WGSL no deja los bordes al revés; prueba-tsl.ts lo caza en los constantes)
+    const borde = float(1).sub(smoothstep(0.62, 1.0, abs(vV))), lecho = uArena.mul(mix(0.72, 1.12, hh(floor(vec2(vU.mul(1.4), vV.mul(7.0))))));
+    const anchoA = uAgua.mul(0.78), agua = float(1).sub(smoothstep(anchoA.sub(0.12), anchoA.add(0.12), abs(vV))).mul(step(0.01, uAgua));
     const flujo = sin(vU.mul(2.2).sub(uT.mul(3.4)).add(vV.mul(5.0))).mul(0.5).add(0.5);
     const colA = sRGBTransferEOTF(vec4(mix(vec3(0.16, 0.36, 0.5), vec3(0.6, 0.8, 0.9), flujo.mul(flujo).mul(0.55)), float(1.0))).rgb;
     const m = new Basico({ transparent: o.transparent, depthWrite: o.depthWrite, side: o.side, polygonOffset: o.polygonOffset, polygonOffsetFactor: o.polygonOffsetFactor, polygonOffsetUnits: o.polygonOffsetUnits, fog: false, toneMapped: false });
@@ -364,6 +365,7 @@ export function manifiestoPaisaje(paisaje: Paisaje): Manifiesto {
     bandera: { defecto: true },
     presupuesto: { llamadas: 0, triangulos: 0 },   // solo ciclo de vida: lo que dibuja (muros, tejados, postes, hilos, cauces y 4 InstancedMesh de árboles) lo cuenta pruebas/presupuesto.json; la casilla «Paisaje» lo apaga a la vista
     mundos: ["exterior"],
+    dom: [{ sel: "#cPaisaje", sube: "label" }],   // A3-8b: su casilla de «Capas y vista», escondida fuera del exterior (COMPONENTES §3.2)
     monta: function () { paisaje.monta(); return paisaje; },
     libera: function (api) { if (api) (api as Paisaje).libera(); }
   };

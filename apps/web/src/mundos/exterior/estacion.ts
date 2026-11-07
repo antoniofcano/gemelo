@@ -8,6 +8,7 @@
 // Lo que se ve de esto es estimado o ilustrativo y lo dice su tarjeta («estimado»); la chapita del tiempo, también (L8-05, tiempo-paso.ts).
 import type { Manifiesto } from "../../nucleo/componentes.ts";
 import type { DefMaterial } from "../../nucleo/materiales.ts";
+import { centroPunto, espejoSprites, uvPunto } from "./puntos-tsl.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type A = any;
@@ -64,11 +65,17 @@ export const DEF_FRUTO_FLOR: DefMaterial<OpcFrutoFlor> = {
     var tam = T.select(flor.and(aS.lessThan(dens)), T.float(0.5), T.select(oliva.and(aS.lessThan(0.55)), T.mix(T.float(0.25), T.float(0.7), T.clamp(b.sub(71.0).div(8.0), 0.0, 1.0)), T.float(0)));
     var colO = T.mix(T.mix(T.vec3(0.5, 0.64, 0.2), T.vec3(0.5, 0.2, 0.38), T.smoothstep(80.0, 85.0, b)), T.vec3(0.17, 0.1, 0.19), T.smoothstep(85.0, 90.0, b));
     var col = T.select(flor.and(aS.lessThan(dens)), T.vec3(0.97, 0.95, 0.86), T.select(oliva.and(aS.lessThan(0.55)), colO, T.vec3(1.0)));
-    var mvz = T.modelViewMatrix.mul(T.vec4(T.positionGeometry, 1)).z.add(1.0);
-    m.sizeNode = tam.mul(uEsc).div(T.max(0.5, mvz.negate()));
-    var vTam = T.varying(tam), vCol = T.varying(col), dd = T.pointUV.sub(0.5), r2 = T.dot(dd, dd);
+    // A4-0: el centro del punto (también en el espejo de sprites, puntos-tsl.ts) y el tamaño en píxeles de la pantalla (gl_PointSize va en píxeles del dispositivo
+    // y three multiplica el sizeNode por screenDPR)
+    m.positionNode = centroPunto(T);
+    // y el adelanto de 1 m hacia la cámara del clásico (mv.z += 1.0, que mueve el punto, no solo su tamaño): en la posición en la vista del material, que three usa
+    // para proyectar (setupModelViewProjection) en un Points y en el espejo
+    var vista = m.setupPositionView.bind(m); m.setupPositionView = function (bld: A) { return vista(bld).add(T.vec3(0, 0, 1)); };
+    var mvz = T.positionView.z;
+    m.sizeNode = tam.mul(uEsc).div(T.max(0.5, mvz.negate())).div(T.screenDPR);
+    var vTam = T.varying(tam), vCol = T.varying(col), dd = uvPunto(T).sub(0.5), r2 = T.dot(dd, dd);
     m.maskNode = vTam.greaterThan(0.0).and(r2.lessThanEqual(0.25));
-    var brillo = T.smoothstep(0.07, 0.0, T.length(dd.sub(T.vec2(-0.12, 0.12))));
+    var brillo = T.float(1).sub(T.smoothstep(0.0, 0.07, T.length(dd.sub(T.vec2(-0.12, 0.12)))));   // smoothstep(0.07, 0.0, …) del GLSL: WGSL no deja los bordes al revés
     m.colorNode = T.vec4(T.sRGBTransferEOTF(vCol).mul(uLuz).mul(T.float(0.82).add(T.float(0.25).sub(r2).mul(0.4))).add(uLuz.mul(brillo.mul(0.3))), 1.0);
     return m;
   }
@@ -121,6 +128,7 @@ export function creaEstacion(d: DepsEstacion) {
     var g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("aR", new THREE.Float32BufferAttribute(aR, 1)); g.setAttribute("aS", new THREE.Float32BufferAttribute(aS, 1)); g.computeBoundingSphere();
     g.boundingSphere.radius += 1;   // el sombreador acerca cada punto 1 m a la cámara (mv.z += 1.0): con ese margen se recorta sin perder ninguno
     var p = new THREE.Points(g, matFruto); grupo.add(p);
+    if (matFruto && matFruto.isNodeMaterial) espejoSprites(THREE, p);   // A4-0: con la TSL (MU6), sprites instanciados (puntos-tsl.ts)
   }
 
   // --- la fecha manda: sol, clima y fenología

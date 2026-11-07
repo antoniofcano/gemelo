@@ -171,6 +171,7 @@ export type MinimapaUI = ReturnType<typeof creaMinimapa>;
 export function manifiestoMinimapa(api: { libera(): void }): Manifiesto {
   return {
     id: ID_MINIMAPA, version: 1, consume: [], expone: [], eventos: { escucha: [], emite: [] }, bandera: { defecto: true }, presupuesto: { llamadas: 0, triangulos: 0 },
-    fases: {}, mundos: ["exterior"], monta: function () { return api; }, libera: function () { api.libera(); }
+    fases: {}, mundos: ["exterior"], dom: ["#mapita"],   // A3-8b: el minimapa, escondido fuera del exterior (el HUD del exterior ya lo escondía, MU2-6)
+    monta: function () { return api; }, libera: function () { api.libera(); }
   };
 }

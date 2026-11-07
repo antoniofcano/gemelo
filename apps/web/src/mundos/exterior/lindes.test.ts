@@ -105,8 +105,19 @@ describe("lindes de las hazas (componente del exterior)", () => {
     const m = F.crea(MATERIAL_LINDES, opc) as { isNodeMaterial: boolean; isLine2NodeMaterial: boolean; color: { getHex(): number }; linewidth: number; worldUnits: boolean; transparent: boolean; opacity: number; depthWrite: boolean; onBeforeCompile?: unknown; uniforms?: unknown };
     expect(m.isNodeMaterial).toBe(true); expect(m.isLine2NodeMaterial).toBe(true); expect(m.color.getHex()).toBe(0xffb020);
     expect([m.linewidth, m.worldUnits, m.transparent, m.opacity, m.depthWrite]).toEqual([4, false, false, 1, true]);
-    // lo que NO lleva (y MATERIALES §10 dice): ni el acercamiento de profundidad ni, por tanto, su parche
-    expect(m.onBeforeCompile).not.toBe(opc.parche); expect(m.uniforms).toBeUndefined();
+    // no lleva el parche clásico; el acercamiento (A4-0) va en su positionNode
+    expect(m.onBeforeCompile).not.toBe(opc.parche); expect(m.uniforms).toBeUndefined(); expect((m as unknown as { positionNode: unknown }).positionNode).toBeTruthy();
+  });
+  it("A4-0: la TSL compila (WGSL y GLSL, sin GPU) en unas líneas gruesas de verdad, con el acercamiento de profundidad en su positionNode", async () => {
+    const { cargaNodos, compila } = await import("../../nucleo/prueba-tsl.ts");
+    const n = await cargaNodos(), rutaG = "three/addons/lines/LineSegmentsGeometry.js", rutaL = "three/addons/lines/webgpu/LineSegments2.js";
+    const { LineSegmentsGeometry } = await import(/* @vite-ignore */ rutaG as string), { LineSegments2 } = await import(/* @vite-ignore */ rutaL as string);
+    const F = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: { tipo: "nuevo" }, nodos: () => ({ THREE: n.W, TSL: n.T }) });
+    F.define(MATERIAL_LINDES, DEF_LINDES);
+    const opc = { LineMaterial: class {}, acerca: 0.004, parche: () => {}, params: { color: 0xffb020, linewidth: 4, worldUnits: false, transparent: false, opacity: 1, depthWrite: true } };
+    const m = F.crea(MATERIAL_LINDES, opc), g = new LineSegmentsGeometry().setPositions([0, 0, 0, 10, 0, 0, 10, 0, 0, 10, 0, 10]);
+    const c = compila(n, m, { hecho: new LineSegments2(g, m) });
+    expect(c.wgsl.vertice).toMatch(/cameraPosition/);   // la cámara en el espacio del objeto, para acercar el vértice al ojo
   });
 
   it("el manifiesto vale, es de los mundos [exterior], fase «tarde» cada 0,5 s, bandera ?lindes y su libera suelta de verdad", async () => {

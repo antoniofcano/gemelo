@@ -9,25 +9,27 @@ import { ID_LEJANOS, creaLejanos } from "./lejanos.ts";
 import type { DepsLejanos } from "./lejanos.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const THREE: any = await import(/* @vite-ignore */ "three" as string);
+const THREE0: any = await import(/* @vite-ignore */ "three" as string);
+const THREE = THREE0;
 
 const espera = () => new Promise((r) => setTimeout(r, 0));
 const variante = (j: number) => ({ j, escala: [1, 1, 1] });
 interface Atlas { huella: string; bytes: number; lado: number }
 const fila = { color: { huella: "h4", bytes: 4, lado: 16 } as Atlas, normales: { huella: "h5", bytes: 5, lado: 16 } as Atlas, variantes: [{ centro: [0, 1, 0], semilado: 1 }, { centro: [0, 1, 0], semilado: 1 }] };
 
-function monta(opc: { impostor?: unknown; fallaNormales?: boolean } = {}) {
+function monta(opc: { impostor?: unknown; fallaNormales?: boolean; THREE?: unknown; Materiales?: unknown; lejanos?: Record<string, unknown> } = {}) {
+  const THREE = (opc.THREE || THREE0) as typeof THREE0;
   const gArboles = new THREE.Group(), cancelados: string[] = [], bitmaps: { cerrado: boolean; close(): void; width: number; height: number }[] = [];
   const Generados = {
     escalera: () => true, estado: () => "listo", activo: () => true,
     lejanos: {
       nVariantes: () => 2, variante: (j: number) => variante(j), impostor: () => opc.impostor ?? null, dir: () => "olivos/", constructor: () => ({ huellaBytes: (b: Uint8Array) => Promise.resolve("h" + b.length) }),
       monta: () => { const g = new THREE.Group(); g.add(new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), new THREE.MeshBasicMaterial())); return g; }, libera: () => {},
-      matriz: () => new THREE.Matrix4(), parcheLuz: () => {}, parcheFundido: () => {},
+      matriz: () => new THREE.Matrix4(), parcheLuz: () => {}, parcheFundido: () => {}, ...(opc.lejanos || {}),
     },
   };
   const deps: DepsLejanos = {
-    THREE, renderer: {}, Estado: { exag: 1 }, gArboles, Materiales: creaMateriales({ THREE: THREE as unknown as ThreeMin, busqueda: "" }),
+    THREE, renderer: {}, Estado: { exag: 1 }, gArboles, Materiales: (opc.Materiales as DepsLejanos["Materiales"]) || creaMateriales({ THREE: THREE as unknown as ThreeMin, busqueda: "" }),
     ColaExt: { pon: () => null, cancela: (k: string) => { cancelados.push(k); } }, Generados,
     fetch: (url: string) => (opc.fallaNormales && url.includes("h5") ? Promise.resolve({ ok: false, status: 404 }) : Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(new ArrayBuffer(url.includes("h5") ? 5 : 4)) })),
     crearBitmap: () => { const b = { cerrado: false, width: 16, height: 16, close() { this.cerrado = true; } }; bitmaps.push(b); return Promise.resolve(b); },
@@ -84,6 +86,38 @@ describe("lejanos de la escalera (componente del exterior)", () => {
     }
   });
 
+  it("A4-0: las TSL del impostor y del sustituto (apagadas) se construyen con sus nodos y compilan (WGSL y GLSL, sin GPU), también con silueta (AG-2.2)", async () => {
+    const { cargaNodos, compila } = await import("../../nucleo/prueba-tsl.ts");
+    const { uniformesFundido } = await import("./generados-sombreado.ts");
+    const { creaParcheTiempo } = await import("./tiempo-parche.ts");
+    const n = await cargaNodos(), W = n.W, UF = uniformesFundido(W), P = creaParcheTiempo({ THREE: W, colorVertSRGB: () => {} });
+    const F = creaMateriales({ THREE: W as unknown as ThreeMin, busqueda: "", render: { tipo: "nuevo" }, nodos: () => ({ THREE: W, TSL: n.T }) });
+    const lejanos = { uniformes: UF, tiempoTsl: () => (T: unknown) => P.nodosTsl(T) };
+    // el sustituto (sin impostores), en su malla de verdad
+    const s = monta({ THREE: W, Materiales: F, lejanos }); s.api.paso(0.1);
+    const ms = s.api._prueba.malla();
+    expect(ms.material.isNodeMaterial).toBe(true); expect(ms.material.maskNode).toBeTruthy(); expect(ms.material.side).toBe(W.DoubleSide);
+    const cs = compila(n, ms.material, { hecho: ms }); expect(cs.wgsl.fragmento).toMatch(/discard/);
+    s.api.libera();
+    // el impostor, en su malla de verdad
+    const i = monta({ THREE: W, Materiales: F, lejanos, impostor: fila }); i.api.paso(0.1); await espera(); await espera(); await espera();
+    expect(i.api.resumen()).toMatchObject({ fuente: "impostor" });
+    const mi = i.api._prueba.malla();
+    expect(mi.material.isNodeMaterial && mi.material.positionNode && mi.material.normalNode && mi.material.maskNode && mi.material.outputNode).toBeTruthy();
+    const ci = compila(n, mi.material, { hecho: mi });
+    expect(ci.wgsl.vertice).toMatch(/cross/);   // el marco del árbol y su inversa por cofactores
+    expect((ci.wgsl.vertice.match(/nodeAttribute\d+ : vec4<f32>/g) || []).length).toBe(4);   // las cuatro columnas de la matriz de instancia, una vez cada una
+    // con silueta (tP): el polígono de la celda, de la textura de siluetas
+    const tP = new W.DataTexture(new Float32Array(4 * 6 * 4 * 64), 6, 4 * 64, W.RGBAFormat, W.FloatType);
+    const geo = new W.BufferGeometry(); geo.setAttribute("position", new W.BufferAttribute(new Float32Array(18), 3)); geo.setAttribute("aIdx", new W.BufferAttribute(new Float32Array(6), 1));
+    geo.setAttribute("aFun", new W.InstancedBufferAttribute(new Float32Array(3), 1)); geo.setAttribute("aVar", new W.InstancedBufferAttribute(new Float32Array(3), 1));
+    const conSil = F.crea("impostor-lejano", { tCol: new W.Texture(), tNor: new W.Texture(), f: fila, tP });
+    compila(n, conSil, { hecho: new W.InstancedMesh(geo, conSil, 3) });
+    const geoS = geo.clone(); geoS.setAttribute("aVista", new W.BufferAttribute(new Float32Array(6), 1)); geoS.setAttribute("uv", new W.BufferAttribute(new Float32Array(12), 2));
+    const susSil = F.crea("impostor-sustituto", { tex: new W.Texture(), tP });
+    compila(n, susSil, { hecho: new W.InstancedMesh(geoS, susSil, 3) });
+    i.api.libera();
+  });
   it("el componente: del exterior, una llamada, y su libera() es el del objeto", () => {
     const { api, gArboles } = monta();
     api.paso(0.1);
