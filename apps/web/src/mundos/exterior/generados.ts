@@ -565,6 +565,8 @@ export function creaGenerados(d: DepsGenerados) {
   var paraLejanos: A = { uFun: uFun, nVariantes: nVar, variante: function (j: A) { return recetas["v" + j + ":E2"] || null; },
     matriz: function (c: A, r: A) { return matrizDe(c, r, true); }, monta: function (r: A) { return M.montaOlivo(THREE, r, mats); }, libera: function (g: A) { M.liberaOlivo(g); },
     parcheLuz: parcheLuz, parcheFundido: parcheFundido, constructor: function () { return M; }, dir: function () { return DIR; },
+    // A4-0: para la TSL de los lejanos (apagada): los MISMOS uniformes del fundido y los nodos del tiempo
+    uniformes: UF, tiempoTsl: function () { return d.tiempoTsl ? d.tiempoTsl() : null; },
     impostor: function () { return filaImpostor(manif, varSem, M, epoca()); } };
   // ---- MU5-n (A3-2a): el ciclo de vida. libera() lo suelta TODO de verdad y deja el módulo apagado: el lote (sus geometrías y sus mallas por lotes e
   // instanciadas), el grupo de la escena, los materiales del constructor con sus texturas (mats.libera de la biblioteca), los dos de profundidad, el trabajador,

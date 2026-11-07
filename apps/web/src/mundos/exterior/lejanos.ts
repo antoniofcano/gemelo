@@ -10,6 +10,9 @@
 // Del legado recibe por argumento lo que necesita (THREE, el renderizador, el Estado, el grupo de los olivos, la Cola, Generados y la fábrica de materiales).
 import type { Manifiesto } from "../../nucleo/componentes.ts";
 import type { Materiales } from "../../nucleo/materiales.ts";
+import { fundidoTsl } from "./generados-sombreado.ts";
+import { colorSrgbTsl } from "./tiempo-parche.ts";
+import { aplicaInstancia, columnaInstancia } from "./instancia-tsl.ts";
 
 // three no trae tipos en el repo (como en ambiente.ts y presupuesto.ts): de él solo se toca lo mínimo, sin tiparlo; el motor son números, arrays y GLSL
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -45,7 +48,86 @@ export function creaLejanos(d: DepsLejanos) {
   // MU5-n: los dos pasan por la fábrica (define + crea); el clásico es el de siempre, movido. Su parche es la misma función de siempre (three usa su texto como clave del programa)
   Materiales.define(MATERIAL_IMPOSTOR_LEJANO, { clasico: function (o: any) { return clasicoImpostor(o); } });
   Materiales.define(MATERIAL_IMPOSTOR_SUSTITUTO, { clasico: function (o: any) { return clasicoSustituto(o); } });
-  function ponParche(m: any, _nombre: string, fn: any) { m.onBeforeCompile = fn; return m; }   // lo que hacía Materiales.parchea sin clave propia, dentro del clásico del define
+  function ponParche(m: any, _nombre: string, fn: any) { m.onBeforeCompile = fn; return m; }
+  // ---- A4-0: las variantes TSL de los dos (MATERIALES §9), APAGADAS: solo con el WebGPURenderer (MU6). Las mismas cuentas que el GLSL de arriba, en nodos, con los
+  // MISMOS { value } (uCapa, uCentro, uSemi, el uNVar del sustituto) y el fundido y la luz de los olivos generados (Generados.lejanos: sus uniformes uFun y uBanda y
+  // los nodos del tiempo). NO se puede decir que sean equivalentes hasta las capturas de MU6. Lo que cambia por fuerza en nodos:
+  //   · el marco de cada olivo (modelMatrix · instanceMatrix) se lee de la copia de la matriz de instancia (instancia-tsl.ts: three no deja leer la suya) y su
+  //     inversa se hace a mano (WGSL no tiene inverse()): la de la parte 3 × 3 por sus cofactores, que también dan la matriz de las normales;
+  //   · el mapa se lee en vOtUV dentro de colorNode (el NodeMaterial no deja cambiar el vMapUv de su mapa): el material TSL no lleva map;
+  //   · la normal del atlas va en normalNode, en el espacio de la vista, como el clásico tras normal_fragment_maps;
+  //   · three aplica la matriz de instancia ANTES de positionNode (r186): el positionNode la aplica él (aplicaInstancia), a lo que el clásico pone en «transformed».
+  function lejanosTsl(c: any) {
+    const W = c.THREE, T = c.TSL, L = Generados.lejanos || {};
+    const capa = T.uniform(uCapa.value).onObjectUpdate(function () { return uCapa.value; });
+    const ign = function (p: any) { return T.fract(T.fract(T.dot(p, T.vec2(0.06711056, 0.00583715))).mul(52.9829189)); };   // ot_ign
+    const cubre = ign(T.screenCoordinate.xy.add(T.vec2(17, 31))).lessThan(capa);   // ot_ign(gl_FragCoord.xy + (17, 31)) < uCapa: se dibuja
+    const fundido = L.uniformes ? fundidoTsl(T, L.uniformes) : null;   // el de los olivos generados (parcheFundido): el MISMO uFun y uBanda
+    const nt = L.tiempoTsl ? L.tiempoTsl() : null, NT = nt ? nt(T) : null;   // la sombra de nubes y la escarcha (parcheLuz), en la posición del mundo
+    function base(m: any, opciones: any) {
+      Object.keys(opciones).forEach(function (k) { m[k] = opciones[k]; });
+      Materiales.recorte(m);   // el alphaToCoverage de AG-2.1, como el clásico
+      if (NT) m.outputNode = NT.salida(T.positionWorld.xz);
+      return m;
+    }
+    return { W, T, capa, cubre, fundido, base };
+  }
+  function tslImpostor(o: any, c: any) {
+    const { W, T, cubre, fundido, base } = lejanosTsl(c), tCol = o.tCol, tNor = o.tNor, f = o.f, tP = o.tP;
+    const C: any[] = [], S: number[] = [];
+    for (let k = 0; k < 4; k++) { const v = f.variantes[Math.min(k, f.variantes.length - 1)]; C.push(new W.Vector3().fromArray(v.centro)); S.push(v.semilado); }
+    const uCentro = T.uniformArray(C, "vec3"), uSemi = T.uniformArray(S, "float");
+    const k = T.int(T.attribute("aVar", "float").add(0.5)), kf = T.float(k), Ck = uCentro.element(k), Sk = uSemi.element(k);
+    // el marco del árbol: IM = modelMatrix · instanceMatrix (columnas a0, a1, a2 y la traslación t)
+    const col = function (j: number) { return T.modelWorldMatrix.mul(columnaInstancia(W, T, j)); };
+    const a0 = col(0).xyz, a1 = col(1).xyz, a2 = col(2).xyz, t = col(3).xyz;
+    const r0 = T.cross(a1, a2), r1 = T.cross(a2, a0), r2 = T.cross(a0, a1), det = T.dot(a0, r0);
+    const invA = function (v: any) { return T.vec3(T.dot(r0, v), T.dot(r1, v), T.dot(r2, v)).div(det); };   // inverse(mat3(IM)) · v
+    const d = T.normalize(invA(T.cameraPosition.sub(t)).sub(Ck));   // ot_d: la cámara en el marco del árbol, desde el centro de la variante
+    const oct = function (v: any) { const y = T.max(0, v.y), s0 = T.abs(v.x).add(y).add(T.abs(v.z)), s = T.select(s0.greaterThan(0), s0, T.float(1)); return T.vec2(v.x.div(s).add(v.z.div(s)), v.x.div(s).sub(v.z.div(s))); };
+    const dirV = function (ij: any) { const a = ij.x.mul(2 / 7).sub(1), b = ij.y.mul(2 / 7).sub(1), x = a.add(b).mul(0.5), z = a.sub(b).mul(0.5); return T.normalize(T.vec3(x, T.max(0, T.float(1).sub(T.abs(x)).sub(T.abs(z))), z)); };
+    const marco = function (v: any) { const r0b = T.cross(T.vec3(0, 1, 0), v), r = T.select(T.length(r0b).lessThan(1e-6), T.vec3(1, 0, 0), T.normalize(r0b)); return { r, u: T.cross(v, r) }; };
+    const ij = T.floor(T.clamp(oct(d).add(1).mul(3.5), 0, 7).add(0.5)), B = marco(d), BV = marco(dirV(ij));
+    let off: any, xy: any = null;
+    if (tP) {   // AG-2.2: el vértice aIdx del polígono de la celda (ij) de la variante, reproyectado al plano girado a la cámara
+      const q = T.textureLoad(tP, T.ivec2(T.int(T.attribute("aIdx", "float").add(0.5)), k.mul(64).add(T.int(ij.y.add(0.5)).mul(8)).add(T.int(ij.x.add(0.5))))).xy.mul(2).sub(1);
+      const m00 = T.dot(B.r, BV.r), m01 = T.dot(B.r, BV.u), m10 = T.dot(B.u, BV.r), m11 = T.dot(B.u, BV.u), dt = m00.mul(m11).sub(m10.mul(m01));   // mat2 ot_M (por columnas)
+      const inv = T.vec2(m11.mul(q.x).sub(m10.mul(q.y)), m00.mul(q.y).sub(m01.mul(q.x))).div(dt);
+      xy = T.select(T.abs(dt).greaterThan(1e-3), inv, q);
+      off = B.r.mul(xy.x).add(B.u.mul(xy.y));
+    } else off = B.r.mul(T.positionGeometry.x).add(B.u.mul(T.positionGeometry.y));
+    const vOtQ = T.varying(T.vec2(T.dot(off, BV.r), T.dot(off, BV.u)));
+    const vOtUV = T.varying(T.vec2(T.mod(kf, 2).mul(8).add(ij.x), T.floor(kf.div(2)).mul(8).add(ij.y)).add(T.vec2(T.dot(off, BV.r), T.dot(off, BV.u)).mul(0.5).add(0.5)).div(16));
+    const vOtXY = xy ? T.varying(xy) : null;
+    const n0 = T.varying(r0.div(det)), n1 = T.varying(r1.div(det)), n2 = T.varying(r2.div(det));   // transpose(inverse(mat3(IM))), por columnas
+    const m = base(new W.MeshLambertNodeMaterial(), { alphaTest: 0.5 });
+    m.positionNode = aplicaInstancia(W, T, Ck.add(off.mul(Sk)));   // transformed = ot_C + ot_off · ot_S y luego la instancia (three la aplica antes de positionNode)
+    m.colorNode = colorSrgbTsl(T, T.materialColor.mul(T.texture(tCol, vOtUV)), false);
+    const nAt = T.texture(tNor, vOtUV).xyz.mul(2).sub(1), nMundo = T.normalize(n0.mul(nAt.x).add(n1.mul(nAt.y)).add(n2.mul(nAt.z)));
+    m.normalNode = T.normalize(T.cameraViewMatrix.mul(T.vec4(nMundo, 0)).xyz);
+    let dentro = T.abs(vOtQ.x).lessThanEqual(1).and(T.abs(vOtQ.y).lessThanEqual(1)).and(cubre);
+    if (vOtXY) dentro = dentro.and(T.abs(vOtXY.x).lessThanEqual(1)).and(T.abs(vOtXY.y).lessThanEqual(1));
+    m.maskNode = fundido ? dentro.and(fundido) : dentro;
+    return m;
+  }
+  function tslSustituto(o: any, c: any) {
+    const { W, T, cubre, fundido, base } = lejanosTsl(c), tex = o.tex, tP = o.tP, uNV = { value: nv };
+    const nV = T.uniform(uNV.value).onObjectUpdate(function () { return uNV.value; });
+    const aVar = T.attribute("aVar", "float"), aVista = T.attribute("aVista", "float");
+    const m = base(new W.MeshLambertNodeMaterial(), { alphaTest: 0.5, side: W.DoubleSide });
+    let uv: any = T.uv();
+    if (tP) {   // AG-2.2: el vértice aIdx del polígono de la celda (aVar, aVista): sus (u, w) dan la uv y la posición en el plano
+      const pq = T.textureLoad(tP, T.ivec2(T.int(T.attribute("aIdx", "float").add(0.5)), T.int(aVar.add(0.5)).mul(2).add(T.int(aVista.add(0.5))))).xy;
+      uv = pq;
+      m.positionNode = aplicaInstancia(W, T, T.select(aVista.lessThan(0.5), T.vec3(pq.x.sub(0.5), pq.y, 0), T.vec3(0, pq.y, T.float(0.5).sub(pq.x))));
+    }
+    const vUv = T.varying(T.vec2(aVista, aVar).add(uv).div(T.vec2(2, nV)));
+    m.colorNode = colorSrgbTsl(T, tex ? T.materialColor.mul(T.texture(tex, vUv)) : T.materialColor, false);   // sin horneado (sin GPU), como el clásico sin mapa
+    m.maskNode = fundido ? cubre.and(fundido) : cubre;
+    return m;
+  }
+  Materiales.define(MATERIAL_IMPOSTOR_LEJANO, { tsl: function (o: any, c: any) { return tslImpostor(o, c); } });
+  Materiales.define(MATERIAL_IMPOSTOR_SUSTITUTO, { tsl: function (o: any, c: any) { return tslSustituto(o, c); } });   // lo que hacía Materiales.parchea sin clave propia, dentro del clásico del define
   var info = { dibujados: 0, entran: 0, salen: 0 }, sinGPU = false, cajas: any = null, ids: any = null;
   // AG-2.2 (?cartulina=silueta, doc/sistema/CARTULINAS.md): cada celda del atlas (impostor: variante × vista; sustituto: variante × plano) con el
   // polígono de K vértices que abraza lo opaco, en una textura de datos (K × celdas, RGBA32F: u, v de la celda) que el sombreador de vértices lee por
