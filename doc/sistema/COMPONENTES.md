@@ -580,6 +580,28 @@ Trece módulos de la interfaz pasan a `apps/web/src/ui/`, la frontera nueva de M
 
 Sin cambio de interacción: el código de los paneles, las teclas (1-6, F1, F, Inicio o 0, Intro, Esc, M, P), los gestos (arrastrar las ventanas flotantes, las flechas desde el agarre), el foco (al título al abrir, de vuelta a quien abrió al cerrar), los tamaños (44 px) y los textos se movió tal cual; los guardianes de interfaz (`ux_plantilla`, `ux_teclas`, `ux_ventanas`, `ux_hud`, `ux_hud_personal`, `ux_tactil`, `ajustes_ui`, `laminas`, `entidades`, `movibles`, `mide`…) leen el código movido y siguen en verde. Lo único que cambia es lo que pasa **al liberar**, que antes no pasaba nunca. **No probado** en un navegador, en el iPhone ni en el Quest (esta tarea no abrió Chrome ni Docker); los hallazgos de la lente 6 que cambiarían la interacción (L6-01, L6-03, L6-04) no se tocaron y quedan para la ronda del banco.
 
+### A3-7b1 (MU5-n) · el contenido del mundo, componentes del exterior
+
+Siete módulos pasan a `apps/web/src/mundos/exterior/`, todos `mundos: ["exterior"]` y solo de ciclo de vida (menos `fichas-mundo` y `fichas-tiempo`, que ya lo eran con su fase o sin ella). Por qué del exterior y no de todo mundo: hablan de la finca (parcelas, hazas, la historia de Hituelo, el tiempo y el trabajo de campo, los olivos y balizas que cuelgan de las entidades) y cuelgan de controles que solo existen en el mapa del exterior.
+
+| Módulo (talón) | Componente | Qué suelta su `libera()` |
+|---|---|---|
+| `13_parcelas.js` → `parcelas.ts` | `selector-parcelas` | las escuchas de los chips y de la calidad, los nodos que creó, los chips de la finca elegida, el aplazado de la unidad y la suscripción a Configuración |
+| `13b_hazas.js` → `hazas.ts` | `hazas-mundo` | la lista y las fichas en vuelo (`AbortController`), la tecla H, la entidad «haza», la caché; lo que llegue tarde no monta nada |
+| `14_historia.js` → `historia.ts` | `historia-recorrido` | las escuchas y los puntos de escena, la ventana vuelve a «Empezar el recorrido», las mallas de resalte (escena, geometría y material por la fábrica) |
+| `35_fichas_tiempo.js` → `fichas-tiempo.ts` | `fichas-tiempo` (id de siempre) | cierra la lámina; el contexto suelta la tecla P, la fila y la tapa del panel VR, TiempoVivo, el Bus y `window.__fichaTiempo` |
+| `48_vista_familia.js` → `vista-familia.ts` | `vista-familia` (id de siempre) | lo ocultado, el rótulo, el modo forzado y la petición de la sesión en vuelo |
+| `51_fichas_mundo.js` → `fichas-mundo.ts` | `fichas-mundo` (id de siempre) | el presentador de «vr», la tapa, las láminas colgadas y `window.__fichasMundo` |
+| `53_mundo_hoy.js` → `mundo-hoy.ts` | `mundo-hoy` (id de siempre) | el reloj de 10 min, la petición en vuelo, la tarjeta |
+
+- **Arreglos con prueba:** `fichas-mundo` declaraba la fase «tarde» como `function (api)` y el bucle la llama `fn(dt, t, api)`: recibía `dt` y el bucle apagaba el componente en el primer «tarde» (solo con `?ui=capas`); `mundo-hoy` busca «Mañana» por su fecha (L8-12); `parcelas` escapa el nombre en la ficha del suelo (L9-03) y no falla con una sola profundidad (L3-18); `historia` ya no deja sus mallas de resalte en la escena (L2) y `ndviEn` no falla sin NDVI.
+- **Helpers movidos a `nucleo/`:** `soltador.ts` y `prueba-dom.ts` (que `ui/` reexporta) para que los usen los mundos y sus pruebas sin duplicarlos (regla 12).
+- **Apuntado para el banco (cambiaría lo que se ve o se hace):** L6-10 (el foco en «Siguiente» frena las flechas de la historia), L3-08 y L3-09 (la pastilla «medido» de fenología y tareas y la tarjeta «al día» que no caduca), L3-10 (el chip de finca dice olivos «declarados»), L3-14, L3-15 y L3-18 (la fecha de la consulta del ISRIC está escrita a mano), L3-21 («Desfase medio» es una mediana), L3-22 (cinco «hace N min»), L9-01 (ids de parcela en las escenas) y que las escenas de la historia con `NDV.fechas` fallan si el índice no trae NDVI.
+
+#### Nota de comodidad (regla 11)
+
+Sin cambio de interacción: los paneles, las teclas (H, P, flechas de la historia), los textos y los rótulos medido/deducido/declarado se movieron tal cual; los guardianes (`hazas`, `historia_vivo`, `fichas_tiempo`, `fichas_mundo`, `mundo_hoy`, `vista_familia`, `rotulos`, `ux_plantilla`…) leen el código movido y siguen en verde. **No probado** en un navegador, en el iPhone ni en el Quest.
+
 ### A3-7b2 (MU5-n) · lo social, los juegos y la oficina
 
 Ocho módulos del legado pasan a TypeScript: tres a `ui/` (de todo mundo), cuatro a `mundos/exterior/` y uno a `red/voz/`. Se decidió pieza a pieza dónde vive cada uno y de qué mundos es:

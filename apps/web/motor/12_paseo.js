@@ -1,7 +1,7 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: paseando, persona, teclas, primera, Paseo, pp, camPos, PalancaPuro, ponPalanca, giraPalanca, entraPaseo, salePaseo, actualizaPaseo
 // Consume: 01_datos (D, $), 02_mundo (copaAlta), 02i_materiales (Materiales), 03_escena (lienzo, visor, scene, camera, Estado),
-//   09_camara (sensMirar), 12c_ir_a (IrA), 13_parcelas (fincas, fincaSel, parcelaSel),
+//   09_camara (sensMirar), 12c_ir_a (IrA), 13_parcelas (Parcelas, fincas),
 //   16_vida (enQuad, enDron, velPaseo, giroPaseo, ponQuad, vidaPaseo, ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale),
 //   24_pantalla (TR, iniciaTransicion, iniciaSalida), 33_ajustes (Ajustes), 90_final (gm)
 // ===============================================================================
@@ -14,7 +14,7 @@
   var paseando = false, persona = null, teclas = {}, primera = false;
   var Paseo = Mundos.creaPaseo({
     THREE: THREE, scene: scene, camera: camera, Estado: Estado, Materiales: Materiales, D: D, $: $, lienzo: lienzo, visor: visor, copaAlta: copaAlta, sensMirar: sensMirar,
-    primera: function () { return primera; }, ponPrimera: function (v) { primera = v; }, parcelaSel: function () { return parcelaSel; }, fincaSel: function () { return fincaSel; },
+    primera: function () { return primera; }, ponPrimera: function (v) { primera = v; }, parcelaSel: function () { return Parcelas.parcelaSel(); }, fincaSel: function () { return Parcelas.fincaSel(); },
     fincas: function () { return fincas; }, enQuad: function () { return enQuad; }, enDron: function () { return enDron; }, TR: function () { return TR; },
     iniciaTransicion: function () { iniciaTransicion(); }, iniciaSalida: function () { iniciaSalida(); }, Ajustes: function () { return typeof Ajustes !== "undefined" ? Ajustes : null; },
     IrA: function () { return IrA; }, gm: function () { return gm; }, documento: document, ventana: window,

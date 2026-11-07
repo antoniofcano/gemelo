@@ -7,7 +7,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
-const FUENTE = lee("apps/web/motor/14_historia.js");
+const FUENTE = require("./_fuente").fuenteMotor("14_historia.js");   // A3-7b1: 14 es un talón; su código vive en mundos/exterior/historia.ts
 const EJEMPLO = JSON.parse(lee("contratos/ot-hoy-ejemplo.json"));
 function puro() {
   const i = FUENTE.indexOf("// [puro:inicio]"), f = FUENTE.indexOf("// [puro:fin]");

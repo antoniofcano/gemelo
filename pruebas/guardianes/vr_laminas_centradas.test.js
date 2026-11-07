@@ -160,8 +160,8 @@ test("en el código: ninguna lámina de VR toma la mirada de la cámara; todas n
   assert.match(abre, /P\.nace\(h, g, dist, -bajo\)/); assert.ok(!/getWorldDirection/.test(abre));
   assert.match(LAM, /if \(enVR\(\) && VRX\.mira\) return \{ x: VRX\.mira\.x, z: VRX\.mira\.z \};/);
   // 35 y 51: la tapa de la previsión y las fichas del mundo, con VRX.mira en VR
-  assert.match(lee("apps/web/motor/35_fichas_tiempo.js"), /g = VRX\.mira \|\| camera\.getWorldDirection\(vD\)/);
-  assert.match(lee("apps/web/motor/51_fichas_mundo.js"), /function miradaH\(\) \{ if \(VRX\.on && VRX\.mira\) return/);
+  assert.match(require("./_fuente").fuenteMotor("35_fichas_tiempo.js"), /g = VRX\.mira \|\| camera\.getWorldDirection\(vD\)/);
+  assert.match(require("./_fuente").fuenteMotor("51_fichas_mundo.js"), /function miradaH\(\) \{ if \(VRX\.on && VRX\.mira\) return/);
   // el grip: botón 1 de cada mando, por flanco; correr no mientras el izquierdo agarra; la ficha del olivo no se cierra sola en la mano
   assert.match(VR, /vrFlanco\("G" \+ o\.i, !!o\.src && vrBoton\(o\.src, 1\)\) && !vrAg\) vrAgarra\(o\)/);
   assert.match(VR, /VRX\.correr = vrBoton\(L\.src, 1\) && !\(vrAg && vrAg\.o === L\);/);

@@ -62,6 +62,14 @@ const TS_DE = {
   "41_cae_la_cosecha.js": "apps/web/src/mundos/exterior/cae-la-cosecha.ts",
   "40_juegos.js": "apps/web/src/mundos/exterior/juegos.ts",
   "24_pantalla.js": ["apps/web/src/ui/pantalla.ts", "apps/web/src/mundos/comun/transicion.ts"],   // el menú y la pantalla completa (ui/); la transición del mapa al paseo (comun/)
+  // A3-7b1: el contenido del mundo, del exterior (apps/web/src/mundos/exterior/), que se lee como JavaScript sin tipos ni «dp.» (comoJsUi), como la interfaz
+  "13b_hazas.js": "apps/web/src/mundos/exterior/hazas.ts",
+  "53_mundo_hoy.js": "apps/web/src/mundos/exterior/mundo-hoy.ts",
+  "48_vista_familia.js": "apps/web/src/mundos/exterior/vista-familia.ts",
+  "51_fichas_mundo.js": "apps/web/src/mundos/exterior/fichas-mundo.ts",
+  "35_fichas_tiempo.js": "apps/web/src/mundos/exterior/fichas-tiempo.ts",
+  "13_parcelas.js": "apps/web/src/mundos/exterior/parcelas.ts",
+  "14_historia.js": "apps/web/src/mundos/exterior/historia.ts",
   // A3-2a: 07ab vive en varios ficheros (la escalera, el horneado, la cola, el sombreado, el lote y el módulo): se leen todos, en este orden
   // A3-6c: la VR y la locomoción, de todo mundo (apps/web/src/mundos/comun/)
   "36_mandos.js": "apps/web/src/mundos/comun/mandos.ts",
@@ -84,10 +92,10 @@ const TS_DE = {
  *  guardianes de exterior/ ya leen su TypeScript con los tipos. */
 // solo los de A3-6c (la VR y la locomoción); los de A3-6a en comun/ (presencia, avatares, muñeca…) se leen con su TypeScript o con fuenteMotorJs, como los dejó A3-6a
 // A3-7a: y los de la interfaz (apps/web/src/ui/), que además leen lo que el legado reescribe por getters del talón (`dp.paseando`): se lee sin el `dp.` (comoJsUi)
-const COMO_JS = /(^|\/)apps\/web\/src\/(mundos\/comun\/(vr[\w-]*|mandos|paseo|llegada|ir-a|camara|palanca)|ui\/[\w-]+)\.ts$/;
+const COMO_JS = /(^|\/)apps\/web\/src\/(mundos\/comun\/(vr[\w-]*|mandos|paseo|llegada|ir-a|camara|palanca)|ui\/[\w-]+|mundos\/exterior\/(parcelas|hazas|historia|fichas-tiempo|vista-familia|fichas-mundo|mundo-hoy))\.ts$/;   // A3-7b1: y el contenido del exterior
 // A3-7a: la transición del mapa al paseo (de 24_pantalla) también llega por dp. A3-7b2: y los componentes del exterior de lo social, los juegos y la oficina (personalizacion,
-// oficina-mundo, juegos, cae-la-cosecha), que reciben lo del legado por dp como los de ui/.
-const DE_UI = /(^|\/)apps\/web\/src\/(ui\/|mundos\/comun\/transicion\.ts$|mundos\/exterior\/(personalizacion|oficina-mundo|juegos|cae-la-cosecha)\.ts$)/;
+// oficina-mundo, juegos, cae-la-cosecha), que reciben lo del legado por dp como los de ui/. A3-7b1: y el contenido del exterior (parcelas, hazas, historia, fichas, vista de familia, mundo de hoy).
+const DE_UI = /(^|\/)apps\/web\/src\/(ui\/|mundos\/comun\/transicion\.ts$|mundos\/exterior\/(personalizacion|oficina-mundo|juegos|cae-la-cosecha|parcelas|hazas|historia|fichas-tiempo|vista-familia|fichas-mundo|mundo-hoy)\.ts$)/;
 function comoJs(ts) {
   const m = require("node:module"), avisa = process.emitWarning;
   process.emitWarning = () => {};   // «experimental»: no ensucia la salida de las pruebas

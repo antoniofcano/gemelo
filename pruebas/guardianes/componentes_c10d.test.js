@@ -130,5 +130,5 @@ test("10_ndvi.js ya no dibuja: ni textura, ni lienzo, ni uniformes, ni gráfica;
   assert.ok(!/CanvasTexture|createElement|uNdviMap/.test(ts.replace(/^\s*\/\/.*$/gm, "")), "ndvi.ts no dibuja la capa");
   assert.match(ts, /deps\.bus\.emite\("ndvi:cambia", \{ lo: lo, hi: hi \}\)/);
   assert.match(f, /Mundos\.creaNdvi\(\{[^\n]*bus: Bus/);
-  assert.match(lee("apps/web/motor/14_historia.js"), /pintaNdvi\(\)/);
+  assert.match(require("./_fuente").fuenteMotor("14_historia.js"), /pintaNdvi\(\)/);
 });

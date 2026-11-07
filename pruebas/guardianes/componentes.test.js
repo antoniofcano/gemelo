@@ -223,8 +223,8 @@ function eventosDelCodigo() {
       if (!e.name.endsWith(".ts") || e.name.endsWith(".test.ts")) continue;
       const s = sinComentarios(fs.readFileSync(path.join(d, e.name), "utf8")), mod = pre + rel + e.name.slice(0, -3);
       // A3-6c: en mundos/comun/ la VR y la locomoción conservan el nombre del legado, Bus
-      // A3-7b2: y los cuatro del exterior que conservan el Bus del legado por dp (personalización, oficina, juegos y «Cae la cosecha»)
-      const re = rel.startsWith("comun/") || pre === "ui/" || /^mundos\/exterior\/(personalizacion|oficina-mundo|juegos|cae-la-cosecha)$/.test(mod) ? /\b(?:bus|Bus|n)\.(emite|on)\(\s*"([^"]+)"/g : /\b(?:bus|n)\.(emite|on)\(\s*"([^"]+)"/g;
+      // A3-7b1 y A3-7b2 (el exterior que conserva el Bus del legado por dp): y los cuatro del exterior que conservan el Bus del legado por dp (personalización, oficina, juegos y «Cae la cosecha»)
+      const re = rel.startsWith("comun/") || pre === "ui/" || rel.startsWith("exterior/") ? /\b(?:bus|Bus|n)\.(emite|on)\(\s*"([^"]+)"/g : /\b(?:bus|n)\.(emite|on)\(\s*"([^"]+)"/g;
       for (const x of s.matchAll(re)) apunta(x[2], x[1] === "emite", mod);
     }
   }
@@ -324,7 +324,8 @@ test("el motor sin cada componente (genera_motor.mjs --sin) es JavaScript válid
 });
 
 test("en Node: el núcleo con la pieza de las fichas del tiempo de verdad arranca con ella, sin ella, con ?fichas=0 y apagándola desde la configuración", () => {
-  const F = "35_fichas_tiempo.js", fuente = sinCabecera(fs.readFileSync(path.join(MOTOR, F), "utf8"));
+  // A3-7b1: 35 es un talón; el componente vive en mundos/exterior/fichas-tiempo.ts. Se evalúa el .ts como JavaScript (de [puro:inicio] al final) y se registra su manifiesto con las globales de abajo
+  const F = "35_fichas_tiempo.js", todo = require("./_fuente").fuenteMotor(F), fuente = todo.slice(todo.indexOf("// [puro:inicio]")) + "\nComponentes.registra(manifiestoFichasTiempo({}));\n";
   class V3 { constructor() { this.x = this.y = this.z = 0; } set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; } copy(v) { return this.set(v.x, v.y, v.z); } }
   const filas = [], tapas = [];
   const globales = { THREE: { Vector3: V3 }, PanelVR: { filas: (p, f) => { filas.push(f); return () => filas.splice(filas.indexOf(f), 1); }, tapa: fn => { tapas.push(fn); return () => tapas.splice(tapas.indexOf(fn), 1); }, repinta() {}, cierra() {}, rumbo: () => 0 },

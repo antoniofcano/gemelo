@@ -53,7 +53,7 @@ Son tres. Pasados a TSL, desbloquean a casi todos:
 | 13 | `apps/web/src/mundos/exterior/generados-sombreado.ts` (×2: las sombras de las hojas y las de las mallas por lotes) | `gen-profundidad` | `MeshDepthMaterial` + `encadena` | el mismo fundido en la sombra | — | no | no | no | **A** (sin conversión automática) — **TSL completa (A4-0)**, sin verificar su vía en el `WebGPURenderer` (§8) |
 | 14 | `mundos/exterior/lejanos.ts` (antes `07ac_lejanos.js`) | `impostor-lejano` | Lambert + parche (recorte alfa) | impostores de 4 variantes, normales del atlas, luz y fundido de `Generados` | sí | no | no | nubes, helada | **A** — **TSL (A4-0), sin capturas**, apagada; compila sin GPU (§9.1) |
 | 15 | `mundos/exterior/lejanos.ts` (antes `07ac_lejanos.js`) | `impostor-sustituto` | Lambert + parche | sustituto por variante y vista (con silueta, `texelFetch`) | sí | no | no | no | **A** — **TSL (A4-0), sin capturas**, apagada; compila sin GPU (§9.1) |
-| 16 | `14_historia.js` | `resalte-parcela` | Basic + parche | resalte que sigue `uExag` (`UN.uExag`) | sí | no | no | no | B |
+| 16 | `14_historia.js` | `resalte-parcela` | Basic + parche | resalte que sigue `uExag` (`UN.uExag`) | sí | no | no | no | B — **hecho (MU5-n, A3-7b1):** `define("resalte-parcela", { clasico, tsl })`, la TSL apagada (§17) |
 | 17 | `apps/web/src/mundos/exterior/vida.ts` (antes `16_vida.js`) | `estela` | `ShaderMaterial` | estela del quad y del dron por edad (`uNow`) | no | no | no | no | B — **TSL apagada (MU5-n, A3-5):** `define("estela", { clasico, tsl })` (`MeshBasicNodeMaterial`); §12 |
 | 18 | `18_paisaje.js` | `arroyo` | `ShaderMaterial` | agua del arroyo cuando llueve | no | no | no | `uT`, `uLuz` | B — **hecho (MU5-n, A3-3):** `define("arroyo", { clasico, tsl })`, la TSL apagada (§10.1) |
 | 19 | `19_balizas.js` | `baliza` | `ShaderMaterial` (uno por baliza) | columna con pulso | no | no | no | `uT` | B — **hecho (MU5-n, A3-3):** `define("baliza", { clasico, tsl })`, la TSL apagada (§10.1) |
@@ -119,7 +119,7 @@ Vive junto al clásico en `apps/web/src/mundos/exterior/terreno.ts` (`tslTerreno
 | `nombres-presencia` | de cara a la cámara, para la pantalla (§13.1) | sí | capturas |
 | `vrm-fundido` | parcial: sin el sombreado toon de MToon (§13.1) | sí | `MToonNodeMaterial`, solo si los avatares se ven en pantalla con el renderizador nuevo |
 | `suelo-fondo`, `copa-l0`, `tronco-l0`, `nubes`, `lluvia`, `barrera`, `arroyo`, `baliza`, `estela`, `huella`, `vineta-vr` | las de MU5-n, sin cambios salvo los `smoothstep` arreglados de `barrera` y `arroyo` | sí (`tsl-compila.test.ts`) | capturas |
-| `resalte-parcela` (fila 16) | sin TSL: sigue en el legado (`14`, `parchea`) | — | su variante, cuando `14` salga del legado |
+| `resalte-parcela` (fila 16) | la de A3-7b1 (§17), sin cambios | sí (`tsl-compila.test.ts`) | capturas |
 
 ## 2. La API, y por qué un registro
 
@@ -525,6 +525,24 @@ Trece módulos del legado pasan a `apps/web/src/ui/` (MUNDOS §1, la frontera nu
 
 **No probado:** nada de esto en un navegador, en iPhone ni en el Quest (esta tarea no abrió Chrome ni Docker).
 
+## 17. Lo hecho en A3-7b1 (2026-11-07): el contenido del mundo, del exterior
+
+Siete módulos del legado pasan a `apps/web/src/mundos/exterior/` como componentes de los mundos `["exterior"]` (MUNDOS §1 y §2, «Cómo quedó (MU5-n, A3-7b1)»; COMPONENTES §6). Solo uno tiene materiales. Qué toca de la receta del §5 a cada uno:
+
+| Módulo | 1.er commit (TS y componente) | 2.º commit (materiales por la fábrica) | 3.er commit (TSL apagada) |
+|---|---|---|---|
+| `13_parcelas.js` → `parcelas.ts` (`selector-parcelas`) | hecho | **no hace falta:** DOM | **no hace falta** |
+| `13b_hazas.js` → `hazas.ts` (`hazas-mundo`) | hecho | **no hace falta:** solo un `Raycaster` para el toque; la linde la dibuja `lindes.ts` | **no hace falta** |
+| `14_historia.js` → `historia.ts` (`historia-recorrido`) | hecho | hecho: el `MeshBasicMaterial` de cada malla de resalte pasa de `parchea` a `define("resalte-parcela")` + `Materiales.de("historia-recorrido").crea`; el clásico es el de siempre (mismo parche, `UN.uExag` por el mismo `{ value }`) con su clave de programa propia; `libera()` los suelta por la fábrica | hecho: `MeshBasicNodeMaterial` con el mismo estado de dibujo y `positionNode` = la y local por `uExag` (releído por objeto). Probada en Vitest con `three/webgpu` y `three/tsl` de verdad; **no se dibuja** |
+| `35_fichas_tiempo.js` → `fichas-tiempo.ts` | hecho | **no hace falta:** la lámina es de `Laminas` (§16) | **no hace falta** |
+| `48_vista_familia.js` → `vista-familia.ts` | hecho | **no hace falta:** DOM | **no hace falta** |
+| `51_fichas_mundo.js` → `fichas-mundo.ts` | hecho | **no hace falta:** las láminas son de `Laminas` | **no hace falta** |
+| `53_mundo_hoy.js` → `mundo-hoy.ts` | hecho | **no hace falta:** DOM | **no hace falta** |
+
+- **Cobertura (`Materiales.cobertura()`):** `resalte-parcela` tiene clásico y TSL; el resto de la tabla del §1 sigue como estaba. **Fuera de la fábrica:** ninguna fila de `FUERA` que bajar (el `parchea` de 14 ya pasaba por la fábrica).
+- **Pruebas:** `historia.test.ts` (con la fábrica de verdad: un material por parcela con su dueño, ninguno tras `libera()`, y la TSL con `three/webgpu` y `three/tsl`).
+- **No probado:** que la TSL de `resalte-parcela` se vea igual que la clásica (capturas: MU6), ni nada de esto en un navegador, en el Quest o en el iPhone.
+
 ## 18. Lo hecho en A3-7b2 (2026-11-07): lo social, los juegos y la oficina
 
 Ocho módulos del legado pasan a TypeScript (COMPONENTES §6, «A3-7b2»). Solo uno crea materiales; ninguno tiene sombreador propio. Qué toca de la receta del §5 a cada uno:
@@ -550,7 +568,7 @@ Ocho módulos del legado pasan a TypeScript (COMPONENTES §6, «A3-7b2»). Solo 
 Tras la prueba de humo del Quest (MULTIVIEW §4; decisiones 231 y 232), el `WebGPURenderer` solo se usará en la pantalla. A4-0 completa las variantes TSL que estaban a medias para que MU6 pueda medirlo y compararlo. Todas siguen **apagadas**: solo las da la fábrica con `?renderer=webgpu` y el renderizador nuevo, que hoy no se monta. **Sin cambio visible:** el clásico no se toca (los módulos solo cambian en la rama de la TSL: `isNodeMaterial`). Qué lleva cada una: la tabla del §1.6.
 
 - **Compilar sin GPU** (`apps/web/src/nucleo/prueba-tsl.ts`, solo para las pruebas): monta lo mínimo de un renderizador (la biblioteca de nodos, la niebla, las luces, la cámara) y pide a `WGSLNodeBuilder` y a `GLSLNodeBuilder` que construyan el material sobre el objeto que lo dibuja, como en el primer dibujo. Eso evalúa cada `Fn`, los tipos, los atributos, los `varying` y los uniformes, y escribe el sombreador. Los avisos de three cuentan como fallo. `actualiza()` hace lo que `NodeFrame` antes de cada dibujo y `texturas()` dice qué texturas leería. **No** valida el sombreador con un compilador de verdad (Tint, naga o el del controlador) ni dibuja.
-- **Se compilaron todas las variantes TSL del §1** (la de `ejemplo-tsl` ya tenía la suya; `resalte-parcela` no tiene): las de A4-0, en la prueba de su módulo; las que ya estaban hechas, en `apps/web/src/mundos/tsl-compila.test.ts`.
+- **Se compilaron todas las variantes TSL del §1** (la de `ejemplo-tsl` ya tenía la suya): las de A4-0, en la prueba de su módulo; las que ya estaban hechas (también `resalte-parcela`, de A3-7b1), en `apps/web/src/mundos/tsl-compila.test.ts`.
 - **Lo que la compilación cazó o destapó** (todo arreglado en la TSL; nada en el clásico):
   1. `onObjectUpdate` no vale en una textura (three r186 lo pisa en `TextureNode.setup()`): `MaterialesPuro.releeTextura` (§1.5). Afectaba al terreno.
   2. three junta en una sola ligadura las texturas que al construir son la misma: un hueco por nombre (§1.5).

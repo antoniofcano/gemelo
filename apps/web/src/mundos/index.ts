@@ -153,3 +153,18 @@ export type { DepsCaeLaCosecha } from "./exterior/cae-la-cosecha.ts";
 // A3-7b2 (MU5-n): el anfitrión de juegos (antes 40_juegos.js), componente del exterior; su libera() cancela las peticiones en vuelo.
 export { ID_JUEGOS, creaJuegos, manifiestoJuegos } from "./exterior/juegos.ts";
 export type { DepsJuegos, Juegos } from "./exterior/juegos.ts";
+// A3-7b1 (MU5-n): el contenido del mundo, del EXTERIOR (parcelas, hazas, historia, vista de familia, fichas del tiempo y del mundo, «Hoy en el campo»), cada uno con su libera() de verdad.
+export { ID_HAZAS, HazasPuro, creaHazas, manifiestoHazas } from "./exterior/hazas.ts";
+export type { DepsHazas } from "./exterior/hazas.ts";
+export { ID_MUNDO_HOY, MundoHoyPuro, manifiestoMundoHoy } from "./exterior/mundo-hoy.ts";
+export type { DepsMundoHoy } from "./exterior/mundo-hoy.ts";
+export { ID_VISTA_FAMILIA, VistaFamiliaPuro, manifiestoVistaFamilia } from "./exterior/vista-familia.ts";
+export type { DepsVistaFamilia } from "./exterior/vista-familia.ts";
+export { ID_FICHAS_MUNDO, FichasMundoPuro, manifiestoFichasMundo } from "./exterior/fichas-mundo.ts";
+export type { DepsFichasMundo } from "./exterior/fichas-mundo.ts";
+export { ID_FICHAS_TIEMPO, FichasTiempoPuro, manifiestoFichasTiempo } from "./exterior/fichas-tiempo.ts";
+export type { DepsFichasTiempo } from "./exterior/fichas-tiempo.ts";
+export { ID_PARCELAS, creaParcelas, manifiestoParcelas } from "./exterior/parcelas.ts";
+export type { DepsParcelas, Parcelas } from "./exterior/parcelas.ts";
+export { ID_HISTORIA, HistoriaPuro, creaHistoria, manifiestoHistoria } from "./exterior/historia.ts";
+export type { DepsHistoria, Historia } from "./exterior/historia.ts";

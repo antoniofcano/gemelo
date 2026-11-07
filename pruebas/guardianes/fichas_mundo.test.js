@@ -7,7 +7,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
-const FUENTE = lee("apps/web/motor/51_fichas_mundo.js");
+const FUENTE = require("./_fuente").fuenteMotor("51_fichas_mundo.js");   // A3-7b1: 51 es un talón; su código vive en mundos/exterior/fichas-mundo.ts
 function trozo(fuente, ini, fin) {
   const i = fuente.indexOf(ini), f = fuente.indexOf(fin);
   assert.ok(i >= 0 && f > i, "debe marcar " + ini + " … " + fin);
@@ -108,10 +108,10 @@ function mundo() {
   const PanelVR = { tapa: fn => { tapas.push(fn); return () => { const i = tapas.indexOf(fn); if (i >= 0) tapas.splice(i, 1); }; } };
   const VRX = { on: true, cab: { x: 0, y: 1.6, z: 0 } }, camera = { matrixWorld: { elements: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] } };
   const documento = { createElement: () => ({ width: 0, height: 0, getContext: () => ({ font: "", measureText: t => ({ width: medir(t, 30) }) }) }) };
-  let manif = null;
-  const Componentes = { registra: d => { manif = d; return true; } };
-  new Function("Laminas", "Entidades", "EntidadesPuro", "Usables", "PanelVR", "VRX", "camera", "document", "Componentes",
-    "\"use strict\";\n" + FUENTE.slice(FUENTE.indexOf("// [puro:inicio]")))(Laminas, Entidades, EP, Usables, PanelVR, VRX, camera, documento, Componentes);
+  // A3-7b1: el .ts da una función que arma el manifiesto (antes, el módulo llamaba a Componentes.registra); lo de fuera (dp.X) se pide por los nombres de siempre
+  const manifiesto = new Function("Laminas", "Entidades", "EntidadesPuro", "Usables", "PanelVR", "VRX", "camera", "document",
+    "\"use strict\";\n" + FUENTE.slice(FUENTE.indexOf("// [puro:inicio]")) + "\nreturn manifiestoFichasMundo;")(Laminas, Entidades, EP, Usables, PanelVR, VRX, camera, documento);
+  const manif = manifiesto({});
   const api = manif.monta({ on: () => () => {}, limpia: f => f });
   // la ficha que pide Usables al elegir en VR: el último presentador primero; si devuelve false, el de antes (29_vr)
   const antes = [];
@@ -125,6 +125,14 @@ test("componente: manifiesto con ?ui=capas apagado por defecto, presupuesto de 3
   assert.strictEqual(d.id, "fichas-mundo"); assert.deepStrictEqual(d.bandera, { defecto: false, url: "ui", valor: "capas" });
   assert.deepStrictEqual(d.presupuesto, { llamadas: 3, triangulos: 6, texturasMB: 5 }); assert.deepStrictEqual(d.fases, { tarde: 0.5 });
   assert.deepStrictEqual(d.consume.slice().sort(), ["PanelVR", "VRX"]); assert.deepStrictEqual(d.expone, []);
+});
+
+test("componente: la fase «tarde» se declara como la llama el bucle, fn(dt, t, api) (A3-7b1: antes recibía dt como api y el bucle apagaba el componente)", () => {
+  const m = mundo(); let veces = 0;
+  assert.strictEqual(m.manif.actualiza.tarde.length, 3, "tres argumentos: dt, t y api");
+  m.manif.actualiza.tarde(0.5, 12.3, { tarde: () => { veces++; } }); assert.strictEqual(veces, 1, "llama al tarde() del api, no al del primer argumento");
+  assert.doesNotThrow(() => m.manif.actualiza.tarde(0.5, 12.3, m.api), "con el api de verdad no falla (en VR, fuera de VR no hace nada)");
+  m.manif.actualiza.tarde(0.5, 12.3, null);   // sin api, nada
 });
 
 test("componente: el olivo y la baliza se cuelgan del mundo (encima de la copa, con su sitio y su escala); la persona sigue en 29_vr", () => {

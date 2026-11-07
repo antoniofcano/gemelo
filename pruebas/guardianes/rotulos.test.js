@@ -49,5 +49,5 @@ test("la cabecera sale del índice: las hectáreas llevan «declaradas (OlivarTr
 });
 
 test("el chip de cada finca dice «declaradas» en hectáreas y olivos (13_parcelas.js)", () => {
-  assert.match(lee("apps/web/motor/13_parcelas.js"), /" ha declaradas · " \+ fmt\(f\.olivos\) \+ " olivos declarados"/);
+  assert.match(require("./_fuente").fuenteMotor("13_parcelas.js"), /" ha declaradas · " \+ fmt\(f\.olivos\) \+ " olivos declarados"/);
 });

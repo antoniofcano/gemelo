@@ -288,7 +288,7 @@ test("ir con alguien y minimapa: en la página, solo con la bandera; con ella, s
   assert.match(F, /if \(x\.enMundo && !bl\) \{/, "el botón «Ir con» solo para quien está en el olivar y no está bloqueado");
 });
 // ---------- I4: las balizas como punto de encuentro
-const HAZAS = lee("apps/web/motor/13b_hazas.js");
+const HAZAS = fuenteMotor("13b_hazas.js");
 const { HazasPuro } = new Function("\"use strict\";\n" + HAZAS.slice(HAZAS.indexOf("// [puro:inicio]"), HAZAS.indexOf("// [puro:fin]")) + "\nreturn { HazasPuro: HazasPuro };")();
 test("balizas (I4): quién está en una parcela, por su linde (HazasPuro.dentroPoligono), en orden alfabético", () => {
   const linde = [[0, 0], [50, 0], [50, 30], [20, 30], [20, 60], [0, 60]];   // en L

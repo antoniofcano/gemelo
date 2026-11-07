@@ -9,8 +9,9 @@
 // Lo de Chrome (la tarjeta de verdad en la ventana del tiempo, iPhone, Quest): no probado.
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
+const { fuenteMotor } = require("./_fuente");   // A3-7b1: 53 es un talón; su código vive en mundos/exterior/mundo-hoy.ts
 
-const FUENTE = lee("apps/web/motor/53_mundo_hoy.js");
+const FUENTE = fuenteMotor("53_mundo_hoy.js");
 function trozo(ini, fin) {
   const i = FUENTE.indexOf(ini), f = FUENTE.indexOf(fin);
   assert.ok(i >= 0 && f > i, "53_mundo_hoy.js debe marcar " + ini + " … " + fin);

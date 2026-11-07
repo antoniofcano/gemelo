@@ -433,7 +433,7 @@
       "escuchan": []
     },
     "hazas:cambia": {
-      "descripcion": "Han llegado (o se han soltado) las hazas de la api que se ven en este mundo (13b_hazas.js): cuántas y cuántas son tuyas. Quien las dibuja (el componente «lindes-hazas») vuelve a pedir Hazas.lindes() y rehace la linde; sin nadie, no pasa nada.",
+      "descripcion": "Han llegado (o se han soltado) las hazas de la api que se ven en este mundo (mundos/exterior/hazas.ts): cuántas y cuántas son tuyas. Quien las dibuja (el componente «lindes-hazas») vuelve a pedir Hazas.lindes() y rehace la linde; sin nadie, no pasa nada.",
       "datos": {
         "type": "object",
         "required": [
@@ -452,7 +452,7 @@
         }
       },
       "emiten": [
-        "13b_hazas"
+        "mundos/exterior/hazas"
       ],
       "escuchan": [
         "mundos/exterior/lindes",
@@ -653,7 +653,7 @@
       ]
     },
     "mundo:hoy": {
-      "descripcion": "53_mundo_hoy.js acaba de leer /api/mundo/hoy (EV-3a): la línea corta de «Hoy en el olivar» para el tablón de la entrada (EV-3c): el trabajo de la semana agregado por tipo (nunca por persona) o el titular del aviso principal del campo; trabajo (F4b/W1, 54_trabajo_hoy.js) son las parcelas con alguna tarea en curso, sin personas, o null; linea es null si la lectura no está completa o no hay nada que decir. cuando es el instante de la fuente (ISO) o null. Los textos son datos: se pintan en un lienzo, nunca como HTML.",
+      "descripcion": "mundos/exterior/mundo-hoy.ts (antes 53_mundo_hoy.js) acaba de leer /api/mundo/hoy (EV-3a): la línea corta de «Hoy en el olivar» para el tablón de la entrada (EV-3c): el trabajo de la semana agregado por tipo (nunca por persona) o el titular del aviso principal del campo; trabajo (F4b/W1, 54_trabajo_hoy.js) son las parcelas con alguna tarea en curso, sin personas, o null; linea es null si la lectura no está completa o no hay nada que decir. cuando es el instante de la fuente (ISO) o null. Los textos son datos: se pintan en un lienzo, nunca como HTML.",
       "datos": {
         "type": "object",
         "required": [
@@ -713,7 +713,7 @@
         }
       },
       "emiten": [
-        "53_mundo_hoy"
+        "mundos/exterior/mundo-hoy"
       ],
       "escuchan": [
         "mundos/exterior/carteles",
@@ -864,7 +864,7 @@
       "descripcion": "Abrir o cerrar la lámina de la previsión del tiempo en el mundo (el botón «Ver la previsión en el mundo» de la ventana Tiempo y, en VR, «hora» en el menú de muñeca, EV2-A3). Sin datos alterna; con abre true o false, abre o cierra.",
       "datos": { "type": "object", "properties": { "abre": { "type": "boolean" } } },
       "emiten": ["mundos/exterior/tiempo", "mundos/comun/muneca"],
-      "escuchan": ["35_fichas_tiempo"]
+      "escuchan": ["mundos/exterior/fichas-tiempo"]
     },
     "mundo:aplica": {
       "descripcion": "El mundo se ha vuelto a aplicar (aplica() de 08_marcadores.js: cambió la exageración vertical, el modo o los datos de las teselas): lo que cuelga del terreno se recoloca. Hoy lo atiende el componente de los marcadores del LiDAR (copas, anillos y desfase); sin él (?marcadores=0), nadie.",
@@ -987,7 +987,7 @@
         "mundos/comun/muneca"
       ],
       "escuchan": [
-        "35_fichas_tiempo"
+        "mundos/exterior/fichas-tiempo"
       ]
     },
     "red:estado": {
