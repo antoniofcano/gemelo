@@ -141,3 +141,6 @@ export type { Corro, DepsCorro } from "./comun/corro.ts";
 // A3-7a (MU5-n): la transición del mapa al paseo (antes la segunda mitad de 24_pantalla.js), de la locomoción de todo mundo; no es un componente (nada que soltar).
 export { creaTransicion } from "./comun/transicion.ts";
 export type { DepsTransicion, Transicion } from "./comun/transicion.ts";
+// A3-7b2 (MU5-n): la personalización de los árboles (antes 42_personalizacion.js), componente del exterior; su libera() cancela las peticiones en vuelo.
+export { ID_PERSONALIZACION, creaPersonalizacion, manifiestoPersonalizacion } from "./exterior/personalizacion.ts";
+export type { DepsPersonalizacion, Personalizacion } from "./exterior/personalizacion.ts";

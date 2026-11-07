@@ -197,14 +197,14 @@
           }
         }
       },
-      "emiten": ["42_personalizacion"],
+      "emiten": ["mundos/exterior/personalizacion"],
       "escuchan": ["mundos/exterior/decoraciones"]
     },
     "decoraciones:pide": {
       "descripcion": "P7g (D3): quien dibuja las decoraciones (50_decoraciones), al montarse, pide la última lista; quien la tiene (42_personalizacion) responde con «decoraciones:cambian». Sin nadie que la tenga, no pasa nada (llegará cuando se traiga).",
       "datos": { "type": "object" },
       "emiten": ["mundos/exterior/decoraciones"],
-      "escuchan": ["42_personalizacion"]
+      "escuchan": ["mundos/exterior/personalizacion"]
     },
     "fauna:conejo-cerca": {
       "descripcion": "Una pregunta con respuesta en el mismo objeto: un perro en { x, y } busca, en un radio (m), el conejo visible más cercano; la fauna rellena res con ese conejo (el grupo de three, con su estado en userData) o lo deja en null. Sin fauna (?fauna=0), res queda en null y los perros no persiguen a nadie.",
@@ -904,7 +904,7 @@
         }
       },
       "emiten": [
-        "42_personalizacion"
+        "mundos/exterior/personalizacion"
       ],
       "escuchan": []
     },
@@ -1142,7 +1142,7 @@
         "ui/entidades"
       ],
       "escuchan": [
-        "42_personalizacion"
+        "mundos/exterior/personalizacion"
       ]
     },
     "usable:suelta": {
@@ -1166,7 +1166,7 @@
         "ui/entidades"
       ],
       "escuchan": [
-        "42_personalizacion"
+        "mundos/exterior/personalizacion"
       ]
     },
     "usable:usa": {

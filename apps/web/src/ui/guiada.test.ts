@@ -4,8 +4,8 @@
 // (al armar «¿Sacar? Otra vez») el foco vuelve al botón que lo tenía. HONESTIDAD: DOM, sala y api de mentira; el panel con teclado real, en el iPhone y en el Quest, no está probado.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ID_GUIADA, manifiestoGuiada } from "./guiada.ts";
-import { busPrueba, montaComponente } from "./prueba-componentes.ts";
-import { creaMundo, type Mundo } from "./prueba-dom.ts";
+import { busPrueba, montaComponente } from "../nucleo/prueba-componentes.ts";
+import { creaMundo, type Mundo } from "../nucleo/prueba-dom.ts";
 import type { Manifiesto } from "../nucleo/componentes.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -3,7 +3,7 @@
 // el componente es de todos los mundos. HONESTIDAD: fetch y Ajustes son dobles; la casilla en Configuración, en el iPhone y en el Quest, no está probada.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AvisosCorreoPuro, ID_AVISOS_CORREO, creaAvisosCorreo, manifiestoAvisosCorreo } from "./avisos-correo.ts";
-import { creaMundo, type Mundo } from "./prueba-dom.ts";
+import { creaMundo, type Mundo } from "../nucleo/prueba-dom.ts";
 
 let m: Mundo | null = null;
 afterEach(() => { vi.unstubAllGlobals(); if (m) m.limpia(); m = null; });

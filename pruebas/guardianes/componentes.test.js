@@ -221,7 +221,8 @@ function eventosDelCodigo() {
       if (!e.name.endsWith(".ts") || e.name.endsWith(".test.ts")) continue;
       const s = sinComentarios(fs.readFileSync(path.join(d, e.name), "utf8")), mod = pre + rel + e.name.slice(0, -3);
       // A3-6c: en mundos/comun/ la VR y la locomoción conservan el nombre del legado, Bus
-      const re = rel.startsWith("comun/") || pre === "ui/" ? /\b(?:bus|Bus|n)\.(emite|on)\(\s*"([^"]+)"/g : /\b(?:bus|n)\.(emite|on)\(\s*"([^"]+)"/g;
+      // A3-7b2: y los cuatro del exterior que conservan el Bus del legado por dp (personalización, oficina, juegos y «Cae la cosecha»)
+      const re = rel.startsWith("comun/") || pre === "ui/" || /^mundos\/exterior\/(personalizacion|oficina-mundo|juegos|cae-la-cosecha)$/.test(mod) ? /\b(?:bus|Bus|n)\.(emite|on)\(\s*"([^"]+)"/g : /\b(?:bus|n)\.(emite|on)\(\s*"([^"]+)"/g;
       for (const x of s.matchAll(re)) apunta(x[2], x[1] === "emite", mod);
     }
   }

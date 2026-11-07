@@ -57,6 +57,7 @@ const TS_DE = {
   "49_avisos_correo.js": "apps/web/src/ui/avisos-correo.ts",
   "43_agenda.js": "apps/web/src/ui/agenda.ts",
   "46_guiada.js": "apps/web/src/ui/guiada.ts",
+  "42_personalizacion.js": "apps/web/src/mundos/exterior/personalizacion.ts",
   "24_pantalla.js": ["apps/web/src/ui/pantalla.ts", "apps/web/src/mundos/comun/transicion.ts"],   // el menú y la pantalla completa (ui/); la transición del mapa al paseo (comun/)
   // A3-2a: 07ab vive en varios ficheros (la escalera, el horneado, la cola, el sombreado, el lote y el módulo): se leen todos, en este orden
   // A3-6c: la VR y la locomoción, de todo mundo (apps/web/src/mundos/comun/)
@@ -81,7 +82,9 @@ const TS_DE = {
 // solo los de A3-6c (la VR y la locomoción); los de A3-6a en comun/ (presencia, avatares, muñeca…) se leen con su TypeScript o con fuenteMotorJs, como los dejó A3-6a
 // A3-7a: y los de la interfaz (apps/web/src/ui/), que además leen lo que el legado reescribe por getters del talón (`dp.paseando`): se lee sin el `dp.` (comoJsUi)
 const COMO_JS = /(^|\/)apps\/web\/src\/(mundos\/comun\/(vr[\w-]*|mandos|paseo|llegada|ir-a|camara|palanca)|ui\/[\w-]+)\.ts$/;
-const DE_UI = /(^|\/)apps\/web\/src\/(ui\/|mundos\/comun\/transicion\.ts$)/;   // A3-7a: la transición del mapa al paseo (de 24_pantalla) también llega por dp.
+// A3-7a: la transición del mapa al paseo (de 24_pantalla) también llega por dp. A3-7b2: y los componentes del exterior de lo social, los juegos y la oficina (personalizacion,
+// oficina-mundo, juegos, cae-la-cosecha), que reciben lo del legado por dp como los de ui/.
+const DE_UI = /(^|\/)apps\/web\/src\/(ui\/|mundos\/comun\/transicion\.ts$|mundos\/exterior\/(personalizacion|oficina-mundo|juegos|cae-la-cosecha)\.ts$)/;
 function comoJs(ts) {
   const m = require("node:module"), avisa = process.emitWarning;
   process.emitWarning = () => {};   // «experimental»: no ensucia la salida de las pruebas

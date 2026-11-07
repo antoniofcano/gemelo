@@ -4,8 +4,8 @@
 // HONESTIDAD: DOM y api de mentira; la ventana en el iPhone y en el Quest, y la fila del panel de VR, no se han probado.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ID_AGENDA, manifiestoAgenda } from "./agenda.ts";
-import { busPrueba, montaComponente } from "./prueba-componentes.ts";
-import { creaMundo, type Mundo } from "./prueba-dom.ts";
+import { busPrueba, montaComponente } from "../nucleo/prueba-componentes.ts";
+import { creaMundo, type Mundo } from "../nucleo/prueba-dom.ts";
 
 let m: Mundo | null = null;
 afterEach(() => { vi.unstubAllGlobals(); if (m) m.limpia(); m = null; });

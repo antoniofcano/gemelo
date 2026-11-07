@@ -1,8 +1,8 @@
 // Un registro de componentes de verdad para las pruebas de Vitest de ui/ y de los mundos (A3-7b2, MU5-n). Solo lo importan los *.test.ts: no es parte del motor ni del paquete.
 // Las pruebas de los componentes que cuelgan cosas del contexto (n.on, n.limpia: la agenda, la oficina, la personalización…) montan su manifiesto en el creaComponentes del núcleo,
 // con un Bus como el de 02c, y lo liberan con liberaMundo: así se prueba el ciclo entero (libera(api) y luego lo que soltó n.limpia, en orden inverso), no un doble del contexto.
-import { creaComponentes } from "../nucleo/componentes.ts";
-import type { BusComponentes, Manifiesto } from "../nucleo/componentes.ts";
+import { creaComponentes } from "./componentes.ts";
+import type { BusComponentes, Manifiesto } from "./componentes.ts";
 
 export interface BusPrueba extends BusComponentes {
   /** cuántos oyentes siguen vivos (en total o de un evento) */
