@@ -50,3 +50,6 @@ export type { AvisosCorreo, DepsAvisosCorreo } from "./avisos-correo.ts";
 // A3-7b2: la agenda en el mundo (antes 43_agenda.js), componente de todo mundo; su libera() cancela las peticiones en vuelo y la espera de «Entrar en la visita».
 export { ID_AGENDA, manifiestoAgenda } from "./agenda.ts";
 export type { Agenda, DepsAgenda } from "./agenda.ts";
+// A3-7b2: la visita guiada (antes 46_guiada.js), componente de todo mundo; su libera() cancela además las peticiones a la api en vuelo.
+export { ID_GUIADA, creaGuiada, manifiestoGuiada } from "./guiada.ts";
+export type { DepsGuiada, Guiada } from "./guiada.ts";

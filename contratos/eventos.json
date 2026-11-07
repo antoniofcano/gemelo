@@ -170,7 +170,7 @@
         "mundos/comun/presencia",
         "mundos/exterior/lindes",
         "red/voz/voz",
-        "46_guiada",
+        "ui/guiada",
         "mundos/comun/habla",
         "mundos/comun/corro",
         "mundos/exterior/decoraciones"
@@ -259,7 +259,7 @@
         }
       },
       "emiten": [
-        "46_guiada"
+        "ui/guiada"
       ],
       "escuchan": []
     },
@@ -336,7 +336,7 @@
         }
       },
       "emiten": [
-        "46_guiada"
+        "ui/guiada"
       ],
       "escuchan": [
         "mundos/comun/habla"
@@ -1285,7 +1285,7 @@
       "escuchan": [
         "ui/hud-personal",
         "mundos/comun/muneca",
-        "46_guiada",
+        "ui/guiada",
         "mundos/comun/habla",
         "mundos/comun/corro"
       ]

@@ -21,9 +21,10 @@ export function busPrueba(): BusPrueba {
 }
 
 /** monta un manifiesto en el registro del núcleo (arrancado) y deja liberarlo como lo haría el último mundo vivo */
-export function montaComponente(def: Manifiesto, bus: BusPrueba = busPrueba()) {
+export function montaComponente(def: Manifiesto, bus: BusPrueba = busPrueba(), previos: Manifiesto[] = []) {
   const errores: string[] = [];
   const C = creaComponentes({ bus, ahora: () => 0, consola: { error: (...a: unknown[]) => { errores.push(a.map(String).join(" ")); }, warn: () => { /* sin avisos */ } } });
+  for (const p of previos) C.registra(p);   // otros componentes de los que depende (su api, con n.api(id)), p. ej. la red y la voz de la guiada
   C.registra(def); C.arranca();
   return {
     C, bus, errores,
