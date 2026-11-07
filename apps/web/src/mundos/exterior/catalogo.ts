@@ -7,6 +7,8 @@
 // Del legado recibe por argumento lo que necesita (THREE, hash de 04d, parcheTiempo de 15_tiempo y la fábrica de materiales); no lee globales.
 import type { Manifiesto } from "../../nucleo/componentes.ts";
 import type { DefMaterial, Materiales, MaterialMin } from "../../nucleo/materiales.ts";
+import { colorSrgbTsl } from "./tiempo-parche.ts";
+import { columnaInstancia } from "./instancia-tsl.ts";
 
 // three no trae tipos en el repo (como en ambiente.ts y presupuesto.ts): de él solo se toca lo mínimo, sin tiparlo
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -46,15 +48,16 @@ function clasicoInstanciado(o: OpcCatalogo, c: { THREE: Record<string, unknown> 
   m.needsUpdate = true;
   return m;
 }
-// MU5-n, tercer commit: las variantes TSL, APAGADAS (solo con el WebGPURenderer, que hasta MU6 no existe; nadie las usa hoy) y PARCIALES. NO son equivalentes: las capturas
-// de clásico frente a TSL son de MU6. Lo que hacen y lo que les falta (MATERIALES §8):
-//   · las dos: el Lambert blanco y el color por vértice, escrito en sRGB (03_escena), pasado a lineal con sRGBTransferEOTF (lo que hace colorVertSRGB en el clásico);
-//   · la copa, además: la silueta rota por ruido hacia el borde (maskNode: se descarta donde nz < (vRim − 0,72) · 2,8), las motas (× 0,74 + 0,50 · nz2) y el envés plateado
-//     en el borde, con las mismas cuentas que el GLSL;
+// MU5-n, tercer commit (A3-2a) y A4-0: las variantes TSL, APAGADAS (solo con el WebGPURenderer, MU6; nadie las usa hoy). Desde A4-0 llevan lo que hace el
+// clásico; NO se puede decir que sean equivalentes hasta las capturas de clásico frente a TSL de MU6 (MATERIALES §8):
+//   · las dos: el Lambert blanco y el color por vértice y por instancia, escrito en sRGB (03_escena), pasado a lineal (colorSrgbTsl, lo de colorVertSRGB);
+//   · la copa, además: la silueta rota por ruido hacia el borde (maskNode: se descarta donde nz < (vRim − 0,72) · 2,8), las motas (× 0,74 + 0,50 · nz2) y el envés
+//     plateado en el borde, con las mismas cuentas que el GLSL; vRim por vértice (varying), como el clásico; y (A4-0) la semilla de cada olivo por la POSICIÓN de su
+//     matriz (instanceMatrix[3].xz), como el clásico, no por su índice de instancia (con el índice, el ruido de un olivo cambiaría cuando el nivel 1 se reordena);
 //   · A3-4: la sombra de nubes y la helada de parcheTiempo (fila 2), tras la luz (outputNode), en la posición del mundo de cada instancia (positionWorld.xz), si se
-//     dan los nodos del tiempo (tiempoTsl; sin ellos, como antes, sin nubes ni helada);
-//   · DIFIERE: la semilla de cada olivo sale de su índice de instancia (instanceIndex), no de la posición de su matriz (instanceMatrix[3].xz): el ruido es el mismo por olivo
-//     pero otro reparto entre olivos; y vRim se calcula por fragmento (normalView y positionViewDirection), no por vértice.
+//     dan los nodos del tiempo (tiempoTsl; sin ellos, sin nubes ni helada).
+//   · COSTE (A4-0) [SIN MEDIR]: three no deja leer el nodo de la matriz de instancia que monta, así que la traslación se lee de una copia del mismo array como
+//     atributo por instancia (instancia-tsl.ts: 64 B por olivo en la tarjeta, que se vuelve a subir cuando cambia instanceMatrix.version). Se mide en el banco (MU6).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Nodo = any;
 function lambertTsl(c: { THREE: Record<string, unknown>; TSL: Record<string, unknown> }): { m: MaterialMin & { colorNode?: unknown; maskNode?: unknown; vertexColors?: boolean }; T: Record<string, Nodo>; base: Nodo } {
@@ -62,7 +65,7 @@ function lambertTsl(c: { THREE: Record<string, unknown>; TSL: Record<string, unk
   const T = c.TSL as Record<string, Nodo>;
   // vertexColors en false: el color por vértice entra ya pasado a lineal en colorNode (si no, el NodeMaterial lo multiplicaría otra vez, sin convertir)
   const m = new Lambert({ color: 0xffffff, vertexColors: false });
-  const base = T.materialColor.mul(T.sRGBTransferEOTF(T.vertexColor().rgb));
+  const base = colorSrgbTsl(T, T.materialColor, true);
   return { m, T, base };
 }
 /** A3-4: la sombra de nubes y la helada (los nodos de parcheTiempo) tras la luz, en la posición del mundo (el clásico: (instanceMatrix · transformed).xz) */
@@ -70,13 +73,19 @@ function luzTiempo(m: MaterialMin & { outputNode?: unknown }, o: OpcCatalogo, c:
   const f = o && o.tiempo ? o.tiempo() : null; if (!f) return;
   m.outputNode = f(c.TSL).salida((c.TSL as Record<string, Nodo>).positionWorld.xz);
 }
+/** A4-0: la semilla del clásico, fract(sin(dot(instanceMatrix[3].xz, (12,9898, 78,233))) · 43758,5453), por vértice (instancia-tsl.ts). Sin instancias, 0 */
+export function semillaPosicion(W: Record<string, unknown>, T: Record<string, Nodo>): Nodo {
+  const t = columnaInstancia(W, T, 3);
+  return T.varying(T.fract(T.sin(T.dot(T.vec2(t.x, t.z), T.vec2(12.9898, 78.233))).mul(43758.5453)));
+}
 export const DEF_COPA_L1: DefMaterial<OpcCatalogo> = {
   clasico: clasicoInstanciado,
   tsl: function (_o, c) {
     const { m, T, base } = lambertTsl(c);
     const h3 = function (p: Nodo): Nodo { return T.fract(T.sin(T.dot(p, T.vec3(12.9898, 78.233, 37.719))).mul(43758.5453)); };   // ot_h3 del GLSL
-    const semilla = T.fract(T.sin(T.float(T.instanceIndex).mul(12.9898)).mul(43758.5453));   // DIFIERE del clásico: por índice de instancia
-    const loc = T.positionGeometry, rim = T.float(1).sub(T.clamp(T.abs(T.dot(T.normalView, T.positionViewDirection)), 0, 1));
+    const semilla = semillaPosicion(c.THREE, T);   // A4-0: por la posición de la matriz, como el clásico
+    const rim = T.varying(T.float(1).sub(T.clamp(T.abs(T.dot(T.normalize(T.normalView), T.normalize(T.positionView.negate()))), 0, 1)));   // vRim, por vértice
+    const loc = T.positionGeometry;
     const nz = h3(T.floor(loc.mul(7).add(semilla.mul(31)))), nz2 = h3(T.floor(loc.mul(15).add(semilla.mul(17))));
     m.maskNode = nz.greaterThanEqual(rim.sub(0.72).mul(2.8));   // if (nz < (vRim − 0.72) · 2.8) discard;
     const enves = T.sRGBTransferEOTF(T.vec3(0.64, 0.70, 0.56));

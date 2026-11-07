@@ -3,6 +3,7 @@
 // que mueve Generados.paso() y que comparte el tramado complementario de los lejanos (07ac, por Generados.lejanos).
 import { MaterialesPuro } from "../../nucleo/materiales.ts";
 import type { DefMaterial } from "../../nucleo/materiales.ts";
+import { colorSrgbTsl } from "./tiempo-parche.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type A = any;
@@ -54,22 +55,32 @@ type Encadena = (m: A, fn: (sh: A) => void, clave?: string) => A;
 export interface OpcGenOlivo { material: A; parche: (sh: A) => void; propia?: Encadena | null; uniformes?: { uFun: A; uBanda: A }; tiempo?: (() => ((T: A) => A) | null) | null }
 /** gen-profundidad: material = el MeshDepthMaterial del constructor (las sombras de las hojas) o null para uno nuevo (el de las mallas por lotes); fundido = el parche del fundido */
 export interface OpcGenProfundidad { material: A | null; fundido: (sh: A) => void; propia?: Encadena | null; uniformes?: { uFun: A; uBanda: A } }
-// MU5-n, tercer commit: las variantes TSL, APAGADAS (solo con el WebGPURenderer, que hasta MU6 no existe; nadie las usa hoy) y PARCIALES. NO son equivalentes: las
-// capturas de clásico frente a TSL son de MU6. Lo que hacen y lo que les falta está en MATERIALES §8:
-//   · hacen: el NodeMaterial de la misma clase (Standard o Points) con las propiedades del clásico (el MISMO objeto de color, el mapa, el recorte, la cara…) y el
-//     FUNDIDO por tramado de las piezas instanciadas y de los puntos (el código del atributo aFun: rol y ranura; f = uFun o el peso de uBanda[ranura]; el ruido de
-//     gradiente entrelazado de pantalla), como maskNode y maskShadowNode, con los MISMOS uFun y uBanda que mueve Generados;
-//   · FALTA: (1) el fundido en las mallas por lotes (corteza, madera muerta, olivas: el código va en el alfa del color por instancia, que el GLSL lee con
-//     getBatchingColor(gl_DrawID)); sin él, esas piezas entran y salen de golpe; (2) de la luz del motor (parcheLuz), el color por lote leído en sRGB (la sombra de
-//     nubes y la helada de parcheTiempo ya van, A3-4, con los nodos del tiempo: tiempoTsl); (3) gen-profundidad: no se sabe [NO VERIFICADO] si el WebGPURenderer usa customDepthMaterial; la
-//     variante es un NodeMaterial con el mismo maskShadowNode, y lo seguro es el maskShadowNode del material principal, que ya lleva gen-olivo. El motor no enciende
-//     las sombras (L5-12), así que hoy la profundidad no se dibuja en ninguna de las dos rutas.
-// las piezas que van en mallas por lotes (BatchedMesh): sin fundido en la TSL todavía (FALTA 1)
+// MU5-n, tercer commit (A3-2a) y A4-0: las variantes TSL, APAGADAS (solo con el WebGPURenderer, MU6; nadie las usa hoy). Desde A4-0 llevan lo que hace el
+// clásico; NO se puede decir que sean equivalentes hasta las capturas de clásico frente a TSL de MU6 (MATERIALES §8):
+//   · el NodeMaterial de la misma clase (Standard o Points) con las propiedades del clásico (el MISMO objeto de color, el mapa, el recorte, la cara…);
+//   · el FUNDIDO por tramado, como maskNode y maskShadowNode, con los MISMOS uFun y uBanda que mueve Generados: en las piezas instanciadas y los puntos, el código
+//     del atributo aFun; (A4-0) en las mallas por lotes (corteza, madera muerta, olivas…), el del alfa del color del lote (batchColor.a = 1 − c / 2, lo que el GLSL lee
+//     con getBatchingColor(gl_DrawID)); sin color de lote, 0 (se queda), como el clásico. Se decide al construir, por objeto;
+//   · la luz del motor (parcheLuz): (A4-0) el color por vértice, por instancia y por lote leído en sRGB (colorSrgbTsl) y (A3-4) la sombra de nubes y la helada de
+//     parcheTiempo en la posición del mundo (con la matriz del lote o de la instancia), si se dan los nodos del tiempo;
+//   · gen-profundidad: el mismo fundido en la sombra, también (A4-0) la de las mallas por lotes. [NO VERIFICADO] si el WebGPURenderer usa customDepthMaterial; lo
+//     seguro es el maskShadowNode del material principal, que ya lleva gen-olivo. El motor no enciende las sombras (L5-12): hoy no se dibuja en ninguna ruta.
+//   · DIFIERE [NO VERIFICADO, solo si una pieza por lotes llevara recorte alfa o transparencia]: el NodeMaterial multiplica también el ALFA de la pieza por el del
+//     color del lote (el clásico, solo el color), que aquí es el código del fundido; con un material opaco three lo pone a 1 después y no cambia nada.
+// las piezas que van en mallas por lotes (BatchedMesh): el fundido sale del color del lote (ver fundidoTsl)
 export const PIEZAS_POR_LOTES = ["pies", "corteza", "musgo", "muerta", "raiz", "corte", "tutor", "oliva"];
+/** el código del fundido de cada pieza (c = rol + 3 · ranura), como GLSL_FUN_M: del alfa del color del lote, 0 en un lote sin color, o el atributo aFun */
+function codigoFundido(T: A): A {
+  return T.Fn(function (_e: A, b: A) {
+    var o = b && b.object;
+    if (o && o.isBatchedMesh) return o._colorsTexture ? T.floor(T.float(1).sub(T.batchColor.a).mul(2).add(0.5)) : T.float(0);
+    return T.attribute("aFun", "float");
+  })();
+}
 /** el fundido como nodo booleano (true = se dibuja): rol 0 siempre; rol 1 donde el ruido < f; rol 2 donde ≥ f. f = uFun en la ranura 0 o uBanda[ranura] en las demás */
 export function fundidoTsl(T: A, u: { uFun: A; uBanda: A }): A {
   var uFun = u.uFun, uBanda = u.uBanda;
-  var codigo = T.attribute("aFun", "float"), ranura = T.floor(codigo.div(3).add(0.01)), rol = codigo.sub(ranura.mul(3));
+  var codigo = codigoFundido(T), ranura = T.floor(codigo.div(3).add(0.01)), rol = codigo.sub(ranura.mul(3));
   var fun = T.uniform(uFun.value).onObjectUpdate(function () { return uFun.value; });
   var bandas = T.uniformArray(uBanda.value, "vec4"), ri = T.int(ranura.add(0.5)), v = bandas.element(ri.div(4)), comp = ri.sub(ri.div(4).mul(4));
   var peso = T.select(comp.equal(0), v.x, T.select(comp.equal(1), v.y, T.select(comp.equal(2), v.z, v.w)));
@@ -84,7 +95,9 @@ export const DEF_GEN_OLIVO: DefMaterial<OpcGenOlivo & { pieza?: string }> = {
     var b = o.material, T = c.TSL as A, Clase = c.THREE[b && b.isPointsMaterial ? "PointsNodeMaterial" : "MeshStandardNodeMaterial"] as new () => A, m = new Clase();
     COPIA.forEach(function (k) { if (b && b[k] !== undefined) m[k] = b[k]; });
     if (b && b.color) m.color = b.color;   // el MISMO objeto (la calibración de la luz lineal lo multiplica después)
-    if (o.uniformes && PIEZAS_POR_LOTES.indexOf(o.pieza || "") < 0) { var vis = fundidoTsl(T, o.uniformes); m.maskNode = vis; m.maskShadowNode = vis; }
+    // A4-0: el color por vértice, por instancia y por lote, de sRGB a lineal (lo de colorVertSRGB y del parche de luz)
+    m.vertexColors = false; m.colorNode = colorSrgbTsl(T, T.materialColor, !!(b && b.vertexColors));
+    if (o.uniformes) { var vis = fundidoTsl(T, o.uniformes); m.maskNode = vis; m.maskShadowNode = vis; }   // A4-0: también en las mallas por lotes
     // A3-4: la sombra de nubes y la helada de parcheTiempo (fila 2) tras la luz, en la posición del mundo (el clásico: modelMatrix · batching/instancia · transformed),
     // si se dan los nodos del tiempo. En los puntos, no: el sombreador de puntos clásico no tiene <dithering_fragment> y no las lleva
     var f = o.tiempo ? o.tiempo() : null; if (f && !(b && b.isPointsMaterial)) m.outputNode = f(T).salida(T.positionWorld.xz);
@@ -100,8 +113,8 @@ export const DEF_GEN_PROFUNDIDAD: DefMaterial<OpcGenProfundidad> = {
     var b = o.material, m = new (c.THREE["MeshBasicNodeMaterial"] as new () => A)();
     ["map", "alphaMap", "alphaTest", "side"].forEach(function (k) { if (b && b[k] !== undefined) m[k] = b[k]; });
     m.colorWrite = false;
-    // las de las mallas por lotes (material null) no tienen aFun: sin fundido (FALTA 1); las de las hojas, el mismo tramado
-    if (o.uniformes && b) m.maskShadowNode = m.maskNode = fundidoTsl(c.TSL as A, o.uniformes);
+    // las de las hojas y (A4-0) las de las mallas por lotes (material null: el código sale del color del lote), el mismo tramado
+    if (o.uniformes) m.maskShadowNode = m.maskNode = fundidoTsl(c.TSL as A, o.uniformes);
     return m;
   }
 };

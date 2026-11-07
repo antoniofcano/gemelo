@@ -68,6 +68,21 @@ export function nodosTiempo(T: A, uSombra: UniformesSombra, uViento?: UniformesV
   return { sombra: sombra, enVertice: enVertice, aplica: aplica, salida: salida, viento: viento, uniformes: { uDrift: uDrift, uCov: uCov, uSomb: uSomb, uHielo: uHielo } };
 }
 export type NodosTiempo = ReturnType<typeof nodosTiempo>;
+/** A4-0: lo de colorVertSRGB (03_escena) y lo del parche de luz de los olivos generados en TSL: el color por vértice, por instancia y por lote está escrito en
+ *  sRGB y pasa a lineal. base: el color del material (vec4: materialColor, con su mapa). porVertice: si el clásico lleva vertexColors (quien lo use pone el
+ *  vertexColors del NodeMaterial a false: aquí se multiplica ya convertido). El NodeMaterial multiplica DESPUÉS de colorNode, por su cuenta, el color por
+ *  instancia (instanceColor) y el del lote (batchColor) sin convertir: aquí se multiplica antes por lineal(c) / c, y el producto queda base · lineal(c) (con
+ *  c = 0, 0, como el clásico). Se decide al construir, por objeto (Fn con el builder): sin color por instancia o por lote, nada. */
+export function colorSrgbTsl(T: A, base: A, porVertice: boolean): A {
+  var compensa = function (c: A): A { return T.sRGBTransferEOTF(c).div(T.max(c, T.vec3(1e-6))); };
+  return T.Fn(function (_e: A, b: A) {
+    var col = T.vec4(base), o = b && b.object, g = b && b.geometry;
+    if (porVertice && g && g.hasAttribute && g.hasAttribute("color")) col = T.vec4(col.rgb.mul(T.sRGBTransferEOTF(T.vertexColor().rgb)), col.a);
+    if (o && o.instanceColor) col = T.vec4(col.rgb.mul(compensa(T.instanceColor)), col.a);
+    if (o && o.isBatchedMesh && o._colorsTexture) col = T.vec4(col.rgb.mul(compensa(T.batchColor.rgb)), col.a);
+    return col;
+  })();
+}
 // lo que no se copia del material clásico al NodeMaterial (lo demás, como hace three al convertir: NodeLibrary.fromMaterial)
 var NO_COPIA: Record<string, 1> = { uuid: 1, id: 1, type: 1, onBeforeCompile: 1, customProgramCacheKey: 1, _listeners: 1, version: 1 };
 /** el clásico de siempre: el MISMO material, con el parche puesto por conTiempo (la misma función de siempre: three usa su texto como clave del programa).
@@ -84,7 +99,8 @@ export function defParcheTiempo(conTiempo: (m: A, viento: boolean) => void, u?: 
       m.color = src.color;   // el MISMO objeto: el paso del tiempo lo tiñe en su sitio
       if (!u) return m;
       var N = nodosTiempo(T, u.uSombra, o.viento ? u.uViento : null), base = T.vec4(T.materialColor);
-      if (src.vertexColors) { m.vertexColors = false; m.colorNode = T.vec4(base.rgb.mul(T.sRGBTransferEOTF(T.vertexColor().rgb)), base.a); }
+      // A4-0: el color por vértice y, ahora también, el de instancia (colorVertSRGB atiende a los dos), de sRGB a lineal
+      m.vertexColors = false; m.colorNode = colorSrgbTsl(T, base, !!src.vertexColors);
       if (o.viento) m.positionNode = N.viento(T.positionGeometry);
       if (!src.isPointsMaterial) m.outputNode = N.salida(T.positionGeometry.xz);   // el clásico: ot_sombra(position.xz), la posición local
       return m;
