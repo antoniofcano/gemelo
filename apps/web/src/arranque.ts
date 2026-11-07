@@ -9,7 +9,9 @@
 // (git, los ADR, COMPONENTES.md) sigue llevando a su sitio, y los guardianes leen un paso con pruebas/guardianes/_fuente.js (fuenteMotor("NN_nombre.js")).
 // Qué expone y qué consume cada pieza lo dicen las importaciones de src/ (y dependency-cruiser lo vigila: nadie de src/ importa este fichero).
 //
-// Lo que reescribe más de un sitio ya no son variables sueltas: vive en el objeto de su dueño (Paseo.E, Vida.E, Paisaje.E, Historia, Parcelas, FactorR8…).
+// Lo que reescribe más de un sitio ya no son variables sueltas: vive en el objeto de su dueño (Estado, Paseo.E, Vida.E, FactorR8.E, TinteOrto.E, FechaNdvi.E,
+// Marcadores.listo(), Tiempo.tMundo(), Paisaje.agua(), Follaje.sombras(), Historia.OT, Parcelas.parcelaSel()…), y se lee ahí en cada uso (estado_mutable.test.js).
+// La marca «// [talón] apps/web/src/….ts» de un paso dice dónde vive su código (de cuando el paso era un fichero de motor/ que solo llamaba a su fábrica).
 // @ts-expect-error three no trae tipos en el repo (MUNDOS §9.1): el arranque lo pasa por argumento a quien lo usa
 import * as THREE from "three";
 import * as Nucleo from "./nucleo/index.ts";
@@ -36,22 +38,13 @@ function arranca(): void {
   var EXT = Math.max(ANCHO, ALTO), FOG0 = Math.max(900, EXT * 1.1), FOG1 = Math.max(2600, EXT * 3.2), DIST_MAX = Math.max(900, EXT * 1.1), DIST_INI = Math.max(700, EXT * 0.85);   // la cámara y la niebla siguen a la superficie de la finca
   var DEPURA = /[?&]debug\b/.test(location.search);
   var VRP = { on: false, hierba: 32 };   // el perfil de las gafas VR (lo fija 29_vr.js; fuera de VR no cambia nada)
-  // Radio dibujado de la copa = r8 × factor (decisiones 48 y 81, ADR-0017 y ADR-0022). r8 es el RADIO medido (centro → borde de la cuenca). UNA sola
-  // fuente para los dos dibujos de olivo:
-  //   FACTOR_R8_GEN, los olivos del constructor (?olivos=escalera y ?olivos=gen: propios E0/E1, variantes E2/E2-VR e impostores), 1 (decisión 81):
-  //     copa = 2 × r8 medio, la misma que copas_param.copa_m; todos con la copa que pide el propio (07ab medidasDe).
-  //   FACTOR_R8, el nivel de siempre (06_arboles, 07b niveles 1 y 2), 0,5 hasta que la cinta de campo (O4) confirme el 1 (decisión 48).
-  // ?factorR8=<v> (o D.config.factorR8) fija LOS DOS a la vez: así la cinta los afina juntos. La configuración del servidor (escalera.factorCopa,
-  // contratos/config.schema.json, recortado a 0,5-1,5) cambia SOLO FACTOR_R8_GEN, y la pone 07ab con factorCopaDeConfig() antes de generar nada;
-  // precedencia: ?factorR8= > configuración > D.config > código.
-  var FACTOR_R8 = 0.5, FACTOR_R8_GEN = 1, FACTOR_R8_URL: number | null = null;
-  (function () {
-    var m = /[?&]factorR8=([0-9.]+)/.exec(location.search), v = m ? Number(m[1]) : (D.config && D.config.factorR8) || 0;
-    if (v > 0 && v <= 2) { FACTOR_R8 = FACTOR_R8_GEN = v; if (m) FACTOR_R8_URL = v; }
-  })();
-  function factorCopaDeConfig() { FACTOR_R8_GEN = Config.param("escalera.factorCopa", FACTOR_R8_GEN, FACTOR_R8_URL); return FACTOR_R8_GEN; }
+  // Radio dibujado de la copa = r8 × factor (decisiones 48 y 81, ADR-0017 y ADR-0022): FactorR8.E.r8, el nivel de siempre (0,5), y FactorR8.E.gen, los
+  // olivos del constructor (1), en apps/web/src/mundos/exterior/factor-r8.ts con su explicación (A3-8c: antes, FACTOR_R8 y FACTOR_R8_GEN, variables de este
+  // paso que reescribía factorCopaDeConfig). ?factorR8= > configuración del servidor (escalera.factorCopa, que pone 07ab con factorCopaDeConfig()) > D.config > código.
+  var FactorR8 = Mundos.creaFactorR8({ busqueda: location.search, D: D, param: function (ruta, codigo, url) { return Config.param(ruta, codigo, url); } });   // Config (02c) se pide al usarlo
+  function factorCopaDeConfig() { return FactorR8.deConfig(); }
   // ESC_R8 = FACTOR_R8 / 0,5 escala lo que hoy se dibuja con r8 tal cual (relleno, sombras, ramas): con 0,5 vale 1 y no cambia nada
-  var ESC_R8 = FACTOR_R8 / 0.5;
+  var ESC_R8 = FactorR8.E.r8 / 0.5;
 
   // [paso: 01a_aparato]
   // ---------- AG-0.3: UNA sola detección del aparato (doc/sistema/COMPONENTES.md#aparato). MU5-n (A3-8a): migrado a TypeScript; el código vive en
@@ -153,7 +146,7 @@ function arranca(): void {
   var EntidadesPuro = Nucleo.EntidadesPuro;
   var EntidadesUsables = Interfaz.creaEntidades({
     $: $, THREE: THREE, Bus: Bus, get Materiales() { return Materiales; }, get scene() { return scene; }, get lienzo() { return lienzo; }, get pp() { return pp; }, get dr() { return dr; },
-    get enDron() { return enDron; }, get paseando() { return paseando; }, get VRX() { return VRX; }, ventana: window, documento: document
+    get enDron() { return Vida.E.enDron; }, get paseando() { return Paseo.E.paseando; }, get VRX() { return VRX; }, ventana: window, documento: document
   });
   var Entidades = EntidadesUsables.Entidades, Usables = EntidadesUsables.Usables;
   Componentes.registra(Interfaz.manifiestoEntidades(EntidadesUsables));
@@ -353,7 +346,7 @@ function arranca(): void {
   // «arboles-l0» de los mundos ["exterior"] con un libera() que suelta los grupos, la entidad y los materiales (lo registra 90_final.js, como los de A3-1a). L5-01: el tronco del nivel 0 ya no comparte nombre con el del paisaje.
   // [talón] apps/web/src/mundos/exterior/arboles-l0.ts
   var Arboles0 = Mundos.creaArbolesL0({
-    THREE: THREE, scene: scene, camera: camera, Estaticos: Estaticos, Materiales: Materiales, Entidades: Entidades, Estado: Estado, D: D, fmt: fmt, FACTOR_R8: FACTOR_R8, ESC_R8: ESC_R8,
+    THREE: THREE, scene: scene, camera: camera, Estaticos: Estaticos, Materiales: Materiales, Entidades: Entidades, Estado: Estado, D: D, fmt: fmt, FACTOR_R8: FactorR8.E.r8, ESC_R8: ESC_R8,
     suelo: suelo, aviva: aviva, colorEn: colorEn, hash: hash, copas: copas, marc: marc, colorVertSRGB: colorVertSRGB,
     Generados: { rotulo: function (i) { return Generados.rotulo(i); }, escalera: function () { return Generados.escalera(); } },   // 07ab se carga después: por función
     parcelas: function () { return parcelas; }   // 13_parcelas, después de este módulo
@@ -369,8 +362,7 @@ function arranca(): void {
     THREE: THREE, lienzo: function (lado) { var cv = document.createElement("canvas"); cv.width = cv.height = lado; return cv; }, texColor: texColor, Materiales: Materiales, Estaticos: Estaticos,
     gSombras: gSombras, Estado: Estado, ESC_R8: ESC_R8, suelo: suelo, copaAlta: copaAlta, aviva: aviva, colorEn: colorEn, hash: hash, copas: copas, radioEn: radioEn,
     construyeFrutosLista: function (g) { construyeFrutosLista(g); },   // 23_estacion se carga después
-    sombrasSol: function (forzar) { sombrasSol(forzar); },   // 18_paisaje, que lee instSombra
-    ponInstSombra: function (m) { instSombra = m; },   // instSombra es de 18_paisaje (la escribe este módulo, como siempre)
+    sombrasSol: function (forzar) { sombrasSol(forzar); },   // 18_paisaje, que lee la malla de sombras con Follaje.sombras()
     VrPresupuesto: typeof VrPresupuesto !== "undefined" ? VrPresupuesto : null
   });
   var matHojaG = Follaje.matHojaG, matHojaP = Follaje.matHojaP, matCorteza = Follaje.matCorteza, matSombra = Follaje.matSombra, geoSombra = Follaje.geoSombra;
@@ -394,12 +386,12 @@ function arranca(): void {
   var Escalera = Mundos.Escalera;
   var Generados = Mundos.creaGenerados({
     THREE: THREE, D: D, VRP: VRP, Aparato: Aparato, Config: Config, Materiales: Materiales, gArboles: gArboles, camera: camera, Estado: Estado, suelo: suelo,
-    factorR8Gen: function () { return FACTOR_R8_GEN; }, factorCopaDeConfig: factorCopaDeConfig, parcheTiempo: function (sh, viento) { parcheTiempo(sh, viento); }, tiempoTsl: function () { return typeof nodosTiempoTsl === "function" ? nodosTiempoTsl : null; },   // A3-4: los nodos del tiempo (15_tiempo) para la TSL apagada
+    factorR8Gen: function () { return FactorR8.E.gen; }, factorCopaDeConfig: factorCopaDeConfig, parcheTiempo: function (sh, viento) { parcheTiempo(sh, viento); }, tiempoTsl: function () { return typeof nodosTiempoTsl === "function" ? nodosTiempoTsl : null; },   // A3-4: los nodos del tiempo (15_tiempo) para la TSL apagada
     busqueda: location.search, reloj: performance, consola: console, ventana: typeof window !== "undefined" ? window : null,
     cargaConstructor: function () { return typeof window !== "undefined" && window.OlivoGen ? Promise.resolve(window.OlivoGen) : import("gemelo-olivo"); },
     renderer: function () { return typeof renderer !== "undefined" ? renderer : null; },
     scene: function () { return typeof scene !== "undefined" ? scene : null; },
-    paseo: function () { return typeof paseando !== "undefined" && paseando && typeof pp !== "undefined" ? pp : null; },
+    paseo: function () { return typeof Paseo !== "undefined" && Paseo.E.paseando && typeof pp !== "undefined" ? pp : null; },
     red: function () { return typeof fetch === "function" ? fetch : null; }
   });
   Componentes.registra(Mundos.manifiestoGenerados(Generados));
@@ -420,11 +412,11 @@ function arranca(): void {
   // VRX, Ajustes) entra por getters: muchos se cargan después de 07b. Aquí se cablea lo del legado.
   // [talón] apps/web/src/mundos/exterior/arboles.ts
   var Arboles = Mundos.creaArboles({
-    THREE: THREE, FACTOR_R8: FACTOR_R8, busqueda: location.search, Aparato: Aparato, Config: Config, Mundo: Mundo, Cola: Cola, ColaExt: ColaExt, CargaPuro: CargaPuro, XrPerillas: XrPerillas,
+    THREE: THREE, FACTOR_R8: FactorR8.E.r8, busqueda: location.search, Aparato: Aparato, Config: Config, Mundo: Mundo, Cola: Cola, ColaExt: ColaExt, CargaPuro: CargaPuro, XrPerillas: XrPerillas,
     VrControlPuro: VrControlPuro, InfoDibujo: InfoDibujo, Estaticos: Estaticos, TopeTilesPuro: TopeTilesPuro, TopeOlivos: TopeOlivos, OlivosTiles: OlivosTiles, Catalogo: Catalogo,
     Escalera: Escalera, Generados: Generados, Lejanos: Lejanos, renderer: renderer, camera: camera, Estado: Estado, suelo: suelo, copaAlta: copaAlta, aviva: aviva, hash: hash, copas: copas,
     ALTO_MAX: ALTO_MAX, gArboles: gArboles, arbolesG: arbolesG, follajeG: follajeG, construyeSombras: construyeSombras, ventana: window, ahora: function () { return performance.now(); },
-    get paseando() { return typeof paseando !== "undefined" ? paseando : false; }, get kcor() { return TinteOrto.E.kcor; }, get tinte() { return TinteOrto.E.tinte; }, get ndviIdx() { return typeof FechaNdvi !== "undefined" ? FechaNdvi.E.idx : 0; },
+    get paseando() { return typeof Paseo !== "undefined" ? Paseo.E.paseando : false; }, get kcor() { return TinteOrto.E.kcor; }, get tinte() { return TinteOrto.E.tinte; }, get ndviIdx() { return typeof FechaNdvi !== "undefined" ? FechaNdvi.E.idx : 0; },
     get objetivo() { return typeof objetivo !== "undefined" ? objetivo : null; }, get orb() { return typeof orb !== "undefined" ? orb : null; }, get pp() { return typeof pp !== "undefined" ? pp : null; },
     get VRX() { return typeof VRX !== "undefined" ? VRX : null; }, get Ajustes() { return typeof Ajustes !== "undefined" ? Ajustes : undefined; }
   });
@@ -459,7 +451,7 @@ function arranca(): void {
   // [talón] apps/web/src/mundos/comun/camara.ts
   var Camara = Mundos.creaCamara({
     THREE: THREE, camera: camera, lienzo: lienzo, Estado: Estado, $: $, fmt: fmt, DIST_MAX: DIST_MAX, DIST_INI: DIST_INI, Usables: Usables, aplica: aplica, capas: capas, aplicaLuego: aplicaLuego,
-    paseando: function () { return paseando; }, ponKcor: function (v) { TinteOrto.E.kcor = v; }, IrA: function () { return IrA; }, parcelaSel: function () { return Parcelas.parcelaSel(); },
+    paseando: function () { return Paseo.E.paseando; }, ponKcor: function (v) { TinteOrto.E.kcor = v; }, IrA: function () { return IrA; }, parcelaSel: function () { return Parcelas.parcelaSel(); },
     elegirParcela: function (i) { elegirParcela(i); }, Ajustes: function () { return typeof Ajustes !== "undefined" ? Ajustes : null; }
   });
   var objetivo = Camara.objetivo, orb = Camara.orb, camara = Camara.camara, sensMirar = Camara.sensMirar, pon = Camara.pon;
@@ -494,22 +486,20 @@ function arranca(): void {
   // [paso: 12_paseo]
   // ---------- paseo: una persona que camina por el olivar (flechas o WASD; Mayús corre; V cambia de cámara), con la cruceta, la palanca (PalancaPuro) y la cámara de seguimiento.
   // MU5-n (A3-6c): migrado a TypeScript; el código vive en apps/web/src/mundos/comun/paseo.ts, componente «paseo» de TODOS los mundos (la locomoción es de todo mundo) con un libera()
-  // que suelta el muñequito y quita sus escuchas. El estado que el resto del legado lee por su nombre (paseando, persona, teclas) vive en paseo.ts y se espeja aquí en cuanto cambia;
-  // primera es de aquí (la escriben 16_vida y 29_vr) y paseo.ts la lee y la escribe por función. Lo que se declara después (13, 16, 24, 33, 12c, 90) entra por función.
-  // El componente lo registra 90_final.js (como Vida), porque este fichero declara las var del estado espejado y no es un talón puro.
-  var paseando = false, persona: any = null, teclas: any = {}, primera = false;
+  // que suelta el muñequito y quita sus escuchas. El estado que leen los demás pasos (paseando, persona, teclas y primera, que
+  // escriben también 16_vida y 29_vr) vive en Paseo.E (A3-8c: antes, var de este paso que se espejaban). Lo que se declara después (13, 16, 24, 33, 12c, 90) entra por función.
+  // El componente lo registra 90_final (como Vida), con el resto de lo que el arranque usa por su nombre desde que se monta.
   var Paseo = Mundos.creaPaseo({
     THREE: THREE, scene: scene, camera: camera, Estado: Estado, Materiales: Materiales, D: D, $: $, lienzo: lienzo, visor: visor, copaAlta: copaAlta, sensMirar: sensMirar,
-    primera: function () { return primera; }, ponPrimera: function (v) { primera = v; }, parcelaSel: function () { return Parcelas.parcelaSel(); }, fincaSel: function () { return Parcelas.fincaSel(); },
-    fincas: function () { return fincas; }, enQuad: function () { return enQuad; }, enDron: function () { return enDron; }, TR: function () { return TR; },
+    parcelaSel: function () { return Parcelas.parcelaSel(); }, fincaSel: function () { return Parcelas.fincaSel(); },
+    fincas: function () { return fincas; }, enQuad: function () { return Vida.E.enQuad; }, enDron: function () { return Vida.E.enDron; }, TR: function () { return TR; },
     iniciaTransicion: function () { iniciaTransicion(); }, iniciaSalida: function () { iniciaSalida(); }, Ajustes: function () { return typeof Ajustes !== "undefined" ? Ajustes : null; },
     IrA: function () { return IrA; }, gm: function () { return gm; }, documento: document, ventana: window,
     vida: {   // 16_vida se monta después: cada mando de la vida se pide al usarlo
       velPaseo: function (av, dt) { return velPaseo(av, dt); }, giroPaseo: function (v) { return giroPaseo(v); }, ponQuad: function (on) { ponQuad(on); }, ponDron: function (on) { ponDron(on); },
       vidaPaseo: function (dt, gy, vel) { vidaPaseo(dt, gy, vel); }, cicloVista: function () { cicloVista(); }, dronMando: function (av, gi, dt) { dronMando(av, gi, dt); },
       camaraDron: function (dt, gy) { return camaraDron(dt, gy); }, vidaEntra: function () { vidaEntra(); }, vidaSale: function () { vidaSale(); }
-    },
-    espeja: function (e) { paseando = e.paseando; persona = e.persona; teclas = e.teclas; }
+    }
   });
   var pp = Paseo.pp, camPos = Paseo.camPos, PalancaPuro = Paseo.PalancaPuro, ponPalanca = Paseo.ponPalanca, giraPalanca = Paseo.giraPalanca;
   var entraPaseo = Paseo.entraPaseo, salePaseo = Paseo.salePaseo, actualizaPaseo = Paseo.actualizaPaseo;
@@ -522,7 +512,7 @@ function arranca(): void {
   var LlegadaPuro = Nucleo.LlegadaPuro;
   var Llegada = Mundos.creaLlegada({
     THREE: THREE, scene: scene, camera: camera, Estado: Estado, Materiales: Materiales, lienzo: lienzo, visor: visor, $: $, pp: pp, camPos: camPos, entraPaseo: entraPaseo,
-    paseando: function () { return paseando; }, enDron: function () { return enDron; }, ponDron: function (on) { ponDron(on); }, VRX: function () { return VRX; },
+    paseando: function () { return Paseo.E.paseando; }, enDron: function () { return Vida.E.enDron; }, ponDron: function (on) { ponDron(on); }, VRX: function () { return VRX; },
     vrFundido: function (fn) { return vrFundido(fn); }, vrAparece: function (x, y, ang) { vrAparece(x, y, ang); }, gm: function () { return gm; },
     documento: document, ventana: window
   });
@@ -536,7 +526,7 @@ function arranca(): void {
   var IrAPuro = Nucleo.IrAPuro;
   var IrA = Mundos.creaIrA({
     THREE: THREE, scene: scene, Estado: Estado, Materiales: Materiales, suelo: suelo, copas: function () { return copas; }, pp: pp, Llegada: Llegada,
-    paseando: function () { return paseando; }, teclas: function () { return teclas; }, enQuad: function () { return enQuad; }, enDron: function () { return enDron; },
+    paseando: function () { return Paseo.E.paseando; }, teclas: function () { return Paseo.E.teclas; }, enQuad: function () { return Vida.E.enQuad; }, enDron: function () { return Vida.E.enDron; },
     VRX: function () { return VRX; }, Ajustes: function () { return typeof Ajustes !== "undefined" ? Ajustes : null; }, gm: function () { return gm; },
     busqueda: typeof location !== "undefined" ? location.search : ""
   });
@@ -560,7 +550,7 @@ function arranca(): void {
   // [talón] apps/web/src/mundos/exterior/hazas.ts
   var HazasPuro = Mundos.HazasPuro;
   var Hazas = Mundos.creaHazas({
-    THREE: THREE, D: D, Bus: Bus, Entidades: Entidades, Usables: Usables, camera: camera, Estado: Estado, suelo: suelo, objetivo: objetivo, pp: pp, get paseando() { return paseando; }
+    THREE: THREE, D: D, Bus: Bus, Entidades: Entidades, Usables: Usables, camera: camera, Estado: Estado, suelo: suelo, objetivo: objetivo, pp: pp, get paseando() { return Paseo.E.paseando; }
   });
   Componentes.registra(Mundos.manifiestoHazas(Hazas));
   // [paso: 14_historia] Talón (MU5-n, A3-7b1) de apps/web/src/mundos/exterior/historia.ts: HistoriaPuro y el componente «historia-recorrido» de los mundos ["exterior"] (el recorrido guiado de Hituelo con lo que sabe OlivarTrack), con su libera() (escuchas, puntos de escena y mallas de resalte). OT (la instantánea D.ot) y VIVO (hoy null) los leen 19_balizas y 23_estacion. El trozo [puro] lo evalúa en Node pruebas/guardianes/historia_vivo.test.js (que lee el .ts como JavaScript, _fuente.js).
@@ -570,10 +560,9 @@ function arranca(): void {
   // [talón] apps/web/src/mundos/exterior/historia.ts
   var Historia = Mundos.creaHistoria({
     THREE: THREE, D: D, $: $, tinta: tinta, fmt: fmt, suelo: suelo, copas: copas, cIn: cIn, marc: marc, med: med, Materiales: Materiales, Estaticos: Estaticos, scene: scene, UN: UN,
-    orb: orb, pon: pon, NDV: NDV, pintaNdvi: pintaNdvi, get ndviIdx() { return FechaNdvi.E.idx; }, ponNdviIdx: function (i) { FechaNdvi.pon(i); }, get paseando() { return paseando; }, salePaseo: salePaseo,
+    orb: orb, pon: pon, NDV: NDV, pintaNdvi: pintaNdvi, get ndviIdx() { return FechaNdvi.E.idx; }, ponNdviIdx: function (i) { FechaNdvi.pon(i); }, get paseando() { return Paseo.E.paseando; }, salePaseo: salePaseo,
     parcelas: parcelas, fincas: fincas, claseUsda: claseUsda, elegirParcela: elegirParcela, elegirFinca: elegirFinca
   });
-  var OT = Historia.OT, VIVO = Historia.VIVO;
   Componentes.registra(Mundos.manifiestoHistoria(Historia));
   // [paso: 15_tiempo] Talón (MU5-n, A3-4; extracción parcial hasta A3-8a): el tiempo vive en apps/web/src/mundos/exterior/tiempo*.ts, componente «tiempo-mundo». Lee /api/tiempo (mismo origen) solo con D.base /teselas/… o ?api=; si no, el tiempo simulado, dicho. Expone TiempoVivo (contratos/interfaces.json). TiempoPuro (tiempo-puro.ts) lo evalúa en Node pruebas/guardianes/tiempo_motor.test.js.
   // ---------- el tiempo: el mundo del gemelo simula el que publica Vigía (contratos/tiempo.md). MU5-n (A3-4): migrado a TypeScript; el código vive en
@@ -613,17 +602,15 @@ function arranca(): void {
   // ---------- la vida del olivar: el quad con estela de luz (Tron) y el dron para el paseo (los pájaros y los conejos son el componente «fauna-olivar», 16b_fauna.js; los perros, «perros-paseo»).
   // MU5-n (A3-5): migrado a TypeScript; el código vive en apps/web/src/mundos/exterior/vida.ts (el grupo de la fauna, el quad, el dron, el anillo, las estelas y los mandos del paseo), componente
   // «vida» de los mundos ["exterior"] con un libera() que suelta de verdad todo lo que crea y quita las escuchas de sus botones (L2-05, L2-11; lo registra 90_final.js, como los de A3-1a).
-  // Aquí se cablea lo del legado: el estado que lee el resto de módulos (tVida, enQuad, vq, enDron) se espeja en estas var cada vez que cambia en Vida.E, y las funciones de siempre
-  // (velPaseo, ponDron…) son las de Vida con el mismo nombre.
-  var tVida = 0, enQuad = false, vq = 0, enDron = false;
+  // Aquí se cablea lo del legado: el estado que leen los demás pasos (tVida, enQuad, vq, enDron) se lee en Vida.E (A3-8c: antes, var de este paso que lo espejaban), y las
+  // funciones de siempre (velPaseo, ponDron…) son las de Vida con el mismo nombre.
   var Vida = Mundos.creaVida({
     THREE: THREE, scene: scene, camera: camera, Estado: Estado, Materiales: Materiales, Bus: Bus, $: $, suelo: suelo, copaAlta: copaAlta,
     sueloMundo: function (x, y) { return gm.suelo(x, y); }, obstaculo: function (x, y, r) { return gm.obstaculo(x, y, r); },   // el mundo activo (90_final, que declara gm después)
     geoSombra: geoSombra, matSombra: matSombra, texBrillo: texBrillo, nivelEn: nivelEn, cur: cur, ins: ins, num1: num1, rumbo: rumbo,
-    paseando: function () { return paseando; }, teclas: function () { return teclas; }, persona: function () { return persona; },   // 12_paseo: cambian (teclas se reemplaza al salir)
-    primera: function () { return primera; }, ponPrimera: function (v) { primera = v; }, pp: pp, camPos: camPos, Llegada: Llegada,
-    pendFactor: function () { return pendFactor(); }, quadInc: function () { return quadInc; }, inclinaQuad: function (dt) { inclinaQuad(dt); },   // 22_huellas, que se carga después
-    espeja: function (e) { tVida = e.tVida; enQuad = e.enQuad; vq = e.vq; enDron = e.enDron; }
+    paseando: function () { return Paseo.E.paseando; }, teclas: function () { return Paseo.E.teclas; }, persona: function () { return Paseo.E.persona; },   // 12_paseo: cambian (teclas se reemplaza al salir)
+    primera: function () { return Paseo.E.primera; }, ponPrimera: function (v) { Paseo.E.primera = v; }, pp: pp, camPos: camPos, Llegada: Llegada,
+    pendFactor: function () { return pendFactor(); }, quadInc: function () { return quadInc; }, inclinaQuad: function (dt) { inclinaQuad(dt); }   // 22_huellas, que se carga después
   });
   var gFauna = Vida.gFauna, altSuelo = Vida.altSuelo, quita = Vida.quita, mira = Vida.mira, quad = Vida.quad, temaEstela = Vida.temaEstela;
   var velPaseo = Vida.velPaseo, giroPaseo = Vida.giroPaseo, ponQuad = Vida.ponQuad, vidaPaseo = Vida.vidaPaseo, dr = Vida.dr, dron = Vida.dron, ponDron = Vida.ponDron;
@@ -638,8 +625,8 @@ function arranca(): void {
   // [talón] apps/web/src/mundos/exterior/fauna.ts
   Componentes.registra(Mundos.manifiestoFauna({
     THREE: THREE, Materiales: Materiales, camera: camera, D: D, copas: copas, cIn: cIn, geoSombra: geoSombra, matSombra: matSombra,
-    paseando: function () { return paseando; }, pp: pp, cur: cur, nivelEn: nivelEn,   // 12_paseo y 15_tiempo
-    tVida: function () { return tVida; }, enQuad: function () { return enQuad; },   // 16_vida: el estado del paseo (cambian cada fotograma: por función)
+    paseando: function () { return Paseo.E.paseando; }, pp: pp, cur: cur, nivelEn: nivelEn,   // 12_paseo y 15_tiempo
+    tVida: function () { return Vida.E.tVida; }, enQuad: function () { return Vida.E.enQuad; },   // 16_vida: el estado del paseo (cambian cada fotograma: por función)
     gFauna: gFauna, altSuelo: altSuelo, mira: mira, Estado: Estado, fusionaGeometrias: fusionaGeometrias,
     Minimapa: { capa: function (fn, orden) { return Minimapa.capa(fn, orden); } }   // 17_minimapa se carga después de 16b: se pide al montar, no al cargar
   }));
@@ -651,7 +638,7 @@ function arranca(): void {
   // [talón] apps/web/src/ui/minimapa.ts
   var MinimapaUI = Interfaz.creaMinimapa({
     $: $, D: D, x0: x0, yN: yN, ANCHO: ANCHO, ALTO: ALTO, Mundo: Mundo, cIn: cIn, Entidades: Entidades, Usables: Usables, pp: pp, dr: dr,
-    get paseando() { return paseando; }, get enQuad() { return enQuad; }, get enDron() { return enDron; }, get avisoBaliza() { return avisoBaliza; },
+    get paseando() { return Paseo.E.paseando; }, get enQuad() { return Vida.E.enQuad; }, get enDron() { return Vida.E.enDron; }, get avisoBaliza() { return avisoBaliza; },
     get dibujaBalizasMini() { return dibujaBalizasMini; }, get Movibles() { return typeof Movibles !== "undefined" ? Movibles : undefined; }, ventana: window, documento: document
   });
   var Minimapa = MinimapaUI.Minimapa, actualizaMinimapa = MinimapaUI.actualizaMinimapa;
@@ -660,29 +647,29 @@ function arranca(): void {
   // ---------- el paisaje que sale del LiDAR: edificios (clase 6), el tendido y sus postes, el arroyo y los árboles que no son olivos
   // MU5-n (A3-3): migrado a TypeScript; el código vive en apps/web/src/mundos/exterior/paisaje.ts (Mundos.creaPaisaje), componente «paisaje-lidar» de los mundos ["exterior"] con un libera()
   // que suelta el grupo, las geometrías, los InstancedMesh, los materiales y la malla de sombras que añade al grupo de 06_arboles (L2-05). Aquí solo se cablea lo del legado.
-  // Lo que otros módulos escriben o leen suelto no puede ser una importación (MUNDOS §9.3): 07_follaje asigna instSombra (la malla de sombras de los olivos) y este módulo la lee por
-  // una función; aguaNivel lo mueve actualizaPaisaje (por ponAgua) y lo leen 20_sonido y 22_huellas. Las dos variables nacen aquí con el valor inicial que da el módulo.
+  // La malla de sombras de los olivos la da 07_follaje (Follaje.sombras()) y este módulo la lee por una función; el nivel del agua lo mueve actualizaPaisaje y lo leen
+  // 20_sonido y 22_huellas con Paisaje.agua() (A3-8c: antes, las variables instSombra y aguaNivel de este paso).
   // EST (23_estacion) se declara después de este módulo: entra como función que lo pide en cada uso.
   // [talón] apps/web/src/mundos/exterior/paisaje.ts
   var Paisaje = Mundos.creaPaisaje({
     THREE: THREE, D: D, $: $, ESC_R8: ESC_R8, suelo: suelo, copas: copas, hash: hash, SRGB: SRGB, Estado: Estado, Estaticos: Estaticos, Materiales: Materiales, scene: scene,
     gSombras: gSombras, matSombra: matSombra, geoSombra: geoSombra, cur: cur, nivelEn: nivelEn, EST: function () { return EST; }, VrPresupuesto: typeof VrPresupuesto !== "undefined" ? VrPresupuesto : null,
-    instSombra: function (): any { return instSombra; }, tMundo: function () { return Tiempo.tMundo(); }, ponAgua: function (v) { aguaNivel = v; }
+    instSombra: function (): any { return Follaje.sombras(); }, tMundo: function () { return Tiempo.tMundo(); }
   });
-  var colocaPaisaje = Paisaje.colocaPaisaje, sombrasSol = Paisaje.sombrasSol, instSombra = Paisaje.instSombra, aguaNivel = Paisaje.aguaNivel;
+  var colocaPaisaje = Paisaje.colocaPaisaje, sombrasSol = Paisaje.sombrasSol;   // A3-8c: el nivel del agua, Paisaje.agua() (antes, la variable aguaNivel)
   var actualizaPaisaje = Paisaje.actualizaPaisaje, ejeArroyo = Paisaje.ejeArroyo, distArroyo = Paisaje.distArroyo;
   Componentes.registra(Mundos.manifiestoPaisaje(Paisaje));
   // [paso: 19_balizas] Registra el tipo baliza en Entidades (C7). Publica además window.__vrBalizas (pruebas VR: el pie de cada columna de luz).
   // ---------- las balizas: una por parcela, con lo que OlivarTrack sabe de ella; en el paseo, al acercarte, sale su ficha
   // MU5-n (A3-3): migrado a TypeScript; el código vive en apps/web/src/mundos/exterior/balizas.ts (Mundos.creaBalizas), componente «balizas-parcela» de los mundos ["exterior"] con un
   // libera() que suelta el grupo, las geometrías, los materiales, el tipo «baliza» de Entidades, el oyente de la ficha, el aviso del minimapa y window.__vrBalizas (L2-05).
-  // Aquí solo se cablea lo del legado. OT, VIVO, paseando, enQuad y tVida los reescriben otros módulos (primitivas del legado, no pueden ser importaciones, MUNDOS §9.3): entran
+  // Aquí solo se cablea lo del legado. OT y VIVO (Historia), paseando (Paseo.E), enQuad y tVida (Vida.E) entran
   // como funciones que los leen en cada uso. TR (24_pantalla), Encuentro y sitioJunto (26_presencia) y VRX (29_vr) se montan DESPUÉS de este módulo: también por función.
   // [talón] apps/web/src/mundos/exterior/balizas.ts
   var Balizas = Mundos.creaBalizas({
     THREE: THREE, $: $, suelo: suelo, bus: Bus, Entidades: Entidades, Usables: Usables, Materiales: Materiales, Estaticos: Estaticos, visor: visor, scene: scene, camera: camera, Estado: Estado,
     objetivo: objetivo, pp: pp, Llegada: Llegada, parcelas: parcelas, HazasPuro: HazasPuro, D: D, num1: num1, esc: esc, documento: document, ventana: window as any,
-    paseando: function () { return paseando; }, OT: function () { return OT; }, VIVO: function () { return VIVO; }, tVida: function () { return tVida; }, enQuad: function () { return enQuad; },
+    paseando: function () { return Paseo.E.paseando; }, OT: function () { return Historia.OT; }, VIVO: function () { return Historia.VIVO; }, tVida: function () { return Vida.E.tVida; }, enQuad: function () { return Vida.E.enQuad; },
     TR: function () { return TR; }, Encuentro: function () { return Encuentro; }, VRX: function () { return VRX; }, sitioJunto: function (c, desde, r, dist) { return sitioJunto(c, desde, r, dist); }
   });
   var colocaBalizas = Balizas.colocaBalizas, avisoBaliza = Balizas.avisoBaliza, dibujaBalizasMini = Balizas.dibujaBalizasMini, actualizaBalizas = Balizas.actualizaBalizas;
@@ -696,9 +683,9 @@ function arranca(): void {
     ventana: window, documento: document, cur: cur, nivelEn: nivelEn,
     ajustes: function () { return typeof Ajustes !== "undefined" ? Ajustes : null; }, panelVR: function () { return typeof PanelVR !== "undefined" ? PanelVR : null; },
     vrx: function () { return typeof VRX !== "undefined" ? VRX : null; },
-    paseando: function () { return paseando; }, teclas: function () { return teclas; }, pp: function () { return pp; }, tVida: function () { return tVida; },
-    enQuad: function () { return enQuad; }, vq: function () { return vq; }, enDron: function () { return enDron; }, dr: function () { return dr; },
-    aguaNivel: function () { return aguaNivel; }, distArroyo: function (x, y) { return distArroyo(x, y); }
+    paseando: function () { return Paseo.E.paseando; }, teclas: function () { return Paseo.E.teclas; }, pp: function () { return pp; }, tVida: function () { return Vida.E.tVida; },
+    enQuad: function () { return Vida.E.enQuad; }, vq: function () { return Vida.E.vq; }, enDron: function () { return Vida.E.enDron; }, dr: function () { return dr; },
+    aguaNivel: function () { return Paisaje.agua(); }, distArroyo: function (x, y) { return distArroyo(x, y); }
   }));
   // [paso: 21_suelo]
   // ---------- el suelo según el NDVI (dónde hay tierra desnuda y dónde hierba, y cómo de vigorosa) y las matas de hierba y las piedras alrededor de donde miras.
@@ -708,8 +695,8 @@ function arranca(): void {
   var Hierba = Mundos.creaHierba({
     THREE: THREE, D: D, i16: i16, x0: x0, yN: yN, ANCHO: ANCHO, ALTO: ALTO, VRP: VRP, $: $, suelo: suelo, scene: scene, Estado: Estado, texColor: texColor, colorVertSRGB: colorVertSRGB,
     Materiales: Materiales, Estaticos: Estaticos, hash: hash, UN: UN, objetivo: objetivo, orb: orb, NDV: NDV, ndviIdx: function () { return FechaNdvi.E.idx; },
-    paseando: function () { return paseando; }, pp: pp, uViento: uViento, uSombra: uSombra, GLSL_SOMBRA: GLSL_SOMBRA, num1: num1,
-    enDron: function () { return typeof enDron !== "undefined" && enDron; }, dr: function () { return dr; },   // 16_vida, después en el montaje
+    paseando: function () { return Paseo.E.paseando; }, pp: pp, uViento: uViento, uSombra: uSombra, GLSL_SOMBRA: GLSL_SOMBRA, num1: num1,
+    enDron: function () { return typeof Vida !== "undefined" && Vida.E.enDron; }, dr: function () { return dr; },   // 16_vida, después en el montaje
     ejeArroyo: function () { return typeof ejeArroyo !== "undefined" ? ejeArroyo : []; }, distArroyo: function (x, y) { return distArroyo(x, y); },   // 18_paisaje, después
     lienzo: function () { return document.createElement("canvas"); }
   });
@@ -723,7 +710,7 @@ function arranca(): void {
   // [talón] apps/web/src/mundos/exterior/huellas.ts
   var Huellas = Mundos.creaHuellas({
     suelo: suelo, Estado: Estado, pp: pp, quad: function () { return quad; }, cur: cur,
-    aguaNivel: function () { return aguaNivel; },   // 18_paisaje: un valor que cambia
+    aguaNivel: function () { return Paisaje.agua(); },   // 18_paisaje: un valor que cambia
     cubierta: function (x, y) { return cubierta(x, y); }   // 21_suelo, que se carga después
   });
   var pendienteRumbo = Huellas.pendienteRumbo, pendFactor = Huellas.pendFactor, quadInc = Huellas.quadInc, inclinaQuad = Huellas.inclinaQuad, sueloSeco = Huellas.sueloSeco;
@@ -735,9 +722,9 @@ function arranca(): void {
   // [talón] apps/web/src/mundos/exterior/huellas-polvo.ts
   Componentes.registra(Mundos.manifiestoHuellasPolvo({
     THREE: THREE, scene: scene, Estaticos: Estaticos, Materiales: Materiales, suelo: suelo, Estado: Estado,
-    pp: pp, paseando: function () { return paseando; }, teclas: function () { return teclas; },   // 12_paseo: paseando cambia y teclas se reemplaza al salir del paseo
+    pp: pp, paseando: function () { return Paseo.E.paseando; }, teclas: function () { return Paseo.E.teclas; },   // 12_paseo: paseando cambia y teclas se reemplaza al salir del paseo
     cur: cur, nivelEn: nivelEn,
-    tVida: function () { return tVida; }, enQuad: function () { return enQuad; }, vq: function () { return vq; }, enDron: function () { return enDron; },   // 16_vida: el estado del paseo
+    tVida: function () { return Vida.E.tVida; }, enQuad: function () { return Vida.E.enQuad; }, vq: function () { return Vida.E.vq; }, enDron: function () { return Vida.E.enDron; },   // 16_vida: el estado del paseo
     dr: dr, altSuelo: altSuelo, sueloSeco: sueloSeco
   }));
   // [paso: 23_estacion] Publica además window.__otDebug (depuración del olivo estacional).
@@ -747,7 +734,7 @@ function arranca(): void {
   // [talón] apps/web/src/mundos/exterior/estacion.ts
   var Estacion = Mundos.creaEstacion({
     THREE: THREE, $: $, Materiales: Materiales, renderer: renderer, SRGB: SRGB, Estado: Estado, hash: hash, gFollaje: gFollaje, matHojaG: matHojaG, matHojaP: matHojaP,
-    NDV: NDV, ndviIdx: function () { return FechaNdvi.E.idx; }, SN: SN, parcelas: parcelas, OT: OT,
+    NDV: NDV, ndviIdx: function () { return FechaNdvi.E.idx; }, SN: SN, parcelas: parcelas, OT: Historia.OT,
     TiempoPuro: TiempoPuro, ahoraMs: ahoraMs, TM: TM, fmtHora: fmtHora, fmtClaveDia: fmtClaveDia, num1: num1, esc: esc, objetivoMundoBase: objetivoMundoBase, aplicaMundo: aplicaMundo,
     ventana: window, temporizador: { setTimeout: function (f, ms) { return setTimeout(f, ms); }, clearTimeout: function (id) { clearTimeout(id); } }, Evento: Event
   });
@@ -761,10 +748,10 @@ function arranca(): void {
   // como el paseo; sin nada que soltar). Aquí solo se cablea lo del legado: lo que cambia o se declara después (paseando, persona, Hud, tamano) entra por getter.
   // [talón] apps/web/src/ui/pantalla.ts
   var MenuPantalla = Interfaz.creaPantalla({
-    $: $, get paseando() { return paseando; }, get Hud() { return typeof Hud !== "undefined" ? Hud : undefined; }, get tamano() { return tamano; }, ventana: window, documento: document
+    $: $, get paseando() { return Paseo.E.paseando; }, get Hud() { return typeof Hud !== "undefined" ? Hud : undefined; }, get tamano() { return tamano; }, ventana: window, documento: document
   });
   var Menu = MenuPantalla.Menu;
-  var Transicion = Mundos.creaTransicion({ THREE: THREE, camera: camera, pp: pp, altSuelo: altSuelo, sueloSeco: sueloSeco, Bus: Bus, get persona() { return persona; } });
+  var Transicion = Mundos.creaTransicion({ THREE: THREE, camera: camera, pp: pp, altSuelo: altSuelo, sueloSeco: sueloSeco, Bus: Bus, get persona() { return Paseo.E.persona; } });
   var TR = Transicion.TR, iniciaTransicion = Transicion.iniciaTransicion, transEntrada = Transicion.transEntrada, iniciaSalida = Transicion.iniciaSalida, transSalida = Transicion.transSalida;
   Componentes.registra(Interfaz.manifiestoPantalla(MenuPantalla));
   // [paso: 25_perros] TALÓN (MU5-n, A3-5): el código vive en apps/web/src/mundos/exterior/perros.ts (Mundos.manifiestoPerros). Publica además window.__perrosDebug (depuración).
@@ -776,8 +763,8 @@ function arranca(): void {
   // [talón] apps/web/src/mundos/exterior/perros.ts
   Componentes.registra(Mundos.manifiestoPerros({
     THREE: THREE, Materiales: Materiales, D: D, copas: copas, camera: camera, texColor: texColor, hash: hash, geoSombra: geoSombra, matSombra: matSombra,
-    paseando: function () { return paseando; }, pp: pp,   // 12_paseo: paseando cambia
-    tVida: function () { return tVida; }, enQuad: function () { return enQuad; }, enDron: function () { return enDron; },   // 16_vida: el estado del paseo (cambian cada fotograma: por función)
+    paseando: function () { return Paseo.E.paseando; }, pp: pp,   // 12_paseo: paseando cambia
+    tVida: function () { return Vida.E.tVida; }, enQuad: function () { return Vida.E.enQuad; }, enDron: function () { return Vida.E.enDron; },   // 16_vida: el estado del paseo (cambian cada fotograma: por función)
     gFauna: gFauna, altSuelo: altSuelo, pendienteRumbo: pendienteRumbo, sueloSeco: sueloSeco, Minimapa: Minimapa, fusionaGeometrias: fusionaGeometrias,
     document: document, window: window,
     reloj: { setTimeout: function (f, ms: any) { return setTimeout(f, ms); }, clearTimeout: function (id: any) { clearTimeout(id); } }
@@ -804,8 +791,8 @@ function arranca(): void {
     THREE: THREE, location: location, window: window, consola: console, fetch: function (u, o: any) { return fetch(u, o); },
     cargaVrm: function () { return Promise.all([import("@pixiv/three-vrm"), import("three/addons/loaders/GLTFLoader.js")]); },
     Aparato: Aparato, Materiales: Materiales, Componentes: Componentes, suelo: suelo, renderer: renderer, scene: scene, camera: camera, Estado: Estado,
-    get paseando() { return paseando; }, get persona() { return persona; }, get primera() { return primera; }, get pp() { return pp; },
-    get enQuad() { return enQuad; }, get enDron() { return enDron; }, get VRX() { return VRX; }, get VrPresupuesto() { return VrPresupuesto; }
+    get paseando() { return Paseo.E.paseando; }, get persona() { return Paseo.E.persona; }, get primera() { return Paseo.E.primera; }, get pp() { return pp; },
+    get enQuad() { return Vida.E.enQuad; }, get enDron() { return Vida.E.enDron; }, get VRX() { return VRX; }, get VrPresupuesto() { return VrPresupuesto; }
   }));
   // [paso: 27_debug] Talón (MU5-n, A3-7a) de apps/web/src/ui/ganchos.ts: publica window.__g, el gancho de las pruebas (contrato en doc/sistema/CONTRATOS.md). No es un componente.
   // ---------- ganchos de depuración y de prueba: window.__g (contrato en doc/sistema/CONTRATOS.md), solo lectura y ajuste de cámara; sinDibujo para las pruebas de DOM.
@@ -815,7 +802,7 @@ function arranca(): void {
   var Ganchos = Interfaz.creaGanchos({
     Arboles: Arboles, Catalogo: Catalogo, Escena3D: Escena3D, OlivosTiles: OlivosTiles, Cola: Cola, SueloFotos: SueloFotos, Generados: Generados, Lejanos: Lejanos, Mundo: Mundo,
     InfoDibujo: InfoDibujo, Estado: Estado, copas: copas, suelo: suelo, orb: orb, objetivo: objetivo, camera: camera, renderer: renderer, scene: scene, pon: pon, aplica: aplica,
-    entraPaseo: entraPaseo, salePaseo: salePaseo, pp: pp, get paseando() { return paseando; }, get teclas() { return teclas; }, get listo() { return Marcadores.listo(); }, ventana: window
+    entraPaseo: entraPaseo, salePaseo: salePaseo, pp: pp, get paseando() { return Paseo.E.paseando; }, get teclas() { return Paseo.E.teclas; }, get listo() { return Marcadores.listo(); }, ventana: window
   });
   // [paso: 28_depura]
   // ---------- ?debug: un contador en la esquina del visor para medir en el móvil (ms de JS por fotograma, llamadas, triángulos, teselas y olivos por nivel)
@@ -842,8 +829,8 @@ function arranca(): void {
     Materiales: Materiales, UN: UN, Arboles: Arboles, Escena3D: Escena3D, pon: function (m) { pon(m); },
     NDV: function () { return NDV; }, ndviIdx: function () { return FechaNdvi.E.idx; }, parcelas: function () { return parcelas; }, fincas: function () { return fincas; }, meta: meta,
     pasoHoraMundo: function (d) { pasoHoraMundo(d); }, horaMundoTexto: function () { return horaMundoTexto(); },
-    paseando: function () { return paseando; }, primera: function () { return primera; }, ponPrimera: function (v) { primera = v; }, persona: function () { return persona; },
-    teclas: function () { return teclas; }, pp: pp, entraPaseo: function () { entraPaseo(); }, salePaseo: function () { salePaseo(); }, actualizaPaseo: function (dt) { actualizaPaseo(dt); },
+    paseando: function () { return Paseo.E.paseando; }, primera: function () { return Paseo.E.primera; }, ponPrimera: function (v) { Paseo.E.primera = v; }, persona: function () { return Paseo.E.persona; },
+    teclas: function () { return Paseo.E.teclas; }, pp: pp, entraPaseo: function () { entraPaseo(); }, salePaseo: function () { salePaseo(); }, actualizaPaseo: function (dt) { actualizaPaseo(dt); },
     Llegada: Llegada, pendFactor: function () { return pendFactor(); }, TR: TR,
     Ajustes: function () { return typeof Ajustes !== "undefined" ? Ajustes : null; },
     gm: function () { return gm; }, cuadro: function (t) { cuadro(t); }, tamano: function () { tamano(); }, pideFotograma: function () { requestAnimationFrame(bucle); },
@@ -875,7 +862,7 @@ function arranca(): void {
   var HudPuro = Interfaz.HudPuro;
   var Hud = Interfaz.creaHud({
     $: $, Bus: Bus, THREE: THREE, lienzo: lienzo, visor: visor, camera: camera, orb: orb, pp: pp, dr: dr, VRX: VRX, ponQuad: ponQuad, ponDron: ponDron,
-    get paseando() { return paseando; }, get enQuad() { return enQuad; }, get enDron() { return enDron; },
+    get paseando() { return Paseo.E.paseando; }, get enQuad() { return Vida.E.enQuad; }, get enDron() { return Vida.E.enDron; },
     get Ventanas() { return typeof Ventanas !== "undefined" ? Ventanas : undefined; }, get Ajustes() { return typeof Ajustes !== "undefined" ? Ajustes : undefined; },
     get Movibles() { return typeof Movibles !== "undefined" ? Movibles : undefined; }, get Menu() { return typeof Menu !== "undefined" ? Menu : undefined; },
     ventana: window, documento: document
@@ -888,7 +875,7 @@ function arranca(): void {
   // [talón] apps/web/src/ui/hud-personal.ts
   var HudPersonalPuro = Interfaz.HudPersonalPuro;
   var HudPersonal = Interfaz.creaHudPersonal({
-    $: $, Bus: Bus, Hazas: Hazas, horaMundoTexto: horaMundoTexto, objetivo: objetivo, pp: pp, Usables: Usables, Hud: Hud, get paseando() { return paseando; }
+    $: $, Bus: Bus, Hazas: Hazas, horaMundoTexto: horaMundoTexto, objetivo: objetivo, pp: pp, Usables: Usables, Hud: Hud, get paseando() { return Paseo.E.paseando; }
   });
   Componentes.registra(Interfaz.manifiestoHudPersonal(HudPersonal));
   // [paso: 31c_muneca] EV2-A3: el menú de muñeca en VR («hora · tu haza · hablar · volver», con los textos de HudPersonalPuro de 31b). MU5-n (A3-6a): talón del componente «muneca-vr», de todo mundo; el código vive en apps/web/src/mundos/comun/muneca.ts. Se engancha a 29_vr por PanelVR.alFotograma y PanelVR.alGatillo y lo suelta en su libera(); ?xrmuneca=0 y el ajuste vr.muneca lo apagan. Publica además window.__vrMuneca y __vrMunecaPulsa (pruebas VR). Lo prueban muneca.test.ts y en Node pruebas/guardianes/vr_muneca.test.js.
@@ -911,7 +898,7 @@ function arranca(): void {
   // [talón] apps/web/src/ui/ventanas.ts
   var VentanasPuro = Interfaz.VentanasPuro;
   var Ventanas = Interfaz.creaVentanas({
-    $: $, lienzo: lienzo, visor: visor, get paseando() { return paseando; }, get Movibles() { return typeof Movibles !== "undefined" ? Movibles : undefined; },
+    $: $, lienzo: lienzo, visor: visor, get paseando() { return Paseo.E.paseando; }, get Movibles() { return typeof Movibles !== "undefined" ? Movibles : undefined; },
     ventana: window, documento: document
   });
   Componentes.registra(Interfaz.manifiestoVentanas(Ventanas));
@@ -950,7 +937,7 @@ function arranca(): void {
   // [talón] apps/web/src/mundos/comun/palanca.ts
   var Palanca = Mundos.creaPalanca({
     $: $, lienzo: lienzo, visor: visor, documento: document, busqueda: typeof location !== "undefined" ? location.search : "", PalancaPuro: PalancaPuro, ponPalanca: ponPalanca,
-    giraPalanca: giraPalanca, sensMirar: sensMirar, paseando: function () { return paseando; }, Ajustes: function () { return typeof Ajustes !== "undefined" ? Ajustes : null; },
+    giraPalanca: giraPalanca, sensMirar: sensMirar, paseando: function () { return Paseo.E.paseando; }, Ajustes: function () { return typeof Ajustes !== "undefined" ? Ajustes : null; },
     cargaNipple: function () { return import("nipplejs"); }
   });
   Componentes.registra(Mundos.manifiestoPalanca(Palanca));
@@ -961,7 +948,7 @@ function arranca(): void {
   // Se abre con «Ver previsión» en la pestaña Mundo del panel VR, con la tecla P paseando, o con el evento «prevision:alterna» del Bus (el botón de la ventana Tiempo).
   // [talón] apps/web/src/mundos/exterior/fichas-tiempo.ts
   Componentes.registra(Mundos.manifiestoFichasTiempo({
-    THREE: THREE, Laminas: Laminas, Teclas: Teclas, Hud: Hud, VRX: VRX, PanelVR: PanelVR, camera: camera, TiempoVivo: TiempoVivo, ahoraMs: ahoraMs, nivel: nivel, get paseando() { return paseando; }
+    THREE: THREE, Laminas: Laminas, Teclas: Teclas, Hud: Hud, VRX: VRX, PanelVR: PanelVR, camera: camera, TiempoVivo: TiempoVivo, ahoraMs: ahoraMs, nivel: nivel, get paseando() { return Paseo.E.paseando; }
   }));
   // [paso: 36_mandos]
   // ---------- I6: el aspecto de los mandos y de las manos en VR (el modelo real del mando del perfil de WebXR Input Profiles y la mano articulada; de respaldo, la caja y las esferas).
@@ -998,7 +985,7 @@ function arranca(): void {
     utilesGeometria: function () { return import("three/addons/utils/BufferGeometryUtils.js"); },
     D: D, ConfigPuro: ConfigPuro, Aparato: Aparato, Materiales: Materiales, Entidades: Entidades, Componentes: Componentes, suelo: suelo, sitioJunto: sitioJunto,
     scene: scene, camera: camera, renderer: renderer, texColor: texColor, Estado: Estado, visor: visor, quad: quad, dron: dron,
-    get objetivo() { return objetivo; }, get paseando() { return paseando; }, get pp() { return pp; }, get enQuad() { return enQuad; }, get enDron() { return enDron; },
+    get objetivo() { return objetivo; }, get paseando() { return Paseo.E.paseando; }, get pp() { return pp; }, get enQuad() { return Vida.E.enQuad; }, get enDron() { return Vida.E.enDron; },
     get VRX() { return VRX; }, get Llegada() { return Llegada; }, get TR() { return TR; },
     get Ajustes() { return typeof Ajustes !== "undefined" ? Ajustes : undefined; }, get Movibles() { return typeof Movibles !== "undefined" ? Movibles : undefined; }
   }));
@@ -1012,7 +999,7 @@ function arranca(): void {
   // [talón] apps/web/src/mundos/exterior/oficina-balizas.ts
   Componentes.registra(Mundos.manifiestoOficinaBalizas({
     THREE: THREE, D: D, suelo: suelo, Componentes: Componentes, Entidades: Entidades, Estaticos: Estaticos, Materiales: Materiales, scene: scene, camera: camera, Estado: Estado, objetivo: objetivo, pp: pp,
-    Llegada: Llegada, Minimapa: Minimapa, Aspecto: Aspecto, Encuentro: Encuentro, sitioJunto: sitioJunto, get VRX() { return VRX; }, get paseando() { return paseando; }, get enQuad() { return enQuad; }
+    Llegada: Llegada, Minimapa: Minimapa, Aspecto: Aspecto, Encuentro: Encuentro, sitioJunto: sitioJunto, get VRX() { return VRX; }, get paseando() { return Paseo.E.paseando; }, get enQuad() { return Vida.E.enQuad; }
   }));
   // [paso: 40_juegos] Componente «juegos» (ADR-0023, C9a): el anfitrión de juegos casuales. Solo se registra; nadie lo nombra. Montado: icono y ventana «Juegos», tecla J, recoge los juegos por el Bus («juego:ofrece» / «juego:pide» / «juego:retira»), abre uno a pantalla completa con el mundo en pausa (Pausa de 02c; su fase «pausa») y guarda el récord (localStorage y, con servidor, /api/juegos/<id>/…). Publica window.__juegos (pruebas). El trozo [puro:…] lo evalúa en Node pruebas/guardianes/juego_cosecha.test.js.
   // ---------- el anfitrión de juegos (C9a, decisiones 125 y 136; doc/sistema/JUEGOS.md). MU5-n (A3-7b2): migrado a TypeScript tal cual; el código y la explicación viven en
@@ -1141,13 +1128,13 @@ function arranca(): void {
   // temporada que una familia ha colgado de un olivo de su haza (flores, cinta, farolillo, cosecha, luces o lazo), dibujada en su copa. Es ILUSTRATIVA (regla 5).
   // MU5-n (A3-3): migrado a TypeScript; el código vive en apps/web/src/mundos/exterior/decoraciones.ts (DecoracionesPuro y el componente «decoraciones-olivo» de los mundos ["exterior"],
   // con su libera() que suelta las InstancedMesh, las geometrías y los materiales y quita su fila de la ficha del olivo). ?decoraciones=0 (o genera_motor.mjs --sin 50_decoraciones.js)
-  // lo quita. Sin servidor no crea nada. Aquí solo se cablea lo del legado; paseando lo reescribe 12_paseo (primitiva del legado: entra como función).
+  // lo quita. Sin servidor no crea nada. Aquí solo se cablea lo del legado; paseando (Paseo.E) entra como función.
   // El import() de mergeGeometries se queda aquí (en el talón) para que Vite trocee el paquete igual que antes, y entra en el componente como una función.
   // [talón] apps/web/src/mundos/exterior/decoraciones.ts
   Componentes.registra(Mundos.manifiestoDecoraciones({
-    THREE: THREE, D: D, FACTOR_R8: FACTOR_R8, FACTOR_R8_GEN: FACTOR_R8_GEN, busqueda: typeof location !== "undefined" ? location.search : "", ConfigPuro: ConfigPuro, copas: copas, suelo: suelo, radioEn: radioEn,
+    THREE: THREE, D: D, FACTOR_R8: FactorR8.E.r8, FACTOR_R8_GEN: FactorR8.E.gen, busqueda: typeof location !== "undefined" ? location.search : "", ConfigPuro: ConfigPuro, copas: copas, suelo: suelo, radioEn: radioEn,
     Generados: typeof Generados !== "undefined" ? Generados : null, Entidades: Entidades, Estaticos: Estaticos, scene: scene, camera: camera, Estado: Estado, objetivo: typeof objetivo !== "undefined" ? objetivo : null,
-    paseando: function () { return typeof paseando !== "undefined" && paseando; }, VRX: typeof VRX !== "undefined" ? VRX : null, ventana: window as any, Componentes: Componentes
+    paseando: function () { return typeof Paseo !== "undefined" && Paseo.E.paseando; }, VRX: typeof VRX !== "undefined" ? VRX : null, ventana: window as any, Componentes: Componentes
   }, function () { return import("three/addons/utils/BufferGeometryUtils.js"); }));
   // [paso: 51_fichas_mundo] Talón (MU5-n, A3-7b1) de apps/web/src/mundos/exterior/fichas-mundo.ts: FichasMundoPuro y el componente «fichas-mundo» de los mundos ["exterior"] (EV2-A1, ?ui=capas, apagado por defecto), con su libera() (presentador de «vr», tapa del panel, láminas colgadas y window.__fichasMundo). En VR, la ficha de un olivo o de una baliza colgada junto a lo que describe con Laminas (encima de la copa, girándose hacia quien mira, como mucho 3), en lugar de las láminas de 29_vr que siguen a la cabeza (presentador «vr» encadenado delante del de 29_vr y PanelVR.tapa). Los trozos [puro] y el resto los evalúa en Node pruebas/guardianes/fichas_mundo.test.js (que lee el .ts como JavaScript, _fuente.js).
   // ---------- EV2-A1: las fichas en el mundo (doc/sistema/VIABILIDAD-INTERACCION.md §A.5, paso 2), solo con ?ui=capas (apagado por defecto): en VR, la ficha de un olivo o de una
@@ -1186,13 +1173,13 @@ function arranca(): void {
   Mundo.alCargar(function (t) { Arboles.tileCargada(t); });
   Mundo.arranca(function () { Arboles.inicia(); actualizaNubeTeselas(camera.position.x, camera.position.y, camera.position.z); Cola.vacia(10000); recoloreaSuelo(); Marcadores.ponListo(); aplica();
     if (/[?&]mundo=vacio(&|$)/.test(location.search)) gm.cambia("vacio").then(function (r) { if (!r.ok) console.error("?mundo=vacio: no se ha podido entrar", r); }); });   // MU2-6/MU2-8: con el exterior ya cargado, al vacío
-  var actualizaCarga = Mundos.creaCargaTeselas({ mundo: Mundo, camara: camera, objetivo: objetivo, paseando: function () { return paseando; } });   // el paso «carga de teselas» del exterior
+  var actualizaCarga = Mundos.creaCargaTeselas({ mundo: Mundo, camara: camera, objetivo: objetivo, paseando: function () { return Paseo.E.paseando; } });   // el paso «carga de teselas» del exterior
   // un fotograma: lo hace el bucle de la ventana o, en VR, el de las gafas (29_vr.js: vrActualiza). A1-14 (MUNDOS §9.4 fila 8): el bucle vive en apps/web/src/nucleo/bucle.ts (dt, pausa, reparto, ms del render,
   // ahorro de batería, «cuadro:fin»; L7-01, L7-02, L7-10). MU2-3: la lista se parte en dos: los pasos del EXTERIOR (src/mundos/exterior.ts) corren dentro de gm.actualiza y en el Bucle, los de todo mundo. bloque: el del reparto (Q0h); null = se mide dentro; caro: oculta, no corre.
   // MU2-6: las fases «mundo» y «tarde» de Componentes, las láminas y la Cola son de todo mundo y salen del exterior al Bucle, tras gm.actualiza; Escena3D.actualiza, del exterior, va en gm.antesDelRender (tras la Cola y antes del render, como siempre).
   // Lo único que cambia de orden: la fase «mundo» corría entre la nube y los árboles, y ahora corre tras los árboles y la carga de teselas (MUNDOS §3, «Cómo quedó (MU2-6)»).
   var bCamara = Reparto.reg("cámara/paseo/VR"), Bucle: Nucleo.Bucle, temporizador = function (f: () => void, ms: number) { var h = setTimeout(f, ms); return function () { clearTimeout(h); }; };   // la cámara se registra antes que los del exterior (el reparto lista por orden de registro); Bucle se crea más abajo
-  var deTodoMundo = function (o: unknown) { return o === camera || o === vrRig || o === persona; };   // MU2-6: lo que congelar el exterior no oculta (quien mira y su rig de VR)
+  var deTodoMundo = function (o: unknown) { return o === camera || o === vrRig || o === Paseo.E.persona; };   // MU2-6: lo que congelar el exterior no oculta (quien mira y su rig de VR)
   var hudExterior = ["hudEstado", "mapita", "ndviHud", "ficha", "baliza"].map(function (id) { return $(id); }).filter(Boolean);   // MU2-6: el HUD del exterior (brújula y tiempo, mapa, NDVI, fichas)
   var poseDelPaseo = { lee: function () { return pp; }, pon: function (p: Nucleo.Pose2) { pp.x = p.x; pp.y = p.y; pp.ang = p.ang; } };   // MU2-6: la pose de quien mira (12_paseo: pp)
   // MU2-7: lo que el Ambiente del exterior lee del legado al aplicarse (el tema, la perilla xrnear y el deslizador #exag pueden haber cambiado); los valores, en src/mundos/exterior.ts
@@ -1221,7 +1208,7 @@ function arranca(): void {
     xr: { activa: function () { return VRX.on; }, sesion: function () { return VRX.sesion; }, base: function () { return VRX.base; }, recoloca: vrRecoloca },
     aviso: function (s, ms) { if (Hud) Hud.aviso(s, ms); }, consola: console, documento: document, lienzo: renderer.domElement, temporizador: function (fn, ms) { return setTimeout(fn, ms); },
     pasos: [
-      { bloque: bCamara, fn: function (dt, t) { if (VRX.on) vrActualiza(dt, t); else if (paseando) { actualizaPaseo(dt); transEntrada(dt); } else { camara(); transSalida(dt); } } },
+      { bloque: bCamara, fn: function (dt, t) { if (VRX.on) vrActualiza(dt, t); else if (Paseo.E.paseando) { actualizaPaseo(dt); transEntrada(dt); } else { camara(); transSalida(dt); } } },
       { bloque: null, fn: gm.actualiza },   // el mundo activo (el exterior), con sus pasos medidos por dentro
       { bloque: null, fn: function (dt, t) { Componentes.actualiza("mundo", dt, t); Componentes.actualiza("tarde", dt, t); } }, { bloque: Reparto.reg("láminas"), fn: function (dt) { Laminas.revisa(dt); } },   // de todo mundo (MU2-6)
       { bloque: Reparto.reg("Cola"), caro: true, fn: function () { Cola.corre(Arboles.presupuesto()); } }, { bloque: null, fn: gm.antesDelRender },   // la Cola, de todos; lo último del mundo activo (el exterior: Escena3D)

@@ -183,7 +183,7 @@ export type HuellasPolvo = ReturnType<typeof creaHuellasPolvo>;
 export function manifiestoHuellasPolvo(d: DepsHuellasPolvo): Manifiesto {
   return {
     id: ID_HUELLAS_POLVO, version: 1,
-    consume: ["Materiales", "Estaticos", "scene", "suelo", "Estado", "pp", "paseando", "teclas", "cur", "nivelEn", "tVida", "enQuad", "vq", "enDron", "dr", "altSuelo", "sueloSeco"],
+    consume: ["Materiales", "Estaticos", "scene", "suelo", "Estado", "pp", "Paseo", "cur", "nivelEn", "Vida", "dr", "altSuelo", "sueloSeco"],
     expone: [],
     eventos: { escucha: ["polvo:emite"], emite: [] },
     bandera: { defecto: true, url: "huellas" },

@@ -301,7 +301,7 @@ export function manifiestoDecoraciones(d: DepsDecoraciones, cargaUtiles: () => P
   const deco = creaDecoraciones(d);
   return {
     id: ID_DECORACIONES, version: 1,
-    consume: ["Estaticos", "copas", "radioEn", "Generados", "objetivo", "paseando", "VRX"],
+    consume: ["Estaticos", "copas", "radioEn", "Generados", "objetivo", "Paseo", "VRX"],
     expone: [],
     eventos: { escucha: ["decoraciones:cambian", "depura:lineas"], emite: ["decoraciones:pide"] },
     bandera: { defecto: true, url: "decoraciones" },

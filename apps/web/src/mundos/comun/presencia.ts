@@ -946,8 +946,7 @@ export function manifiestoPresencia(dp: DepsPresencia) {
   return {
     id: ID_PRESENCIA, version: 1,
     // A3-6a: solo lo que llega del legado por el talón; la pose, la sala, el chat y el muñeco se importan de red/ y de ./muneco.ts
-    consume: ["Materiales", "Aparato", "Red", "Ajustes", "sitioJunto", "Llegada", "Movibles", "VRX", "TR",
-      "paseando", "pp", "enQuad", "enDron", "quad", "dron", "objetivo", "texColor"],
+    consume: ["Materiales", "Aparato", "Red", "Ajustes", "sitioJunto", "Llegada", "Movibles", "VRX", "TR", "Paseo", "pp", "Vida", "quad", "dron", "objetivo", "texColor"],
     expone: ["Presencia"],
     eventos: { escucha: ["chat:alterna", "depura:lineas", "guiada:entrar"], emite: ["guiada:entrada", "presencia:activada"] },
     bandera: { defecto: true, url: "presencia" },

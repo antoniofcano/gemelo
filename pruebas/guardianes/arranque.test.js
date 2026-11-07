@@ -22,7 +22,8 @@ const FOTO = path.join(__dirname, "referencias", "pasos_nombres.json");
 let G; test.before(async () => { G = await import(pathToFileURL(path.join(WEB, "herramientas", "genera_motor.mjs")).href); });
 
 // 2026-11-07, A3-8c (el legado, 1.143 líneas en 93 ficheros de motor/, pasa a ser el arranque): 1.124 líneas en 92 pasos (sin la IIFE ni 99_cierre)
-const TOPE = 1124;
+// 2026-11-07, A3-8c (las primitivas a sus objetos: Paseo.E, Vida.E, FactorR8.E, Paisaje.agua(), Follaje.sombras(), Historia.OT): 1.109 líneas
+const TOPE = 1109;
 
 test("los pasos del arranque son los de la foto, en el orden alfabético de su nombre (el de creación de siempre)", () => {
   const n = nombresPasos(), foto = Object.keys(JSON.parse(fs.readFileSync(FOTO, "utf8")).expone);

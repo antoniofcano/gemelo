@@ -278,7 +278,7 @@ export function creaHazas(dp: DepsHazas) {
  *  así que monta() devuelve ese mismo objeto y libera() llama a su libera(). */
 export function manifiestoHazas(api: { libera(): void }): Manifiesto {
   return {
-    id: ID_HAZAS, version: 1, consume: ["Entidades", "Usables", "paseando"], expone: [], eventos: { escucha: [], emite: ["hazas:cambia"] }, bandera: { defecto: true },
+    id: ID_HAZAS, version: 1, consume: ["Entidades", "Usables", "Paseo"], expone: [], eventos: { escucha: [], emite: ["hazas:cambia"] }, bandera: { defecto: true },
     presupuesto: { llamadas: 0, triangulos: 0 }, fases: {}, mundos: ["exterior"], monta: function () { return api; }, libera: function () { api.libera(); }
   };
 }

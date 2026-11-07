@@ -78,6 +78,8 @@ export { creaLluvia } from "./exterior/tiempo-lluvia.ts";
 export { creaBarreras, BARRERA_ALTO } from "./exterior/tiempo-barrera.ts";
 export { creaPasoTiempo } from "./exterior/tiempo-paso.ts";
 export { creaFichasTiempo } from "./exterior/tiempo-fichas.ts";
+export { creaFactorR8, leeFactorR8 } from "./exterior/factor-r8.ts";   // A3-8c: antes FACTOR_R8 y FACTOR_R8_GEN de 01_datos
+export type { EstadoFactorR8, FactorR8 } from "./exterior/factor-r8.ts";
 export { creaHierba, manifiestoHierba, ID_HIERBA } from "./exterior/hierba.ts";
 export type { DepsHierba, Hierba } from "./exterior/hierba.ts";
 export { creaSonido, manifiestoSonido, ID_SONIDO } from "./exterior/sonido.ts";

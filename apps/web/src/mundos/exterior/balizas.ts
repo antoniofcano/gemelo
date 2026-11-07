@@ -351,7 +351,7 @@ export type Balizas = ReturnType<typeof creaBalizas>;
 export function manifiestoBalizas(balizas: Balizas): Manifiesto {
   return {
     id: ID_BALIZAS, version: 1,
-    consume: ["Materiales", "Estaticos", "Entidades", "Usables", "OT", "VIVO", "paseando", "pp", "objetivo", "Llegada", "TR", "VRX", "Encuentro", "sitioJunto", "tVida", "enQuad"],
+    consume: ["Materiales", "Estaticos", "Entidades", "Usables", "Historia", "Paseo", "pp", "objetivo", "Llegada", "TR", "VRX", "Encuentro", "sitioJunto", "Vida"],
     expone: [],
     eventos: { escucha: [], emite: ["sonido:baliza"] },
     bandera: { defecto: true },

@@ -3,7 +3,7 @@
 // velocidad y los acentos de neón), el dron (que también mira hacia −z, con las hélices y los ledes), el anillo bajo el dron, las dos estelas (un muro de luz que se apaga con el tiempo),
 // y los mandos del paseo: la velocidad y el giro (el quad los cambia), el dron (su mando, su cámara y las tres vistas) y los botones «Subir al quad» / «Sacar el dron».
 // El dron se mueve con el suelo y el borde del mundo ACTIVO (sueloMundo y obstaculo, MU2-4); el dibujo (el anillo, la fauna, los perros, las huellas) usa el suelo de 02_mundo (altSuelo).
-// El estado que otros módulos leen (tVida, enQuad, vq, enDron) vive aquí, en el objeto E, y el legado lo espeja en sus var con la función espeja en cuanto cambia.
+// El estado que otros módulos leen (tVida, enQuad, vq, enDron) vive aquí, en el objeto E (Vida.E; A3-8c: el arranque lo lee ahí, ya sin var que lo espejen).
 // Es un componente del exterior solo de ciclo de vida (como el follaje): lo registra 90_final.js, el legado lo usa desde el primer fotograma y su libera() suelta de verdad el grupo de
 // la fauna, el quad, el dron, el anillo y las estelas con sus geometrías, materiales y texturas (L2-05, la auditoría de noviembre de 2026: 16_vida creaba todo y no soltaba nada), y
 // quita las escuchas de sus botones (L2-11). La sombra bajo el quad (geoSombra y matSombra) es de 07_follaje y no se suelta aquí.
@@ -14,7 +14,7 @@ import type { Manifiesto } from "../../nucleo/componentes.ts";
 import type { DefMaterial, Materiales, MaterialMin } from "../../nucleo/materiales.ts";
 import type { T3 } from "./vida-tipos.ts";
 
-/** El estado del paseo que otros módulos leen (tVida, enQuad, vq, enDron): vive en creaVida y el legado lo espeja en sus var */
+/** El estado del paseo que otros módulos leen (tVida, enQuad, vq, enDron): vive en creaVida (Vida.E) */
 export interface EstadoVida { tVida: number; enQuad: boolean; vq: number; enDron: boolean }
 
 export interface DepsVida {
@@ -57,8 +57,8 @@ export interface DepsVida {
   pendFactor(): number;
   quadInc(): { pit: number; rol: number };
   inclinaQuad(dt: number): void;
-  /** el legado espeja el estado (tVida, enQuad, vq, enDron) en sus var cada vez que cambia */
-  espeja(e: EstadoVida): void;
+  /** opcional: quien quiera saber cada cambio del estado (las pruebas); el arranque lee Vida.E y no lo pasa (A3-8c) */
+  espeja?(e: EstadoVida): void;
 }
 
 export const ID_VIDA = "vida";
@@ -105,6 +105,7 @@ export function defEstela(): DefMaterial<OpcEstela> {
 
 /** Monta el quad, el dron, las estelas y los mandos del paseo y devuelve su api; `libera()` lo suelta todo (una sola vez). */
 export function creaVida(d: DepsVida) {
+  const espeja = d.espeja || function (): void { /* nadie mira */ };
   const THREE = d.THREE, scene = d.scene, camera = d.camera, Estado = d.Estado, Materiales = d.Materiales, bus = d.Bus, $ = d.$, suelo = d.suelo, copaAlta = d.copaAlta;
   const sueloMundo = d.sueloMundo, obstaculo = d.obstaculo, geoSombra = d.geoSombra, matSombra = d.matSombra, texBrillo = d.texBrillo, nivelEn = d.nivelEn, cur = d.cur, ins = d.ins;
   const num1 = d.num1, rumbo = d.rumbo, paseando = d.paseando, teclas = d.teclas, persona = d.persona, primera = d.primera, ponPrimera = d.ponPrimera, pp = d.pp, camPos = d.camPos;
@@ -168,14 +169,14 @@ export function creaVida(d: DepsVida) {
 
   // --- el paseo: el quad cambia la velocidad, el giro, la colisión y la cámara
   function velPaseo(av: any, dt: any) {
-    if (!E.enQuad) { E.vq = 0; d.espeja(E); return av * (teclas().run ? 4.3 : 1.7) * (av < 0 ? 0.55 : 1) * pendFactor(); }
+    if (!E.enQuad) { E.vq = 0; espeja(E); return av * (teclas().run ? 4.3 : 1.7) * (av < 0 ? 0.55 : 1) * pendFactor(); }
     var meta = av * (teclas().run ? 12 : 7.5) * (av < 0 ? 0.4 : 1) * pendFactor(), k = (Math.abs(meta) < Math.abs(E.vq) || meta * E.vq < 0) ? 4.5 : 2.2;
-    E.vq += (meta - E.vq) * Math.min(1, dt * k); if (Math.abs(E.vq) < 0.02 && !av) E.vq = 0; d.espeja(E); return E.vq;
+    E.vq += (meta - E.vq) * Math.min(1, dt * k); if (Math.abs(E.vq) < 0.02 && !av) E.vq = 0; espeja(E); return E.vq;
   }
   function giroPaseo(vel: any) { if (!E.enQuad) return 1.9; return 2.2 * (0.3 + 0.7 * Math.min(1, Math.abs(vel) / 3)) * (1 - 0.35 * Math.min(1, Math.abs(vel) / 12)); }
   function ponQuad(v: any) {
     if (v && E.enDron) ponDron(false);
-    E.enQuad = !!v && paseando(); E.vq = 0; d.espeja(E); estelaQuad.reinicia(); quad.visible = E.enQuad;
+    E.enQuad = !!v && paseando(); E.vq = 0; espeja(E); estelaQuad.reinicia(); quad.visible = E.enQuad;
     $("btnQuad").setAttribute("aria-pressed", String(E.enQuad)); $("btnQuad").textContent = E.enQuad ? "Bajar del quad" : "Subir al quad"; $("padQuad").setAttribute("aria-pressed", String(E.enQuad));
     if (!E.enQuad) { var u = persona().userData; u.pi.rotation.x = u.pd.rotation.x = u.bi.rotation.x = u.bd.rotation.x = 0; }
   }
@@ -223,7 +224,7 @@ export function creaVida(d: DepsVida) {
   function ponDron(v: any) {
     var quiero = !!v && paseando();
     if (quiero && E.enQuad) ponQuad(false);
-    E.enDron = quiero; d.espeja(E); vistaD = 0; ponPrimera(false); dron.visible = E.enDron; anilloDron.visible = E.enDron; estelaDron.reinicia();
+    E.enDron = quiero; espeja(E); vistaD = 0; ponPrimera(false); dron.visible = E.enDron; anilloDron.visible = E.enDron; estelaDron.reinicia();
     if (E.enDron) {
       var gy0 = altMueve(pp.x, pp.y); dr.x = pp.x + Math.sin(pp.ang) * 1.2; dr.y = pp.y + Math.cos(pp.ang) * 1.2; dr.yaw = pp.ang; dr.h = gy0 + 3; dr.vf = dr.vh = dr.giro = 0;
     } else { var u = persona().userData; u.pi.rotation.x = u.pd.rotation.x = u.bi.rotation.x = u.bd.rotation.x = 0; }
@@ -288,7 +289,7 @@ export function creaVida(d: DepsVida) {
     bus.emite("paseo:sale");
   }
   function actualizaVida(dt: any) {
-    E.tVida += dt; d.espeja(E); for (var ie = 0; ie < ESTELAS.length; ie++) ESTELAS[ie].u.uNow.value = E.tVida; vidaDron(dt);
+    E.tVida += dt; espeja(E); for (var ie = 0; ie < ESTELAS.length; ie++) ESTELAS[ie].u.uNow.value = E.tVida; vidaDron(dt);
     gFauna.visible = $("cFauna").checked;
   }
 

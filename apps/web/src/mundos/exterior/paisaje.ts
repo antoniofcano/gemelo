@@ -8,8 +8,8 @@
 //     (también uno por tejado) y la malla de sombras que este módulo le añade al grupo de 06_arboles; olvida su fuente del presupuesto de VR y quita el oyente de la casilla.
 //     monta() lo vuelve a poner todo si el exterior reentra (los materiales fijos persisten entre un monta() y el siguiente; los de cada tejado y el del cauce se rehacen).
 // Del legado recibe por argumento lo que necesita (THREE, el índice D, el suelo, las copas, la fábrica de materiales, el reloj del mundo…); no lee globales.
-// Lo que otros módulos reescriben (instSombra lo pone 07_follaje; tMundo, 15_tiempo) entra como funciones que lo leen en cada uso; lo que este módulo reescribe y otros leen
-// (aguaNivel) lo comunica por ponAgua.
+// Lo que otros módulos cambian (la malla de sombras de 07_follaje; tMundo, 15_tiempo) entra como funciones que lo leen en cada uso; lo que este módulo cambia y otros leen
+// (el nivel del agua) lo dan agua() y, a quien lo pida, ponAgua.
 // (matTronco, el tronco de los árboles que no son olivos, ya no comparte nombre con el del nivel 0 de 06_arboles, que desde A3-2b / L5-01 es matTroncoL0: aquí es solo de este módulo.)
 // Presupuesto (regla 6): una llamada por pieza (muro, tejado, poste, hilo, cauce) y 4 InstancedMesh de árboles (un tronco y tres masas de copa de 20 triángulos); las cifras,
 // de pruebas/presupuesto.json (el paisaje de Hituelo).
@@ -104,7 +104,7 @@ export interface DepsPaisaje {
   gSombras: { add(o: unknown): void; remove(o: unknown): void };
   matSombra: { opacity: number };
   geoSombra: unknown;
-  /** 07_follaje escribe su malla de sombras de olivos en la variable `instSombra` del legado: aquí se lee en cada uso */
+  /** la malla de sombras de los olivos de 07_follaje (Follaje.sombras(); A3-8c: antes, la variable instSombra del legado): se lee en cada uso */
   instSombra(): { count: number; visible: boolean; setMatrixAt(i: number, m: unknown): void; instanceMatrix: { needsUpdate: boolean } } | null | undefined;
   /** 15_tiempo: el reloj del mundo (tMundo es una primitiva que reescribe), el estado del tiempo (cur) y el nivel del sol */
   tMundo(): number;
@@ -114,7 +114,7 @@ export interface DepsPaisaje {
   EST(): { activa: boolean; clima: { lluvia: number } | null };
   /** 02g: el presupuesto de VR; null si no está */
   VrPresupuesto?: { instancias(id: string, mallas: unknown[]): void; renueva(id: string): void; olvida(id: string): void } | null;
-  /** el nivel del agua del arroyo sube y baja cada fotograma y lo leen 20_sonido y 22_huellas (la variable aguaNivel del legado) */
+  /** opcional: quien quiera saber cada cambio del nivel del agua (las pruebas); los demás lo leen con agua() (A3-8c: antes, la variable aguaNivel del legado) */
   ponAgua?: ((v: number) => void) | null;
 }
 
@@ -344,8 +344,7 @@ export function creaPaisaje(d: DepsPaisaje) {
   monta();
   return {
     monta, libera, colocaPaisaje, sombrasSol, actualizaPaisaje, distArroyo, ejeArroyo, matTronco, materiales,
-    /** el legado declara las variables instSombra (la pone 07_follaje) y aguaNivel (la mueve actualizaPaisaje, por ponAgua) con estos valores iniciales */
-    instSombra: null as unknown, aguaNivel: 0,
+    /** el nivel del agua del arroyo (lo leen 20_sonido y 22_huellas; A3-8c: antes, la variable aguaNivel del legado, que ponAgua espejaba) */
     agua: function (): number { return aguaNivel; },
     grupo: function (): T3 { return gPaisaje; },
     sombrasPA: function (): T3 { return instSombraPA; },

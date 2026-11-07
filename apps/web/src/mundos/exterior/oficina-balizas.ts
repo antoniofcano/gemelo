@@ -159,7 +159,7 @@ export type OficinaBalizas = ReturnType<typeof creaOficinaBalizas>;
 export function manifiestoOficinaBalizas(dp: DepsOficinaBalizas): Manifiesto {
   return {
     id: ID_OFICINA_BALIZAS, version: 1,
-    consume: ["OficinaMundo", "Estaticos", "Entidades", "Minimapa", "Aspecto", "Encuentro", "sitioJunto", "Llegada", "VRX", "paseando", "pp", "objetivo", "enQuad"],
+    consume: ["OficinaMundo", "Estaticos", "Entidades", "Minimapa", "Aspecto", "Encuentro", "sitioJunto", "Llegada", "VRX", "Paseo", "pp", "objetivo", "Vida"],
     expone: [],
     eventos: { escucha: [], emite: [] },
     bandera: { defecto: true, url: "balizasoficiales" },   // ?balizasoficiales=0 apaga solo las balizas; ?oficina=0, las dos (consume la oficina)

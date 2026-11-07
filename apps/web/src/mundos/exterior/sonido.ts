@@ -181,7 +181,7 @@ export function manifiestoSonido(d: DepsSonido): Manifiesto {
   var S = creaSonido(d);
   return {
     id: ID_SONIDO, version: 1,
-    consume: ["Ajustes", "PanelVR", "VRX", "paseando", "teclas", "cur", "nivelEn", "tVida", "enQuad", "quad", "vq", "enDron", "dr", "pp", "aguaNivel", "distArroyo"],
+    consume: ["Ajustes", "PanelVR", "VRX", "Paseo", "cur", "nivelEn", "Vida", "quad", "dr", "pp", "Paisaje", "distArroyo"],
     expone: [],
     eventos: { escucha: ["audio:desbloquea", "sonido:baliza", "sonido:golpe", "sonido:juego", "sonido:ladrido"], emite: [] },
     bandera: { defecto: true, url: "sonido" },

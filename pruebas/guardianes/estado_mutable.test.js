@@ -1,37 +1,22 @@
 "use strict";
-// Guardián del estado mutable compartido del motor legado (A1-13 = MU1-9, MUNDOS §9.4 fila 7). Antes, `exag`, `modo` y `calidad` eran
-// variables sueltas de la IIFE (03_escena.js) que otros módulos reescribían; ahora son campos de UN objeto, `Estado`
-// (apps/web/src/nucleo/estado.ts, `var Estado = Nucleo.creaEstado();` en 03_escena.js), que es lo que el WorldManager de MUNDOS §2-§4
-// necesita para dar a cada mundo su exageración y su modo. Con el montaje (los módulos en orden, concatenados como genera_motor.mjs)
-// analizado con acorn y sus ámbitos de función (el motor no tiene let, const ni class: estilo_motor.test.js), comprueba:
-//   1. ningún módulo vuelve a declarar `exag`, `modo` ni `calidad` en la IIFE, y ningún nombre suelto así llega a ella (ni leído ni escrito):
-//      se usa `Estado.exag`; una variable LOCAL con ese nombre (un parámetro `modo`, por ejemplo) sí vale;
-//   2. `Estado` se declara una sola vez, en 03_escena.js, con `Nucleo.creaEstado(…)`, y nadie la reasigna ni la tapa con una local;
-//   3. trinquete: las demás variables de la IIFE que se reasignan desde más de un módulo, o en uno y se leen en otros (el inventario de
-//      A1-13), son las de PENDIENTES o menos. Una nueva falla: va a `Estado` (o a su objeto). Si una sale, lo avisa y se quita de la lista.
+// Guardián del estado mutable compartido del arranque (A1-13 = MU1-9, MUNDOS §9.4 fila 7; A3-8c). Antes, `exag`, `modo` y `calidad` eran variables sueltas de
+// la IIFE del legado (03_escena.js) que otros módulos reescribían; ahora son campos de UN objeto, `Estado` (apps/web/src/nucleo/estado.ts,
+// `var Estado = Nucleo.creaEstado();` en el paso 03_escena), que es lo que el WorldManager de MUNDOS §2-§4 necesita para dar a cada mundo su exageración y su
+// modo. Con los pasos de apps/web/src/arranque.ts en orden, dentro de una función como el cuerpo de arranca() (_pasos.js), analizados con acorn y sus ámbitos
+// de función (el cuerpo declara con var y function: arranque.test.js), comprueba:
+//   1. ningún paso vuelve a declarar `exag`, `modo` ni `calidad`, y ningún nombre suelto así llega al cuerpo (ni leído ni escrito): se usa `Estado.exag`;
+//      una variable LOCAL con ese nombre (un parámetro `modo`, por ejemplo) sí vale;
+//   2. `Estado` se declara una sola vez, en 03_escena, con `Nucleo.creaEstado(…)`, y nadie la reasigna ni la tapa con una local;
+//   3. ninguna otra variable del cuerpo de arranca() se reasigna desde más de un paso, o en uno y se lee en otro. El inventario de A1-13 (27 primitivas)
+//      encogió hasta cero en A3-8c: cada una vive en el objeto de su dueño (Paseo.E, Vida.E, FactorR8.E, TinteOrto.E, FechaNdvi.E, Historia, Parcelas,
+//      Marcadores.listo(), Tiempo.tMundo(), Paisaje.agua(), Follaje.sombras()). Una nueva falla: va a un objeto, no a una variable suelta.
 // Solo Node.
 const test = require("node:test"), assert = require("node:assert");
 const acorn = require("acorn");
-// (sin _util: lo que lee son los pasos del arranque, de _pasos.js)
 
 const EN_ESTADO = ["exag", "modo", "calidad"];
-// El inventario de A1-13 (2026-11-06): globales de la IIFE reasignadas fuera de su declaración y compartidas entre módulos, que aún no
-// están en Estado. Solo puede encoger. Entre paréntesis, quién las declara y quién más las escribe (de la salida de `compartidas`).
-const PENDIENTES = [
-  "primera",       // 12_paseo; la escriben 16_vida y 29_vr
-  // "ndviIdx" (10_ndvi; la escribía 14_historia) salió en A3-8a: es FechaNdvi.E.idx (14 la cambia con FechaNdvi.pon)
-  "instSombra",    // 18_paisaje; la escribe 07_follaje
-  // "kcor" (02_mundo; la escribía 09_camara) salió en A3-8a: es TinteOrto.E.kcor
-  // "listo" (08_marcadores; la escribía 90_final) salió en A3-8a: es Marcadores.listo() / ponListo()
-  // "tinte" (02_mundo; la escribía 10_ndvi) salió en A3-8a: es TinteOrto.E.tinte
-  "aguaNivel",     // 18_paisaje (escribe y lee él; leen 20_sonido y 22_huellas)
-  "OT", "VIVO",    // 14_historia
-  "enDron", "enQuad", "tVida", "vq",   // 16_vida
-  "FACTOR_R8", "FACTOR_R8_GEN",        // 01_datos
-  "fincaSel", "parcelaSel",            // 13_parcelas
-  "paseando", "persona", "teclas",     // 12_paseo
-  // "tMundo" (15_tiempo) salió en A3-8a: 18_paisaje lo lee de Tiempo.tMundo()
-];
+// El inventario de A1-13 (2026-11-06) quedó vacío en A3-8c (2026-11-07): ya no hay excepciones. Si alguna vez hiciera falta una, se anota aquí con su dueño.
+const PENDIENTES = [];
 
 // ---------- ámbitos (solo los de función: var, parámetros, declaraciones de función, el nombre de una función con nombre y el de un catch)
 function nombresPatron(p, out = []) {
@@ -120,7 +105,7 @@ function compartidas(A) {
 const { pasos } = require("./_pasos");
 const montaje = () => analiza([{ nombre: "(abre)", texto: "(function () {\n" }].concat(Object.entries(pasos()).map(([nombre, texto]) => ({ nombre, texto })), [{ nombre: "(cierra)", texto: "\n})();\n" }]));
 
-test("exag, modo y calidad viven en Estado: ningún módulo las declara en la IIFE ni las usa sueltas (una local con ese nombre sí vale)", () => {
+test("exag, modo y calidad viven en Estado: ningún paso las declara en el arranque ni las usa sueltas (una local con ese nombre sí vale)", () => {
   const A = montaje(), mal = [];
   for (const n of EN_ESTADO) {
     for (const d of A.declaradaEn[n] || []) mal.push(d.f + ": declara «" + n + "» en la IIFE (es Estado." + n + ")");
@@ -130,7 +115,7 @@ test("exag, modo y calidad viven en Estado: ningún módulo las declara en la II
   assert.deepStrictEqual(mal, []);
 });
 
-test("Estado se declara una vez, en 03_escena.js, con Nucleo.creaEstado(…); nadie la reasigna ni la tapa con una local", () => {
+test("Estado se declara una vez, en el paso 03_escena, con Nucleo.creaEstado(…); nadie la reasigna ni la tapa con una local", () => {
   const A = montaje(), d = A.declaradaEn.Estado || [];
   assert.strictEqual(d.length, 1, "Estado debe declararse una sola vez en la IIFE: " + JSON.stringify(d.map(x => x.f)));
   assert.strictEqual(d[0].f, "03_escena.js");
@@ -141,10 +126,10 @@ test("Estado se declara una vez, en 03_escena.js, con Nucleo.creaEstado(…); na
   assert.deepStrictEqual([...(A.tapadas.Estado || [])], [], "una local llamada Estado taparía la del motor");
 });
 
-test("trinquete del estado compartido: las demás globales reasignadas entre módulos son las del inventario de A1-13, o menos", t => {
+test("estado compartido: ninguna otra variable del arranque la reasigna un paso y la lee o la escribe otro (el inventario de A1-13 quedó vacío en A3-8c)", t => {
   const c = compartidas(montaje());
   const nuevas = Object.keys(c).filter(n => !PENDIENTES.includes(n)).map(n => n + " (la declara " + c[n].declara + "; la escriben " + c[n].escriben.join(", ") + ")");
-  assert.deepStrictEqual(nuevas, [], "estado mutable compartido nuevo: va a un objeto (Estado, apps/web/src/nucleo/estado.ts), no a una variable suelta de la IIFE");
+  assert.deepStrictEqual(nuevas, [], "estado mutable compartido nuevo: va a un objeto (Estado, apps/web/src/nucleo/estado.ts), o al objeto de su dueño, como Paseo.E o Vida.E), no a una variable suelta del arranque");
   const fuera = PENDIENTES.filter(n => !(n in c));
   t.diagnostic("pendientes de pasar a un objeto: " + Object.keys(c).sort().join(", "));
   if (fuera.length) t.diagnostic("ya no son estado compartido (quítalas de PENDIENTES): " + fuera.join(", "));

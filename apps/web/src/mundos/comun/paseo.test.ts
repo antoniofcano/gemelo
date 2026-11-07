@@ -1,5 +1,5 @@
-// El paseo (A3-6c, MU5-n; antes 12_paseo.js). Con el three de verdad (sin GPU) y dobles del DOM y del legado: entrar y salir del paseo espejan el estado (paseando, persona, teclas) al
-// legado; con «arriba» se anda hacia donde mira, a la velocidad que da la vida (velPaseo), y el mundo activo aparta del tronco (gm.obstaculo); la palanca suma al teclado; y libera() quita
+// El paseo (A3-6c, MU5-n; antes 12_paseo.js). Con el three de verdad (sin GPU) y dobles del DOM y del legado: entrar y salir del paseo ponen al día su estado (Paseo.E: paseando, persona, teclas,
+// primera; A3-8c); con «arriba» se anda hacia donde mira, a la velocidad que da la vida (velPaseo), y el mundo activo aparta del tronco (gm.obstaculo); la palanca suma al teclado; y libera() quita
 // al muñequito (sus geometrías y sus materiales, con sus «dispose») y todas sus escuchas. HONESTIDAD: nada se dibuja aquí; en el iPhone y el Quest, NO probado.
 import { describe, expect, it } from "vitest";
 import { ID_PASEO, PalancaPuro, creaPaseo } from "./paseo.ts";
@@ -18,17 +18,18 @@ function el(extra?: A) {
 function monta() {
   const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(), ventana = el(), documento = el(), elementos: Record<string, A> = {};
   const $ = (id: string) => (elementos[id] = elementos[id] || el());
-  const legado: A = { primera: false, espejos: 0 }, dron = { on: false };
+  const dron = { on: false };
   const d: DepsPaseo = {
     THREE, scene, camera, Estado: { exag: 1 }, Materiales: creaMateriales({ THREE: THREE as unknown as ThreeMin, busqueda: "" }), D: { parcelas: [{ centro: [10, 26] }] }, $, lienzo: el({ tabIndex: 0 }), visor: el(), copaAlta: () => 0, sensMirar: () => ({ k: 1, y: 1 }),
-    primera: () => legado.primera, ponPrimera: (v: boolean) => { legado.primera = v; }, parcelaSel: () => 0, fincaSel: () => -1, fincas: () => [],
+    parcelaSel: () => 0, fincaSel: () => -1, fincas: () => [],
     vida: { velPaseo: (av: number) => av * 1.7, giroPaseo: () => 1, ponQuad() { /* doble */ }, ponDron() { /* doble */ }, vidaPaseo() { /* doble */ }, cicloVista() { /* doble */ },
       dronMando() { /* doble */ }, camaraDron: () => false, vidaEntra() { /* doble */ }, vidaSale() { /* doble */ } },
     enQuad: () => false, enDron: () => dron.on, TR: () => ({ act: false }), iniciaTransicion() { /* doble */ }, iniciaSalida() { /* doble */ }, Ajustes: () => null,
     IrA: () => ({ paso: () => null, cancela() { /* doble */ } }), gm: () => ({ suelo: () => 0, obstaculo: (x: number, y: number, r: number) => (Math.hypot(x - 10, y - 21) < r ? { x: 10 + r, y: 21 } : null) }),
-    espeja: (e: A) => { legado.paseando = e.paseando; legado.persona = e.persona; legado.teclas = e.teclas; legado.espejos++; }, documento, ventana
+    documento, ventana
   };
-  return { api: creaPaseo(d), d, legado, scene, ventana, documento, elementos };
+  const api = creaPaseo(d);
+  return { api, d, legado: api.E as A, scene, ventana, documento, elementos };   // A3-8c: lo que leen los demás, Paseo.E (antes, lo que el legado espejaba)
 }
 
 describe("paseo", () => {

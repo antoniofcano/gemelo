@@ -257,7 +257,7 @@ export type Fauna = ReturnType<typeof creaFauna>;
 export function manifiestoFauna(d: DepsFauna): Manifiesto {
   return {
     id: ID_FAUNA, version: 1,
-    consume: ["scene", "camera", "D", "copas", "cIn", "geoSombra", "matSombra", "paseando", "pp", "cur", "nivelEn", "tVida", "enQuad", "gFauna", "altSuelo", "mira", "Estado", "Minimapa", "fusionaGeometrias"],
+    consume: ["scene", "camera", "D", "copas", "cIn", "geoSombra", "matSombra", "Paseo", "pp", "cur", "nivelEn", "Vida", "gFauna", "altSuelo", "mira", "Estado", "Minimapa", "fusionaGeometrias"],
     expone: [],
     eventos: { escucha: ["paseo:entra", "paseo:sale", "fauna:conejo-cerca"], emite: ["perros:amenaza"] },
     bandera: { defecto: true, url: "fauna" },

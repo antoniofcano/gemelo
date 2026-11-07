@@ -38,7 +38,7 @@ export interface DepsFollaje {
   construyeFrutosLista(grupo: unknown): void;
   /** 18_paisaje: coloca las sombras según el sol, y lee la malla de los olivos (instSombra, que escribe este módulo) */
   sombrasSol(forzar: boolean): void;
-  ponInstSombra(inst: unknown): void;
+  ponInstSombra?(inst: unknown): void;   // opcional (A3-8c): 18_paisaje lee la malla con Follaje.sombras(); quien quiera saber cada cambio (las pruebas) lo pasa
   /** 02g: el presupuesto de VR (las manchas de sombra desde el escalón 2); null si no está */
   VrPresupuesto?: { fuente(nombre: string, fn: (v: unknown) => void): void; olvida(nombre: string): void } | null;
 }
@@ -130,12 +130,12 @@ export function creaFollaje(d: DepsFollaje) {
     }
     let n2 = 0;
     copas.forEach(function (t: any) { if (!t.oliv) return; const rm = t.perfil.reduce(function (a: any, b: any) { return a + b; }, 0) / 8; tm.position.set(t.x + 0.4, (suelo(t.x, t.y) + 0.06) * Estado.exag, -t.y - 0.1); tm.scale.set(rm * 2.5 * ESC_R8, 1, rm * 2.5 * ESC_R8); tm.updateMatrix(); inst.setMatrixAt(n2++, tm.matrix); });
-    inst.count = n2; inst.instanceMatrix.needsUpdate = true; d.ponInstSombra(inst); sombrasSol(true);
+    inst.count = n2; inst.instanceMatrix.needsUpdate = true; if (d.ponInstSombra) d.ponInstSombra(inst); sombrasSol(true);
   }
   /** quita SU malla de gSombras y libera su búfer de instancias (three no lo suelta sin dispose); las demás mallas del grupo (las del paisaje) no se tocan */
   function quitaSombras(): void {
     if (!inst) return;
-    gSombras.remove(inst); inst.dispose(); inst = null; d.ponInstSombra(null);
+    gSombras.remove(inst); inst.dispose(); inst = null; if (d.ponInstSombra) d.ponInstSombra(null);
   }
   let suelto = false;
   /** quita la malla de sombras y suelta su geometría, los cuatro materiales y las dos texturas; olvida la fuente de VR. Llamarlo dos veces no libera dos veces. */

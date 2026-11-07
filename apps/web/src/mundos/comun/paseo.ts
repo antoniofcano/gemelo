@@ -2,8 +2,8 @@
 // la palanca (lo puro: PalancaPuro) y la cámara de seguimiento o en primera persona. Se mueve por el mundo activo (gm.obstaculo, gm.suelo; MU2-4).
 // Componente «paseo» de TODOS los mundos (la locomoción es de todo mundo). Su libera() quita al muñequito de la escena con sus geometrías y sus materiales y quita las escuchas del botón
 // «Pasear», del teclado, de la cruceta, de la ventana y del documento (antes no se quitaban nunca).
-// El estado que el resto del legado lee por su nombre (paseando, persona, teclas) vive aquí y el talón lo espeja en sus var en cuanto cambia (espeja), como Vida en 16_vida; primera es del
-// legado (la escriben 16_vida y 29_vr) y entra por función. Lo que se declara después (12c_ir_a, 13_parcelas, 16_vida, 24_pantalla, 33_ajustes, 90_final) entra por función: IrA, gm y los
+// El estado que leen los demás (paseando, persona, teclas y primera, la vista en primera persona que escriben también 16_vida y 29_vr) vive aquí, en E (Paseo.E;
+// A3-8c: antes, var del legado que el talón espejaba). Este módulo lo pone al día en cuanto cambia (espeja). Lo que se declara después (12c_ir_a, 13_parcelas, 16_vida, 24_pantalla, 33_ajustes, 90_final) entra por función: IrA, gm y los
 // mandos de la vida son intermediarios que preguntan en cada llamada. Código movido tal cual (solo se tipan los parámetros).
 // Ilustrativo (regla 5): el muñequito no es una persona medida.
 import type { Manifiesto } from "../../nucleo/componentes.ts";
@@ -36,20 +36,21 @@ export var PalancaPuro = (function () {
 })();
 // [puro:fin]
 
+/** A3-8c: el estado del paseo que leen los demás (Paseo.E; antes, var del legado). teclas se reemplaza al salir del paseo: se lee en cada uso */
+export interface EstadoPaseo { paseando: boolean; persona: T; teclas: T; primera: boolean }
+
 export interface DepsPaseo {
   THREE: T; scene: T; camera: T; Estado: T; Materiales: T; D: T; $(id: string): T; lienzo: T; visor: T; copaAlta(x: number, y: number): number; sensMirar(): { k: number; y: number };
-  /** del legado: primera (la escriben 16_vida y 29_vr); 13_parcelas, 16_vida (Vida, enQuad, enDron), 24_pantalla (TR, iniciaTransicion, iniciaSalida), 33_ajustes, 12c (IrA), 90_final (gm) */
-  primera(): boolean; ponPrimera(v: boolean): void; parcelaSel(): number; fincaSel(): number; fincas(): T[];
+  /** del arranque: 13_parcelas, 16_vida (Vida, enQuad, enDron), 24_pantalla (TR, iniciaTransicion, iniciaSalida), 33_ajustes, 12c (IrA), 90_final (gm) */
+  parcelaSel(): number; fincaSel(): number; fincas(): T[];
   /** los mandos de la vida (16_vida, que se monta después): velPaseo, giroPaseo, ponQuad, ponDron, vidaPaseo, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale */
   vida: Record<string, (...a: T[]) => T>; enQuad(): boolean; enDron(): boolean; TR(): T; iniciaTransicion(): void; iniciaSalida(): void; Ajustes(): T; IrA(): T; gm(): T;
-  /** el legado copia paseando, persona y teclas en sus var cada vez que cambian */
-  espeja(e: { paseando: boolean; persona: T; teclas: T }): void;
   documento: T; ventana: T;
 }
 
 export function creaPaseo(d: DepsPaseo) {
   var THREE = d.THREE, scene = d.scene, camera = d.camera, Estado = d.Estado, D = d.D, $ = d.$, lienzo = d.lienzo, visor = d.visor, copaAlta = d.copaAlta, sensMirar = d.sensMirar;
-  var primera = d.primera, ponPrimera = d.ponPrimera, enQuad = d.enQuad, enDron = d.enDron, TR = d.TR, document: T = d.documento, window: T = d.ventana;
+  var primera = function () { return E.primera; }, ponPrimera = function (v: boolean) { E.primera = v; }, enQuad = d.enQuad, enDron = d.enDron, TR = d.TR, document: T = d.documento, window: T = d.ventana;
   function iniciaTransicion() { d.iniciaTransicion(); }
   function iniciaSalida() { d.iniciaSalida(); }
   function deVida(n: string) { return function (...a: T[]) { return d.vida[n]!.apply(null, a); }; }   // 16_vida se monta después: el talón pregunta en cada llamada
@@ -60,8 +61,10 @@ export function creaPaseo(d: DepsPaseo) {
   var materiales = d.Materiales.de(ID_PASEO);   // los materiales del muñequito, con dueño «paseo» (se sueltan con libera())
   var escuchas: (() => void)[] = [];   // A3-6c: las escuchas del paseo, para quitarlas en libera()
   function escucha(o: T, tipo: string, fn: T, opc?: T) { if (!o) return; o.addEventListener(tipo, fn, opc); escuchas.push(function () { o.removeEventListener(tipo, fn, opc); }); }
-  function espeja() { d.espeja({ paseando: paseando, persona: persona, teclas: teclas }); }
-  var paseando = false, persona: T = null, teclas: T = {}, pp = { x: 0, y: 0, ang: 0, paso: 0 }, camPos = new THREE.Vector3();   // primera es del legado (la escriben 16_vida y 29_vr)
+  function espeja() { E.paseando = paseando; E.persona = persona; E.teclas = teclas; }
+  var paseando = false, persona: T = null, teclas: T = {}, pp = { x: 0, y: 0, ang: 0, paso: 0 }, camPos = new THREE.Vector3();
+  /** A3-8c: lo que leen los demás (Paseo.E): el estado de este módulo, al día por espeja(), y primera, la vista en primera persona (la escriben también 16_vida y 29_vr) */
+  var E: EstadoPaseo = { paseando: false, persona: null, teclas: {}, primera: false };
   // AV2 (decisión 133): «Altura de la vista» en Configuración (vista.altura): de pie (ojos a 1,62 m, como siempre) o sentado (1,20 m); independiente del avatar. Sin Configuración, de pie.
   var OJOS_PIE = 1.62, OJOS_SENTADO = 1.2;
   function alturaOjos() { var Ajustes = d.Ajustes(); return typeof Ajustes !== "undefined" && Ajustes && Ajustes.lee && Ajustes.lee("vista.altura") === "sentado" ? OJOS_SENTADO : OJOS_PIE; }
@@ -177,7 +180,7 @@ export function creaPaseo(d: DepsPaseo) {
     persona.traverse(function (o: T) { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
     materiales.libera();
   }
-  var api = { pp: pp, camPos: camPos, PalancaPuro: PalancaPuro, ponPalanca: ponPalanca, giraPalanca: giraPalanca, entraPaseo: entraPaseo, salePaseo: salePaseo, actualizaPaseo: actualizaPaseo,
+  var api = { E: E, pp: pp, camPos: camPos, PalancaPuro: PalancaPuro, ponPalanca: ponPalanca, giraPalanca: giraPalanca, entraPaseo: entraPaseo, salePaseo: salePaseo, actualizaPaseo: actualizaPaseo,
     estado: function () { return { paseando: paseando, persona: persona, teclas: teclas }; }, libera: libera, componente: null as Manifiesto | null };
   api.componente = manifiestoPaseo(api);   // lo registra 90_final.js (como Vida)
   return api;

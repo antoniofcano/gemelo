@@ -129,7 +129,7 @@ test("Config: con servidor aplica «componentes», avisa a quien espera y recort
 
 // ---------- quién lee cada parámetro
 test("cada parámetro del contrato lo lee el motor (01_datos, 07ab, 07b, 29_vr), con la URL delante donde la hay; y se espera a la configuración antes del primer olivo", () => {
-  const motor = ["01_datos.js", "07ab_generados.js", "07b_arboles.js", "29_vr.js"].map(f => require("./_fuente").fuenteMotor(f)).join("\n");   // A3-2a: de un talón, también su .ts
+  const motor = ["01_datos.js", "07ab_generados.js", "07b_arboles.js", "29_vr.js"].map(f => require("./_fuente").fuenteMotor(f)).join("\n") + lee("apps/web/src/mundos/exterior/factor-r8.ts");   // A3-2a: de un talón, también su .ts; A3-8c: y el factor de la copa
   for (const ruta of Object.keys(P.LIMITES)) {
     const base = ruta.replace(/\.e[012]$/, "");
     assert.ok(motor.includes("\"" + ruta + "\"") || motor.includes("\"" + ruta + ".\"") || (base === "escalera.umbralesPx" && /Config\.umbrales\(/.test(motor)), "nadie lee " + ruta);
@@ -139,7 +139,9 @@ test("cada parámetro del contrato lo lee el motor (01_datos, 07ab, 07b, 29_vr),
   assert.match(G, /Config\.param\("escalera\.bandaM", Escalera\.BANDA, mB \? BANDA : null\)/, "?olivosBanda= manda");
   assert.match(G, /Config\.param\("escalera\.maxPropios", MAX_PROPIOS, mpr \? MAX_PROPIOS : null\)/, "?olivosPropios= manda");
   assert.match(G, /Promise\.all\(\[p, Config\.listo\]\)\.then\(function \(r(?:: A)?\) \{\s*(?:if \(liberado\) return;[^\n]*\n\s*)?var m(?:: A)? = r\[0\]; aplicaConfig\(\);/, "la configuración se aplica antes del primer olivo");
-  assert.match(pasoArranque("01_datos.js"), /Config\.param\("escalera\.factorCopa", FACTOR_R8_GEN, FACTOR_R8_URL\)/, "?factorR8= manda");
+  // A3-8c: el factor de la copa vive en mundos/exterior/factor-r8.ts (antes, FACTOR_R8_GEN de 01_datos); 01 le da Config.param
+  assert.match(lee("apps/web/src/mundos/exterior/factor-r8.ts"), /d\.param\("escalera\.factorCopa", E\.gen, L\.url\)/, "?factorR8= manda");
+  assert.match(pasoArranque("01_datos.js"), /Mundos\.creaFactorR8\(\{ busqueda: location\.search, D: D, param: function \(ruta, codigo, url\) \{ return Config\.param\(ruta, codigo, url\); \} \}\)/);
   assert.match(require("./_fuente").fuenteMotor("29_vr.js"), /Config\.al\(function \(\) \{ VR_PERFILES\.forEach\(function \(p, i\) \{ p\.tri = Config\.param\("escalera\.triangulos\.gafas\." \+ i, p\.tri\); \}\); \}\);/);
   assert.match(require("./_fuente").fuenteMotor("07b_arboles.js"), /triMovil: TRI_MOVIL_CFG/);
 });

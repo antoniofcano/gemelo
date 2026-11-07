@@ -363,7 +363,7 @@ export function manifiestoFichasTiempo(dp: DepsFichasTiempo): Manifiesto {
   // el manifiesto (ADR-0023): lo lee el guardián pruebas/guardianes/componentes.test.js sin montar nada. ?fichas=0 la apaga; ?fichas=1 la enciende.
   return {
     id: "fichas-tiempo", version: 1,
-    consume: ["TiempoVivo", "Hud", "PanelVR", "Teclas", "VRX", "paseando", "ahoraMs", "nivel"],   // Laminas, Teclas y Bus son del núcleo
+    consume: ["TiempoVivo", "Hud", "PanelVR", "Teclas", "VRX", "Paseo", "ahoraMs", "nivel"],   // Laminas, Teclas y Bus son del núcleo
     expone: ["FichasTiempo"],
     eventos: { escucha: ["prevision:alterna"], emite: [] },
     bandera: { defecto: true, url: "fichas" },

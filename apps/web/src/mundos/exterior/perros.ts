@@ -228,7 +228,7 @@ export type Perros = ReturnType<typeof creaPerros>;
 export function manifiestoPerros(d: DepsPerros): Manifiesto {
   return {
     id: ID_PERROS, version: 1,
-    consume: ["D", "copas", "scene", "camera", "texColor", "hash", "matSombra", "geoSombra", "paseando", "pp", "esc", "tVida", "enQuad", "gFauna", "altSuelo", "enDron", "pendienteRumbo", "sueloSeco", "Minimapa", "fusionaGeometrias"],
+    consume: ["D", "copas", "scene", "camera", "texColor", "hash", "matSombra", "geoSombra", "Paseo", "pp", "esc", "Vida", "gFauna", "altSuelo", "pendienteRumbo", "sueloSeco", "Minimapa", "fusionaGeometrias"],
     expone: [],
     eventos: { escucha: ["perros:llegan", "perros:amenaza"], emite: ["sonido:ladrido", "polvo:emite", "fauna:conejo-cerca"] },
     bandera: { defecto: true, url: "perros" },

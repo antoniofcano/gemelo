@@ -600,7 +600,7 @@ export function manifiestoAvatares(dp: DepsAvatares) {
   return {
     id: ID_AVATARES, version: 1,
     // A3-6a: solo lo que llega del legado por el talón (y la presencia, por n.api); el aspecto se importa de red/sala.ts
-    consume: ["Materiales", "Aparato", "Presencia", "VRX", "VrPresupuesto", "paseando", "persona", "primera", "enQuad", "enDron", "pp"],
+    consume: ["Materiales", "Aparato", "Presencia", "VRX", "VrPresupuesto", "Paseo", "Vida", "pp"],
     expone: [] as string[],
     eventos: { escucha: ["presencia:activada", "voz:habla"], emite: [] as string[] },
     bandera: { defecto: true, url: "avatares" },
