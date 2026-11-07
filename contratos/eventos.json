@@ -773,7 +773,7 @@
         }
       },
       "emiten": [
-        "39_oficina_mundo"
+        "mundos/exterior/oficina-mundo"
       ],
       "escuchan": []
     },
@@ -794,7 +794,7 @@
         }
       },
       "emiten": [
-        "39_oficina_mundo"
+        "mundos/exterior/oficina-mundo"
       ],
       "escuchan": []
     },
@@ -881,13 +881,13 @@
     "oficina:anuncio": {
       "descripcion": "OF10: ha llegado un anuncio de la oficina por la sala (tema «anuncio», mandado por la api sin participante; ya validado y limpio). Para quien quiera reaccionar (un sonido, un lector de pantalla); el aviso, la lámina en VR y la línea del chat ya los pone 39_oficina_mundo.",
       "datos": { "type": "object", "required": ["texto"], "properties": { "texto": { "type": "string", "maxLength": 280 } } },
-      "emiten": ["39_oficina_mundo"],
+      "emiten": ["mundos/exterior/oficina-mundo"],
       "escuchan": []
     },
     "oficina:sala": {
       "descripcion": "OF10: la oficina invita a pasar a otra sala del mundo (tema «sala»; a = «general» o «visita»). La pregunta («Ir» / «Quedarme») ya la hace 39_oficina_mundo; nadie cambia de sala sin pulsar.",
       "datos": { "type": "object", "required": ["a"], "properties": { "a": { "enum": ["general", "visita"] } } },
-      "emiten": ["39_oficina_mundo"],
+      "emiten": ["mundos/exterior/oficina-mundo"],
       "escuchan": []
     },
     "personalizacion:resultado": {

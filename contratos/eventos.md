@@ -39,8 +39,8 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `habla:mano` | `{ accion ("levanta" \| "baja"), ok, puesto }` | `mundos/comun/habla` (antes 47_habla) (F3e: se pidió a la api levantar o bajar la mano; `puesto` = el que dio al levantar) | — (un sonido, la háptica) |
 | `habla:micro` | `{ accion ("abre" \| "cierra"), fuente ("boton" \| "tecla" \| "gatillo" \| "panel" \| "auto" \| "consentimiento" \| "silencio"), modo ("pulsar" \| "mantener") }` | `mundos/comun/habla` (antes 47_habla) (F3e: se pidió abrir o cerrar el micro; el estado de verdad llega por `voz:estado`) | — (un sonido, un lector de pantalla) |
 | `hazas:cambia` | `{ n, propias }` | `13b_hazas` (llegaron las hazas de la api, o se soltaron) | `44_lindes` (vuelve a pedir `Hazas.lindes()` y rehace la linde) |
-| `oficina:anuncio` | `{ texto }` (≤ 280, limpio) | `39_oficina_mundo` (OF10: llegó un anuncio de la oficina por la sala) | — (para un sonido o un lector de pantalla; el aviso, la lámina en VR y el chat ya los pone él) |
-| `oficina:sala` | `{ a }` (`general` \| `visita`) | `39_oficina_mundo` (OF10: la oficina invita a pasar a otra sala) | — (la pregunta «Ir» / «Quedarme» ya la hace él) |
+| `oficina:anuncio` | `{ texto }` (≤ 280, limpio) | `mundos/exterior/oficina-mundo` (antes 39_oficina_mundo; OF10: llegó un anuncio de la oficina por la sala) | — (para un sonido o un lector de pantalla; el aviso, la lámina en VR y el chat ya los pone él) |
+| `oficina:sala` | `{ a }` (`general` \| `visita`) | `mundos/exterior/oficina-mundo` (antes 39_oficina_mundo; OF10: la oficina invita a pasar a otra sala) | — (la pregunta «Ir» / «Quedarme» ya la hace él) |
 | `juego:ofrece` | `{ id, titulo, descripcion?, ayuda?, vr?, crea }` (`vr: { botones, palanca, ayuda? }` si sabe jugarse en VR, C9b) | `41_cae_la_cosecha` (al montarse y al oír `juego:pide`) | `40_juegos` (el anfitrión: lo pone en la ventana Juegos) |
 | `juego:pide` | — | `40_juegos` (al montarse) | `41_cae_la_cosecha` |
 | `juego:retira` | `{ id }` | `41_cae_la_cosecha` (al liberarse) | `40_juegos` (lo quita y, si estaba abierto, lo cierra) |

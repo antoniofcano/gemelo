@@ -144,3 +144,6 @@ export type { DepsTransicion, Transicion } from "./comun/transicion.ts";
 // A3-7b2 (MU5-n): la personalización de los árboles (antes 42_personalizacion.js), componente del exterior; su libera() cancela las peticiones en vuelo.
 export { ID_PERSONALIZACION, creaPersonalizacion, manifiestoPersonalizacion } from "./exterior/personalizacion.ts";
 export type { DepsPersonalizacion, Personalizacion } from "./exterior/personalizacion.ts";
+// A3-7b2 (MU5-n): el mundo en modo oficina (antes 39_oficina_mundo.js), componente del exterior; su libera() cancela las peticiones en vuelo.
+export { ID_OFICINA_MUNDO, creaOficinaMundo, manifiestoOficinaMundo } from "./exterior/oficina-mundo.ts";
+export type { DepsOficinaMundo, OficinaMundo } from "./exterior/oficina-mundo.ts";
