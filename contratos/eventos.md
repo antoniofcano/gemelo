@@ -73,6 +73,6 @@ Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md),
 | `usable:suelta` | `{ id, motivo }` | `02e_entidades` | (nadie todavía) |
 | `usable:usa` | `{ id, accion }` | `02e_entidades` (una acción de la ficha: «Ir a esta baliza», «Ir con») | (nadie todavía) |
 | `vr:entra` | — | `29_vr` | `40_juegos` (cierra el juego abierto: en VR no hay juegos hasta C9b) |
-| `vr:sale` | — | `29_vr` | `02d_laminas` (cierra las láminas de VR), `40_juegos` (cierra el juego en lámina) |
+| `vr:sale` | — | `29_vr` | `ui/laminas` (antes 02d_laminas; cierra las láminas de VR), `40_juegos` (cierra el juego en lámina) |
 
 Ya no queda nada por `CustomEvent` en `document`: el `gemelo:chat` de `31_hud.js` pasó a `chat:alterna` con C5. Los mensajes de la red (las poses, el chat) **no** van por el Bus: van por la sala de la red (`Red.sala(clave).escucha(tema, fn)`, `37_red.js`), de punto a punto y sin copias.

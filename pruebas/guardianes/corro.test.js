@@ -16,7 +16,7 @@ const { lee } = require("./_util");
 const { aparatoDe } = require("./_aparato");
 
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return s.slice(i, f); };
-const VOZ = lee("apps/web/motor/45_voz.js"), HAB = lee("apps/web/motor/47_habla.js"), COR = lee("apps/web/motor/47b_corro.js"), LAMJS = lee("apps/web/motor/02d_laminas.js");
+const VOZ = lee("apps/web/motor/45_voz.js"), HAB = lee("apps/web/motor/47_habla.js"), COR = lee("apps/web/motor/47b_corro.js"), LAMJS = require("./_fuente").fuenteMotor("02d_laminas.js");
 const V = new Function("\"use strict\";\n" + trozo(VOZ, "// [puro:inicio]", "// [puro:fin]") + "\nreturn VozPuro;")();
 const H = new Function("\"use strict\";\n" + trozo(HAB, "// [puro:inicio]", "// [puro:fin]") + "\nreturn HablaPuro;")();
 const PURO = trozo(COR, "// [puro:inicio]", "// [puro:fin]"), MOTOR = trozo(COR, "// [motor:inicio]", "// [motor:fin]");

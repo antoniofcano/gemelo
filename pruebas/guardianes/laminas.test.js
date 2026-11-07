@@ -6,7 +6,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
-const FUENTE = lee("apps/web/motor/02d_laminas.js");
+const FUENTE = require("./_fuente").fuenteMotor("02d_laminas.js");
 function trozo(ini, fin) {
   const i = FUENTE.indexOf(ini), f = FUENTE.indexOf(fin);
   assert.ok(i >= 0 && f > i, "02d_laminas.js debe marcar " + ini + " … " + fin);

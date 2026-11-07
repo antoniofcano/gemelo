@@ -1374,7 +1374,7 @@
         "mundos/comun/vr-sesion"
       ],
       "escuchan": [
-        "02d_laminas",
+        "ui/laminas",
         "mundos/comun/muneca",
         "40_juegos"
       ]

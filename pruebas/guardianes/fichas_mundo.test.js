@@ -14,7 +14,7 @@ function trozo(fuente, ini, fin) {
   return fuente.slice(i, f);
 }
 const P = new Function("\"use strict\";\n" + trozo(FUENTE, "// [puro:inicio]", "// [puro:fin]") + "\nreturn FichasMundoPuro;")();
-const LP = new Function("\"use strict\";\n" + trozo(lee("apps/web/motor/02d_laminas.js"), "// [puro:inicio]", "// [puro:fin]") + "\nreturn LaminasPuro;")();
+const LP = new Function("\"use strict\";\n" + trozo(require("./_fuente").fuenteMotor("02d_laminas.js"), "// [puro:inicio]", "// [puro:fin]") + "\nreturn LaminasPuro;")();
 const EP = require("./_nucleo").EntidadesPuro;   // 02e_entidades.js: la lógica pura es del núcleo (A1-11)
 const medir = (t, px, negrita) => String(t).length * px * (negrita ? 0.6 : 0.55);
 

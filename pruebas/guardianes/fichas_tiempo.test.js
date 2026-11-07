@@ -14,7 +14,7 @@ function trozo(ini, fin, fuente = FUENTE) {
   assert.ok(i >= 0 && f > i, "el fichero debe marcar " + ini + " … " + fin);
   return fuente.slice(i, f);
 }
-const LAMINAS = lee("apps/web/motor/02d_laminas.js");   // el servicio de la lámina (C8): se monta debajo de la ficha, con el mismo THREE de mentira
+const LAMINAS = require("./_fuente").fuenteMotor("02d_laminas.js");   // el servicio de la lámina (C8): se monta debajo de la ficha, con el mismo THREE de mentira
 const F = new Function("\"use strict\";\n" + trozo("// [puro:inicio]", "// [puro:fin]") + "\nreturn FichasTiempoPuro;")();
 
 // un contexto 2D de mentira: apunta los textos (con su fuente) y cuenta las operaciones de dibujo

@@ -11,7 +11,7 @@ const MUN = require("./_fuente").fuenteMotorJs("31c_muneca.js"),   // A3-6a: el 
   VR = require("./_fuente").fuenteMotor("29_vr.js"), HUDP = require("./_fuente").fuenteMotor("31b_hud_personal.js"), AJU = require("./_fuente").fuenteMotor("33_ajustes.js");
 const MP = require("./_mundos").MunecaPuro;   // A3-6a
 const HP = new Function("\"use strict\";\n" + trozo(HUDP, "// [puro:inicio]", "// [puro:fin]") + "\nreturn HudPersonalPuro;")();
-const LP = new Function("\"use strict\";\n" + trozo(lee("apps/web/motor/02d_laminas.js"), "// [puro:inicio]", "// [puro:fin]") + "\nreturn LaminasPuro;")();
+const LP = new Function("\"use strict\";\n" + trozo(require("./_fuente").fuenteMotor("02d_laminas.js"), "// [puro:inicio]", "// [puro:fin]") + "\nreturn LaminasPuro;")();
 
 // ---- utilidades: vectores y el cuaternión que lleva a en b (como Quaternion.setFromUnitVectors de three)
 const norm = v => { const l = Math.hypot(v.x, v.y, v.z); return { x: v.x / l, y: v.y / l, z: v.z / l }; };

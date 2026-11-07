@@ -7,7 +7,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
-const LAM = lee("apps/web/motor/02d_laminas.js"), VR = require("./_fuente").fuenteMotor("29_vr.js");
+const LAM = require("./_fuente").fuenteMotor("02d_laminas.js"), VR = require("./_fuente").fuenteMotor("29_vr.js");
 function trozo(fuente, ini, fin) { const i = fuente.indexOf(ini), f = fuente.indexOf(fin); assert.ok(i >= 0 && f > i, ini); return fuente.slice(i, f); }
 const P = new Function("\"use strict\";\n" + trozo(LAM, "// [puro:inicio]", "// [puro:fin]") + "\nreturn LaminasPuro;")();
 const cerca = (a, b, e, msg) => assert.ok(Math.abs(a - b) < (e || 1e-9), (msg || "") + ": " + a + " ≠ " + b);

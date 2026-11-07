@@ -9,7 +9,7 @@ const { lee } = require("./_util");
 // A3-3: 44b_carteles es un talón; CartelesPuro y el componente viven en apps/web/src/mundos/exterior/carteles.ts y aquí corre ESE código (Mundos, de _mundos.js), no un trozo de texto
 const Mundos = require("./_mundos"), { fuenteMotor } = require("./_fuente");
 const FUENTE = fuenteMotor("44b_carteles.js"), PURO = FUENTE, MOTOR = FUENTE, P = Mundos.CartelesPuro;
-const LP = new Function("\"use strict\";\n" + (function () { const f = lee("apps/web/motor/02d_laminas.js"); return f.slice(f.indexOf("// [puro:inicio]"), f.indexOf("// [puro:fin]")); })() + "\nreturn LaminasPuro;")();
+const LP = new Function("\"use strict\";\n" + (function () { const f = require("./_fuente").fuenteMotor("02d_laminas.js"); return f.slice(f.indexOf("// [puro:inicio]"), f.indexOf("// [puro:fin]")); })() + "\nreturn LaminasPuro;")();
 const medir = (t, px, neg) => String(t).length * px * (neg ? 0.6 : 0.55);
 
 // una ficha pública COMPLETA con todo lo que la api puede mandar (y algo que no debería): ninguna de las cosas prohibidas puede acabar en un cartel

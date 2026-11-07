@@ -87,5 +87,5 @@ test("03_escena: solo toca el renderer si el tono no es neutro", () => {
 test("los materiales propios no cambian: ninguno fuerza toneMapped (salvo las láminas, que ya lo tenían) ni se salta tonemapping_fragment sin motivo", () => {
   const nubes = lee("apps/web/src/mundos/exterior/tiempo-cielo.ts");   // MU5-n (A3-4): antes en 15_tiempo.js
   assert.strictEqual((nubes.match(/#include <tonemapping_fragment>/g) || []).length, 2, "las nubes mapean tonos antes de colorspace_fragment");
-  assert.ok(lee("apps/web/motor/02d_laminas.js").includes("toneMapped: false"), "láminas e iconos: siguen sin mapear");
+  assert.ok(require("./_fuente").fuenteMotor("02d_laminas.js").includes("toneMapped: false"), "láminas e iconos: siguen sin mapear");
 });
