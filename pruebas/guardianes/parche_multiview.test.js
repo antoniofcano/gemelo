@@ -1,3 +1,4 @@
+const { pasoArranque, nombresPasos } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 // Guardián del parche de super-three en la build de VR (apps/web/herramientas/parche_multiview.mjs, MULTIVIEW.md §«Texturas en negro»).
 // Con multiview, super-three 0.185.0 aplaza las subidas de texturas y no las ejecuta nunca: terreno y olivos en negro en el Quest (2026-11-05).
 "use strict";
@@ -49,6 +50,6 @@ test("tras el parche, ningún sombreador de super-three tiene un parámetro con 
 
 test("los sombreadores propios del motor tampoco usan esos nombres como parámetro", () => {
   const MOTOR = path.join(WEB, "motor");
-  const malos = fs.readdirSync(MOTOR).filter(f => f.endsWith(".js")).filter(f => PARAM_PROHIBIDO.test(fs.readFileSync(path.join(MOTOR, f), "utf8")));
+  const malos = nombresPasos().filter(f => PARAM_PROHIBIDO.test(pasoArranque(f)));
   assert.deepStrictEqual(malos, []);
 });

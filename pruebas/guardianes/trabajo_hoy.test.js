@@ -9,10 +9,11 @@
 // Cifras de DISEÑO (contadas en Node, no medidas con el renderizador). Lo de Chrome, iPhone y Quest: NO PROBADO.
 const test = require("node:test"), assert = require("node:assert"), vm = require("vm"), path = require("path"), { pathToFileURL } = require("url");
 const { RAIZ, fs, lee } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const Mundos = require("./_mundos"), { fuenteMotor } = require("./_fuente"), { conFabrica } = require("./_materiales");   // 54 es un talón (MU5-n, A3-5): su código vive en mundos/exterior/trabajo-hoy.ts
 
 const trozo = (fuente, ini, fin) => { const i = fuente.indexOf(ini), f = fuente.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini); return fuente.slice(i, f); };
-const F53 = fuenteMotor("53_mundo_hoy.js"), F54 = lee("apps/web/motor/54_trabajo_hoy.js"), F54TS = fuenteMotor("54_trabajo_hoy.js");
+const F53 = fuenteMotor("53_mundo_hoy.js"), F54 = pasoArranque("54_trabajo_hoy.js"), F54TS = fuenteMotor("54_trabajo_hoy.js");
 const MH = new Function("\"use strict\";\n" + trozo(F53, "// [puro:inicio]", "// [puro:fin]") + "\nreturn MundoHoyPuro;")();
 const P = Mundos.TrabajoHoyPuro;
 const EJEMPLO = JSON.parse(lee("contratos/mundo-hoy-ejemplo.json"));

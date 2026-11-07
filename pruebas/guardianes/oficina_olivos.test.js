@@ -12,6 +12,7 @@ const test = require("node:test"), assert = require("node:assert");
 const { spawn, spawnSync } = require("child_process");
 const { pathToFileURL } = require("url");
 const { RAIZ, lee, propia, chrome, playwright, fs, path } = require("./_util");
+const { nombresPasos } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 
 const html = lee("apps/web/oficina/index.html");
 const fuentes = { "olivos.js": lee("apps/web/oficina/olivos.js"), "olivos_puro.js": lee("apps/web/oficina/olivos_puro.js"), "oficina.js": lee("apps/web/oficina/oficina.js") };
@@ -69,7 +70,7 @@ test("los límites de la oficina son los del esquema y los del motor; los máxim
 test("los interruptores de componentes son ids de manifiestos que existen en el motor", async () => {
   const P = await importa("olivos_puro.js");
   // MU5-n: el motor con lo migrado a src/ (_fuente.js); un manifiesto de TypeScript lleva su id en una constante (`export const ID_X = "<id>";`)
-  const motor = fs.readdirSync(path.join(RAIZ, "apps", "web", "motor")).filter(f => f.endsWith(".js")).map(f => require("./_fuente").fuenteMotor(f)).join("\n");
+  const motor = nombresPasos().map(f => require("./_fuente").fuenteMotor(f)).join("\n");
   for (const c of P.COMPONENTES) assert.ok(new RegExp('id: "' + c.id + '", version|(?:export )?const ID_\\w+ = "' + c.id + '";').test(motor), c.id + " es un componente del motor");
   assert.strictEqual(new Set(P.COMPONENTES.map(c => c.id)).size, P.COMPONENTES.length);
 });

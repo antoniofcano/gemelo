@@ -35,10 +35,10 @@ export function entradaMotor(sin = []) {
 }
 
 // A3-8c: la entrada nueva. El cliente arranca desde apps/web/src/arranque.ts (TypeScript, alias «@gemelo/arranque» de vite.config.js): Vite lo empaqueta
-// directamente, sin concatenar nada. Mientras convive con el legado (primer paso de A3-8c), GEMELO_ENTRADA=ts la elige; sin la variable, la concatenación de siempre.
+// directamente, sin concatenar nada. Es la de siempre desde el segundo paso de A3-8c; mientras quede motor/, GEMELO_ENTRADA=legado escribe la concatenación.
 export const ENTRADA_TS = IMPORTA_CSS + 'import "@gemelo/arranque";\n';
 /** ¿Qué entrada se escribe? «ts» (apps/web/src/arranque.ts) o «legado» (la concatenación de motor/) */
-export const entradaPedida = (env = process.env) => env.GEMELO_ENTRADA === "ts" ? "ts" : "legado";
+export const entradaPedida = (env = process.env) => env.GEMELO_ENTRADA === "legado" ? "legado" : "ts";
 
 /** Escapa un texto para contenido HTML (L9-04): el nombre de la finca y los textos del índice no pueden cerrar etiquetas ni meter marcado */
 export function escapaHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]); }

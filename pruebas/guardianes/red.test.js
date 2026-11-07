@@ -10,13 +10,12 @@
 const test = require("node:test"), assert = require("node:assert");
 const { aparatoDe } = require("./_aparato");
 const { lee, path } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const { conFabrica } = require("./_materiales");   // Materiales e InfoDibujo (02h/02i, F1) en el contexto del módulo
-const contratoModulos = require(path.join(__dirname, "..", "contrato_modulos.js"));
 
-const sinCabecera = s => s.startsWith(contratoModulos.MARCA_I) ? s.slice(s.indexOf(contratoModulos.MARCA_F) + contratoModulos.MARCA_F.length + 1) : s;
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return s.slice(i, f); };
-const RED = lee("apps/web/motor/37_red.js"), PRES = lee("apps/web/motor/38_presencia_compartida.js"), LIB = lee("apps/web/motor/26_presencia.js"), AVAT = lee("apps/web/motor/26b_avatares.js");
-const NUCLEO = lee("apps/web/motor/02c_componentes.js");
+const RED = pasoArranque("37_red.js"), PRES = pasoArranque("38_presencia_compartida.js"), LIB = pasoArranque("26_presencia.js"), AVAT = pasoArranque("26b_avatares.js");
+const NUCLEO = pasoArranque("02c_componentes.js");
 const { RedPuro } = require("./_mundos");   // MU5-n (A3-6a): la red vive en apps/web/src/red/salas.ts; 37_red.js es su talón
 const IFACES = JSON.parse(lee("contratos/interfaces.json"));
 const espera = (ms = 0) => new Promise(r => setTimeout(r, ms));
@@ -181,9 +180,9 @@ class El {
 /** el registro (02c entero) con la lógica pura de la presencia (26_presencia.js) y los componentes que se pidan; lo demás, de mentira */
 function motor({ busqueda = "", ficheros = ["red", "presencia", "avatares"], token = { url: "/rtc", token: "tk" }, tokenEstado = 200, base = "", hay = null } = {}) {
   const LK = lkFalso(), errores = [], avisos = [], cuenta = { mallas: 0, mallasLibres: 0, escena: 0, tipos: [], defs: {}, quitados: 0, fetch: [] };
-  const fuentes = { red: sinCabecera(RED).replace('import("livekit-client")', "Promise.resolve(LK_FALSO)"),
-    presencia: sinCabecera(PRES).replace('import("three/addons/utils/BufferGeometryUtils.js")', "Promise.reject(new Error(\"sin addons en Node\"))"),
-    avatares: sinCabecera(AVAT) };
+  const fuentes = { red: RED.replace('import("livekit-client")', "Promise.resolve(LK_FALSO)"),
+    presencia: PRES.replace('import("three/addons/utils/BufferGeometryUtils.js")', "Promise.reject(new Error(\"sin addons en Node\"))"),
+    avatares: AVAT };
   const ventana = { addEventListener() {}, removeEventListener() {} }, visor = new El("div");
   const documento = { getElementById: () => null, createElement: t => new El(t), createTextNode: t => ({ texto: t }), body: new El("body") };
   const consola = { error: (...a) => errores.push(a.map(String).join(" ")), warn: (...a) => { const t = a.map(String).join(" "); if (/sin quad ni dron/.test(t)) avisos.push(t); else errores.push(t); }, log() {} };
@@ -201,8 +200,8 @@ function motor({ busqueda = "", ficheros = ["red", "presencia", "avatares"], tok
       return Promise.resolve({ ok: tokenEstado === 200, status: tokenEstado, json: () => Promise.resolve(tokenEstado === 200 ? token : { mensaje: "no" }) }); }
   };
   conFabrica(g);
-  const nombres = Object.keys(g), codigo = sinCabecera(LIB) + "\n" + ficheros.map(f => fuentes[f]).join("\n");
-  const f = new Function(...["window", "location", "document", "console"].concat(nombres), "\"use strict\";\n" + sinCabecera(NUCLEO) + "\n" + codigo + "\nreturn { Componentes, Bus };");
+  const nombres = Object.keys(g), codigo = LIB + "\n" + ficheros.map(f => fuentes[f]).join("\n");
+  const f = new Function(...["window", "location", "document", "console"].concat(nombres), "\"use strict\";\n" + NUCLEO + "\n" + codigo + "\nreturn { Componentes, Bus };");
   const r = f(...[ventana, { search: busqueda, href: "https://gemelo.test/finca/index.html" + busqueda }, documento, consola].concat(nombres.map(n => g[n])));
   r.Componentes.arranca();
   return Object.assign(r, { LK, errores, avisos, cuenta, ventana, visor, g });

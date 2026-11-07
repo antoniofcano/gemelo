@@ -47,7 +47,7 @@ test("el texto generado es el de antes con tres líneas de más: la importación
   // y genera() escribe justo eso
   const raiz = fs.mkdtempSync(path.join(os.tmpdir(), "gemelo-puente-")), idx = path.join(raiz, "i.json");
   try {
-    fs.writeFileSync(idx, "{}"); G.genera(idx, raiz);
+    fs.writeFileSync(idx, "{}"); G.genera(idx, raiz, [], "legado");
     assert.strictEqual(fs.readFileSync(path.join(raiz, "entrada", "motor.generado.js"), "utf8"), G.entradaMotor());
   } finally { fs.rmSync(raiz, { recursive: true, force: true }); }
 });

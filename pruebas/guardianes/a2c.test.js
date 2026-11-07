@@ -6,6 +6,7 @@
 // No dibuja nada: cómo se ve lo dan las capturas (pruebas/a2c_capturas.js) y, en el Quest o el iPhone, nadie todavía (no probado).
 const test = require("node:test"), assert = require("node:assert"), path = require("path"), fs = require("fs"), { pathToFileURL } = require("url");
 const { lee, RAIZ } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const { fabrica } = require("./_materiales");
 
 const LIB = { pantalla: "three", vr: "super-three" }, TH = {};
@@ -43,7 +44,7 @@ test("la perilla: defecto apagado, 1 enciende, lo raro avisa, sin MSAA nunca", (
 test("el ajuste «vista.a2c» está en el esquema (apagado) y 02i lo lee de localStorage una vez, con try/catch", () => {
   assert.match(require("./_fuente").fuenteMotor("33_ajustes.js"), /"vista\.a2c": bool\(false\)/);
   // MU5-0: la fábrica vive en apps/web/src/nucleo/materiales.ts; 02i (el talón) le presta el almacén y ella lo lee una vez, con try/catch
-  assert.match(lee("apps/web/motor/02i_materiales.js"), /almacen: function \(\) \{ return window\.localStorage; \}/);
+  assert.match(pasoArranque("02i_materiales.js"), /almacen: function \(\) \{ return window\.localStorage; \}/);
   const m = lee("apps/web/src/nucleo/materiales.ts");
   assert.match(m, /function ajusteGuardado\(almacen[^)]*\)[^{]*\{\s*try \{ const s = almacen \? almacen\(\)\.getItem\("gemelo\.ajustes\." \+ clave\)[^}]*\} catch \(e\)/);
   assert.match(m, /ajusteGuardado\(d\.almacen, "vista\.a2c"\)/);
@@ -87,7 +88,7 @@ test("cada material de recorte alfa del motor pasa por Materiales.recorte (y la 
 });
 
 test("MSAA: el contexto se crea con antialias: XrPerillas.aa (defecto 1) y 02i lo lee de ahí", () => {
-  assert.match(lee("apps/web/motor/03_escena.js"), /antialias: XrPerillas\.aa/);
+  assert.match(pasoArranque("03_escena.js"), /antialias: XrPerillas\.aa/);
   assert.match(lee("apps/web/src/nucleo/xr-perillas.ts"), /aa: true/);
-  assert.match(lee("apps/web/motor/02i_materiales.js"), /XrPerillas\.aa/);
+  assert.match(pasoArranque("02i_materiales.js"), /XrPerillas\.aa/);
 });

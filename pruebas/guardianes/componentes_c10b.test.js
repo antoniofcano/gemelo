@@ -5,6 +5,7 @@
 // Lo de Chrome (que se vea igual) va por el banco; lo no probado en Quest ni iPhone sigue sin probar.
 const test = require("node:test"), assert = require("node:assert"), vm = require("vm"), path = require("path"), { pathToFileURL } = require("url");
 const { lee, RAIZ } = require("./_util"), { fuenteMotor } = require("./_fuente");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 
 let THREE;
 test.before(async () => { THREE = await import(pathToFileURL(path.join(RAIZ, "apps/web/node_modules/three/build/three.module.js")).href); });
@@ -30,7 +31,7 @@ function mundo(extra) {
   return { E, g, defs, scene, gFauna, Bus, capas };
 }
 function carga(fichero, m) {
-  vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/" + fichero), vm.createContext(require("./_materiales").conFabrica(m.g)), { filename: fichero });
+  vm.runInContext("\"use strict\";\n" + pasoArranque(fichero), vm.createContext(require("./_materiales").conFabrica(m.g)), { filename: fichero });
   assert.strictEqual(m.defs.length, 1, "un componente por fichero");
   return m.defs[0];
 }

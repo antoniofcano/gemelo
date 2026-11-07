@@ -4,6 +4,7 @@
 // siempre, y al liberar los uniformes vuelven a su estado y la textura se suelta. Que se vea igual, en Chrome, va por el banco; iPhone y Quest, sin probar.
 const test = require("node:test"), assert = require("node:assert"), vm = require("vm"), path = require("path"), { pathToFileURL } = require("url");
 const { lee, RAIZ } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 
 let THREE;
 test.before(async () => { THREE = await import(pathToFileURL(path.join(RAIZ, "apps/web/node_modules/three/build/three.module.js")).href); });
@@ -43,7 +44,7 @@ function mundo(extra) {
 function monta(m, conCapa) {
   const defs = [], ctx = vm.createContext(m.g);
   m.g.Componentes = { registra: d => { defs.push(d); return true; } };
-  vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/10_ndvi.js") + (conCapa ? lee("apps/web/motor/10b_capa_ndvi.js") : "") +
+  vm.runInContext("\"use strict\";\n" + pasoArranque("10_ndvi.js") + (conCapa ? pasoArranque("10b_capa_ndvi.js") : "") +
     "\nglobalThis.__n = { pintaNdvi, ndviRel, rampa, idx: () => FechaNdvi.E.idx, pon: i => { FechaNdvi.pon(i); }, NDV, escala: () => Ndvi.escala() };", ctx, { filename: "10_ndvi+10b" });
   return { def: defs[0], n: m.g.__n };
 }
@@ -124,7 +125,7 @@ test("una finca sin NDVI: el núcleo no pinta nada y la casilla no rompe", () =>
 });
 
 test("10_ndvi.js ya no dibuja: ni textura, ni lienzo, ni uniformes, ni gráfica; avisa por el Bus. 14_historia sigue llamando a pintaNdvi", () => {
-  const f = lee("apps/web/motor/10_ndvi.js").replace(/^\s*\/\/.*$/gm, "");
+  const f = pasoArranque("10_ndvi.js").replace(/^\s*\/\/.*$/gm, "");
   assert.ok(!/CanvasTexture|createElement|UN\.|ndviTex|chispa|capaNdvi|"cNdvi"/.test(f), "10_ndvi.js sigue dibujando la capa");
   // MU5-n (A3-1a): el aviso lo da el núcleo del NDVI en src/mundos/exterior/ndvi.ts, con el Bus que 10_ndvi.js le presta
   const ts = lee("apps/web/src/mundos/exterior/ndvi.ts");

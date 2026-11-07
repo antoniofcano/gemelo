@@ -6,32 +6,28 @@ const path = require("path");
 const A = require("../banco/afectadas");
 const RAIZ = path.join(__dirname, "..", "..");
 
-// Mundo sintético: tres módulos del motor (b consume a; c consume b) y cuatro pruebas.
+// Mundo sintético: dos módulos del cliente y varias pruebas (A3-8c: sin motor/ ni sus cabeceras, ya no hay grafo de consumidores que seguir).
 const refs = {
-  sintaxis: new Set(["apps/web/motor"]),
+  sintaxis: new Set(["apps/web/src/arranque.ts"]),
   higiene: new Set(["apps/api"]),
   secretos: new Set(["pruebas/guardianes"]),
   documentacion: new Set(["doc"]),
-  contratos: new Set(["contratos", "apps/web/motor"]),
+  contratos: new Set(["contratos", "apps/web/src/arranque.ts"]),
   api: new Set(["apps/api", "contratos/api.openapi.yaml"]),
-  solo_a: new Set(["apps/web/motor/10_a.js"]),
-  solo_c: new Set(["apps/web/motor/30_c.js"]),
+  solo_a: new Set(["apps/web/src/a.ts"]),
+  solo_c: new Set(["apps/web/src/c.ts"]),
   tuberia_x: new Set(["tuberia/x.py"]),
 };
-const consumidores = { "10_a": ["20_b"], "20_b": ["30_c"] };
-const elige = cambiados => A.selecciona({ cambiados, refs, consumidores });
+const elige = cambiados => A.selecciona({ cambiados, refs });
 const nombres = r => [...r.pruebas.keys()].sort();
 const BARATOS = ["contratos", "documentacion", "higiene", "secretos", "sintaxis"];
 
-test("un cambio en un módulo del motor elige sus pruebas y las de sus consumidores (transitivo)", () => {
-  const r = elige(["apps/web/motor/10_a.js"]);
+test("un cambio en un módulo del cliente elige las pruebas que lo nombran, y solo esas", () => {
+  const r = elige(["apps/web/src/a.ts"]);
   assert.equal(r.todo, false);
-  assert.ok(r.pruebas.has("solo_a"));
-  assert.ok(r.pruebas.has("solo_c"), "30_c consume 20_b, que consume 10_a");
-  assert.match(r.pruebas.get("solo_c").join(" "), /consumidor 30_c/);
+  assert.ok(r.pruebas.has("solo_a") && !r.pruebas.has("solo_c"));
   assert.ok(!r.pruebas.has("tuberia_x") && !r.pruebas.has("api"));
-  const s = elige(["apps/web/motor/30_c.js"]);
-  assert.ok(s.pruebas.has("solo_c") && !s.pruebas.has("solo_a"), "el consumidor cambiado no arrastra a quien consume");
+  assert.ok(elige(["apps/web/src/arranque.ts"]).pruebas.has("sintaxis"), "el arranque elige a quien lo lee");
 });
 
 test("un cambio en contratos/ elige contratos y api", () => {
@@ -71,21 +67,15 @@ test("una prueba tocada, o un script que ella importa, la eligen a ella", () => 
 });
 
 test("rutasDelTexto: literales y path.join, y no la prosa de los comentarios", () => {
-  const rs = A.rutasDelTexto('const a = lee("contratos/indice.schema.json"); const m = path.join(WEB, "motor", "02_mundo.js"); const t = join(RAIZ, "tuberia", "tiles3d");');
-  assert.ok(rs.has("contratos/indice.schema.json") && rs.has("apps/web/motor/02_mundo.js") && rs.has("tuberia/tiles3d"));
+  const rs = A.rutasDelTexto('const a = lee("contratos/indice.schema.json"); const m = path.join(WEB, "src", "arranque.ts"); const t = join(RAIZ, "tuberia", "tiles3d");');
+  assert.ok(rs.has("contratos/indice.schema.json") && rs.has("apps/web/src/arranque.ts") && rs.has("tuberia/tiles3d"));
   assert.ok(!A.rutasDelTexto('const WEB = "apps/web";').has("apps/web"), "apps/web a secas es demasiado ancho");
 });
 
-test("el motor real: las cabeceras Expone/Consume dan consumidores", () => {
-  const c = A.consumidoresDelMotor();
-  assert.ok(c["02_mundo"].length > 3, "casi todo consume 02_mundo");
-  assert.ok(A.cierre("02_mundo", c).has("90_final"));
-});
-
-test("el repo real: un cambio en un módulo del motor elige a sintaxis y a las pruebas que lo nombran; el CLI --lista no ejecuta nada", () => {
-  const r = spawnSync(process.execPath, ["pruebas/banco/afectadas.js", "--lista", "--cambiados", "apps/web/motor/43_agenda.js"], { cwd: RAIZ, encoding: "utf8" });
+test("el repo real: un cambio en el arranque elige a sintaxis y a las pruebas que leen sus pasos; el CLI --lista no ejecuta nada", () => {
+  const r = spawnSync(process.execPath, ["pruebas/banco/afectadas.js", "--lista", "--cambiados", "apps/web/src/arranque.ts"], { cwd: RAIZ, encoding: "utf8" });
   assert.equal(r.status, 0, r.stderr);
-  for (const p of ["sintaxis", "agenda_mundo", "documentacion"]) assert.match(r.stdout, new RegExp("^  " + p + ":", "m"));
+  for (const p of ["sintaxis", "agenda_mundo", "arranque", "documentacion"]) assert.match(r.stdout, new RegExp("^  " + p + ":", "m"));
   assert.match(r.stdout, /NO autoriza a subir/);
   const t = spawnSync(process.execPath, ["pruebas/banco/afectadas.js", "--lista", "--cambiados", "algo/raro.bin"], { cwd: RAIZ, encoding: "utf8" });
   assert.match(t.stdout, /Elige TODAS/);

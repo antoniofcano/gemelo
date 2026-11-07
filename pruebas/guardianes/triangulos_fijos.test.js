@@ -5,6 +5,7 @@
 // Y que el aspecto básico se conserva: radios del anillo y caja de las masas de copa (sus puntas llegan a ±1 como las del detalle 1). Ni Quest ni iPhone: no probado.
 const test = require("node:test"), assert = require("node:assert"), vm = require("vm"), path = require("path"), { pathToFileURL } = require("url");
 const { lee, RAIZ } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const { conFabrica } = require("./_materiales");   // Materiales e InfoDibujo (02h/02i, F1) en el contexto del módulo
 
 let THREE;
@@ -23,7 +24,7 @@ function mundoPaisaje() {
     tMundo: 0, nivel: () => ({ s: { alt: 0.8, az: 0.4 }, d: 1 }), esfera: null, EST: { activa: false }, nivelEn: (ms, s) => { s.s.alt = 0.8; s.s.az = 0.4; s.d = 1; return s; }, Componentes: { registra() { return true; } }
   };
   g.scene.add(g.gSombras);
-  vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/18_paisaje.js"), vm.createContext(conFabrica(g)), { filename: "18_paisaje.js" });
+  vm.runInContext("\"use strict\";\n" + pasoArranque("18_paisaje.js"), vm.createContext(conFabrica(g)), { filename: "18_paisaje.js" });
   return g;
 }
 

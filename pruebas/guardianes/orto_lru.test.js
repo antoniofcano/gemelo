@@ -5,10 +5,11 @@
 // (5) el corte de 900 m sigue. El heap real de un paseo y de un vuelo lo da el banco.
 const test = require("node:test"), assert = require("node:assert");
 const { RAIZ, fs, path } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const { aparatoDe } = require("./_aparato");
 const MUNDOS = require(path.join(RAIZ, "apps/web/src/mundos/index.ts"));   // MU5-n: el Mundo vive en src/mundos/exterior/teselas.ts; 02_mundo.js lo crea con Mundos.creaMundo
 
-const FUENTE = fs.readFileSync(path.join(RAIZ, "apps", "web", "motor", "02_mundo.js"), "utf8");
+const FUENTE = pasoArranque("02_mundo.js");
 const TS = 256;
 
 function monta({ query = "", ua = "", mem, n = 5 } = {}) {   // una fila de n×1 teselas de 256 m

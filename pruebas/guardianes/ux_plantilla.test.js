@@ -11,7 +11,9 @@ const PL = lee("apps/web/plantilla.html");
 const ids = s => [...s.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]);
 const IDS = ids(PL);
 // MU5-n (A3-6a): también lo migrado a apps/web/src/ (sin las pruebas): ahí crea la presencia su #presenciaGente
-const MOTOR = ficheros().filter(f => /^apps\/web\/motor\/[^/]+\.js$/.test(f) || /^apps\/web\/src\/.+(?<!\.test)\.ts$/.test(f)).sort().map(f => f.startsWith("apps/web/motor/") ? require("./_fuente").fuenteMotor(f.slice("apps/web/motor/".length)) : lee(f)).join("\n");   // A3-6c: de un talón, también sus .ts
+// A3-8c: el cliente entero es apps/web/src/ (el arranque y sus módulos, sin las pruebas ni las declaraciones de tipos): [fichero, texto]
+const CLIENTE = ficheros().filter(f => /^apps\/web\/src\/.+(?<!\.test)(?<!\.d)\.ts$/.test(f)).sort().map(f => [f, lee(f)]);
+const MOTOR = CLIENTE.map(([, t]) => t).join("\n");
 const css = lee("apps/web/plantilla.css");   // V12: los estilos salieron del <style> de la plantilla
 
 test("V12: la plantilla cumple la CSP estricta: sin style=\"…\" ni <style> en línea, sin Google Fonts ni otro origen en sus <link>", () => {
@@ -25,9 +27,7 @@ test("V12: la plantilla cumple la CSP estricta: sin style=\"…\" ni <style> en 
 });
 
 test("V12: el HTML que arma el motor no lleva atributos style (la CSP los rechaza); lo variable va en data-fondo / data-ancho y lo pasa tinta()", () => {
-  const fs = require("node:fs"), dir = path.join(RAIZ, "apps", "web", "motor");
-  for (const f of fs.readdirSync(dir).filter(x => x.endsWith(".js"))) {
-    const t = fs.readFileSync(path.join(dir, f), "utf8");
+  for (const [f, t] of CLIENTE) {
     assert.ok(!/\sstyle\s*=\s*[\\"']/.test(t), f + " escribe un atributo style en un HTML: usa una clase de plantilla.css o data-fondo / data-ancho + tinta()");
     assert.ok(!/setAttribute\(\s*["']style["']/.test(t), f + " pone el atributo style con setAttribute: usa .style.propiedad o classList (CSSOM sí vale)");
     // un <style> creado por JS también es estilo en línea para la CSP (style-src-elem): 33_ajustes lo hacía y la CSP de dev lo denunciaba en /finca/
@@ -101,13 +101,12 @@ test("genera_motor.mjs sigue cambiando los textos de la finca en la plantilla nu
 });
 
 test("accesibilidad: todo <input>, <select> y <textarea> lleva id o name (DevTools: «A form field element should have an id or name attribute»; afecta al autorrelleno y a los lectores de pantalla)", () => {
-  const fs = require("node:fs"), dir = path.join(RAIZ, "apps", "web", "motor");
   const sin = [];
   for (const m of PL.matchAll(/<(input|select|textarea)\b[^>]*>/gi)) if (!/\b(id|name)\s*=/.test(m[0])) sin.push("plantilla.html: " + m[0].slice(0, 80));
   // los campos que crea el motor: la sentencia (la línea y las 3 siguientes) debe poner id o name. 39_oficina_mundo.js lo arregla otro encargo: pendiente anotado
   const PENDIENTES = [];
-  for (const f of fs.readdirSync(dir).filter(x => x.endsWith(".js") && !PENDIENTES.includes(x))) {
-    const texto = fs.readFileSync(path.join(dir, f), "utf8"), l = texto.split("\n");
+  for (const [f, texto] of CLIENTE.filter(([x]) => !PENDIENTES.includes(x))) {
+    const l = texto.split("\n");
     l.forEach((t, i) => {
       if (!/(createElement|\bel)\(\s*["'](input|select|textarea)["']/.test(t)) return;
       const ventana = l.slice(i, i + 4).join("\n");

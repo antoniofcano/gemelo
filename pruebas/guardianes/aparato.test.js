@@ -9,10 +9,10 @@
 // probado: un Quest ni un iPhone reales (qué anuncia de verdad su agente y qué mide su WebGL), ni el Vision Pro (¿maxTouchPoints?).
 const test = require("node:test"), assert = require("node:assert");
 const { RAIZ, fs, path } = require("./_util");
+const { pasoArranque, nombresPasos } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const { aparatoDe, modulo } = require("./_aparato");
 const MUNDOS = require(path.join(RAIZ, "apps/web/src/mundos/index.ts"));   // MU5-n: el Mundo vive en src/mundos/exterior/teselas.ts; 02_mundo.js lo crea con Mundos.creaMundo
 
-const MOTOR = path.join(RAIZ, "apps", "web", "motor");
 
 const UA = {
   quest3: "Mozilla/5.0 (Linux; Android 12; Quest 3) AppleWebKit/537.36 (KHTML, like Gecko) OculusBrowser/35.0.0.1.58 SamsungBrowser/4.0 Chrome/126.0.0.0 VR Safari/537.36",
@@ -45,8 +45,8 @@ test("guardián: solo src/nucleo/aparato.ts (por el talón 01a_aparato.js) lee u
   const PROHIBIDO = /\b(userAgent|userAgentData|deviceMemory|hardwareConcurrency|maxTouchPoints)\b/;
   // lista cerrada de excepciones, cada una con su motivo (hoy ninguna: 30_mide pide el agente en bruto a Aparato.agente())
   const EXCEPCIONES = {};
-  const lectores = fs.readdirSync(MOTOR).filter(f => f.endsWith(".js"))   // A3-8a: tampoco el talón 01a_aparato.js, que solo da el navigator
-    .filter(f => PROHIBIDO.test(sinCom(fs.readFileSync(path.join(MOTOR, f), "utf8"))) && !EXCEPCIONES[f]);
+  const lectores = nombresPasos()   // A3-8a: tampoco el talón 01a_aparato.js, que solo da el navigator
+    .filter(f => PROHIBIDO.test(sinCom(pasoArranque(f))) && !EXCEPCIONES[f]);
   assert.deepStrictEqual(lectores, [], "estos ficheros detectan el aparato por su cuenta: que pregunten a Aparato (01a_aparato.js)");
   const yo = fs.readFileSync(path.join(RAIZ, "apps", "web", "src", "nucleo", "aparato.ts"), "utf8");   // A3-8a: el código, en el núcleo
   for (const k of ["userAgent", "deviceMemory", "hardwareConcurrency", "maxTouchPoints"]) assert.ok(yo.includes(k), "el módulo sí lee " + k);
@@ -57,13 +57,13 @@ test("guardián: solo src/nucleo/aparato.ts (por el talón 01a_aparato.js) lee u
 });
 
 test("01a_aparato.js monta antes que todos los que lo consumen (orden alfabético) y no consume nada de otros módulos", () => {
-  const f = fs.readdirSync(MOTOR).filter(x => x.endsWith(".js")).sort();
+  const f = nombresPasos();
   assert.strictEqual(f[0], "01_datos.js"); assert.strictEqual(f[1], "01a_aparato.js", "justo detrás de 01_datos.js, antes de 02_mundo.js");
-  assert.match(fs.readFileSync(path.join(MOTOR, "01a_aparato.js"), "utf8"), /\/\/ Consume: \(nada de otros módulos\)/);
+  assert.deepStrictEqual(require("./_pasos").deriva().cons["01a_aparato.js"], {}, "01a no consume nada de otros pasos");   // A3-8c: antes, su cabecera «Consume»
 });
 
 test("02_mundo por clase: ortoMax 20 en escritorio, 8 en móvil, en gafas y con poca memoria (se ve el efecto en el consumidor)", () => {
-  const fuente = fs.readFileSync(path.join(MOTOR, "02_mundo.js"), "utf8");
+  const fuente = pasoArranque("02_mundo.js");
   const TS = 256, D = { ts: TS, res: 1, srs: 2, centro_utm: [0, 0], teselas: { k0: { kx: 0, ky: 0, v: [0, 0, TS, TS], np: 0 } }, grueso: { b64: "", x0: 0, yN: TS, res: 8, w: 32, h: 32 }, mosaico: { x0: 0, yN: TS, w: 1, h: 1, res: 1 }, copas: [], marcados: [] };
   const max = nav => {
     const M = Function("Mundos", "Aparato", "D", "b64", "i16", "RES", "document", "performance", "location", "navigator", "fetch", "ndviRel", "rampa", fuente + "\nreturn Mundo;")(

@@ -7,6 +7,7 @@
 // banco (carga.test.js, con Chrome) y el Quest; aquí no se abre Chrome. Las pruebas de la pieza (con dobles y todos los casos) son nube.test.ts de Vitest.
 const test = require("node:test"), assert = require("node:assert"), path = require("path"), { pathToFileURL } = require("url");
 const { lee, RAIZ } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const { fuenteMotor } = require("./_fuente");
 const Mundos = require("./_mundos"), { conFabrica } = require("./_materiales");
 
@@ -34,7 +35,7 @@ function monta(teselas, modo) {
 }
 
 test("el talón: 05_nube.js lleva el componente «nube-lidar» del exterior y el motor sigue viendo los mismos cinco nombres", () => {
-  const talon = lee("apps/web/motor/05_nube.js");
+  const talon = pasoArranque("05_nube.js");
   assert.match(talon, /\/\/ \[talón\] apps\/web\/src\/mundos\/exterior\/nube\.ts/);
   assert.match(talon, /Componentes\.registra\(Mundos\.manifiestoNube\(Nube\)\);/);
   for (const n of ["ALTO_MAX", "nube", "pintaNube", "actualizaNubeTeselas", "actualizaNube"]) assert.match(talon, new RegExp("\\b" + n + " = Nube\\."), n);

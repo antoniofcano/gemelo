@@ -114,7 +114,7 @@ function comoJs(ts) {
 }
 /** el talón y el .ts juntos (o solo el fichero del motor, si no es de los migrados) */
 function fuenteMotor(fichero) {
-  const talon = lee("apps/web/motor/" + fichero);
+  const talon = require("./_pasos").pasoArranque(fichero);   // A3-8c: el paso de apps/web/src/arranque.ts que sustituye al talón de motor/
   const ts = TS_DE[fichero];
   return ts ? [talon].concat([].concat(ts).map(f => DE_UI.test(f) ? comoJsUi(lee(f)) : COMO_JS.test(f) ? comoJs(lee(f)) : lee(f))).join("\n") : talon;
 }

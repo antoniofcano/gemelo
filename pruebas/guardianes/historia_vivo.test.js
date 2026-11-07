@@ -6,6 +6,7 @@
 // La ventana en Chrome: por el banco.
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 
 const FUENTE = require("./_fuente").fuenteMotor("14_historia.js");   // A3-7b1: 14 es un talón; su código vive en mundos/exterior/historia.ts
 const EJEMPLO = JSON.parse(lee("contratos/ot-hoy-ejemplo.json"));
@@ -108,7 +109,7 @@ test("en el código: lo de fuera se escapa al pintarlo, nada se pide a otros hos
 // campo de fuera se concatena o se mete en una celda sin esc(…); los patrones se construyen por partes para no marcarse a sí mismos.
 const ESC = (() => {
   // MU5-n (A3-4): 15_tiempo.js da esc, la de apps/web/src/mundos/exterior/tiempo-puro.ts; A3-8a: como alias de talón (var esc = Mundos.esc), ya sin izarse
-  assert.match(lee("apps/web/motor/15_tiempo.js"), /^  var esc = Mundos\.esc;/m, "15_tiempo.js da esc, la de Mundos.esc");
+  assert.match(pasoArranque("15_tiempo.js"), /^  var esc = Mundos\.esc;/m, "15_tiempo.js da esc, la de Mundos.esc");
   return require("./_mundos").esc;
 })();
 // un campo de fuera (…nombre, …titulo, …parcela, …gravedad) pegado con «+», «[» o «,» sin esc( delante

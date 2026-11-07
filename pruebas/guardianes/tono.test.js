@@ -5,6 +5,7 @@
 //   · 03_escena solo toca el renderer si el tono no es neutro. No dice nada de cómo se ve: eso lo dan las capturas (pruebas/tono_capturas.js).
 const test = require("node:test"), assert = require("node:assert"), path = require("path"), fs = require("fs"), { pathToFileURL } = require("url");
 const { lee, RAIZ } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const { fabrica } = require("./_materiales");
 
 const plano = x => JSON.parse(JSON.stringify(x));
@@ -29,7 +30,7 @@ test("orden de mando: la URL, luego el ajuste «vista.tono», luego neutro", () 
   assert.strictEqual(E("?expo=2", "agx").expo, 2, "?expo= solo va en la URL y vale con un tono del ajuste");
   assert.strictEqual(E("?expo=2", undefined).expo, 1);
   // la lectura del ajuste vive en el núcleo (A1-11): el talón le presta window.localStorage y render.ts lee «gemelo.ajustes.vista.tono» (la prueba de comportamiento, en render.test.ts)
-  assert.match(lee("apps/web/motor/02h_render.js"), /almacen: function \(\) \{ return window\.localStorage; \}/);
+  assert.match(pasoArranque("02h_render.js"), /almacen: function \(\) \{ return window\.localStorage; \}/);
   assert.match(lee("apps/web/src/nucleo/render.ts"), /getItem\("gemelo\.ajustes\." \+ clave\)/);
   assert.match(lee("apps/web/src/nucleo/render.ts"), /ajusteGuardado\(d\.almacen, "vista\.tono"\)/);
   assert.match(require("./_fuente").fuenteMotor("33_ajustes.js"), /"vista\.tono": opc\("neutro", \["neutro", "agx", "aces", "neutral"\]\)/);
@@ -78,7 +79,7 @@ test("?expo=: número con recorte 0,1-4 y coma decimal; sin efecto en neutro; ba
 });
 
 test("03_escena: solo toca el renderer si el tono no es neutro", () => {
-  const f = lee("apps/web/motor/03_escena.js");
+  const f = pasoArranque("03_escena.js");
   const i = f.indexOf("renderer.outputColorSpace"), l = f.slice(i, i + 800);
   assert.match(l, /Render\.tono\.tono !== "neutro"[^\n]*renderer\.toneMapping = THREE\[Render\.tono\.constante\][^\n]*toneMappingExposure = Render\.tono\.expo/);
   assert.strictEqual((f.match(/toneMapping\s*=/g) || []).length, 1, "un solo sitio fija el tone mapping");

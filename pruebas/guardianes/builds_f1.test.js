@@ -62,11 +62,11 @@ test("la build de siempre no cambia: alias de three exactos, three 0.186.1, sali
   assert.strictEqual(JSON.parse(lee("apps/web/package.json")).dependencies.three, "0.186.1");
   // F2a: super-three ya se instala (la build de VR de verdad, builds_f2.test.js), con versión exacta; la de pantalla no lo toca (los alias, arriba)
   assert.strictEqual(JSON.parse(lee("apps/web/package.json")).dependencies["super-three"], "0.185.0", "super-three con la versión exacta de BUILDS.vr");
-  // la entrada del motor: la concatenación de siempre (la comprueba también build.test.js con el fixture)
+  // la entrada del cliente: la hoja de estilos y apps/web/src/arranque.ts (A3-8c; la comprueba también build.test.js con el fixture), la misma en las dos builds
   const G = await import(pathToFileURL(path.join(WEB, "herramientas/genera_motor.mjs")).href);
   const raiz = fs.mkdtempSync(path.join(os.tmpdir(), "gemelo-entrada-f1-")), idx = path.join(raiz, "i.json");
   fs.writeFileSync(idx, "{}"); G.genera(idx, raiz);
-  assert.ok(fs.readFileSync(path.join(raiz, "entrada", "motor.generado.js"), "utf8").startsWith('import * as THREE from "three";\nimport * as Nucleo from "@gemelo/nucleo";\nimport * as Mundos from "@gemelo/mundos";\nimport * as Interfaz from "@gemelo/ui";\nimport "./plantilla.css";\n'));   // con el puente (puente.test.js)
+  assert.strictEqual(fs.readFileSync(path.join(raiz, "entrada", "motor.generado.js"), "utf8"), 'import "./plantilla.css";\nimport "@gemelo/arranque";\n');
   fs.rmSync(raiz, { recursive: true, force: true });
 });
 

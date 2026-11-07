@@ -7,6 +7,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const fs = require("fs"), { pathToFileURL } = require("url");
 const { RAIZ, lee, path } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const OBLIGATORIOS = ["hips", "spine", "head", "leftUpperLeg", "leftLowerLeg", "leftFoot", "rightUpperLeg", "rightLowerLeg", "rightFoot",
   "leftUpperArm", "leftLowerArm", "leftHand", "rightUpperArm", "rightLowerArm", "rightHand"];   // los obligatorios de VRM 1.0
 
@@ -137,7 +138,7 @@ test("motor: @pixiv/three-vrm con versión exacta, pedido con import() solo dent
   const p = JSON.parse(lee("apps/web/package.json")); assert.strictEqual(p.dependencies["@pixiv/three-vrm"], "3.5.5");
   const f = require("./_fuente").fuenteMotorJs("26b_avatares.js");   // A3-6a: el talón y apps/web/src/mundos/comun/avatares.ts (sin las anotaciones de tipos)
   // A3-6a: el import() se queda escrito en el talón (cargaVrm, para que Vite lo trocee); solo lo llama lib(), dentro de creaAvatares, que el manifiesto monta solo con presencia activa
-  assert.match(lee("apps/web/motor/26b_avatares.js"), /cargaVrm: function \(\) \{ return Promise\.all\(\[import\("@pixiv\/three-vrm"\), import\("three\/addons\/loaders\/GLTFLoader\.js"\)\]\); \}/);
+  assert.match(pasoArranque("26b_avatares.js"), /cargaVrm: function \(\) \{ return Promise\.all\(\[import\("@pixiv\/three-vrm"\), import\("three\/addons\/loaders\/GLTFLoader\.js"\)\]\); \}/);
   const ts = lee("apps/web/src/mundos/comun/avatares.ts");
   assert.ok(ts.indexOf("pideLib = dp.cargaVrm()") > ts.indexOf("export function creaAvatares("), "la librería, solo dentro de los avatares montados");
   assert.match(ts, /if \(!P\.activo\(\)\) \{[^]*?return \{ estado: function \(\) \{ return null; \}, libera: function \(\) \{\} \};\s*\}\s*return creaAvatares\(dp, n, P\);/, "solo con presencia");

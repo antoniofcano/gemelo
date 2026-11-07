@@ -8,10 +8,11 @@
 const test = require("node:test"), assert = require("node:assert");
 const { pathToFileURL } = require("url");
 const { RAIZ, fs, path } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 
 const WEB = path.join(RAIZ, "apps", "web"), MOTOR = path.join(WEB, "motor"), THREE_JS = path.join(WEB, "node_modules", "three", "build", "three.module.js");
 const SALTO = fs.existsSync(THREE_JS) ? null : "three no instalado (cd apps/web && npm ci): el sombreado del tileset NO se ha comprobado";
-const lee = f => fs.readFileSync(path.join(MOTOR, f), "utf8");
+const lee = f => pasoArranque(f);
 
 let THREE, M, MF;   // M: lo que devuelve el motor evaluado; MF: lo mismo con ?suelo=fotos (EV-1s, 04f_suelo_fotos.js)
 // el trozo puro de 04f y una maqueta de SueloFotos (sin cargar texturas): apagado, como sin la bandera, o encendido

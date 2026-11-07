@@ -13,8 +13,8 @@
       "origen": "CLAUDE.md §1", "clave": "2", "titulo": "La lógica testeable vive en módulos con contrato (`apps/web/motor/NN_*.js`), no repartida.",
       "vigila": [
         { "fichero": "pruebas/guardianes/sintaxis.test.js", "test": "el motor tiene módulos y el orden alfabético es el de montaje (01_ primero, 99_ último)" },
-        { "fichero": "pruebas/guardianes/contratos.test.js", "test": "cada módulo de src/ tiene su cabecera «Expone / Consume» al día" },
-        { "fichero": "pruebas/guardianes/contratos.test.js", "test": "las cabeceras son coherentes: lo que un módulo consume lo expone el módulo citado" },
+        { "fichero": "pruebas/guardianes/arranque.test.js", "test": "los nombres que expone cada paso son los de la foto" },
+        { "fichero": "pruebas/guardianes/contratos.test.js", "test": "la derivación de los pasos: el uso real en el código sí cuenta" },
         { "fichero": "pruebas/guardianes/tipos_web.test.js", "test": "dependency-cruiser: src/ respeta las cuatro fronteras y no tiene ciclos" },
         { "fichero": "pruebas/guardianes/tipos_web.test.js", "test": "dependency-cruiser DETECTA cada frontera rota (árbol temporal)" }
       ],
@@ -140,7 +140,7 @@
       "origen": "CLAUDE.md §5", "clave": "Orden de `apps/web/motor/`:",
       "vigila": [
         { "fichero": "pruebas/guardianes/sintaxis.test.js", "test": "el motor tiene módulos y el orden alfabético es el de montaje (01_ primero, 99_ último)" },
-        { "fichero": "pruebas/guardianes/contratos.test.js", "test": "las cabeceras son coherentes: lo que un módulo consume lo expone el módulo citado" }
+        { "fichero": "pruebas/guardianes/arranque.test.js", "test": "los pasos del arranque son los módulos de antes, en el mismo orden" }
       ]
     },
     {

@@ -5,6 +5,7 @@
 // Nada de esto dice cómo rinde un casco real.
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const Nucleo = require("./_nucleo");
 
 function estado(busqueda) { return Nucleo.creaXrPerillas({ busqueda }); }
@@ -18,13 +19,13 @@ test("cableado: 29_vr usa XrPerillas en un solo sitio, 03_escena el MSAA, y el i
   assert.match(vr, /XrPerillas\.estable\(\), XrPerillas\.fijo\(\), VrPresupuesto\.suelo\(XrPerillas\.gente\(\)\)\)/, "el controlador adaptativo no actúa con ?xrnivel=");
   assert.match(vr, /vrPerfil\(XrPerillas\.fijo\(\) \? XrPerillas\.efectivas\.nivel : 0\)/);
   assert.match(vr, /xr: \{ near: [^}]*fov: /, "window.__vrDebug() trae las perillas");
-  assert.match(lee("apps/web/motor/03_escena.js"), /antialias: XrPerillas\.aa/);
+  assert.match(pasoArranque("03_escena.js"), /antialias: XrPerillas\.aa/);
   assert.match(require("./_fuente").fuenteMotor("28_depura.js"), /XrPerillas\.linea\(\)/);
   const mide = require("./_fuente").fuenteMotor("30_mide.js");
   assert.match(mide, /perillas: modoIni === "VR" \? XrPerillas\.linea\(\)/); assert.match(mide, /r\.perillas/);
   // las banderas xr* solo se leen en 02f
-  const otros = require("fs").readdirSync(require("path").join(__dirname, "..", "..", "apps/web/motor")).filter(f => f.endsWith(".js") && f !== "02f_xr_perillas.js");
-  for (const f of otros) assert.doesNotMatch(lee("apps/web/motor/" + f), /xr(fov|escala|hz|aa|nivel|near|js|mv)=/, f + " no debe leer las perillas por su cuenta");
+  const otros = require("./_pasos").nombresPasos().filter(f => f !== "02f_xr_perillas.js");
+  for (const f of otros) assert.doesNotMatch(pasoArranque(f), /xr(fov|escala|hz|aa|nivel|near|js|mv)=/, f + " no debe leer las perillas por su cuenta");
 });
 
 // ---------- AG-2.3: near de 0,1 en VR y umbral de JS del controlador adaptativo
@@ -54,11 +55,11 @@ test("29_vr: near efectivo al entrar y restaurado al salir; el controlador baja 
   assert.strictEqual(corre(banco("", 12), 9).VRX.nBaj, 0, "la configuración (12) sustituye al 8");
   const fijo = corre(banco("?xrnivel=1"), 14); assert.strictEqual(fijo.VRX.nBaj, 0); assert.deepStrictEqual(fijo.niveles, [], "con ?xrnivel= fijo el controlador no actúa");
   // el reloj de JS es el de dentro del fotograma XR (no la pared entre fotogramas): 90_final lo pasa como performance.now() - t, con t = el inicio de cuadro()
-  assert.match(lee("apps/web/motor/90_final.js"), /vrFin\(dt, performance\.now\(\) - t\)/);
+  assert.match(pasoArranque("90_final.js"), /vrFin\(dt, performance\.now\(\) - t\)/);
   // near: entra con el de VR del Ambiente del mundo activo y sale con el de pantalla (MU2-7); el exterior da el efectivo (0,1 por defecto) y far 6000
   assert.match(vr, /Nucleo\.aplicaCamara\(gm\.ambiente\(\), camera, true\);/);
   assert.match(vr, /Nucleo\.aplicaCamara\(gm\.ambiente\(\), camera, false\); camera\.updateProjectionMatrix\(\)/);
-  assert.match(lee("apps/web/motor/90_final.js"), /nearVr: function \(\) \{ return XrPerillas\.efectivas\.near; \}/);
+  assert.match(pasoArranque("90_final.js"), /nearVr: function \(\) \{ return XrPerillas\.efectivas\.near; \}/);
   assert.match(lee("apps/web/src/mundos/exterior.ts"), /vr: \{ near: d\.nearVr\(\), far: FAR_VR_EXTERIOR \}/);
   assert.doesNotMatch(vr, /camera\.(near|far) = /, "29_vr ya no fija el near/far por su cuenta");
   assert.doesNotMatch(vr, /camera\.near = 0\.3/);
@@ -68,7 +69,7 @@ test("29_vr: near efectivo al entrar y restaurado al salir; el controlador baja 
 
 // ---------- F2a (doc/sistema/MULTIVIEW.md): ?xrmv=0|1, el multiview de super-three, SOLO en la build de VR (defecto 1); en la de pantalla no existe
 test("cableado F2a: 03_escena pide multiviewStereo solo si XrPerillas.multiview(Render.build) lo activa; 29_vr pide «layers» solo entonces y apunta si está en uso; la sonda lo dice", () => {
-  const e = lee("apps/web/motor/03_escena.js");
+  const e = pasoArranque("03_escena.js");
   assert.match(e, /MV = XrPerillas\.multiview\(Render\.build\)/);
   assert.match(e, /if \(MV\.activo\) opcionesRd\.multiviewStereo = true;/);
   assert.match(e, /var opcionesRd = \{ canvas: lienzo, antialias: XrPerillas\.aa \}/, "en pantalla, el renderer con las MISMAS opciones de siempre");
@@ -85,11 +86,11 @@ test("cableado F2a: 03_escena pide multiviewStereo solo si XrPerillas.multiview(
 test("el panel: la casilla «vr.multiview» existe en el esquema y solo se pinta en la build de VR; el talón de 02f presta el almacén y el núcleo lee el guardado una vez con try/catch", () => {
   const aju = require("./_fuente").fuenteMotor("33_ajustes.js");
   assert.match(aju, /"vr\.multiview": bool\(true\)/); assert.match(aju, /k: "vr\.multiview"[^\n]*soloBuild: "vr"/); assert.match(aju, /c\.soloBuild && \(typeof Render === "undefined" \|\| Render\.build !== c\.soloBuild\)\) return/);
-  assert.match(lee("apps/web/motor/02f_xr_perillas.js"), /almacen: function \(\) \{ return window\.localStorage; \}/);
+  assert.match(pasoArranque("02f_xr_perillas.js"), /almacen: function \(\) \{ return window\.localStorage; \}/);
   assert.match(lee("apps/web/src/nucleo/xr-perillas.ts"), /getItem\("gemelo\.ajustes\.vr\.multiview"\)/);
 });
 
 test("02f_xr_perillas.js es un talón del núcleo y le presta el almacén y los ignorados de 02m", () => {
-  assert.match(lee("apps/web/motor/02f_xr_perillas.js"), /var XrPerillas = Nucleo\.creaXrPerillas\(\{/);
-  assert.match(lee("apps/web/motor/02f_xr_perillas.js"), /ignoradosOlivos: function \(\) \{ return typeof TopeOlivos !== "undefined" \? TopeOlivos\.ignorados : \[\]; \}/);
+  assert.match(pasoArranque("02f_xr_perillas.js"), /var XrPerillas = Nucleo\.creaXrPerillas\(\{/);
+  assert.match(pasoArranque("02f_xr_perillas.js"), /ignoradosOlivos: function \(\) \{ return typeof TopeOlivos !== "undefined" \? TopeOlivos\.ignorados : \[\]; \}/);
 });

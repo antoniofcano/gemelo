@@ -5,10 +5,11 @@
 // los textos de Vigía se escapan y que solo se pide al mismo origen. El chip y la ventana en Chrome: por el banco.
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 
 // MU5-n (A3-4): 15_tiempo.js es una extracción parcial; el tiempo vive en apps/web/src/mundos/exterior/tiempo*.ts. Lo que se lee del código es todo junto
 const TS_TIEMPO = ["tiempo.ts", "tiempo-puro.ts", "tiempo-parche.ts", "tiempo-cielo.ts", "tiempo-lluvia.ts", "tiempo-barrera.ts", "tiempo-paso.ts", "tiempo-fichas.ts"];
-const FUENTE = [lee("apps/web/motor/15_tiempo.js")].concat(TS_TIEMPO.map(f => lee("apps/web/src/mundos/exterior/" + f))).join("\n"), PL = lee("apps/web/plantilla.html");
+const FUENTE = [pasoArranque("15_tiempo.js")].concat(TS_TIEMPO.map(f => lee("apps/web/src/mundos/exterior/" + f))).join("\n"), PL = lee("apps/web/plantilla.html");
 const EJEMPLO = JSON.parse(lee("contratos/tiempo-ejemplo.json"));
 function puro() {
   const src = lee("apps/web/src/mundos/exterior/tiempo-puro.ts"), i = src.indexOf("// [puro:inicio]"), f = src.indexOf("// [puro:fin]");
@@ -86,7 +87,7 @@ test("L8-05: la chapita rotula de dónde sale lo que se ve: ejemplo, «estimado�
   assert.strictEqual(P.rotuloOrigen("lluvia", "vigia", true), " · ejemplo", "los ejemplos ganan (ya lo dicen en la ventana)");
   assert.strictEqual(P.rotuloOrigen("", "simulado", false), " · simulado");
   assert.strictEqual(P.rotuloOrigen("", "fixture", false), " · prueba");
-  assert.match(lee("apps/web/motor/15_tiempo.js"), /estimado: function \(\) \{ return typeof EST !== "undefined" && !!EST && !!EST\.activa; \}/, "15_tiempo le pasa la estación de 23_estacion");
+  assert.match(pasoArranque("15_tiempo.js"), /estimado: function \(\) \{ return typeof EST !== "undefined" && !!EST && !!EST\.activa; \}/, "15_tiempo le pasa la estación de 23_estacion");
 });
 
 test("de la api a las fichas: medido y modelado, sin dentroDeUmbrales aunque llegara", () => {

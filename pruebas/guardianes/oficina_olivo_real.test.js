@@ -10,6 +10,7 @@ const test = require("node:test"), assert = require("node:assert");
 const { spawnSync } = require("child_process");
 const { pathToFileURL } = require("url");
 const { RAIZ, lee, propia, chrome, playwright, fs, path } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 
 const html = lee("apps/web/oficina/index.html");
 const fuentes = { "olivo_real.js": lee("apps/web/oficina/olivo_real.js"), "olivo_real_puro.js": lee("apps/web/oficina/olivo_real_puro.js"), "olivos.js": lee("apps/web/oficina/olivos.js") };
@@ -83,7 +84,7 @@ test("OF8c: la ficha del olivo del motor enseña el id real y la posición que a
 
 test("la entrada del generador es la del motor: mismo semillaDeCopa, mismo parametrosDeCopa, mismo factor y mismo tipo", async () => {
   const P = await importa("olivo_real_puro.js"), C = await importa("../olivo/copas.js");
-  const factor = /FACTOR_R8 = 0\.5, FACTOR_R8_GEN = (\d+(?:\.\d+)?)/.exec(lee("apps/web/motor/01_datos.js"));
+  const factor = /FACTOR_R8 = 0\.5, FACTOR_R8_GEN = (\d+(?:\.\d+)?)/.exec(pasoArranque("01_datos.js"));
   assert.ok(factor && Number(factor[1]) === P.FACTOR_R8_GEN, "FACTOR_R8_GEN de la oficina = el de 01_datos.js");
   assert.match(require("./_fuente").fuenteMotor("07ab_generados.js") /* A3-2a */, new RegExp('M\\.parametrosDeCopa\\(raw, D\\.copas_param \\? D\\.copas_param\\[c\\.i\\] : null, "' + P.TIPO_MOTOR + '"'), "el tipo del motor es el de la oficina");
   for (const i of [0, 1, 2]) {

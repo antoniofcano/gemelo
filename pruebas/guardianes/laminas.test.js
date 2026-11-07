@@ -5,6 +5,7 @@
 // las coordenadas de la lámina (u de izquierda a derecha, v de arriba abajo). Chrome (1 llamada y 1 textura de verdad): fichas_tiempo.test.js.
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 
 const FUENTE = require("./_fuente").fuenteMotor("02d_laminas.js");
 function trozo(ini, fin) {
@@ -141,7 +142,7 @@ test("el rayo y el gatillo: alTocar(u, v, t) con las coordenadas de la lámina; 
 test("en el código: sin setInterval ni setTimeout ni escuchas propias (su reloj es el bucle), y 29_vr y 90_final la usan", () => {
   const codigo = FUENTE.replace(/\/\/.*$/gm, "");
   assert.ok(!/setInterval|setTimeout|addEventListener|requestAnimationFrame/.test(codigo));
-  assert.match(lee("apps/web/motor/90_final.js"), /Laminas\.revisa\(dt\)/);
+  assert.match(pasoArranque("90_final.js"), /Laminas\.revisa\(dt\)/);
   assert.match(require("./_fuente").fuenteMotor("29_vr.js"), /if \(Laminas\.toca\(rr\)\)/);
 });
 

@@ -4,6 +4,7 @@
 // apagada con ?palanca=0 o el ajuste; nada en escritorio). Y sobre las fuentes: sin bandera el módulo no hace nada, estilos sin atributo style=, cruceta intacta.
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 
 const PASEO = require("./_fuente").fuenteMotor("12_paseo.js"), MOD = require("./_fuente").fuenteMotor("34b_palanca.js"), PL = lee("apps/web/plantilla.html"), css = lee("apps/web/plantilla.css");
 function puro() {
@@ -64,7 +65,7 @@ test("se enciende por defecto en táctil; ?palanca=0 o el ajuste la apagan; en e
 
 test("sin bandera el módulo no hace nada: nipplejs solo se pide encendida y con paseo; la cruceta sigue ahí", () => {
   assert.match(MOD, /import\("nipplejs"\)/, "nipplejs por import() perezoso");
-  assert.ok(!/^\s*import\s+[\w{*]/m.test(lee("apps/web/motor/34b_palanca.js")) && !/^\s*import[^;\n]*nipplejs/m.test(MOD), "sin import estático: apagada no se descarga");   // A3-6c: palanca.ts importa del núcleo, no nipplejs
+  assert.ok(!/^\s*import\s+[\w{*]/m.test(pasoArranque("34b_palanca.js")) && !/^\s*import[^;\n]*nipplejs/m.test(MOD), "sin import estático: apagada no se descarga");   // A3-6c: palanca.ts importa del núcleo, no nipplejs
   assert.match(MOD, /if \(q && paseando(\(\))?\) enciende\(\); else if \(!q\) apaga\(\)/, "solo enciende si quiere y se pasea");
   assert.match(MOD, /PalancaPuro\.activa\(tac, aj, location\.search\)/, "la decisión es la pura");
   assert.match(css, /\.palanca \{[^}]*display: none/, "la zona está oculta por defecto");

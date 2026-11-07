@@ -5,9 +5,10 @@
 // u OCASO_FOTOS). Que el sombreado compile y se vea bien: la prueba de capturas por el banco (pruebas/suelo_fotos_capturas.js).
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 
 // A3-1b: 04f es un talón; su código vive en apps/web/src/mundos/exterior/suelo-fotos.ts (SueloFotosPuro y creaSueloFotos). F04F es el talón y el .ts juntos (lo que ve el motor)
-const F04F = lee("apps/web/motor/04f_suelo_fotos.js") + "\n" + lee("apps/web/src/mundos/exterior/suelo-fotos.ts"), F04D = lee("apps/web/src/mundos/exterior/terreno.ts"), F15 = require("./_fuente").fuenteMotor("15_tiempo.js");   // MU5-n (A3-4): con tiempo-cielo.ts y tiempo-paso.ts
+const F04F = pasoArranque("04f_suelo_fotos.js") + "\n" + lee("apps/web/src/mundos/exterior/suelo-fotos.ts"), F04D = lee("apps/web/src/mundos/exterior/terreno.ts"), F15 = require("./_fuente").fuenteMotor("15_tiempo.js");   // MU5-n (A3-4): con tiempo-cielo.ts y tiempo-paso.ts
 const P = require("./_mundos").SueloFotosPuro;
 
 test("la bandera: apagado por defecto; ?suelo=fotos lo enciende; 768 en escritorio y 384 en móvil y gafas; en VR solo con ?sueloVR=1", () => {

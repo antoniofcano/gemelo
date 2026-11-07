@@ -7,14 +7,13 @@ const { RAIZ, ficheros, fs, path } = require("./_util");
 const { montaPagina, saltoPagina, datosDe } = require("./_pagina");
 
 const SALTO = saltoPagina("el build de las fincas");
-const SRC = ficheros().filter(f => /^apps\/web\/motor\/[^/]+\.js$/.test(f)).sort();
 
 for (const finca of ["cerro", "hituelo"]) {
-  test("[" + finca + "] el build con tileset: la entrada es el motor en orden, la página lleva el índice (sin relieve de teselas) y tiene t/ y tileset/ al lado", t => {
+  test("[" + finca + "] el build con tileset: la entrada es el arranque, la página lleva el índice (sin relieve de teselas) y tiene t/ y tileset/ al lado", t => {
     if (SALTO) return t.skip(SALTO);
     const P = montaPagina({ finca });
-    const js = SRC.map(f => fs.readFileSync(path.join(RAIZ, f), "utf8")).join("");   // lo que concatena genera_motor.mjs: orden alfabético, sin huecos
-    assert.strictEqual(fs.readFileSync(path.join(P.raiz, "entrada", "motor.generado.js"), "utf8"), 'import * as THREE from "three";\nimport * as Nucleo from "@gemelo/nucleo";\nimport * as Mundos from "@gemelo/mundos";\nimport * as Interfaz from "@gemelo/ui";\nimport "./plantilla.css";\n' + js);   // con el puente (MUNDOS §9.3, puente.test.js)
+    // A3-8c: la entrada es apps/web/src/arranque.ts, que Vite empaqueta sin concatenar nada; delante, solo la hoja de estilos
+    assert.strictEqual(fs.readFileSync(path.join(P.raiz, "entrada", "motor.generado.js"), "utf8"), 'import "./plantilla.css";\nimport "@gemelo/arranque";\n');
     const html = fs.readFileSync(path.join(P.carpeta, P.url), "utf8");
     // V12: estilos y tipografías del mismo origen (la CSP no deja <style>, style="…" ni Google Fonts)
     assert.match(html, /<link rel="stylesheet"[^>]*href="\.\/assets\/[^"]+\.css"/, "la página no enlaza su hoja de estilos empaquetada");

@@ -4,10 +4,11 @@
 // (referencias/15_tiempo_antes.js) con la MISMA entrada. Lo usan bucle_equivalencia.test.js (que comprueba que dan lo mismo) y pruebas/medida_bucle.js (el microbanco).
 // Nada de esto es Chrome: sirve para comparar versiones y contar, no para decir fps (regla 7).
 const { lee } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const F = require("./_fauna_mundo");
 /** Un trozo contiguo del módulo del motor, de `desde` hasta justo antes de `hasta` (ambos textos únicos). */
 function trozo(modulo, desde, hasta) {
-  const src = lee("apps/web/motor/" + modulo), i = src.indexOf(desde), j = src.indexOf(hasta, i);
+  const src = pasoArranque(modulo), i = src.indexOf(desde), j = src.indexOf(hasta, i);
   if (i < 0 || j <= i) throw new Error(modulo + ": no se encuentra el trozo " + desde);
   return src.slice(i, j);
 }

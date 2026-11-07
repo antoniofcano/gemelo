@@ -11,12 +11,12 @@
 // Lo de Chrome («con y sin» por el banco: llamadas y memoria) va en carga, escena3d, fichas_tiempo y las vr*, no aquí.
 const test = require("node:test"), assert = require("node:assert");
 const { RAIZ, lee, ejecuta, os, fs, path } = require("./_util"), { fuenteMotor } = require("./_fuente");
+const { pasoArranque, nombresPasos } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const vm = require("vm");
 const Ajv2020 = require("ajv/dist/2020").default;
-const contratoModulos = require(path.join(RAIZ, "pruebas", "contrato_modulos.js"));
 
 const MOTOR = path.join(RAIZ, "apps", "web", "motor");
-const NUCLEO = lee("apps/web/motor/02c_componentes.js");
+const NUCLEO = pasoArranque("02c_componentes.js");
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return s.slice(i, f); };
 const Nucleo = require("./_nucleo");   // el núcleo de TypeScript (MUNDOS §9.3): ComponentesPuro y creaComponentes (MU2-5)
 const P = Nucleo.ComponentesPuro;
@@ -26,10 +26,9 @@ const ajv = new Ajv2020({ strict: true, strictRequired: false, allErrors: true }
 const ESQ_EV = json("contratos/eventos.schema.json"), CATALOGO = json("contratos/eventos.json"), ESQ_CFG = json("contratos/config.schema.json");
 const PRESUPUESTO = json("pruebas/presupuesto.json");
 
-const ficherosMotor = () => fs.readdirSync(MOTOR).filter(f => f.endsWith(".js")).sort();
-const sinCabecera = s => s.startsWith(contratoModulos.MARCA_I) ? s.slice(s.indexOf(contratoModulos.MARCA_F) + contratoModulos.MARCA_F.length + 1) : s;
+const ficherosMotor = () => nombresPasos();
 const sinComentarios = s => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'\\])\/\/.*$/gm, "$1");
-const esComponente = f => /^  Componentes\.registra\((\{|Mundos\.|Interfaz\.)/m.test(fs.readFileSync(path.join(MOTOR, f), "utf8"));
+const esComponente = f => /^  Componentes\.registra\((\{|Mundos\.|Interfaz\.)/m.test(pasoArranque(f));
 const COMPONENTES = ficherosMotor().filter(esComponente);
 // MU5-n (A3-1a): un componente que pasó a TypeScript se registra con su manifiesto de src/mundos/ (Componentes.registra(Mundos.<fábrica>(…))); sus eventos
 // están en el fichero de TypeScript que exporta esa fábrica, que es «suyo»
@@ -40,7 +39,7 @@ const UI_TS = require(path.join(RAIZ, "apps", "web", "src", "ui", "index.ts"));
  *  funciones declaradas que otros piden antes en el montaje) que registra el manifiesto de src/mundos con Componentes.registra(Mundos.…) */
 const delTs = src => (/^  \/\/ \[talón\] /m.test(src) || /extracción parcial/.test(src)) && /^  Componentes\.registra\((?:Mundos|Interfaz)\.\w+\(/m.test(src);
 function delegaEn(f) {
-  const m = /^  Componentes\.registra\((?:Mundos|Interfaz)\.(\w+)\(/m.exec(fs.readFileSync(path.join(MOTOR, f), "utf8")); if (!m) return null;
+  const m = /^  Componentes\.registra\((?:Mundos|Interfaz)\.(\w+)\(/m.exec(pasoArranque(f)); if (!m) return null;
   const busca = (d, rel) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (e.isDirectory()) { const r = busca(path.join(d, e.name), rel + e.name + "/"); if (r) return r; } else if (e.name.endsWith(".ts") && !e.name.endsWith(".test.ts") && new RegExp("export function " + m[1] + "\\(").test(fs.readFileSync(path.join(d, e.name), "utf8"))) return rel + e.name.slice(0, -3); } return null; };
   // A3-6a: también la red (apps/web/src/red/), que el legado ve por Mundos (mundos/index.ts la reexporta)
   // A3-7a: y la interfaz (apps/web/src/ui/), que el legado ve por Interfaz
@@ -76,7 +75,7 @@ function nucleo({ busqueda = "", config = null, extra = "", globales = {} } = {}
   const nombres = Object.keys(globales);
   // A3-7b2: los componentes que ya viven en apps/web/src/mundos/ (el anfitrión de juegos…) usan el window, el document y el location globales: se los damos a este contexto
   if (globales.Mundos) { globalThis.window = ventana; globalThis.document = documento; globalThis.location = { search: busqueda }; }
-  const f = new Function(...["window", "location", "document", "console", "Nucleo"].concat(nombres), "\"use strict\";\n" + sinCabecera(NUCLEO) + "\n" + extra + "\nreturn { Componentes, Bus, Teclas, ComponentesPuro, Pausa };");
+  const f = new Function(...["window", "location", "document", "console", "Nucleo"].concat(nombres), "\"use strict\";\n" + NUCLEO + "\n" + extra + "\nreturn { Componentes, Bus, Teclas, ComponentesPuro, Pausa };");
   const r = f(...[ventana, { search: busqueda }, documento, consola, Nucleo].concat(nombres.map(n => globales[n])));
   r.pulsa = (code, extra2) => { const e = Object.assign({ code, target: { tagName: "CANVAS" }, prevenida: false, preventDefault() { e.prevenida = true; } }, extra2 || {}); teclado.forEach(fn => fn(e)); return e; };
   r.errores = errores; r.ventana = ventana;
@@ -177,7 +176,7 @@ function manifiestos() {
   const out = {};
   for (const f of COMPONENTES) {
     const defs = [], ctx = vm.createContext({ Mundos: MUNDOS_TS, Interfaz: UI_TS, Componentes: { registra: d => { defs.push(d); return true; } }, Bus: { on: () => () => {}, emite: () => 0, hay: () => false }, console, Intl, Date, Math, JSON });
-    const src = fs.readFileSync(path.join(MOTOR, f), "utf8");
+    const src = pasoArranque(f);
     // A3-1b: un talón «var X = Mundos.creaX({…deps del motor…}); Componentes.registra(Mundos.manifiestoX(X));» no puede evaluarse sin el motor (la
     // fábrica recibe sus dependencias); su manifiesto se pide a Mundos con un doble de X (el manifiesto solo guarda X para llamarlo en sus fases)
     // MU5-n (A3-4): también una extracción parcial (15_tiempo.js) que registra así el manifiesto de su componente de src/mundos
@@ -198,7 +197,7 @@ function manifiestos() {
 function eventosDelCodigo() {
   const m = {}, apunta = (ev, emite, mod) => { const e = m[ev] = m[ev] || { emiten: new Set(), escuchan: new Set() }; (emite ? e.emiten : e.escuchan).add(mod); };
   for (const f of ficherosMotor()) {
-    const s = sinComentarios(sinCabecera(fs.readFileSync(path.join(MOTOR, f), "utf8"))), mod = f.slice(0, -3);
+    const s = sinComentarios(pasoArranque(f)), mod = f.slice(0, -3);
     for (const x of s.matchAll(/\b(?:Bus|n)\.(emite|on)\(\s*"([^"]+)"/g)) apunta(x[2], x[1] === "emite", mod);
   }
   for (const f of fs.readdirSync(NUCLEO_TS).filter(f => f.endsWith(".ts") && !f.endsWith(".test.ts")).sort()) {
@@ -242,7 +241,7 @@ test("la suma de los presupuestos de los encendidos por defecto cabe en el de di
 });
 
 test("consume resuelto y sin ciclos; un componente no expone nada en su primer nivel ni consume de otro componente; lo que usa de fuera lo declara", () => {
-  const M = manifiestos(), d = contratoModulos.deriva(), ifaces = Object.keys(json("contratos/interfaces.json").interfaces);
+  const M = manifiestos(), d = require("./_pasos").deriva(), ifaces = Object.keys(json("contratos/interfaces.json").interfaces);
   const comp = new Set(COMPONENTES.map(f => f.slice(0, -3)));
   const esTalon = f => delTs(fs.readFileSync(path.join(MOTOR, f.endsWith(".js") ? f : f + ".js"), "utf8"));
   const expuestosNoComp = new Set(Object.entries(d.expone).filter(([f]) => !comp.has(f.slice(0, -3)) || esTalon(f)).flatMap(([, ns]) => ns));   // lo que expone un talón (A3-1b) también vale
@@ -251,11 +250,11 @@ test("consume resuelto y sin ciclos; un componente no expone nada en su primer n
     for (const n of def.consume) assert.ok(expuestosNoComp.has(n) || ifaces.includes(n) || expComp.has(n), f + ": consume «" + n + "», que nadie expone");
     // A3-1b: un talón de TypeScript («// [talón] …» + Componentes.registra(Mundos.…)) expone a propósito su objeto al legado (Escena3D, SueloFotos…) y
     // recibe sus dependencias por la fábrica; sus reglas de componente las vigilan Vitest (ComponentesPuro.valida) y medida_componentes
-    if (delTs(fs.readFileSync(path.join(MOTOR, f), "utf8"))) continue;
+    if (delTs(pasoArranque(f))) continue;
     assert.deepStrictEqual(d.expone[f], [], f + ": un componente no expone nada en su primer nivel (los demás le hablan por el Bus o Componentes.api)");
     for (const g of Object.keys(d.cons[f])) assert.ok(!comp.has(g) || esTalon(g), f + " consume de otro componente: " + g);   // salvo el objeto que expone un talón (A3-1b)
     // lo que su código (sin comentarios) usa de los módulos que no son el núcleo de componentes ni lo básico de la escena, está en su consume
-    const codigo = sinComentarios(sinCabecera(fs.readFileSync(path.join(MOTOR, f), "utf8"))).replace(/"(?:[^"\\\n]|\\.)*"/g, '""');
+    const codigo = sinComentarios(pasoArranque(f)).replace(/"(?:[^"\\\n]|\\.)*"/g, '""');
     const LIBRE = new Set(["01_datos", "02_mundo", "02b_cola", "02c_componentes", "02d_laminas", "02e_entidades", "03_escena"]);
     const usa = n => new RegExp("(?<![\\w$.])" + n.replace(/\$/g, "\\$") + "(?![\\w$]|\\s*:(?!:))").test(codigo);   // sin propiedades (.x) ni claves de objeto (x:)
     for (const [g, ns] of Object.entries(d.cons[f])) if (!LIBRE.has(g)) for (const n of ns) if (usa(n)) assert.ok(def.consume.includes(n), f + ": usa «" + n + "» de " + g + " sin declararlo en consume");
@@ -308,7 +307,7 @@ test("el motor sin cada componente (genera_motor.mjs --sin) es JavaScript válid
     // solo puede nombrarlo (su id para n.api y lo que expone) otro componente que lo declara en su consume (C5: la presencia consume la red; los avatares, la presencia)
     const loConsume = g => !!M[g] && M[g].consume.some(x => M[f].expone.includes(x));
     for (const g of ficherosMotor().filter(x => x !== f && !loConsume(x))) {
-      const s = sinComentarios(sinCabecera(fs.readFileSync(path.join(MOTOR, g), "utf8")));
+      const s = sinComentarios(pasoArranque(g));
       for (const n of nombres) assert.ok(!new RegExp("(?<![\\w$.-])" + n + "(?![\\w$-])").test(s), g + " nombra a «" + n + "» (de " + f + ")");
     }
   }
@@ -350,7 +349,7 @@ function audioFalso() {
   return { AC: new Proxy(AC, { construct: (T, a) => new Proxy(new T(...a), { get: (o, k) => k in o ? o[k] : (typeof k === "string" && k.startsWith("create") ? () => nodo() : undefined) }) }), cuenta };
 }
 test("C4 en Node: el sonido se monta con su pestaña de Configuración y su fila del panel VR, atiende al Bus, y apagado o sin el fichero no se rompe nada", () => {
-  const F = "20_sonido.js", fuente = sinCabecera(fs.readFileSync(path.join(MOTOR, F), "utf8"));
+  const F = "20_sonido.js", fuente = pasoArranque(F);
   const filas = [], ajustes = [], quitados = { ajustes: 0 };
   const mundo = () => ({ PanelVR: { filas: (p, f) => { filas.push([p, f]); return () => filas.splice(filas.findIndex(x => x[1] === f), 1); } }, VRX: { sucio: false },
     Ajustes: { lee: k => ({ "sonido.activo": true, "sonido.volumen": 80 })[k], pon() {}, registra: (pre, esq, pes, ap) => { ajustes.push({ pre, esq, pes }); ap && ap("sonido.activo", true); return () => { quitados.ajustes++; }; } },
@@ -390,7 +389,7 @@ test("C4 en Node: el sonido se monta con su pestaña de Configuración y su fila
   assert.match(fuenteMotor("19_balizas.js"), /[Bb]us\.emite\("sonido:baliza"/);   // A3-3: 19_balizas es un talón; su código está en balizas.ts
   assert.match(fuenteMotor("24_pantalla.js"), /Bus\.emite\("sonido:golpe"/);
   assert.match(fuenteMotor("25_perros.js"), /n\.emite\("sonido:ladrido"/); assert.match(require("./_fuente").fuenteMotor("29_vr.js"), /Bus\.emite\("audio:desbloquea"/);   // A3-5: 25_perros es un talón de perros.ts
-  assert.doesNotMatch(sinComentarios(lee("apps/web/motor/90_final.js")), /actualizaSonido/);
+  assert.doesNotMatch(sinComentarios(pasoArranque("90_final.js")), /actualizaSonido/);
 });
 
 // ---------- puntos de extensión con trozo puro (C2): las capas con su procedencia y los ajustes de un componente
@@ -418,7 +417,7 @@ test("Ajustes.registra: AjustesPuro.fusiona añade claves con prefijo propio, va
 
 // ---------- C9a: el anfitrión de juegos y «Cae la cosecha», dos componentes que se hablan solo por el Bus
 test("C9a en Node: anfitrión y juego se encuentran por el Bus en cualquier orden; apagar cualquiera de los dos no rompe nada; la pausa del mundo", () => {
-  const H = sinCabecera(lee("apps/web/motor/40_juegos.js")), J = sinCabecera(lee("apps/web/motor/41_cae_la_cosecha.js"));
+  const H = pasoArranque("40_juegos.js"), J = pasoArranque("41_cae_la_cosecha.js");
   const iconos = [], ventanas = [];
   const mundo = () => ({ Hud: { icono: d => { iconos.push(d.id); return () => iconos.splice(iconos.indexOf(d.id), 1); }, alterna() {} },
     Ventanas: { registra: id => { ventanas.push(id); return () => ventanas.splice(ventanas.indexOf(id), 1); }, abierta: () => null, cierra() {} },
@@ -447,7 +446,7 @@ test("C9a en Node: anfitrión y juego se encuentran por el Bus en cualquier orde
   assert.ok(!r.Pausa.activa()); assert.deepStrictEqual(visto, [true, false]);
   assert.doesNotThrow(() => r.Componentes.actualiza("pausa", 0.016, 0));
   r.Componentes.configura({ juegos: { activo: false } });
-  const fin = sinComentarios(lee("apps/web/motor/90_final.js"));
+  const fin = sinComentarios(pasoArranque("90_final.js"));
   // A1-14: el bucle es nucleo/bucle.ts; que en pausa solo corran la fase «pausa» y el fin lo prueba nucleo/bucle.test.ts (Vitest). Aquí, lo que le da 90_final:
   assert.ok(fin.includes('enPausa: function () { return Pausa.activa() && !VRX.on; }, pausa: function (dt, t) { Componentes.actualiza("pausa", dt, t); depuraCuadro(t); }'), "en pausa, el bucle solo corre la fase «pausa» (ni render, ni Cola, ni módulos)");
   // MU2-3: los pasos del mundo (actualizaTiempo…) van dentro del exterior, que corre como UN paso del Bucle (gm.actualiza), y el Bucle mira la pausa antes que ningún paso

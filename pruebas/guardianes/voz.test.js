@@ -13,9 +13,7 @@ const test = require("node:test"), assert = require("node:assert");
 const { aparatoDe } = require("./_aparato");
 const fc = require("fast-check");
 const { lee, path } = require("./_util");
-const contratoModulos = require(path.join(__dirname, "..", "contrato_modulos.js"));
 
-const sinCabecera = s => s.startsWith(contratoModulos.MARCA_I) ? s.slice(s.indexOf(contratoModulos.MARCA_F) + contratoModulos.MARCA_F.length + 1) : s;
 const VOZ = require("./_fuente").fuenteMotor("45_voz.js"), RED = require("./_fuente").fuenteMotor("37_red.js");   // A3-6a: el talón y apps/web/src/red/salas.ts; A3-6b: el de 45 y red/voz/voz.ts
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return s.slice(i, f); };
 // MU5-n (A3-6b): VozPuro y el motor (creaVoz) viven en apps/web/src/red/voz/voz.ts; 45_voz.js es su talón. Se prueban como los ve el legado (Mundos.<nombre>)
@@ -408,7 +406,7 @@ test("VozMotor: quién habla (voz:habla), salir suelta todo y libera cierra el A
   m.sala.emite("pista", { identidad: "h_guia", sid: "AG", fuente: "microphone", mst: {} });
   assert.strictEqual(m.body.children[0].muted, false); assert.strictEqual(m.api.estado().modo, "plano");
   // sin grabación (decisión 10): ni MediaRecorder ni Egress en la voz ni en la red
-  for (const [f, src] of [["45_voz.js", sinCabecera(VOZ).replace(/\/\/.*$/gm, "")], ["37_red.js", sinCabecera(RED).replace(/\/\/.*$/gm, "")]]) {
+  for (const [f, src] of [["45_voz.js", VOZ.replace(/\/\/.*$/gm, "")], ["37_red.js", RED.replace(/\/\/.*$/gm, "")]]) {
     assert.ok(!/MediaRecorder|Egress|captureStream/.test(src), f + ": nada que grabe");
   }
 });

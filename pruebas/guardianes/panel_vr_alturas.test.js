@@ -1,6 +1,7 @@
 "use strict";
 // Guardián: las filas de cada pestaña del panel de VR caben en el espacio útil del lienzo (1.024 px), entre y0 y el texto de los mandos.
 // Lee el código (no monta nada): suma los `alto` de cada PanelVR.filas("pestaña", { id, orden, alto }) de apps/web/motor/*.js.
+const { nombresPasos } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const test = require("node:test"), assert = require("node:assert"), fs = require("fs"), path = require("path");
 const MOTOR = path.join(__dirname, "..", "..", "apps", "web", "motor");
 const Y0 = 196, TEXTO_MANDOS = 890 - 11;   // vrY0() sin letrero; el texto de mandos (22 px, línea media en y = 890) empieza hacia 879
@@ -12,7 +13,7 @@ const EXCEPCIONES = {
 };
 function filas() {
   const out = []; const re = /PanelVR\.filas\("([a-z]+)", \{ id: "([A-Za-z_]+)", orden: (\d+), alto: (\d+)/g;
-  for (const f of fs.readdirSync(MOTOR).filter(x => x.endsWith(".js")).sort()) {
+  for (const f of nombresPasos()) {
     const s = require("./_fuente").fuenteMotor(f); let m;   // A3-6c: de un talón, también sus .ts (las filas de 29_vr viven en mundos/comun/vr-panel.ts)
     while ((m = re.exec(s))) out.push({ pestana: m[1], id: m[2], orden: +m[3], alto: +m[4], fichero: f });
   }

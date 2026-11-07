@@ -10,6 +10,7 @@
 // Sin Chrome, playwright-core, Python, Vite o las dependencias de tuberia/tiles3d, lo de navegador se SALTA con aviso.
 const test = require("node:test"), assert = require("node:assert");
 const { RAIZ, propia, python, fixture, ejecuta, fs, path } = require("./_util");
+const { pasoArranque, nombresPasos } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const { ESCENARIOS, motivoSalto, lanza, sirve, esCsp } = require("./_navegador");
 const { montaPagina, saltoPagina } = require("./_pagina");
 const { vuela, cajaDatos, comparaRelieve } = require("./_recorrido");
@@ -45,9 +46,9 @@ test("su build ES solo importa «three» y «three/addons/…» (Vite se los res
 });
 
 test("el motor: 04b_escena3d.js es la única escena (sin ESC3D ni ?escena=), arranca con D.tileset o ?tileset= y si no falla con «falta el tileset»; cada perfil VR trae su errorTarget", () => {
-  const m = fuenteMotor("04b_escena3d.js"), vr = require("./_fuente").fuenteMotor("29_vr.js"), fin = lee(path.join(MOTOR, "90_final.js"));
+  const m = fuenteMotor("04b_escena3d.js"), vr = require("./_fuente").fuenteMotor("29_vr.js"), fin = pasoArranque("90_final.js");
   assert.ok(!fs.existsSync(path.join(MOTOR, "04_terreno.js")), "04_terreno.js se borró en T8 fase 2 (decisión 79)");
-  const todo = fs.readdirSync(MOTOR).filter(f => f.endsWith(".js")).map(f => lee(path.join(MOTOR, f))).join("\n");
+  const todo = nombresPasos().map(f => pasoArranque(f)).join("\n");
   assert.ok(!/\bESC3D\b|\bTerreno\.|escena=clasica/.test(todo), "quedan ESC3D, Terreno o ?escena=clasica en el motor");
   assert.match(m, /if \(pedida\) arranca\(\); else falla\(new Error\("falta el tileset"\)\)/);
   assert.match(m, /consola\.error\("escena 3D Tiles: "/, "el fallo se dice con UN console.error que empieza por «escena 3D Tiles:»");
@@ -71,7 +72,7 @@ test("el motor: 04b_escena3d.js es la única escena (sin ESC3D ni ?escena=), arr
 // con los atributos de instancia de los glb del fixture (leídos con @gltf-transform): resolución por huella, máscara, tipos, huellas que no casan y
 // el camino sin crypto.subtle. Lo que el motor de verdad hace con three (count, needsUpdate, visibilidad) se mira en el navegador, más abajo.
 // A3-1b: 04c es un talón; su código vive en apps/web/src/mundos/exterior/olivos-tiles.ts (IdTiles y creaOlivosTiles). FUENTE_OT es el talón y el .ts juntos (lo que ve el motor)
-const FUENTE_OT = lee(path.join(MOTOR, "04c_olivos_tiles.js")) + "\n" + lee(path.join(RAIZ, "apps", "web", "src", "mundos", "exterior", "olivos-tiles.ts"));
+const FUENTE_OT = pasoArranque("04c_olivos_tiles.js") + "\n" + lee(path.join(RAIZ, "apps", "web", "src", "mundos", "exterior", "olivos-tiles.ts"));
 const MUNDOS = require("./_mundos"), { fuenteMotor } = require("./_fuente");   // A3-1b: 04b también es un talón: su código vive en apps/web/src/mundos/exterior/escena-tiles.ts
 const DEPS_OT = ["@gltf-transform/core", "@gltf-transform/extensions"].filter(d => !fs.existsSync(path.join(T3D, "node_modules", d, "package.json")));
 const SALTO_OT = !python() ? "No hay Python 3: los olivos del tileset NO se han comprobado" : DEPS_OT.length ? "faltan dependencias de tuberia/tiles3d (" + DEPS_OT.join(", ") + "): los olivos del tileset NO se han comprobado" : null;

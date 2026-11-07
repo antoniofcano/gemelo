@@ -4,13 +4,14 @@
 //   const { fabrica } = require("./_materiales");  const { Materiales, Render, InfoDibujo, RenderPuro, Estaticos } = fabrica(THREE, { busqueda: "?render=nuevo" });
 const vm = require("vm");
 const { lee } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const NUCLEO = require("./_nucleo");   // el núcleo de TypeScript, el mismo que ve la IIFE por «import * as Nucleo» (MUNDOS §9.3)
 
 function fabrica(THREE, o) {
   o = o || {};
   const g = { THREE, Nucleo: NUCLEO, location: { search: o.busqueda || "" }, console: o.console || { warn() {}, error() {} }, Promise };
   if (o.build) g.__GEMELO_BUILD__ = o.build;
-  vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/02h_render.js") + lee("apps/web/motor/02i_materiales.js") + lee("apps/web/motor/02j_estaticos.js") + lee("apps/web/motor/02k_fusiona.js") +
+  vm.runInContext("\"use strict\";\n" + pasoArranque("02h_render.js") + pasoArranque("02i_materiales.js") + pasoArranque("02j_estaticos.js") + pasoArranque("02k_fusiona.js") +
     "\nthis.fusionaGeometrias = fusionaGeometrias; this.Estaticos = Estaticos; this.Materiales = Materiales; this.Render = Render; this.InfoDibujo = InfoDibujo;", vm.createContext(g), { filename: "02h-02i" });
   return { Materiales: g.Materiales, Render: g.Render, InfoDibujo: g.InfoDibujo, RenderPuro: NUCLEO.RenderPuro, Estaticos: g.Estaticos, fusionaGeometrias: g.fusionaGeometrias };
 }

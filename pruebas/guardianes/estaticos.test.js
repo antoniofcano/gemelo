@@ -9,6 +9,7 @@
 // No toca Chrome, Docker ni el banco. Ni Quest ni iPhone: no probado en dispositivo.
 const test = require("node:test"), assert = require("node:assert"), vm = require("vm"), path = require("path"), { pathToFileURL } = require("url");
 const { lee, RAIZ, fs } = require("./_util");
+const { pasoArranque, nombresPasos } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const { conFabrica } = require("./_materiales");
 const { fuenteMotor } = require("./_fuente");   // A3-3: lo que ya es un talón se lee con su .ts
 
@@ -53,7 +54,7 @@ function mundoPaisaje(Estaticos) {
     pon() {}, lista: [], lluvia: null, cur: { ms: 0, nub: 0, lluvia: 0, dir: 0, viento: 0 }, tMundo: 0, nivel: () => ({ s: { alt: 0.8, az: 0.4 }, d: 1 }), esfera: null, EST: { activa: false }, nivelEn: (ms, s) => { s.s.alt = 0.8; s.s.az = 0.4; s.d = 1; return s; }, Componentes: { registra() { return true; } }
   };
   g.scene.add(g.gSombras);
-  vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/18_paisaje.js"), vm.createContext(conFabrica(g)), { filename: "18_paisaje.js" });
+  vm.runInContext("\"use strict\";\n" + pasoArranque("18_paisaje.js"), vm.createContext(conFabrica(g)), { filename: "18_paisaje.js" });
   return g;
 }
 test("18_paisaje: tras colocaPaisaje y al cambiar la exageración (1 → 3 → 1,5 → 1), la matriz del mundo de cada objeto es la de matrixAutoUpdate = true", () => {
@@ -130,7 +131,6 @@ test("19_balizas: la baliza (grupo y columna) se congela con colocaBalizas; el r
 });
 
 // ---------------------------------------------------------------- inventario
-const MOTOR = path.join(RAIZ, "apps/web/motor");
 // quién congela (y con qué motivo es estático)
 const CONGELAN = {
   "05_nube.js": "mallas de puntos por tesela: se colocan al crearlas y en exagNube()",
@@ -167,7 +167,7 @@ const AUTOMATICO = {
   "07ac_lejanos.js": "olivos lejanos: la malla se escala con la exageración (exagM); no inspeccionado a fondo, queda en automático",
   "19_balizas.js#late": "rombo y anillo de cada baliza: giran, suben y bajan, laten"
 };
-const motores = () => fs.readdirSync(MOTOR).filter(f => f.endsWith(".js"));
+const motores = () => nombresPasos();
 
 test("inventario: congelan exactamente los ficheros registrados aquí (uno nuevo hay que añadirlo, con su motivo) y cada uno recoloca con congela tras colocar", () => {
   const usan = motores().filter(f => f !== "02j_estaticos.js" && /Estaticos\.congela\(/.test(sinComentarios(require("./_fuente").fuenteMotor(f)))).sort();
@@ -182,9 +182,9 @@ test("inventario: congelan exactamente los ficheros registrados aquí (uno nuevo
 test("inventario: lo que ya iba congelado a mano sigue así, y lo que se queda en automático existe y no se congela", () => {
   // A3-1b: 04e es un talón; su malla vive en apps/web/src/mundos/exterior/suelo-fondo.ts
   const MIGRADOS = { "04b_escena3d.js": "apps/web/src/mundos/exterior/escena-tiles.ts", "04e_suelo_fondo.js": "apps/web/src/mundos/exterior/suelo-fondo.ts", "44_lindes.js": "apps/web/src/mundos/exterior/lindes.ts" };   // A3-3: 44 también
-  for (const f of Object.keys(YA_ESTATICOS)) assert.match(sinComentarios(lee(MIGRADOS[f] || "apps/web/motor/" + f)), /matrixAutoUpdate = false/, f + ": sigue con matrixAutoUpdate = false");
+  for (const f of Object.keys(YA_ESTATICOS)) assert.match(sinComentarios(MIGRADOS[f] ? lee(MIGRADOS[f]) : pasoArranque(f)), /matrixAutoUpdate = false/, f + ": sigue con matrixAutoUpdate = false");
   for (const k of Object.keys(AUTOMATICO)) {
-    const f = k.split("#")[0]; assert.ok(fs.existsSync(path.join(MOTOR, f)), f + ": existe");
+    const f = k.split("#")[0]; assert.ok(nombresPasos().includes(f), f + ": existe");
     if (!(f in CONGELAN)) assert.ok(!/Estaticos\.congela\(|matrixAutoUpdate = false/.test(sinComentarios(fuenteMotor(f))), f + ": se queda en automático, no se congela");
   }
   // nada de lo que se mueve se congela por descuido: el rombo y el anillo de las balizas van en la lista de excepciones

@@ -8,6 +8,7 @@
 // No mide llamadas ni fps: eso lo hace el banco (escenarios paseo, paseoE, paseoS, paseoO, en Chrome). Ni Quest ni iPhone: no probado.
 const test = require("node:test"), assert = require("node:assert"), vm = require("vm"), path = require("path"), { pathToFileURL } = require("url");
 const { lee, RAIZ, fs } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const { fuenteMotor } = require("./_fuente");   // A3-3: lo que ya es un talón se lee con su .ts
 const { conFabrica } = require("./_materiales");   // Materiales e InfoDibujo (02h/02i, F1) en el contexto del módulo
 
@@ -70,7 +71,7 @@ function mundoPaisaje(ejesExtra) {
   };
   g.scene.add(g.gSombras);
   if (ejesExtra) g.D.paisaje.arroyo.ejes.push(...ejesExtra);
-  vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/18_paisaje.js"), vm.createContext(conFabrica(g)), { filename: "18_paisaje.js" });
+  vm.runInContext("\"use strict\";\n" + pasoArranque("18_paisaje.js"), vm.createContext(conFabrica(g)), { filename: "18_paisaje.js" });
   return { g, sol };
 }
 const recortados = raiz => { const l = []; raiz.traverse(o => { if ((o.isMesh || o.isLine || o.isPoints) && o.frustumCulled) l.push(o); }); return l; };
@@ -319,8 +320,8 @@ const SIN_RECORTE = {
   "29_vr.js": [4, "el arco y la línea del teletransporte (se reescriben cada fotograma), y el fundido a negro y la viñeta, pegados a la cámara"]
 };
 test("inventario: los frustumCulled = false que quedan en el motor son los anotados, cada uno con su motivo", () => {
-  const dir = path.join(RAIZ, "apps/web/motor"), hay = {};
-  for (const f of fs.readdirSync(dir).filter(f => f.endsWith(".js"))) {
+  const hay = {};
+  for (const f of require("./_pasos").nombresPasos()) {
     const n = (sinComentarios(require("./_fuente").fuenteMotor(f)).match(/frustumCulled\s*=\s*false/g) || []).length;
     if (n) hay[f] = n;
   }

@@ -4,6 +4,7 @@
 // ficha común (#ficha con textContent y sus acciones), los eventos usable:* y que el anillo se crea al elegir y se libera. Chrome: escena3d, vr, vr_gente.
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 
 const FUENTE = require("./_fuente").fuenteMotor("02e_entidades.js");
 function trozo(ini, fin) {
@@ -185,7 +186,7 @@ test("presupuesto: lo que corre por fotograma (Usables.actualiza) no lanza rayos
   assert.ok(i > 0 && f > i, "Usables.actualiza(dt)");
   assert.doesNotMatch(cuerpo, /Raycaster|setFromCamera|intersect|project\(|"rayo"|"pantalla"/, "ni rayos ni proyecciones por fotograma");
   assert.match(cuerpo, /tCerca >= 0\.1/, "la cercanía, cada 0,1 s");
-  const fin = lee("apps/web/motor/90_final.js");
+  const fin = pasoArranque("90_final.js");
   assert.match(fin, /Usables\.actualiza\(dt\)/, "el bucle la llama");
   assert.doesNotMatch(fin, /Usables\.(toque|rayo)\(/, "el bucle no elige nada");
 });

@@ -6,9 +6,10 @@
 // Lo que NO dice: fps ni triángulos en un casco. No probado en Quest (la medida: ?debug&mide=60 con y sin ?xrtri=0, desde la llegada, sin girar).
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const Nucleo = require("./_nucleo");
 
-const T = new Function("Nucleo", "\"use strict\";\n" + lee("apps/web/motor/02l_tope_tiles.js") + "\nreturn TopeTilesPuro;")(Nucleo);   // el talón, con el núcleo de verdad
+const T = new Function("Nucleo", "\"use strict\";\n" + pasoArranque("02l_tope_tiles.js") + "\nreturn TopeTilesPuro;")(Nucleo);   // el talón, con el núcleo de verdad
 const XP = Nucleo.XrPerillasPuro;   // 02f_xr_perillas.js es un talón del núcleo (A1-11)
 const D = T.DEF;
 

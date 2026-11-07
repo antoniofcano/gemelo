@@ -9,8 +9,9 @@
 // Lo que NO dice: que 8 personas, las distancias o los cupos sean los buenos para un Quest. [PROPUESTA], no probado en Quest.
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 
-const F02G = lee("apps/web/motor/02g_vr_presupuesto.js"), F26B = require("./_fuente").fuenteMotorJs("26b_avatares.js"), VR = require("./_fuente").fuenteMotor("29_vr.js");
+const F02G = pasoArranque("02g_vr_presupuesto.js"), F26B = require("./_fuente").fuenteMotorJs("26b_avatares.js"), VR = require("./_fuente").fuenteMotor("29_vr.js");
 function trozo(f, ini, fin) { const i = f.indexOf(ini), j = f.indexOf(fin); assert.ok(i >= 0 && j > i, "falta " + ini + " … " + fin); return f.slice(i, j); }
 const AP = require("./_mundos").AvataresPuro;   // A3-6a: en apps/web/src/mundos/comun/avatares.ts
 const Nucleo = require("./_nucleo"), XP = Nucleo.XrPerillasPuro;   // 02f_xr_perillas.js es un talón del núcleo (A1-11)
@@ -60,7 +61,9 @@ test("cableado: vrAdapta pasa el suelo de la gente; el cambio va por la Cola; el
   assert.match(F26B, /AvataresPuro\.reparte\(tObj, ids, n, AvataresPuro\.distVrm\(VRX\.on, VRX\.nivel\)\)/);
   assert.match(F26B, /var FUNDIDO|FUNDIDO = 0\.6/, "el paso de VRM a muñeco sigue siendo un fundido (r.k), no un corte");
   assert.match(F26B, /r\.dir = -1/, "quien deja de caber en el cupo o la distancia se funde a muñeco");
-  // 02g ya no declara consumir 29_vr (VRX): solo lo nombra en un comentario (el estado `e` lo pasa 29_vr), y las cabeceras se derivan del código (L4-02)
-  assert.doesNotMatch(F02G.split("\n").slice(0, 4).join("\n"), /Consume:.*29_vr \(VRX\)/);
-  assert.match(F26B.split("\n").slice(0, 6).join("\n"), /02g_vr_presupuesto \(VrPresupuesto\)/);
+  // 02g no consume 29_vr (VRX): solo lo nombra en un comentario (el estado `e` lo pasa 29_vr); 26b sí consume VrPresupuesto de 02g (la derivación de los pasos, L4-02;
+  // A3-8c: antes, sus cabeceras «Consume»)
+  const cons = require("./_pasos").deriva().cons;
+  assert.ok(!(cons["02g_vr_presupuesto.js"]["29_vr"] || []).includes("VRX"), "02g no consume VRX de 29_vr");
+  assert.ok((cons["26b_avatares.js"]["02g_vr_presupuesto"] || []).includes("VrPresupuesto"), "26b consume VrPresupuesto de 02g");
 });

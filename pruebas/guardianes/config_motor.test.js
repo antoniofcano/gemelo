@@ -10,15 +10,14 @@
 const test = require("node:test"), assert = require("node:assert");
 const { pathToFileURL } = require("url");
 const { RAIZ, lee, path } = require("./_util");
-const contratoModulos = require(path.join(RAIZ, "pruebas", "contrato_modulos.js"));
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 
-const NUCLEO = lee("apps/web/motor/02c_componentes.js");
+const NUCLEO = pasoArranque("02c_componentes.js");
 const Nucleo = require("./_nucleo");   // MU2-5: ComponentesPuro y Componentes salen del núcleo de TypeScript (apps/web/src/nucleo/componentes.ts)
 const P = Nucleo.ConfigPuro;   // MU5-n (A3-8a): ConfigPuro y Config viven en apps/web/src/nucleo/config.ts (02c_componentes.js es su talón)
 const json = f => JSON.parse(lee(f));
 const ESQ = json("contratos/config.schema.json"), EJ = json("contratos/config-ejemplo.json"), CAL = json("contratos/epocas-calendario.json");
 const VR_TRI = [...require("./_fuente").fuenteMotor("29_vr.js").match(/var VR_PERFILES = \[(.*?)\];/)[1].matchAll(/tri: (\d+)/g)].map(m => Number(m[1]));
-const sinCabecera = s => s.slice(s.indexOf(contratoModulos.MARCA_F) + contratoModulos.MARCA_F.length + 1);
 
 // ---------- el contrato y el motor dicen lo mismo
 test("los límites del motor son los del esquema (y los máximos de gafas, los VR_PERFILES del código)", () => {
@@ -89,7 +88,7 @@ test("épocas: la tabla de la configuración solo si cubre los 366 días; la de 
 const respuesta = (status, cuerpo) => ({ status, json: () => Promise.resolve(cuerpo) });
 function nucleo({ base = "/teselas/hituelo/", busqueda = "", fetch: fetchFn } = {}) {
   const errores = [], consola = { error: (...a) => errores.push(a.join(" ")), warn: (...a) => errores.push(a.join(" ")), log() {} };
-  const f = new Function("window", "location", "document", "console", "D", "fetch", "Nucleo", "\"use strict\";\n" + sinCabecera(NUCLEO) + "\nreturn { Componentes, Config };");
+  const f = new Function("window", "location", "document", "console", "D", "fetch", "Nucleo", "\"use strict\";\n" + NUCLEO + "\nreturn { Componentes, Config };");
   const r = f({ addEventListener() {} }, { search: busqueda }, { getElementById: () => null }, consola, { base }, fetchFn, Nucleo);
   r.errores = errores; return r;
 }
@@ -140,7 +139,7 @@ test("cada parámetro del contrato lo lee el motor (01_datos, 07ab, 07b, 29_vr),
   assert.match(G, /Config\.param\("escalera\.bandaM", Escalera\.BANDA, mB \? BANDA : null\)/, "?olivosBanda= manda");
   assert.match(G, /Config\.param\("escalera\.maxPropios", MAX_PROPIOS, mpr \? MAX_PROPIOS : null\)/, "?olivosPropios= manda");
   assert.match(G, /Promise\.all\(\[p, Config\.listo\]\)\.then\(function \(r(?:: A)?\) \{\s*(?:if \(liberado\) return;[^\n]*\n\s*)?var m(?:: A)? = r\[0\]; aplicaConfig\(\);/, "la configuración se aplica antes del primer olivo");
-  assert.match(lee("apps/web/motor/01_datos.js"), /Config\.param\("escalera\.factorCopa", FACTOR_R8_GEN, FACTOR_R8_URL\)/, "?factorR8= manda");
+  assert.match(pasoArranque("01_datos.js"), /Config\.param\("escalera\.factorCopa", FACTOR_R8_GEN, FACTOR_R8_URL\)/, "?factorR8= manda");
   assert.match(require("./_fuente").fuenteMotor("29_vr.js"), /Config\.al\(function \(\) \{ VR_PERFILES\.forEach\(function \(p, i\) \{ p\.tri = Config\.param\("escalera\.triangulos\.gafas\." \+ i, p\.tri\); \}\); \}\);/);
   assert.match(require("./_fuente").fuenteMotor("07b_arboles.js"), /triMovil: TRI_MOVIL_CFG/);
 });

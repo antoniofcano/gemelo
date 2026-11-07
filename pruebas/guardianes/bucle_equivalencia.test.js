@@ -5,17 +5,18 @@
 // (regla 7); los fps o los tirones solo los da un dispositivo real.
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util"), { fuenteMotor } = require("./_fuente");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const R = require("./_reservas");
 
 /** El texto de una función (declaración entera) de un módulo del motor. */
 function fuente(modulo, inicio) {
-  const src = lee("apps/web/motor/" + modulo), i = src.indexOf(inicio), cu = R.cuerpo(src, inicio);
+  const src = pasoArranque(modulo), i = src.indexOf(inicio), cu = R.cuerpo(src, inicio);
   assert.ok(i >= 0 && cu !== null, modulo + ": no se encuentra " + inicio);
   return src.slice(i, src.indexOf(cu, i) + cu.length + 1);
 }
 /** Un trozo contiguo del módulo, de `desde` hasta justo antes de `hasta` (ambos textos únicos). */
 function trozo(modulo, desde, hasta) {
-  const src = lee("apps/web/motor/" + modulo), i = src.indexOf(desde), j = src.indexOf(hasta, i);
+  const src = pasoArranque(modulo), i = src.indexOf(desde), j = src.indexOf(hasta, i);
   assert.ok(i >= 0 && j > i, modulo + ": no se encuentra el trozo " + desde);
   return src.slice(i, j);
 }

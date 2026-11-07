@@ -13,13 +13,12 @@
 const test = require("node:test"), assert = require("node:assert");
 const { aparatoDe } = require("./_aparato");
 const { lee, path } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const { conFabrica } = require("./_materiales");   // Materiales e InfoDibujo (02h/02i, F1) en el contexto del módulo
-const contratoModulos = require(path.join(__dirname, "..", "contrato_modulos.js"));
 
-const sinCabecera = s => s.startsWith(contratoModulos.MARCA_I) ? s.slice(s.indexOf(contratoModulos.MARCA_F) + contratoModulos.MARCA_F.length + 1) : s;
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return s.slice(i, f); };
-const RED = lee("apps/web/motor/37_red.js"), PRES = lee("apps/web/motor/38_presencia_compartida.js"), LIB = lee("apps/web/motor/26_presencia.js"), OFI = require("./_fuente").fuenteMotor("39_oficina_mundo.js"), OFI_TALON = lee("apps/web/motor/39_oficina_mundo.js"), BAL_TALON = lee("apps/web/motor/39b_oficina_balizas.js");   // A3-7b2: el talón y su .ts (leído como JavaScript, sin tipos ni «dp.»); A3-8b: apps/web/src/ui/oficina-mundo.ts y, las balizas, mundos/exterior/oficina-balizas.ts
-const NUCLEO = lee("apps/web/motor/02c_componentes.js");
+const RED = pasoArranque("37_red.js"), PRES = pasoArranque("38_presencia_compartida.js"), LIB = pasoArranque("26_presencia.js"), OFI = require("./_fuente").fuenteMotor("39_oficina_mundo.js"), OFI_TALON = pasoArranque("39_oficina_mundo.js"), BAL_TALON = pasoArranque("39b_oficina_balizas.js");   // A3-7b2: el talón y su .ts (leído como JavaScript, sin tipos ni «dp.»); A3-8b: apps/web/src/ui/oficina-mundo.ts y, las balizas, mundos/exterior/oficina-balizas.ts
+const NUCLEO = pasoArranque("02c_componentes.js");
 const { SalaPose, Aspecto, Chat } = require("./_mundos");   // MU5-n (A3-6a): la lógica pura de 26_presencia.js vive en apps/web/src/red/ (pose.ts, sala.ts) y mundos/comun/muneco.ts; el legado la ve como Mundos.<nombre>
 const OP = new Function("\"use strict\";\n" + trozo(OFI, "// [puro:inicio]", "// [puro:fin]") + "\nreturn OficinaMundoPuro;")();
 const EntidadesPuro = require("./_nucleo").EntidadesPuro;   // 02e_entidades.js: la lógica pura es del núcleo (A1-11)
@@ -153,9 +152,9 @@ const BALIZAS = { finca: "hituelo", srs: "EPSG:25830", balizas: [{ id: 7, finca:
 function motor({ busqueda = "?presencia=red", rol = "oficina", base = "/teselas/hituelo/", ficheros = ["red", "presencia", "oficina", "balizas"], balizas = BALIZAS } = {}) {
   const meta = { alias: rol === "hogar" ? "Mirlo" : "Oficina", rol, avatar: { camisa: 1, sombrero: "paja", piel: 1 }, dispositivo: "escritorio" };
   const LK = lkFalso(meta), errores = [], cuenta = { mallas: 0, mallasLibres: 0, escena: 0, fetch: [], tipos: {}, quitados: [], ventanas: {}, iconos: [], capas: 0, laminas: [], hudAvisos: [] };
-  const fuentes = { red: sinCabecera(RED).replace('import("livekit-client")', "Promise.resolve(LK_FALSO)"),
-    presencia: sinCabecera(PRES).replace('import("three/addons/utils/BufferGeometryUtils.js")', "Promise.reject(new Error(\"sin addons en Node\"))"),
-    oficina: sinCabecera(OFI_TALON), balizas: sinCabecera(BAL_TALON) };
+  const fuentes = { red: RED.replace('import("livekit-client")', "Promise.resolve(LK_FALSO)"),
+    presencia: PRES.replace('import("three/addons/utils/BufferGeometryUtils.js")', "Promise.reject(new Error(\"sin addons en Node\"))"),
+    oficina: OFI_TALON, balizas: BAL_TALON };
   const ventana = { addEventListener() {}, removeEventListener() {} }, visor = new El("div");
   const documento = { getElementById: () => null, createElement: t => new El(t), createTextNode: t => ({ t }), body: new El("body"), activeElement: null };
   const consola = { error: (...a) => errores.push(a.map(String).join(" ")), warn: (...a) => { const t = a.map(String).join(" "); if (!/sin quad ni dron/.test(t)) errores.push(t); }, log() {} };
@@ -187,8 +186,8 @@ function motor({ busqueda = "?presencia=red", rol = "oficina", base = "/teselas/
   conFabrica(g);
   // A3-7b2: la oficina (mundos/exterior/oficina-mundo.ts) usa el document, el window, el location y el fetch globales: se los damos a este contexto
   globalThis.document = documento; globalThis.window = ventana; globalThis.location = { search: busqueda, href: "https://gemelo.test/finca/index.html" + busqueda }; globalThis.fetch = g.fetch;
-  const nombres = Object.keys(g), codigo = sinCabecera(LIB) + "\n" + ficheros.map(f => fuentes[f]).join("\n");
-  const f = new Function(...["window", "location", "document", "console"].concat(nombres), "\"use strict\";\n" + sinCabecera(NUCLEO) + "\n" + codigo + "\nreturn { Componentes, Bus };");
+  const nombres = Object.keys(g), codigo = LIB + "\n" + ficheros.map(f => fuentes[f]).join("\n");
+  const f = new Function(...["window", "location", "document", "console"].concat(nombres), "\"use strict\";\n" + NUCLEO + "\n" + codigo + "\nreturn { Componentes, Bus };");
   const r = f(...[ventana, { search: busqueda, href: "https://gemelo.test/finca/index.html" + busqueda }, documento, consola].concat(nombres.map(n => g[n])));
   const bus = []; ["oficina:anuncio", "oficina:sala"].forEach(e => r.Bus.on(e, d => bus.push([e, d])));
   r.Componentes.arranca();

@@ -7,6 +7,7 @@
 // en el panel VR simulado. Las capturas van a pruebas/salida/capturas-tiempo/. Nada de esto dice si se lee bien o marea en unas Quest (no probado).
 const test = require("node:test"), { describe, before } = test, assert = require("node:assert");
 const { lee, SALIDA, fs, path } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 
 const FUENTE = require("./_fuente").fuenteMotor("35_fichas_tiempo.js"), VR = require("./_fuente").fuenteMotor("29_vr.js");
 function trozo(ini, fin, fuente = FUENTE) {
@@ -265,7 +266,7 @@ test("en el código: P por Teclas (que filtra campos, Ctrl/Alt/Cmd y repetición
   assert.ok(!/document\.addEventListener|window\.addEventListener/.test(codigo), "ni eventos propios en document ni teclado propio");
   assert.match(lee("apps/web/src/mundos/exterior/tiempo.ts"), /bus\.emite\("prevision:alterna"\)/);   // MU5-n (A3-4): 15_tiempo.js pasó a src/mundos/exterior/tiempo*.ts
   assert.ok(!/KeyP/.test(require("./_fuente").fuenteMotor("12_paseo.js") + require("./_fuente").fuenteMotor("31_hud.js")), "la P no la usa nadie más");
-  assert.ok(!/KeyP/.test(lee("apps/web/motor/02c_componentes.js") + lee("apps/web/src/nucleo/teclas.ts")), "ni está reservada");   // A3-8a: las Teclas, en el núcleo
+  assert.ok(!/KeyP/.test(pasoArranque("02c_componentes.js") + lee("apps/web/src/nucleo/teclas.ts")), "ni está reservada");   // A3-8a: las Teclas, en el núcleo
 });
 
 // ---------- en el navegador (Cerro del fixture con el cliente web, por HTTP). Chrome por lanza(): el compartido de la puerta o uno propio dentro del turno.

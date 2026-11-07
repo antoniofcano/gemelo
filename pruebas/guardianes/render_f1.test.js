@@ -8,6 +8,7 @@
 //   · los lectores de renderer.info del motor pasan por InfoDibujo (salvo 30_mide.js, que tiene abierto F0).
 const test = require("node:test"), assert = require("node:assert"), path = require("path"), { pathToFileURL } = require("url");
 const { lee, RAIZ } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const { fabrica } = require("./_materiales");
 
 let THREE;
@@ -32,11 +33,11 @@ test("InfoDibujo.lee con el WebGLInfo de verdad de three 0.186.1 (sin GPU): cuen
 
 test("el arranque del bucle y el WebGLRenderer clásico (lo puro del arranque, en apps/web/src/nucleo/render.test.ts)", () => {
   // 90_final arranca el bucle por aquí
-  assert.match(lee("apps/web/motor/90_final.js"), /Render\.arranca\(renderer, bucle\);/);
+  assert.match(pasoArranque("90_final.js"), /Render\.arranca\(renderer, bucle\);/);
   // el WebGLRenderer clásico de three 0.186.1 no tiene init(): el camino de hoy es el síncrono
   assert.strictEqual(typeof THREE.WebGLRenderer.prototype.init, "undefined");
   // 02h_render.js es un talón del núcleo: la fábrica entra por Nucleo.creaRender
-  assert.match(lee("apps/web/motor/02h_render.js"), /var Render = Nucleo\.creaRender\(\{/);
+  assert.match(pasoArranque("02h_render.js"), /var Render = Nucleo\.creaRender\(\{/);
 });
 
 test("los lectores de renderer.info del motor pasan por InfoDibujo (30_mide.js: lo tiene abierto F0, pendiente)", () => {

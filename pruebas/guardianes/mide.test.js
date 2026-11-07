@@ -5,6 +5,7 @@
 // Los números de SwiftShader NO son fps de nada: aquí solo se comprueba que el medidor mide y termina.
 const test = require("node:test"), assert = require("node:assert");
 const { RAIZ, lee, path, fs } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const { sirve, motivoSalto, lanza } = require("./_navegador");
 const { montaPagina, saltoPagina } = require("./_pagina");
 
@@ -186,7 +187,7 @@ test("PB9: el envío es SOLO a petición (el botón), al mismo origen, sin nada 
 });
 
 test("sin &mide el motor no hace nada: 90_final solo emite «cuadro:fin», y 30_mide solo lo escucha armado o midiendo", () => {
-  assert.ok(/Bus\.emite\("cuadro:fin", FIN\);/.test(lee("apps/web/motor/90_final.js")));
+  assert.ok(/Bus\.emite\("cuadro:fin", FIN\);/.test(pasoArranque("90_final.js")));
   assert.ok(/function engancha\(\) \{ if \(!quitaCuadro\) quitaCuadro = n\.on\("cuadro:fin"/.test(FUENTE) && /desengancha\(\); prev = -1;/.test(FUENTE), "la escucha del fotograma solo existe mientras mide");
   const i = FUENTE.indexOf("var param = ");
   assert.ok(i > 0 && /if \(param\) arma\(/.test(FUENTE.slice(i)), "el armado debe depender de &mide");
@@ -451,7 +452,7 @@ test("Q0i: sin reparto (medida de antes) no viaja ni reparto ni otros_p95_ms", (
 test("Q0h: coste cero sin medir: ni una lectura de reloj nueva en el bucle fuera de lo guardado por «rp», y cero reservas en lo que corre midiendo", () => {
   // A1-14: el bucle es apps/web/src/nucleo/bucle.ts; que sin medir solo lea el reloj en bucle() y en el render lo cuenta nucleo/bucle.test.ts (Vitest).
   // En la lista de pasos de 90_final, el reloj solo lo da el `ahora` del bucle y lo lee vrFin, como siempre
-  const fin = lee("apps/web/motor/90_final.js"), cuerpo = fin.slice(fin.indexOf("Nucleo.creaBucle("), fin.indexOf("var cuadro = Bucle.cuadro"));
+  const fin = pasoArranque("90_final.js"), cuerpo = fin.slice(fin.indexOf("Nucleo.creaBucle("), fin.indexOf("var cuadro = Bucle.cuadro"));
   const lecturas = cuerpo.split("\n").filter(l => /performance\.now\(\)/.test(l));
   assert.strictEqual(lecturas.length, 2, lecturas.join("\n"));
   assert.ok(lecturas.some(l => /ahora: function \(\) \{ return performance\.now\(\); \}/.test(l)) && lecturas.some(l => /vrFin\(dt, performance\.now\(\) - t\)/.test(l)));
@@ -460,10 +461,10 @@ test("Q0h: coste cero sin medir: ni una lectura de reloj nueva en el bucle fuera
   const c2 = lee("apps/web/src/nucleo/componentes.ts"), act = c2.slice(c2.indexOf("function actualiza(fase: Fase, dt: number, t: number)"), c2.indexOf("function falla("));
   assert.ok(act.length > 0 && /if \(R && R\.on\) \{\n[^\n]*c\.rp = R\.reg\([^\n]*\n\s*const q = deps\.ahora\(\);\n[^\n]*\n\s*R\.pasa\(c\.rp, q\);\n\s*continue;\n\s*\}/.test(act), "cada componente se mide solo si Reparto.on");
   assert.strictEqual((act.match(/deps\.ahora\(\)|performance\.now\(\)/g) || []).length, 1, "una sola lectura de reloj en Componentes.actualiza, dentro de la rama de medir");
-  assert.match(lee("apps/web/motor/02c_componentes.js"), /var Componentes = Nucleo\.creaComponentes\(\{[\s\S]*?reparto: Reparto,\n\s*ahora: function \(\) \{ return performance\.now\(\); \},/, "02c le da el Reparto y el reloj");
+  assert.match(pasoArranque("02c_componentes.js"), /var Componentes = Nucleo\.creaComponentes\(\{[\s\S]*?reparto: Reparto,\n\s*ahora: function \(\) \{ return performance\.now\(\); \},/, "02c le da el Reparto y el reloj");
   // las funciones del reparto no reservan
   const R = require("./_reservas"), rs = R.recuenta()["src/nucleo/bus.ts"];   // MU5-n (A3-8a): el Reparto vive en apps/web/src/nucleo/bus.ts (02c es su talón)
-  assert.match(lee("apps/web/motor/02c_componentes.js"), /var Reparto = Nucleo\.creaReparto\(\{ ahora: function \(\) \{ return performance\.now\(\); \} \}\);/, "02c le da al Reparto el reloj de siempre");
+  assert.match(pasoArranque("02c_componentes.js"), /var Reparto = Nucleo\.creaReparto\(\{ ahora: function \(\) \{ return performance\.now\(\); \} \}\);/, "02c le da al Reparto el reloj de siempre");
   assert.deepStrictEqual(rs.faltan, []); assert.strictEqual(rs.total, 0, JSON.stringify(rs.detalle));
   assert.ok(Object.keys(rs.porFn).includes("Reparto.pasa") && Object.keys(rs.porFn).includes("Reparto.ini"));
   // y el medidor lo apaga al terminar y al liberar

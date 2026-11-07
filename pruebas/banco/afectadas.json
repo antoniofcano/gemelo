@@ -1,5 +1,5 @@
 {
-  "nota": "Datos del selector `npm run puerta:afectadas` (afectadas.js, PB4). Lo estático (rutas y require/import que cada guardián nombra en su código, y las cabeceras Expone/Consume del motor) se deduce solo; aquí va lo que no se puede deducir. Si no se puede decidir con seguridad, la prueba entra (más vale de más).",
+  "nota": "Datos del selector `npm run puerta:afectadas` (afectadas.js, PB4). Lo estático (rutas y require/import que cada guardián nombra en su código, se deduce solo; aquí va lo que no se puede deducir. Si no se puede decidir con seguridad, la prueba entra (más vale de más).",
   "baratos": ["sintaxis", "higiene", "secretos", "documentacion", "contratos"],
   "todo_nombres": ["package.json", "package-lock.json"],
   "reglas": [
@@ -9,7 +9,7 @@
   ],
   "ignora": ["CHANGELOG.md", "README.md", "LICENSE", ".gitignore", ".gitattributes"],
   "mapa": {
-    "carga": ["apps/web/motor/", "apps/web/plantilla.html"],
+    "carga": ["apps/web/src/", "apps/web/plantilla.html"],
     "build": ["apps/web/herramientas/"]
   }
 }

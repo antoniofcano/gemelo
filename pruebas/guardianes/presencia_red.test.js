@@ -5,6 +5,7 @@
 // Además, que el motor solo pide livekit-client con la bandera y que la versión está fijada. La prueba con dos navegadores reales es P4 (no aquí).
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 
 const { PoseCodec, SalaPose, Chat } = require("./_mundos");   // MU5-n (A3-6a): la lógica pura de 26_presencia.js vive en apps/web/src/red/ (pose.ts, sala.ts) y mundos/comun/muneco.ts; el legado la ve como Mundos.<nombre>
 
@@ -105,8 +106,8 @@ test("chat: UTF-8 de como mucho 280 caracteres, sin caracteres de control ni de 
 test("el motor solo pide livekit-client cuando alguien se une a una sala (la presencia, con ?presencia=red) y la versión está fijada en apps/web/package.json", () => {
   // C5: la conexión es del componente de la red (37_red.js, el único que nombra livekit-client); la presencia (38_presencia_compartida.js) solo usa su api
   const RED = require("./_fuente").fuenteMotor("37_red.js"), PRES = require("./_fuente").fuenteMotorJs("38_presencia_compartida.js");   // A3-6a: el talón y apps/web/src/mundos/comun/presencia.ts (sin las anotaciones de tipos)
-  const motor = require("fs").readdirSync(require("path").join(__dirname, "..", "..", "apps", "web", "motor")).filter(f => f.endsWith(".js"));
-  assert.deepStrictEqual(motor.filter(f => /livekit-client"\)/.test(lee("apps/web/motor/" + f))), ["37_red.js"], "solo la red importa livekit-client");
+  const motor = require("./_pasos").nombresPasos();
+  assert.deepStrictEqual(motor.filter(f => /livekit-client"\)/.test(pasoArranque(f))), ["37_red.js"], "solo la red importa livekit-client");
   assert.strictEqual((RED.replace(/^\s*\/\/.*$/gm, "").match(/import\("livekit-client"\)/g) || []).length, 1, "un solo import (fuera de los comentarios)");
   assert.match(RED, /carga: function \(\) \{ return import\("livekit-client"\); \}/, "el import es el cargador de la red: se llama la primera vez que una sala se une (carga() dentro de une())");
   assert.ok(RED.indexOf("return carga().then(") > RED.search(/function une\(cred\b/), "carga() va dentro de une()");   // A3-6a: en el .ts, con sus tipos

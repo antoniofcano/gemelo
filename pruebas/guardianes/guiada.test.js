@@ -12,13 +12,12 @@ const test = require("node:test"), assert = require("node:assert");
 const { aparatoDe } = require("./_aparato");
 const fc = require("fast-check");
 const { lee, path } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const { conFabrica } = require("./_materiales");   // Materiales e InfoDibujo (02h/02i, F1) en el contexto del módulo
-const contratoModulos = require(path.join(__dirname, "..", "contrato_modulos.js"));
 
-const sinCabecera = s => s.startsWith(contratoModulos.MARCA_I) ? s.slice(s.indexOf(contratoModulos.MARCA_F) + contratoModulos.MARCA_F.length + 1) : s;
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return s.slice(i, f); };
-const GUI = require("./_fuente").fuenteMotor("46_guiada.js"), GUI_TALON = lee("apps/web/motor/46_guiada.js"), RED = lee("apps/web/motor/37_red.js"), PRES = lee("apps/web/motor/38_presencia_compartida.js"), LIB = lee("apps/web/motor/26_presencia.js");
-const VOZ = lee("apps/web/motor/45_voz.js"), NUCLEO = lee("apps/web/motor/02c_componentes.js");
+const GUI = require("./_fuente").fuenteMotor("46_guiada.js"), GUI_TALON = pasoArranque("46_guiada.js"), RED = pasoArranque("37_red.js"), PRES = pasoArranque("38_presencia_compartida.js"), LIB = pasoArranque("26_presencia.js");
+const VOZ = pasoArranque("45_voz.js"), NUCLEO = pasoArranque("02c_componentes.js");
 const PURO = trozo(GUI, "// [puro:inicio]", "// [puro:fin]"), MOTOR = trozo(GUI, "// [motor:inicio]", "// [motor:fin]");
 const G = new Function("\"use strict\";\n" + PURO + "\nreturn GuiadaPuro;")();
 const { SalaPose } = require("./_mundos");   // MU5-n (A3-6a): la lógica pura de 26_presencia.js vive en apps/web/src/red/ (pose.ts, sala.ts) y mundos/comun/muneco.ts; el legado la ve como Mundos.<nombre>
@@ -265,7 +264,7 @@ test("GuiadaMotor: en VR, la fila del panel (pestaña «Ir a») solo para quien 
 });
 
 test("textContent siempre: el componente no usa innerHTML, ni pide nada fuera de su origen, ni graba", () => {
-  const src = sinCabecera(GUI).replace(/\/\/.*$/gm, "");
+  const src = GUI.replace(/\/\/.*$/gm, "");
   assert.ok(!/innerHTML|insertAdjacentHTML|outerHTML/.test(src)); assert.ok(!/MediaRecorder|Egress|captureStream/.test(src));
   for (const u of src.match(/fetch\(([^,]+)/g) || []) assert.match(u, /"\/api\/presencia\/guiadas\/"/, "solo su api, del mismo origen");
 });
@@ -300,8 +299,8 @@ function cualquiera() {
 }
 function motor({ busqueda = "?presencia=red", ficheros = ["red", "presencia", "voz", "guiada"], guiadaEstado = 200 } = {}) {
   const LK = lkFalso(), errores = [], fetchs = [];
-  const fuentes = { red: sinCabecera(RED).replace('import("livekit-client")', "Promise.resolve(LK_FALSO)"),
-    presencia: sinCabecera(PRES).replace('import("three/addons/utils/BufferGeometryUtils.js")', "Promise.reject(new Error(\"sin addons en Node\"))"), voz: sinCabecera(VOZ), guiada: sinCabecera(GUI_TALON) };
+  const fuentes = { red: RED.replace('import("livekit-client")', "Promise.resolve(LK_FALSO)"),
+    presencia: PRES.replace('import("three/addons/utils/BufferGeometryUtils.js")', "Promise.reject(new Error(\"sin addons en Node\"))"), voz: VOZ, guiada: GUI_TALON };
   const ventana = { addEventListener() {}, removeEventListener() {} }, visor = new El("div");
   const documento = { getElementById: () => null, createElement: t => new El(t), createTextNode: t => ({ texto: t }), body: new El("body") };
   const consola = { error: (...a) => errores.push(a.map(String).join(" ")), warn: (...a) => { const t = a.map(String).join(" "); if (!/sin quad ni dron/.test(t)) errores.push(t); }, log() {} };
@@ -324,8 +323,8 @@ function motor({ busqueda = "?presencia=red", ficheros = ["red", "presencia", "v
   conFabrica(g);
   // A3-7b2: la guiada (ui/guiada.ts) usa el document, el window y el fetch globales (como el resto de ui/): se los damos a este contexto
   globalThis.document = documento; globalThis.window = ventana; globalThis.fetch = g.fetch;
-  const nombres = Object.keys(g), codigo = sinCabecera(LIB) + "\n" + ficheros.map(f => fuentes[f]).join("\n");
-  const f = new Function(...["window", "location", "document", "console"].concat(nombres), "\"use strict\";\n" + sinCabecera(NUCLEO) + "\n" + codigo + "\nreturn { Componentes, Bus };");
+  const nombres = Object.keys(g), codigo = LIB + "\n" + ficheros.map(f => fuentes[f]).join("\n");
+  const f = new Function(...["window", "location", "document", "console"].concat(nombres), "\"use strict\";\n" + NUCLEO + "\n" + codigo + "\nreturn { Componentes, Bus };");
   const r = f(...[ventana, { search: busqueda, href: "https://gemelo.test/finca/index.html" + busqueda }, documento, consola].concat(nombres.map(k => g[k])));
   r.Componentes.arranca();
   return Object.assign(r, { LK, errores, fetchs, ventana, visor });

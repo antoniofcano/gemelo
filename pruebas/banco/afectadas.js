@@ -2,8 +2,8 @@
 // `npm run puerta:afectadas` (PB4): de los ficheros cambiados frente a `main` (o `-- --desde <ref>`) saca las pruebas que los tocan y
 // las pasa por puerta.js (mismo reporter y reintento de inestables que la puerta). NO autoriza a subir `main`: eso es la puerta pesada.
 // Cómo decide (se reusa lo que hay, CLAUDE.md regla 12):
-//   1. Motor: la cabecera «Expone / Consume» de apps/web/motor/NN_*.js (pruebas/contrato_modulos.js) dice quién consume a quién; un módulo
-//      cambiado arrastra a sus consumidores (transitivo).
+//   1. (Hasta A3-8c, el motor: la cabecera «Expone / Consume» de apps/web/motor/NN_*.js arrastraba a los consumidores de un módulo. El legado ya no existe: el
+//      cliente es apps/web/src/, y un cambio en el arranque, src/arranque.ts, elige a todo guardián que lo lee, que lo nombra por pruebas/guardianes/_pasos.js.)
 //   2. Cada guardián nombra en su código las rutas que lee (cadenas con apps/…, contratos/…, path.join(…, "motor"), …) y los ficheros que
 //      importa/require (se siguen, con sus propias rutas). Un cambiado que cae bajo una de esas rutas elige esa prueba.
 //   3. Reglas gruesas y mapa explícito en pruebas/banco/afectadas.json (contratos/ → contratos y api; apps/api → api; doc/ → documentacion;
@@ -29,7 +29,7 @@ function rutasDelTexto(txt) {
     for (const p of partes) { const l = /^["']([^"'\\]+)["']$/.exec(p); if (l) cola.push(l[1]); else cola.length = 0; }
     if (!cola.length) continue;
     if (TOP.includes(cola[0].split("/")[0])) anade(cola.join("/"));
-    else if (cola[0] === "motor") anade("apps/web/" + cola.join("/"));
+    else if (cola[0] === "src") anade("apps/web/" + cola.join("/"));   // path.join(WEB, "src", …): el cliente (A3-8c; antes, "motor")
   }
   return out;
 }
@@ -64,28 +64,13 @@ function refsDeGuardianes(dir = GUARDIANES) {
   }
   return res;
 }
-/** { "05_nube": ["06_arboles", …] }: quién consume a cada módulo, según las cabeceras Expone/Consume. */
-function consumidoresDelMotor() {
-  const { leeCabecera, SRC } = require("../contrato_modulos");
-  const consumidores = {};
-  for (const f of fs.readdirSync(SRC).filter(x => x.endsWith(".js"))) {
-    const cab = leeCabecera(fs.readFileSync(path.join(SRC, f), "utf8"));
-    for (const dueno of Object.keys(cab ? cab.consume : {})) (consumidores[dueno] = consumidores[dueno] || []).push(f.slice(0, -3));
-  }
-  return consumidores;
-}
-const cierre = (ini, consumidores) => {
-  const vistos = new Set([ini]), pila = [ini];
-  while (pila.length) for (const c of consumidores[pila.pop()] || []) if (!vistos.has(c)) { vistos.add(c); pila.push(c); }
-  return vistos;
-};
 const cae = (cambiado, ref) => cambiado === ref || cambiado.startsWith(ref + "/");
 
 /**
- * Pura. entrada: { cambiados:[ruta], refs:{prueba:Set|[]}, consumidores:{modulo:[modulo]}, datos }.
+ * Pura. entrada: { cambiados:[ruta], refs:{prueba:Set|[]}, datos }.
  * Devuelve { todo:bool, motivoTodo, pruebas: Map(prueba → [razones]) }.
  */
-function selecciona({ cambiados, refs, consumidores = {}, datos = DATOS }) {
+function selecciona({ cambiados, refs, datos = DATOS }) {
   const pruebas = new Map(), nombres = Object.keys(refs);
   const mete = (p, razon) => { if (!pruebas.has(p)) pruebas.set(p, []); const r = pruebas.get(p); if (!r.includes(razon)) r.push(razon); };
   for (const b of datos.baratos) if (nombres.includes(b)) mete(b, "barata de proceso: entra siempre");
@@ -96,10 +81,7 @@ function selecciona({ cambiados, refs, consumidores = {}, datos = DATOS }) {
     let conocido = false;
     for (const r of datos.reglas) if (cae(c0, norm(r.desde))) { conocido = true; for (const p of r.pruebas) if (nombres.includes(p)) mete(p, c0 + " → " + r.porque); }
     for (const [p, rutas] of Object.entries(datos.mapa || {})) if (nombres.includes(p) && rutas.some(r => cae(c0, norm(r)))) { conocido = true; mete(p, c0 + " → mapa explícito"); }
-    // motor: el módulo y sus consumidores cuentan como cambiados
-    const mm = /^apps\/web\/motor\/([^/]+)\.js$/.exec(c0);
     const efectivos = [c0];
-    if (mm) { conocido = true; for (const m of cierre(mm[1], consumidores)) if (m !== mm[1]) efectivos.push("apps/web/motor/" + m + ".js"); }
     for (const p of nombres) {
       const baratas = datos.baratos.includes(p);
       for (const e of efectivos) {
@@ -126,7 +108,7 @@ function opcion(argv, nombre) { const i = argv.indexOf(nombre); return i < 0 ? n
 
 function principal(argv) {
   const cambiados = opcion(argv, "--cambiados") != null ? opcion(argv, "--cambiados").split(",").filter(Boolean) : cambiadosGit(opcion(argv, "--desde") || "main");
-  const sel = selecciona({ cambiados, refs: refsDeGuardianes(), consumidores: consumidoresDelMotor() });
+  const sel = selecciona({ cambiados, refs: refsDeGuardianes() });
   console.log("puerta:afectadas — " + cambiados.length + " fichero(s) cambiado(s)");
   let ficheros = null;
   if (sel.todo) console.log("Elige TODAS las pruebas: " + sel.motivoTodo);
@@ -143,5 +125,5 @@ function principal(argv) {
   return r.status == null ? 1 : r.status;
 }
 
-module.exports = { selecciona, refsDeGuardianes, rutasDelTexto, consumidoresDelMotor, cierre };
+module.exports = { selecciona, refsDeGuardianes, rutasDelTexto };
 if (require.main === module) process.exit(principal(process.argv.slice(2)));

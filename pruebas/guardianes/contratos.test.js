@@ -1,9 +1,10 @@
 "use strict";
 const test = require("node:test"), assert = require("node:assert");
 const { RAIZ, fixture, lee, fs, path } = require("./_util"), { fuenteMotor, TS_DE, comoJsUi } = require("./_fuente");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const { erroresTesela, enHuella } = require("./_tesela");
 const Ajv2020 = require("ajv/dist/2020").default;
-const contratoModulos = require(path.join(RAIZ, "pruebas", "contrato_modulos.js"));
+const { deriva: derivaPasos } = require("./_pasos");   // A3-8c: qué usa cada paso del arranque de otro
 
 const json = f => JSON.parse(fs.readFileSync(path.join(RAIZ, f), "utf8"));
 const ESQ_INDICE = json("contratos/indice.schema.json"), ESQ_TESELA = json("contratos/tesela.schema.json"), IFACES = json("contratos/interfaces.json");
@@ -138,57 +139,24 @@ test("la nube está barajada: el prefijo es una submuestra uniforme (no ordenada
   assert.ok(crec > 0.3 && crec < 0.7, "los primeros puntos parecen ordenados (fracción creciente " + crec.toFixed(2) + ")");
 });
 
-// ---------- el motor: cabeceras e interfaces ----------
-test("cada módulo de src/ tiene su cabecera «Expone / Consume» al día (node pruebas/contrato_modulos.js --escribe la regenera)", () => {
-  assert.deepStrictEqual(contratoModulos.comprueba(), []);
-});
-
-test("las cabeceras son coherentes: lo que un módulo consume lo expone el módulo citado", () => {
-  const d = contratoModulos.deriva(), exp = {};
-  for (const f in d.expone) exp[f.slice(0, -3)] = new Set(d.expone[f]);
-  for (const f in d.txt) {
-    const h = contratoModulos.leeCabecera(fs.readFileSync(path.join(RAIZ, "apps", "web", "motor", f), "utf8"));
-    assert.ok(h, f + ": sin cabecera");
-    for (const [m, ns] of Object.entries(h.consume)) {
-      assert.ok(exp[m], f + " consume de un módulo que no existe: " + m);
-      for (const n of ns) assert.ok(exp[m].has(n), f + " dice consumir " + n + " de " + m + ", que no lo expone");
-    }
-  }
-});
-
-// L4-02: la derivación de «Consume» mira solo el código; con un motor de mentira (dos módulos en un directorio temporal)
-function motorDeMentira(codigoB) {
-  const dir = fs.mkdtempSync(path.join(require("os").tmpdir(), "gemelo-mod-"));
-  fs.writeFileSync(path.join(dir, "01_a.js"), "  var Alfa = 1, yN = 2;\n  function Beta() { return Alfa; }\n");
-  fs.writeFileSync(path.join(dir, "02_b.js"), codigoB);
-  fs.writeFileSync(path.join(dir, "03_c.js"), "  var z = Alfa + yN + Beta();\n");   // lo que hace que 01_a «exponga» esos nombres
-  return dir;
-}
-test("contrato_modulos: un nombre que solo está en un comentario o en una cadena no es un consumo", () => {
-  const dir = motorDeMentira([
+// ---------- el arranque: qué usa cada paso de otro, e interfaces ----------
+// A3-8c: las cabeceras «Expone / Consume» de motor/ (y node pruebas/contrato_modulos.js --escribe) se fueron con el legado: en src/ lo dicen las importaciones
+// (y dependency-cruiser), y dentro del arranque, la derivación de _pasos.js (la foto de arranque.test.js). Aquí se sigue vigilando esa derivación.
+// L4-02: la derivación de «Consume» mira solo el código; con un arranque de mentira (tres pasos)
+const pasosDeMentira = codigoB => ({ "01_a.js": "  var Alfa = 1, yN = 2;\n  function Beta() { return Alfa; }\n", "02_b.js": codigoB, "03_c.js": "  var z = Alfa + yN + Beta();\n" });
+test("la derivación de los pasos: un nombre que solo está en un comentario o en una cadena no es un consumo", () => {
+  const d = derivaPasos(pasosDeMentira([
     "  // Alfa aparece aquí, y /* Beta */ aquí",
     "  var t = \"Alfa y yN\", u = 'Beta', v = `Alfa ${1 + 1} yN`;",
     "  var r = /Alfa/.test(t); var o = { Alfa: 1 }; var p = o.Beta;",
     "",
-  ].join("\n"));
-  try {
-    const d = contratoModulos.deriva(dir);
-    assert.deepStrictEqual(d.cons["02_b.js"], {}, "ningún consumo real");
-    assert.deepStrictEqual(d.expone["01_a.js"], ["Alfa", "yN", "Beta"]);
-    // y `--comprueba` suspende una cabecera que declara el consumo falso
-    contratoModulos.escribe(dir);
-    assert.deepStrictEqual(contratoModulos.comprueba(dir), []);
-    const f = path.join(dir, "02_b.js"), s = fs.readFileSync(f, "utf8");
-    fs.writeFileSync(f, s.replace("// Consume: (nada de otros módulos)", "// Consume: 01_a (Alfa)"));
-    assert.deepStrictEqual(contratoModulos.comprueba(dir), ["02_b.js"], "consumo que solo existe en un comentario/cadena");
-  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  ].join("\n")));
+  assert.deepStrictEqual(d.cons["02_b.js"], {}, "ningún consumo real");
+  assert.deepStrictEqual(d.expone["01_a.js"], ["Alfa", "yN", "Beta"]);
 });
-test("contrato_modulos: el uso real en el código sí cuenta, también el de una expresión de plantilla y el de un nombre corto de la lista blanca", () => {
-  const dir = motorDeMentira("  var x = Beta(); var s = `v=${yN}`;\n");
-  try {
-    const d = contratoModulos.deriva(dir);
-    assert.deepStrictEqual(d.cons["02_b.js"], { "01_a": ["yN", "Beta"] });
-  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+test("la derivación de los pasos: el uso real en el código sí cuenta, también el de una expresión de plantilla y el de un nombre corto de la lista blanca", () => {
+  const d = derivaPasos(pasosDeMentira("  var x = Beta(); var s = `v=${yN}`;\n"));
+  assert.deepStrictEqual(d.cons["02_b.js"], { "01_a": ["yN", "Beta"] });
 });
 
 /** claves de primer nivel del último `return { … }` de la IIFE `var NOMBRE = (function`, o del literal `window.NOMBRE = {` */
@@ -249,7 +217,7 @@ for (const [nombre, def] of Object.entries(IFACES.interfaces)) {
     } else if (def.fuente) {   // A3-6a: la IIFE movida a TypeScript tal cual; el módulo del motor es su talón (la marca apunta a ese .ts)
       real = retornoDe(lee(def.fuente), nombre, true).sort();
       assert.ok([].concat(TS_DE[def.modulo] || []).includes(def.fuente), def.modulo + " debe ser el talón de " + def.fuente + " (TS_DE de _fuente.js)");
-    } else real = retornoDe(lee("apps/web/motor/" + def.modulo), nombre).sort();
+    } else real = retornoDe(pasoArranque(def.modulo), nombre).sort();
     assert.deepStrictEqual(real, def.miembros.slice().sort(), "cambia contratos/interfaces.json y doc/sistema/CONTRATOS.md en el mismo commit");
   });
 }
@@ -267,7 +235,7 @@ test("los ganchos window.__* de depuración existen donde dice el contrato", () 
 });
 
 test("los alias heredados suelo, copaAlta, colorSuelo y orto siguen apuntando a Mundo", () => {
-  assert.match(lee("apps/web/motor/02_mundo.js"), /var suelo = Mundo\.suelo, copaAlta = Mundo\.copaAlta, colorSuelo = Mundo\.colorSuelo, orto = Mundo\.orto;/);
+  assert.match(pasoArranque("02_mundo.js"), /var suelo = Mundo\.suelo, copaAlta = Mundo\.copaAlta, colorSuelo = Mundo\.colorSuelo, orto = Mundo\.orto;/);
 });
 
 test("la documentación nombra cada interfaz del contrato", () => {

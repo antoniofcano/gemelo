@@ -14,6 +14,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const acorn = require("acorn");
 const { ficheros, lee } = require("./_util"), { fuenteMotor } = require("./_fuente");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 
 const MODULOS = ["12_paseo.js", "12b_llegada.js", "12c_ir_a.js", "16_vida.js", "29_vr.js"];
 // A3-6c (MU5-n): los que viven en mundos/comun/ (29_vr, 12c_ir_a…) se analizan con su talón y el JavaScript que sale de sus .ts (_fuente.js: sin tipos), sin sus import
@@ -136,7 +137,7 @@ test("16_vida (vida.ts): el dron se mueve con sueloMundo y obstaculo (gm); suelo
   assert.match(ts, /function altMueve\(x: any, y: any\) \{ return sueloMundo\(x, y\) \* Estado\.exag; \}/, "el dron se mueve con altMueve = el suelo del mundo activo");
   assert.match(ts, /var o = obstaculo\(dr\.x, dr\.y, 0\);/, "el borde del mundo activo es obstaculo(x, y, 0)");
   assert.ok(!/\bD\.ext\b/.test(ts) && !/\bfueraDeTroncos\b/.test(ts) && !/\bcopas\b/.test(ts), "vida.ts no lee D.ext, ni copas, ni fueraDeTroncos");
-  const talon = lee("apps/web/motor/16_vida.js");
+  const talon = pasoArranque("16_vida.js");
   assert.match(talon, /sueloMundo: function \(x, y\) \{ return gm\.suelo\(x, y\); \}, obstaculo: function \(x, y, r\) \{ return gm\.obstaculo\(x, y, r\); \}/, "el talón cablea el mundo activo");
 });
 
@@ -152,11 +153,11 @@ test("29_vr (mundos/comun/vr*.ts): se mueve con gm; suelo( solo en la marca del 
   assert.strictEqual([...js.matchAll(/(?<![\w.])copas\(\)/g)].length, 1, "copas() una sola vez (en __vrOlivo)");
   assert.ok(!/D\.ext/.test(js) && !/fueraDeTroncos/.test(js), "la VR no lee D.ext ni fueraDeTroncos");
   for (const re of [/gm\.suelo\(px, -pz\)/, /gm\.dentro\(hit\.x, -hit\.z\)/, /ob = gm\.obstaculo\(nx, -nz, rTronco\)/, /VRX\.rig\.y = gm\.suelo\(px, py\) \* Estado\.exag \+ vrBaseY\(\)/]) assert.match(js, re);
-  assert.match(lee("apps/web/motor/29_vr.js"), /gm: function \(\) \{ return gm; \}/, "el talón da el gestor de mundos por función (90_final lo declara después)");
+  assert.match(pasoArranque("29_vr.js"), /gm: function \(\) \{ return gm; \}/, "el talón da el gestor de mundos por función (90_final lo declara después)");
 });
 
 test("90_final.js da al exterior su caja y su censo (creaExterior({ ext: D.ext, copas: copas, … }))", () => {
-  const fin = lee("apps/web/motor/90_final.js");
+  const fin = pasoArranque("90_final.js");
   assert.match(fin, /Mundos\.creaExterior\(\{ suelo: suelo, ext: D\.ext, copas: copas,/);
 });
 

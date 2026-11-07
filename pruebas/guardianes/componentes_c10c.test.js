@@ -6,6 +6,7 @@
 const test = require("node:test"), assert = require("node:assert"), vm = require("vm"), path = require("path"), { pathToFileURL } = require("url");
 const { aparatoDe } = require("./_aparato");
 const { lee, RAIZ } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const { conFabrica } = require("./_materiales");   // Materiales e InfoDibujo (02h/02i, F1) en el contexto del módulo
 
 let THREE;
@@ -25,7 +26,7 @@ function contexto(Bus) {
 function carga(fichero, g, defs) {
   g.Componentes = { registra: d => { defs.push(d); return true; } };
   if (!g.Interfaz) g.Interfaz = require(path.join(RAIZ, "apps", "web", "src", "ui", "index.ts"));   // A3-7a: 30_mide es un talón de apps/web/src/ui/mide.ts
-  vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/" + fichero), vm.createContext(conFabrica(g)), { filename: fichero });
+  vm.runInContext("\"use strict\";\n" + pasoArranque(fichero), vm.createContext(conFabrica(g)), { filename: fichero });
   assert.strictEqual(defs.length, 1, "un componente por fichero");
   return defs[0];
 }
@@ -166,7 +167,7 @@ test("suelo-fondo: sin escena activa no existe, y 90_final ya no lo nombra", () 
   const m = mundoFondo(), d = carga("04e_suelo_fondo.js", m.g, []), api = d.monta(contexto(bus()));
   m.est.v = "cargando"; api.actualiza(); assert.strictEqual(api.malla(), null);
   m.est.v = "activo"; api.actualiza(); assert.ok(api.malla());
-  assert.ok(!/SueloFondo|suelo-fondo/.test(sinComentarios(lee("apps/web/motor/90_final.js"))), "el bucle ya no lo llama");
+  assert.ok(!/SueloFondo|suelo-fondo/.test(sinComentarios(pasoArranque("90_final.js"))), "el bucle ya no lo llama");
   d.libera(api);
 });
 
@@ -225,7 +226,7 @@ test("marcadores-lidar: montado tarde (ya estaba listo) coloca al momento; sin m
   const g = { THREE, Bus, scene: new THREE.Scene(), D: { parcelas: [{}, {}] }, $: id => ({ cLinde: { checked: true }, notaModo: { textContent: "" }, cSolo: null }[id] || { checked: false, textContent: "" }),
     colocaBarrera: k => gl.push(k), nube: {}, gArboles: {}, gFollaje: {}, gSombras: {}, Arboles: { refresca() {} }, pintaNube() {}, colocaPaisaje() {}, colocaBalizas() {}, recoloreaSuelo() {},
     UN: { uExag: {}, uModoOrto: {} }, Estado: { exag: 1, modo: "gem", calidad: 1 }, requestAnimationFrame: f => f() };
-  const nucleo = vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/08_marcadores.js") + "\nMarcadores.ponListo(); aplica(); ({ gl: gLinde });", vm.createContext(conFabrica(g)));
+  const nucleo = vm.runInContext("\"use strict\";\n" + pasoArranque("08_marcadores.js") + "\nMarcadores.ponListo(); aplica(); ({ gl: gLinde });", vm.createContext(conFabrica(g)));
   assert.ok(nucleo.gl.isGroup); assert.strictEqual(gl.join(), "0,1", "las barreras de las parcelas siguen siendo del núcleo");
   assert.strictEqual(vistos.join(), "mundo:aplica,capas:cambia", "aplica avisa y nadie lo atiende: no se rompe");
 });

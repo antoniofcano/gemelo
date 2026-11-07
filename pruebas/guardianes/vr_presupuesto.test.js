@@ -8,6 +8,7 @@
 // Lo que NO dice: fps ni triángulos en un casco (eso, el banco con la VR simulada y el Quest con ?debug&mide=60&xrnivel=N). No probado en Quest.
 const test = require("node:test"), assert = require("node:assert"), vm = require("vm"), path = require("path"), { pathToFileURL } = require("url");
 const { lee, RAIZ } = require("./_util");
+const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const { conFabrica } = require("./_materiales");   // Materiales e InfoDibujo (02h/02i, F1) en el contexto del módulo
 
 // three y el núcleo (node lee TypeScript tal cual): el talón 02g toma de Nucleo lo que expone
@@ -18,7 +19,7 @@ test.before(async () => {
   P = Nucleo.VrPresupuestoPuro;
 });
 
-const FUENTE = lee("apps/web/motor/02g_vr_presupuesto.js");
+const FUENTE = pasoArranque("02g_vr_presupuesto.js");
 const VR = require("./_fuente").fuenteMotor("29_vr.js");
 const PERFILES = Function("return " + /var VR_PERFILES = (\[.*?\]);/.exec(VR)[1])();
 
@@ -32,7 +33,7 @@ const enRadio = (n, paso, cx, r) => { let k = 0; for (let i = 0; i < n; i++) if 
 
 // ---------------------------------------------------------------- los módulos de verdad
 function ctx(extra) { const g = Object.assign({ THREE, Nucleo, location: { search: "" } }, extra); const c = vm.createContext(conFabrica(g)); vm.runInContext(FUENTE, c, { filename: "02g_vr_presupuesto.js" }); return c; }
-const corre = (c, f) => vm.runInContext("\"use strict\";\n" + lee("apps/web/motor/" + f), c, { filename: f });
+const corre = (c, f) => vm.runInContext("\"use strict\";\n" + pasoArranque(f), c, { filename: f });
 
 test("18_paisaje: los árboles que no son olivo se apuntan y el escalón los recorta (tronco y las tres masas a la vez); al salir, todos", () => {
   const hash = n => { const s = Math.sin(n * 127.1) * 43758.5453; return s - Math.floor(s); };
@@ -85,6 +86,6 @@ test("cableado: 29_vr pone el escalón en vrPerfil, lo quita al salir y avisa de
   assert.match(VR, /Arboles\.perfil\(null\); Escena3D\.perfil\(null\); VrPresupuesto\.ponEscalon\(null\);/);
   assert.match(VR, /vrAplicaRig\(\);\n\s*VrPresupuesto\.mueve\(nx, nz\);/);
   assert.match(require("./_fuente").fuenteMotor("07_follaje.js"), /VrPresupuesto\.fuente\("sombras", function \(v(: any)?\) \{ matSombra\.visible = v !== false; \}\)/);   // A3-2b: el código vive en follaje.ts
-  const todo = require("fs").readdirSync(path.join(RAIZ, "apps/web/motor")).filter(f => f.endsWith(".js") && f !== "02g_vr_presupuesto.js").map(f => require("./_fuente").fuenteMotor(f)).join("\n");   // A3-6c: de un talón, también sus .ts
+  const todo = require("./_pasos").nombresPasos().filter(f => f !== "02g_vr_presupuesto.js").map(f => require("./_fuente").fuenteMotor(f)).join("\n");   // A3-6c: de un talón, también sus .ts
   assert.strictEqual((todo.match(/VrPresupuesto\.ponEscalon\(/g) || []).length, 2, "solo 29_vr pone el escalón (al cambiar de perfil y al salir)");
 });
