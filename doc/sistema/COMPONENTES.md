@@ -4,7 +4,7 @@ Diseño aceptado ([ADR-0023](../adr/0023-componentes-del-mundo.md), **Aceptado**
 
 ## 1. Diagnóstico (medido sobre `main` en `eb83472`)
 
-Cifras sacadas de `deriva()` de `pruebas/contrato_modulos.js` (la misma derivación textual que escribe las cabeceras «Expone / Consume»; puede colar algún nombre local que coincida, así que son un orden de magnitud, no un recuento exacto).
+Cifras sacadas de `deriva()` de pruebas/contrato_modulos.js (retirado en A3-8c; su derivación vive en `pruebas/guardianes/_pasos.js`) (la misma derivación textual que escribe las cabeceras «Expone / Consume»; puede colar algún nombre local que coincida, así que son un orden de magnitud, no un recuento exacto).
 
 | Medida | Valor |
 |---|---|
@@ -51,7 +51,7 @@ Cifras sacadas de `deriva()` de `pruebas/contrato_modulos.js` (la misma derivaci
 | HUD (`31_hud.js`) | `28e48c4` | `14_historia.js` |
 | Ventanas movibles (`34_movibles.js`) | `449dd18` | `17_minimapa.js` (43 líneas), `26_presencia.js` (78) |
 | Configuración (`33_ajustes.js`) | `3fcd136` | `14_historia`, `20_sonido`, `26_presencia`, `28_depura`, `30_mide`, `90_final` (seis módulos ajenos) |
-| Fichas del tiempo (`35_fichas_tiempo.js`) | `ee27ce8` | `29_vr.js` (38 líneas: botón, resumen y tarjeta en el panel), `pruebas/contrato_modulos.js` |
+| Fichas del tiempo (`35_fichas_tiempo.js`) | `ee27ce8` | `29_vr.js` (38 líneas: botón, resumen y tarjeta en el panel), pruebas/contrato_modulos.js (retirado en A3-8c; su derivación vive en `pruebas/guardianes/_pasos.js`) |
 | Tiempo por el servidor | merge `eb83472` | `15_tiempo.js` (287 líneas), `23_estacion.js`, `35_fichas_tiempo.js`, `plantilla.html`, `app.ts`, `config.ts`, `contexto.ts`, `principal.ts` |
 
 Las fichas del tiempo son el mejor caso: su autor ya trabajó «como plugin» (fichero propio, `setInterval`, `onBeforeRender`, evento `gemelo:prevision-mundo`, `typeof TiempoVivo`), y aun así tuvo que meterse en el panel VR porque no hay forma de que una pieza **ofrezca** un botón. Quitar hoy las fichas del tiempo exige editar `29_vr.js`; quitar el sonido, cinco módulos; quitar la presencia, más de diez.
@@ -126,7 +126,7 @@ Estilo del motor intacto (`var`, sin módulos ES dentro, concatenación): un com
 
 Reglas que vigila un guardián nuevo (C1, en Node, sin Chrome):
 
-1. Cada fichero componente no usa en su primer nivel ningún global de otro componente; sus «Consume» derivados por `contrato_modulos.js` solo pueden ser del núcleo (lista cerrada) o de `Componentes`/`Bus`.
+1. Cada fichero componente no usa en su primer nivel ningún global de otro componente; sus «Consume» derivados por contrato_modulos.js (retirado en A3-8c; hoy, `pruebas/guardianes/_pasos.js`) solo pueden ser del núcleo (lista cerrada) o de `Componentes`/`Bus`.
 2. `consume` de cada componente existe en el núcleo o en el `expone` de otro componente registrado; no hay ciclos.
 3. Todo componente declara `presupuesto` y `libera`; la suma de presupuestos de los encendidos por defecto cabe en `pruebas/presupuesto.json` → `diseno`.
 4. Todo evento emitido o escuchado está en el catálogo de eventos (un JSON nuevo en `contratos/`); ninguno queda sin quien lo emita.

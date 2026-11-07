@@ -7,23 +7,21 @@
 //   node pruebas/medida_componentes.js tabla --resultados <carpeta|resultado.json>… [--fecha AAAA-MM-DD]
 //        (pasar SOLO las carpetas de los dos encargos: si se junta toda la carpeta de resultados, otra variante «base» ajena pisaría la buena)
 //        calcula «con menos sin» por componente, lo compara con el presupuesto declarado de su manifiesto y escribe la tabla Markdown (a stdout)
-//        lista para doc/sistema/MEDIDAS.md. La lista de componentes sale de los manifiestos del código (apps/web/motor/*.js), no de una copia.
+//        lista para doc/sistema/MEDIDAS.md. La lista de componentes sale de los manifiestos del código (los pasos de apps/web/src/arranque.ts), no de una copia.
 // Nombres de variante: «base» (todos los componentes en su defecto), «sin-<id>» (un componente que va encendido por defecto, con su bandera a 0),
 // «con-<id>» (uno apagado por defecto, con su bandera a 1), «olivos0» (?olivos=0) y «gen» (?olivos=gen).
 // SwiftShader da recuentos (llamadas, triángulos, puntos, memoria), no fps; el heap oscila ±3 MB entre cargas: no leer un delta de heap menor como real.
 const fs = require("fs"), path = require("path"), vm = require("vm");
 
 const RAIZ = path.resolve(__dirname, "..");
-const MOTOR = path.join(RAIZ, "apps", "web", "motor");
 const ESC_POR_DEFECTO = ["lejos", "cerca"];
 const METRICAS = [["llamadas", "llam."], ["triangulos", "tri"], ["puntos", "puntos"], ["heapMB", "heap MB"]];
 
 /** Los manifiestos de los componentes del motor, tal y como los registra cada fichero (se evalúa el fichero en un contexto vacío, como hace componentes.test.js).
  *  Devuelve [{ id, fichero, url, defecto, presupuesto }] en el orden de los ficheros; un componente sin bandera de URL no se puede apagar desde la página y se omite. */
-function manifiestos(carpeta = MOTOR) {
+function manifiestos() {
   const out = [];
-  for (const f of fs.readdirSync(carpeta).filter(f => f.endsWith(".js")).sort()) {
-    const s = fs.readFileSync(path.join(carpeta, f), "utf8");
+  for (const [f, s] of Object.entries(require("./guardianes/_pasos").pasos())) {   // A3-8c: los pasos del arranque (antes, los ficheros de apps/web/motor/)
     // A3-1b: el talón de un componente del exterior registra el manifiesto que da apps/web/src/mundos (`Componentes.registra(Mundos.manifiestoX(…))`). El manifiesto es
     // estático (no toca sus dependencias hasta monta()), así que se pide con un objeto vacío en vez de evaluar el talón, que necesitaría todo el motor.
     const talon = /^  Componentes\.registra\(Mundos\.(\w+)\(/m.exec(s);

@@ -14,13 +14,13 @@
 const test = require("node:test"), assert = require("node:assert");
 const acorn = require("acorn");
 const { ficheros, lee } = require("./_util"), { fuenteMotor } = require("./_fuente");
-const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
+const { pasoArranque, nombresPasos } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 
 const MODULOS = ["12_paseo.js", "12b_llegada.js", "12c_ir_a.js", "16_vida.js", "29_vr.js"];
 // A3-6c (MU5-n): los que viven en mundos/comun/ (29_vr, 12c_ir_a…) se analizan con su talón y el JavaScript que sale de sus .ts (_fuente.js: sin tipos), sin sus import
 const { TS_DE, COMO_JS } = require("./_fuente");
 const enComun = m => [].concat(TS_DE[m] || []).some(f => COMO_JS.test(f));   // los de A3-6c, que _fuente.js lee como JavaScript
-const textoDe = (f, nombre) => enComun(nombre) ? fuenteMotor(nombre).replace(/^import .*$/gm, "") : lee(f);
+const textoDe = nombre => enComun(nombre) ? fuenteMotor(nombre).replace(/^import .*$/gm, "") : pasoArranque(nombre);
 const ACORN = MODULOS;
 // Lo que se queda en el legado a propósito. `en`: la función que lo contiene (el nombre de su declaración, de su variable o de lo que se le asigna);
 // `codigo`: el texto exacto de la llamada o del nombre. Si cambia el texto, falla: se revisa si sigue siendo legítimo.
@@ -79,14 +79,14 @@ function analiza(modulos, vigilados) {
   return out;
 }
 
-const MOTOR = ficheros().filter(f => /^apps\/web\/motor\/[^/]+\.js$/.test(f)).sort();
+const MOTOR = nombresPasos();   // A3-8c: los pasos del arranque, dentro de una función como el cuerpo de arranca()
 let cache = null;
-const montaje = () => cache || (cache = analiza(MOTOR.map(f => ({ nombre: f.slice("apps/web/motor/".length), texto: textoDe(f, f.slice("apps/web/motor/".length)) })), ACORN));
+const montaje = () => cache || (cache = analiza([{ nombre: "(abre)", texto: "(function () {\n" }].concat(MOTOR.map(f => ({ nombre: f, texto: textoDe(f) })), [{ nombre: "(cierra)", texto: "\n})();\n" }]), ACORN));
 const clave = u => u.f + " · " + u.en + " · " + u.codigo;
 
-test("los cinco módulos de locomoción están en el motor", () => {
-  const hay = MOTOR.map(f => f.slice("apps/web/motor/".length));
-  for (const m of MODULOS) assert.ok(hay.includes(m), m + " no está en apps/web/motor/");
+test("los cinco módulos de locomoción son pasos del arranque", () => {
+  const hay = MOTOR;
+  for (const m of MODULOS) assert.ok(hay.includes(m), m + " no es un paso del arranque");
 });
 
 test("en la locomoción, solo las llamadas a suelo( de la lista (cada una con su motivo); las de moverse van por gm.suelo", t => {

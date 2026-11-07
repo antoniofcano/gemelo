@@ -49,7 +49,6 @@ test("tras el parche, ningún sombreador de super-three tiene un parámetro con 
 });
 
 test("los sombreadores propios del motor tampoco usan esos nombres como parámetro", () => {
-  const MOTOR = path.join(WEB, "motor");
   const malos = nombresPasos().filter(f => PARAM_PROHIBIDO.test(pasoArranque(f)));
   assert.deepStrictEqual(malos, []);
 });

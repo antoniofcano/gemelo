@@ -73,7 +73,7 @@ function compara(titulo, n, hazAntes, hazAhora) {
       return (i) => { m.E.tVida += 0.016; m.g.pp.x = 10 + 40 * Math.sin(i * 0.004); m.g.pp.y = 10 + 30 * Math.cos(i * 0.0053); m.g.pp.ang = i * 0.01; m.g.camera.position.set(m.g.pp.x + 5, 6, -m.g.pp.y + 8); m.api.actualiza(0.016);
         for (let k = 0; k < 3; k++) { qs[k].x = m.g.pp.x + k * 6; qs[k].y = m.g.pp.y; qs[k].res = null; m.g.Bus.emite("perros:amenaza", qs[k]); } };
     };
-    compara("5a actualizaPerros + 3 preguntas de amenaza", 4000, mk("pruebas/guardianes/referencias/25_perros_antes.js"), mk("apps/web/motor/25_perros.js"));
+    compara("5a actualizaPerros + 3 preguntas de amenaza", 4000, mk("pruebas/guardianes/referencias/25_perros_antes.js"), mk("paso:25_perros.js"));
   }
 
   // ---- 5b · el rastro del minimapa: caminar sin parar (el rastro lleno, 240 puntos)  ·  5c · la firma de las balizas

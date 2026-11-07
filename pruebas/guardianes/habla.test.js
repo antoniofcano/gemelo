@@ -357,9 +357,9 @@ test("29_vr.js: el gatillo izquierdo (botón 0) va a VRX.voz cada fotograma y, m
 test("T está libre en Teclas (nadie la tiene reservada ni registrada) y el componente no usa innerHTML, ni pide nada fuera de su origen, ni graba", () => {
   const nucleo = lee("apps/web/src/nucleo/teclas.ts"), reserv = /RESERVADAS: Record<string, string> = \{([\s\S]*?)\};/.exec(nucleo)[1];   // MU5-n (A3-8a): las Teclas, en el núcleo (02c es su talón)
   assert.ok(!/KeyT/.test(reserv), "KeyT no está reservada");
-  const fs = require("node:fs"), dir = path.join(__dirname, "..", "..", "apps", "web", "motor");
-  const quien = fs.readdirSync(dir).filter(f => /\.js$/.test(f) && /KeyT/.test(fs.readFileSync(path.join(dir, f), "utf8"))); assert.deepStrictEqual(quien, [], "en el motor nadie toca KeyT (A3-6b: 47_habla es un talón)");
-  const enSrc = [], SRC = path.join(dir, "..", "src"), recorre = d => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) recorre(p); else if (/\.ts$/.test(e.name) && !/\.test\.ts$/.test(e.name) && /KeyT/.test(fs.readFileSync(p, "utf8"))) enSrc.push(path.relative(SRC, p).split(path.sep).join("/")); } };
+  const fs = require("node:fs"), SRC_WEB = path.join(__dirname, "..", "..", "apps", "web", "src");
+  const P = require("./_pasos"), quien = P.nombresPasos().filter(f => /KeyT/.test(P.pasoArranque(f))); assert.deepStrictEqual(quien, [], "en el arranque nadie toca KeyT (A3-6b: 47_habla solo cablea)");
+  const enSrc = [], SRC = SRC_WEB, recorre = d => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) recorre(p); else if (/\.ts$/.test(e.name) && !/\.test\.ts$/.test(e.name) && /KeyT/.test(fs.readFileSync(p, "utf8"))) enSrc.push(path.relative(SRC, p).split(path.sep).join("/")); } };
   recorre(SRC); assert.deepStrictEqual(enSrc, ["mundos/comun/habla.ts"], "solo el componente de hablar toca KeyT");
   const src = MOTOR.replace(/\/\/.*$/gm, "");   // A3-6b: solo el motor (en el talón y en la interfaz de dependencias, fetch es el del legado)
   assert.ok(!/innerHTML|insertAdjacentHTML|outerHTML/.test(src)); assert.ok(!/MediaRecorder|Egress|captureStream|getUserMedia/.test(src), "no toca el micrófono: lo abre Voz");

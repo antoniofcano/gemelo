@@ -1,12 +1,12 @@
 {
-  "$comment": "Solo el código nuevo de src/ (MUNDOS §9.1). El legado de motor/ no se tipa. Vite compila los .ts sin paso nuevo; `tsc --noEmit -p apps/web` los comprueba (guardián tipos_web.test.js).",
+  "$comment": "Todo el cliente: apps/web/src/, con su entrada src/arranque.ts (MUNDOS §9.1; A3-8c: el legado de motor/ ya no existe). Vite compila los .ts sin paso nuevo; `tsc --noEmit -p apps/web` los comprueba (guardián tipos_web.test.js).",
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "module": "esnext",
     "moduleResolution": "bundler",
     "lib": ["es2022", "dom"],
     "types": ["vite/client"],
-    "paths": { "@gemelo/nucleo": ["./src/nucleo/index.ts"], "@gemelo/mundos": ["./src/mundos/index.ts"], "@gemelo/ui": ["./src/ui/index.ts"] }
+    "paths": { "@gemelo/arranque": ["./src/arranque.ts"] }
   },
   "include": ["src/**/*.ts", "vitest.config.ts"]
 }

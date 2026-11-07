@@ -13,10 +13,6 @@ const WEB = path.dirname(fileURLToPath(import.meta.url));
 // ADR-0031 (enmienda 2026-11-04): dos builds del mismo motor. Sin GEMELO_BUILD, la de pantalla, exactamente la de siempre (three de package.json, dist/);
 // GEMELO_BUILD=vr cambia «three» por super-three (preparada, no activada: herramientas/builds.mjs y pruebas/guardianes/builds_f1.test.js)
 const BUILD = buildPedida(process.env);
-// el núcleo nuevo (apps/web/src/nucleo/index.ts): lo que la IIFE del motor ve como Nucleo.<nombre> (el mismo alias está en tsconfig.json, «paths»)
-export const NUCLEO = path.join(WEB, "src", "nucleo", "index.ts");
-export const MUNDOS = path.join(WEB, "src", "mundos", "index.ts");
-export const UI = path.join(WEB, "src", "ui", "index.ts");   // A3-7a: la interfaz (Interfaz.<nombre> en el legado)
 // A3-8c: la entrada del cliente (src/arranque.ts), que importa la que escribe genera_motor.mjs (`import "@gemelo/arranque"`)
 export { ARRANQUE };
 // la raíz de Vite: la carpeta que escribe genera_motor.mjs
@@ -87,14 +83,9 @@ export default defineConfig({
   resolve: {
     alias: [
       ...aliasThree(BUILD, WEB, process.env),
-      // el puente con el código nuevo (MUNDOS §9.3, ADR-0033): genera_motor.mjs escribe `import * as Nucleo from "@gemelo/nucleo"` delante del
-      // motor; aquí se resuelve al núcleo de src/ (TypeScript, que Vite compila sin paso nuevo). Va en las dos builds (no depende de BUILD)
-      { find: /^@gemelo\/nucleo$/, replacement: NUCLEO },
-      // MU2-3: el exterior (mundos/), que el núcleo no puede importar: su propio alias, detrás del del núcleo (genera_motor.mjs: IMPORTA_MUNDOS)
-      { find: /^@gemelo\/mundos$/, replacement: MUNDOS },
-      // A3-7a: la interfaz (ui/), que ni el núcleo ni los mundos pueden importar: su propio alias, detrás del de los mundos (genera_motor.mjs: IMPORTA_UI)
-      { find: /^@gemelo\/ui$/, replacement: UI },
-      { find: /^@gemelo\/arranque$/, replacement: ARRANQUE },   // A3-8c: la entrada del cliente (genera_motor.mjs: ENTRADA_TS)
+      // A3-8c: la entrada del cliente (src/arranque.ts, TypeScript que Vite compila sin paso nuevo), en las dos builds (no depende de BUILD). La importa la
+      // entrada que escribe genera_motor.mjs (ENTRADA); el arranque importa nucleo/, mundos/ y ui/ por ruta relativa (los alias del puente se fueron con el legado)
+      { find: /^@gemelo\/arranque$/, replacement: ARRANQUE },
       { find: /^gemelo-olivo$/, replacement: OLIVO },
       // V12: las tipografías del mismo origen (@fontsource, OFL-1.1) que entran por el @import de plantilla.css, que puede estar fuera de apps/web
       { find: /^@fontsource\//, replacement: path.join(WEB, "node_modules", "@fontsource") + "/" },

@@ -17,7 +17,7 @@ const cuenta = (raiz) => { let llamadas = 0, tri = 0; (function anda(o) {
 })(raiz); return { llamadas, tri }; };
 
 test("AG-1.13b los perros instanciados dejan cada caja donde la dejaba la jerarquía de antes y las llamadas bajan de 42 a 11", () => {
-  const a = mundoPerros(THREE, "pruebas/guardianes/referencias/25_perros_antes.js", 77), b = mundoPerros(THREE, "apps/web/motor/25_perros.js", 77), r = F.semilla(5);
+  const a = mundoPerros(THREE, "pruebas/guardianes/referencias/25_perros_antes.js", 77), b = mundoPerros(THREE, "paso:25_perros.js", 77), r = F.semilla(5);
   const V = new THREE.Vector3(), M = new THREE.Matrix4();
   const vert = (geo, i, mat) => V.fromBufferAttribute(geo.attributes.position, i).applyMatrix4(mat).toArray();
   const cerca = (x, y, que) => x.forEach((v, k) => assert.ok(Math.abs(v - y[k]) < 3e-5, que + ": " + x + " vs " + y));

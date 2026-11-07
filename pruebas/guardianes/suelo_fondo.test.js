@@ -11,7 +11,7 @@ const { conFabrica } = require("./_materiales");   // Materiales e InfoDibujo (0
 
 const WEB = path.join(RAIZ, "apps", "web"), THREE_JS = path.join(WEB, "node_modules", "three", "build", "three.module.js");
 const SALTO = fs.existsSync(THREE_JS) ? null : "three no instalado (cd apps/web && npm ci): el suelo de fondo NO se ha comprobado";
-const FUENTE = fs.readFileSync(path.join(WEB, "motor", "04e_suelo_fondo.js"), "utf8");
+const FUENTE = require("./_pasos").pasoArranque("04e_suelo_fondo.js");   // A3-8c: el paso del arranque (antes, apps/web/motor/04e_suelo_fondo.js)
 
 let THREE;
 test.before(async () => { if (!SALTO) THREE = await import(pathToFileURL(THREE_JS).href); });

@@ -15,7 +15,7 @@ const { ESCENARIOS, motivoSalto, lanza, sirve, esCsp } = require("./_navegador")
 const { montaPagina, saltoPagina } = require("./_pagina");
 const { vuela, cajaDatos, comparaRelieve } = require("./_recorrido");
 
-const WEB = path.join(RAIZ, "apps", "web"), MOTOR = path.join(WEB, "motor"), T3D = path.join(RAIZ, "tuberia", "tiles3d");
+const WEB = path.join(RAIZ, "apps", "web"), T3D = path.join(RAIZ, "tuberia", "tiles3d");
 const lee = f => fs.readFileSync(f, "utf8"), json = f => JSON.parse(lee(f));
 const V = json(path.join(WEB, "package.json")).dependencies["3d-tiles-renderer"];
 const MIDE = !!process.env.GEMELO_MIDE;
@@ -47,7 +47,7 @@ test("su build ES solo importa «three» y «three/addons/…» (Vite se los res
 
 test("el motor: 04b_escena3d.js es la única escena (sin ESC3D ni ?escena=), arranca con D.tileset o ?tileset= y si no falla con «falta el tileset»; cada perfil VR trae su errorTarget", () => {
   const m = fuenteMotor("04b_escena3d.js"), vr = require("./_fuente").fuenteMotor("29_vr.js"), fin = pasoArranque("90_final.js");
-  assert.ok(!fs.existsSync(path.join(MOTOR, "04_terreno.js")), "04_terreno.js se borró en T8 fase 2 (decisión 79)");
+  assert.ok(!nombresPasos().includes("04_terreno.js"), "04_terreno.js se borró en T8 fase 2 (decisión 79)");
   const todo = nombresPasos().map(f => pasoArranque(f)).join("\n");
   assert.ok(!/\bESC3D\b|\bTerreno\.|escena=clasica/.test(todo), "quedan ESC3D, Terreno o ?escena=clasica en el motor");
   assert.match(m, /if \(pedida\) arranca\(\); else falla\(new Error\("falta el tileset"\)\)/);

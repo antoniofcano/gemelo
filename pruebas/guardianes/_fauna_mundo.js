@@ -47,7 +47,7 @@ function disenoOlivos(n, sem) {
 }
 
 /**
- * fichero: "apps/web/motor/16b_fauna.js" (lo nuevo) o "pruebas/guardianes/referencias/16b_fauna_antes.js" (lo anterior); copas: el diseño de olivos.
+ * fichero: "paso:16b_fauna.js" (lo nuevo) o "pruebas/guardianes/referencias/16b_fauna_antes.js" (lo anterior); copas: el diseño de olivos.
  * Devuelve { api, E, g, Bus, mueve(f) }: E lleva el estado que lee la fauna (paseando, enQuad, tVida), g los globales.
  */
 function construye(THREE, fichero, copas, sem) {

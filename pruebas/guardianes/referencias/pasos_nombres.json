@@ -1,5 +1,5 @@
 {
- "$comment": "Foto de los nombres que expone cada módulo de apps/web/motor/ (derivación de pruebas/contrato_modulos.js). La vigila pruebas/guardianes/puente.test.js; se rehace con GEMELO_PUENTE_ESCRIBE=1 solo cuando un cambio de nombres es a propósito.",
+ "$comment": "Foto de los nombres que expone cada paso de apps/web/src/arranque.ts a los demás (la derivación de pruebas/guardianes/_pasos.js). La vigila pruebas/guardianes/arranque.test.js; se rehace con GEMELO_PASOS_ESCRIBE=1 solo cuando un cambio de nombres es a propósito.",
  "expone": {
   "01_datos.js": ["D","$","tinta","fmt","b64","i16","RES","x0","yN","ANCHO","ALTO","EXT","FOG0","FOG1","DIST_MAX","DIST_INI","DEPURA","VRP","FACTOR_R8","FACTOR_R8_GEN","factorCopaDeConfig","ESC_R8"],
   "01a_aparato.js": ["Aparato"],
@@ -92,7 +92,6 @@
   "52_aves_mes.js": [],
   "53_mundo_hoy.js": [],
   "54_trabajo_hoy.js": [],
-  "90_final.js": ["tamano","gm","cuadro","bucle"],
-  "99_cierre.js": []
+  "90_final.js": ["tamano","gm","cuadro","bucle"]
  }
 }

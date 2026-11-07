@@ -18,7 +18,7 @@ const { conFabrica } = require("./_materiales");   // Estaticos (02j) en el cont
 // A3-3: 50_decoraciones es un talón; DecoracionesPuro y el componente viven en apps/web/src/mundos/exterior/decoraciones.ts y aquí corre ESE código (Mundos, de _mundos.js). TALON es lo que se
 // evalúa en el contexto de mentira (el cableado del legado); FUENTE, el talón y el .ts juntos (lo que ve el motor)
 const Mundos = require("./_mundos"), { fuenteMotor } = require("./_fuente");
-const FICHERO = "apps/web/motor/50_decoraciones.js", TALON = lee(FICHERO), FUENTE = fuenteMotor("50_decoraciones.js");
+const FICHERO = "50_decoraciones.js", TALON = require("./_pasos").pasoArranque(FICHERO), FUENTE = fuenteMotor(FICHERO);   // A3-8c: TALON, el paso del arranque
 const P = Mundos.DecoracionesPuro;
 const CATALOGO = JSON.parse(lee("contratos/decoraciones.json"));
 const IMPORTA = 'import("three/addons/utils/BufferGeometryUtils.js")';

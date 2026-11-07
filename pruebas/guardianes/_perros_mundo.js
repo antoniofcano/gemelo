@@ -27,7 +27,7 @@ function mundoPerros(THREE, fichero, sem) {
   for (let i = 0; i < 40; i++) g.copas.push({ x: (rnd() - 0.5) * 120, y: (rnd() - 0.5) * 120, oliv: rnd() > 0.1 });
   for (const k of ["paseando", "enQuad", "enDron", "tVida"]) Object.defineProperty(g, k, { get: () => E[k], enumerable: true });
   conFabrica(g);   // Materiales, Mundos y fusionaGeometrias (02k)
-  if (/motor\/25_perros\.js$/.test(fichero)) {
+  if (fichero === "paso:25_perros.js") {   // A3-8c: «paso:…» es lo de ahora (el paso del arranque); otra ruta, la copia de antes
     // lo de ahora vive en apps/web/src/mundos/exterior/perros.ts (MU5-n, A3-5): se monta con el manifiesto de Mundos, con el mismo azar de semilla (aleatorio) y un reloj que no corre
     defs.push(g.Mundos.manifiestoPerros({ THREE, Materiales: g.Materiales, D: g.D, copas: g.copas, camera: g.camera, texColor: g.texColor, hash: g.hash, geoSombra: g.geoSombra, matSombra: g.matSombra,
       paseando: () => E.paseando, pp: g.pp, tVida: () => E.tVida, enQuad: () => E.enQuad, enDron: () => E.enDron, gFauna, altSuelo: g.altSuelo, pendienteRumbo: g.pendienteRumbo, sueloSeco: g.sueloSeco,

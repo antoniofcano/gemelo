@@ -12,13 +12,14 @@
     {
       "origen": "CLAUDE.md §1", "clave": "2", "titulo": "La lógica testeable vive en módulos con contrato (`apps/web/motor/NN_*.js`), no repartida.",
       "vigila": [
-        { "fichero": "pruebas/guardianes/sintaxis.test.js", "test": "el motor tiene módulos y el orden alfabético es el de montaje (01_ primero, 99_ último)" },
-        { "fichero": "pruebas/guardianes/arranque.test.js", "test": "los nombres que expone cada paso son los de la foto" },
+        { "fichero": "pruebas/guardianes/sintaxis.test.js", "test": "el arranque tiene sus pasos en orden (01_datos primero, 90_final último)" },
+        { "fichero": "pruebas/guardianes/arranque.test.js", "test": "los nombres que expone cada paso a los demás son los de la foto" },
         { "fichero": "pruebas/guardianes/contratos.test.js", "test": "la derivación de los pasos: el uso real en el código sí cuenta" },
         { "fichero": "pruebas/guardianes/tipos_web.test.js", "test": "dependency-cruiser: src/ respeta las cuatro fronteras y no tiene ciclos" },
-        { "fichero": "pruebas/guardianes/tipos_web.test.js", "test": "dependency-cruiser DETECTA cada frontera rota (árbol temporal)" }
+        { "fichero": "pruebas/guardianes/tipos_web.test.js", "test": "dependency-cruiser DETECTA cada frontera rota (árbol temporal)" },
+        { "fichero": "pruebas/guardianes/arranque.test.js", "test": "trinquete del arranque: solo cablea" }
       ],
-      "falta": "«no repartida» (que la lógica testeable no viva fuera de los módulos) no la mide nadie."
+      "falta": "«no repartida» (que la lógica testeable no viva fuera de los módulos) no la mide nadie. Desde A3-8c el contrato de cada módulo de apps/web/src/ son sus importaciones y exportaciones (tsc y dependency-cruiser); el arranque solo cablea, y su trinquete de líneas impide que la lógica vuelva a él."
     },
     {
       "origen": "CLAUDE.md §1", "clave": "3", "titulo": "Contratos de datos versionados.",
@@ -119,28 +120,30 @@
     {
       "origen": "CLAUDE.md §5", "clave": "Estilo del motor legado",
       "vigila": [
-        { "fichero": "pruebas/guardianes/sintaxis.test.js", "test": "el motor montado (todos los motor/*.js concatenados, como hace genera_motor.mjs) es JavaScript válido" },
-        { "fichero": "pruebas/guardianes/sintaxis.test.js", "test": "módulo válido por sí solo (envuelto en una función)" },
+        { "fichero": "pruebas/guardianes/sintaxis.test.js", "test": "el arranque, sin tipos, es JavaScript válido (un módulo ES)" },
+        { "fichero": "pruebas/guardianes/sintaxis.test.js", "test": "paso válido por sí solo (envuelto en una función)" },
         { "fichero": "pruebas/guardianes/web.test.js", "test": "la página empaquetada carga sin errores, lleva la three de apps/web y solo pide a su mismo origen" },
-        { "fichero": "pruebas/guardianes/estilo_motor.test.js", "test": "el motor legado no tiene let, const ni class (ni al nivel de módulo ni dentro de funciones)" },
-        { "fichero": "pruebas/guardianes/estilo_motor.test.js", "test": "solo 01_datos.js abre la IIFE y solo 99_cierre.js la cierra (el montaje es una sola sentencia)" }
+        { "fichero": "pruebas/guardianes/arranque.test.js", "test": "su cuerpo declara con var y function (sin let, const ni class)" },
+        { "fichero": "pruebas/guardianes/arranque.test.js", "test": "ningún nombre del primer nivel de arranca() lo declaran dos pasos" },
+        { "fichero": "pruebas/guardianes/tipos_web.test.js", "test": "tsc --noEmit -p apps/web: el código nuevo tipa" }
       ],
-      "falta": "Los globales escritos a mano (window.X, globalThis.X) no se buscan; «var» se exige solo por la prohibición de let, const y class."
+      "falta": "Desde A3-8c el legado no existe: el cliente es TypeScript (tsc). De aquella regla queda el cuerpo de arranca(), que declara con var y function por lo mismo (el izado y el typeof de lo que define un paso posterior). Los globales escritos a mano (window.X, globalThis.X) no se buscan."
     },
     {
       "origen": "CLAUDE.md §5", "clave": "Código nuevo",
       "vigila": [
         { "fichero": "pruebas/guardianes/tipos_web.test.js", "test": "tsc --noEmit -p apps/web: el código nuevo tipa" },
         { "fichero": "pruebas/guardianes/tipos_web.test.js", "test": "vitest run: las pruebas de apps/web/src pasan" },
-        { "fichero": "pruebas/guardianes/tipos_web.test.js", "test": "dependency-cruiser: src/ respeta las cuatro fronteras y no tiene ciclos" }
-      ],
-      "falta": "El puente de genera_motor.mjs con el legado aún no tiene guardián (el «Puente» de MUNDOS §8)."
+        { "fichero": "pruebas/guardianes/tipos_web.test.js", "test": "dependency-cruiser: src/ respeta las cuatro fronteras y no tiene ciclos" },
+        { "fichero": "pruebas/guardianes/arranque.test.js", "test": "los nombres que expone cada paso a los demás son los de la foto" }
+      ]
     },
     {
       "origen": "CLAUDE.md §5", "clave": "Orden de `apps/web/motor/`:",
       "vigila": [
-        { "fichero": "pruebas/guardianes/sintaxis.test.js", "test": "el motor tiene módulos y el orden alfabético es el de montaje (01_ primero, 99_ último)" },
-        { "fichero": "pruebas/guardianes/arranque.test.js", "test": "los pasos del arranque son los módulos de antes, en el mismo orden" }
+        { "fichero": "pruebas/guardianes/sintaxis.test.js", "test": "el arranque tiene sus pasos en orden (01_datos primero, 90_final último)" },
+        { "fichero": "pruebas/guardianes/arranque.test.js", "test": "los pasos del arranque son los de la foto, en el orden alfabético de su nombre" },
+        { "fichero": "pruebas/guardianes/arranque.test.js", "test": "lo que un paso pasa por valor al cargarse y define un paso posterior es una función declarada" }
       ]
     },
     {

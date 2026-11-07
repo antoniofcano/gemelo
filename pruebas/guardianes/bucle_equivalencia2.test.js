@@ -27,7 +27,7 @@ for (const [nombre, guion] of [
   ["siempre a pie (los perros siguen, exploran, persiguen conejos y descansan)", () => ({ paseando: true, enQuad: false, enDron: false })],
   ["a pie y sin conejos (exploran y olfatean)", () => ({ paseando: true, enQuad: false, enDron: false, sinConejos: true })]]) {
   test("25_perros.js == su copia anterior, fotograma a fotograma, " + nombre, () => {
-    const a = mundoPerros(THREE, "pruebas/guardianes/referencias/25_perros_antes.js", 77), b = mundoPerros(THREE, "apps/web/motor/25_perros.js", 77), r = F.semilla(5), antes = { p: false };
+    const a = mundoPerros(THREE, "pruebas/guardianes/referencias/25_perros_antes.js", 77), b = mundoPerros(THREE, "paso:25_perros.js", 77), r = F.semilla(5), antes = { p: false };
     let amenazas = 0;
     for (let f = 0; f < 2400; f++) {
       const dt = 0.008 + r() * 0.04, s = guion(f), parado = f % 800 > 250 && f % 800 < 650, x = parado ? 10 : 10 + 40 * Math.sin(f * 0.004) + (f % 400 > 380 ? 30 : 0), y = parado ? 10 : 10 + 30 * Math.cos(f * 0.0053), ang = f * 0.01;

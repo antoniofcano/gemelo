@@ -1,12 +1,14 @@
-// Genera la entrada de Vite a partir del motor (ADR-0010, fase 0: sin tocar ni una línea de apps/web/motor/).
+// Genera la raíz de Vite del cliente: la página (plantilla, textos de la finca y el índice) y la entrada que importa el arranque (ADR-0010; A3-8c).
 //   node herramientas/genera_motor.mjs --datos <indice.json> [--dest <carpeta>] [--sin 35_fichas_tiempo.js,…]      (o GEMELO_DATOS / GEMELO_WEB_RAIZ / GEMELO_SIN)
-// --sin: ficheros del motor que se dejan fuera (ADR-0023: un componente se puede quitar del motor sin tocar a nadie; lo comprueba
-// pruebas/guardianes/componentes.test.js). Solo componentes: quitar un fichero del núcleo o de los de siempre rompe el motor.
+// Desde A3-8c (ADR-0033) no concatena nada: el cliente arranca desde apps/web/src/arranque.ts, que Vite empaqueta directamente (alias «@gemelo/arranque»
+// de vite.config.js). El nombre del fichero se queda: lo llaman package.json, el banco, infra/dev y la documentación.
+// --sin: pasos del arranque que se dejan fuera (ADR-0023: un componente se puede quitar del cliente sin tocar a nadie; lo comprueba
+// pruebas/guardianes/componentes.test.js). Se escriben en entrada/sin.json y los quita el plugin «gemelo-sin-pasos» de vite.config.js. Solo componentes:
+// quitar un paso del núcleo o de los de siempre rompe el arranque.
 // Escribe en <dest> (por defecto apps/web/.generado/):
-//   entrada/motor.generado.js  = `import * as THREE from "three";` + `import * as Nucleo from "@gemelo/nucleo";` (el puente, MUNDOS §9.3) + `import * as Mundos from "@gemelo/mundos";` (el exterior, MU2-3) +
-//                                `import * as Interfaz from "@gemelo/ui";` (la interfaz, A3-7a) +
-//                                los módulos de motor/ concatenados en orden alfabético, que ES el orden de montaje (01_datos abre la IIFE y
-//                                99_cierre la cierra). Dentro de la IIFE se ven THREE y Nucleo (lo que exporta apps/web/src/nucleo/index.ts)
+//   entrada/motor.generado.js  = `import "./plantilla.css";` + `import "@gemelo/arranque";` (ENTRADA)
+//   entrada/plantilla.css      = la hoja de estilos (V12: del mismo origen; las tipografías @fontsource entran por su @import)
+//   entrada/sin.json           = solo con --sin: los pasos que se quitan
 //   index.html                 = plantilla.html (con los textos de la finca, si el índice trae `textos`) + el JSON del índice (#datos) + la entrada como módulo
 // Las teselas t/ se piden en tiempo de ejecución (D.base); aquí solo va el índice.
 import fs from "node:fs";
@@ -15,30 +17,9 @@ import { fileURLToPath } from "node:url";
 import { quitaPasos, leeArranque, nombrePaso } from "./pasos.mjs";
 
 const WEB = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const MOTOR = path.join(WEB, "motor");
 
-// Las importaciones que van delante del motor concatenado. IMPORTA_NUCLEO es el puente con el código nuevo (MUNDOS §9.3, ADR-0033): el alias
-// «@gemelo/nucleo» → apps/web/src/nucleo/index.ts lo resuelve vite.config.js en las dos builds. Las importaciones se evalúan antes que el cuerpo,
-// así que la IIFE ve Nucleo ya cargado; un módulo legado migrado queda en motor/ como talón (`var Cola = Nucleo.creaCola(…);`, misma cabecera
-// y mismo sitio en el orden). Lo vigila pruebas/guardianes/puente.test.js: el texto es el de antes con esta línea de más.
-export const IMPORTA_THREE = 'import * as THREE from "three";\n';
-export const IMPORTA_NUCLEO = 'import * as Nucleo from "@gemelo/nucleo";\n';
-export const IMPORTA_MUNDOS = 'import * as Mundos from "@gemelo/mundos";\n';   // MU2-3: el exterior, que nucleo/ no puede importar
-// A3-7a (MU5-n): la interfaz (apps/web/src/ui/: HUD, ventanas, láminas, ajustes, medidor), que ni nucleo/ ni mundos/ pueden importar (MUNDOS §1): su propio alias,
-// «@gemelo/ui», que el legado ve como Interfaz.<nombre> («UI» ya es una variable local de 30_mide)
-export const IMPORTA_UI = 'import * as Interfaz from "@gemelo/ui";\n';
-export const IMPORTA_CSS = 'import "./plantilla.css";\n';
-
-/** El texto entero de entrada/motor.generado.js (sin = ficheros que se dejan fuera, como en concatenaMotor) */
-export function entradaMotor(sin = []) {
-  return IMPORTA_THREE + IMPORTA_NUCLEO + IMPORTA_MUNDOS + IMPORTA_UI + IMPORTA_CSS + concatenaMotor(sin);
-}
-
-// A3-8c: la entrada nueva. El cliente arranca desde apps/web/src/arranque.ts (TypeScript, alias «@gemelo/arranque» de vite.config.js): Vite lo empaqueta
-// directamente, sin concatenar nada. Es la de siempre desde el segundo paso de A3-8c; mientras quede motor/, GEMELO_ENTRADA=legado escribe la concatenación.
-export const ENTRADA_TS = IMPORTA_CSS + 'import "@gemelo/arranque";\n';
-/** ¿Qué entrada se escribe? «ts» (apps/web/src/arranque.ts) o «legado» (la concatenación de motor/) */
-export const entradaPedida = (env = process.env) => env.GEMELO_ENTRADA === "legado" ? "legado" : "ts";
+/** La entrada que se escribe: la hoja de estilos y el arranque (apps/web/src/arranque.ts), que crea los objetos en orden y cablea el bucle */
+export const ENTRADA = 'import "./plantilla.css";\nimport "@gemelo/arranque";\n';
 
 /** Escapa un texto para contenido HTML (L9-04): el nombre de la finca y los textos del índice no pueden cerrar etiquetas ni meter marcado */
 export function escapaHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]); }
@@ -48,14 +29,6 @@ export function escapaHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&"
 export function escapaJsonEnScript(txt) { return txt.replace(/[<>&\u2028\u2029]/g, c => "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0")); }
 
 function argumento(nombre) { const i = process.argv.indexOf("--" + nombre); return i > 0 ? process.argv[i + 1] : undefined; }
-
-/** La concatenación del motor: readdirSync().sort(), el orden alfabético es el orden de montaje. sin = ficheros que se dejan fuera (componentes) */
-export function concatenaMotor(sin = []) {
-  const todos = fs.readdirSync(MOTOR).filter(f => f.endsWith(".js")).sort(), raros = sin.filter(f => !todos.includes(f));
-  if (raros.length) throw new Error("--sin: no están en motor/: " + raros.join(", "));
-  const ficheros = todos.filter(f => !sin.includes(f));
-  return ficheros.map(f => fs.readFileSync(path.join(MOTOR, f), "utf8")).join("");
-}
 
 /** La cabecera de plantilla.html no lleva ninguna cifra de la finca (ni hectáreas ni olivos: L3-04): título, entradilla, pie y nota del desfase salen del índice.
  *  T = D.textos del índice (finca, ha, fincas, parcelas, olivos, desfase_txt?, puntos_m2?, intro_historia?, sin_historia?). Rotulado (decisiones 220 y 221):
@@ -78,19 +51,17 @@ export function textosFinca(cab, T) {
   return cab;
 }
 
-export function genera(datos, dest, sin = [], entrada = entradaPedida()) {
+export function genera(datos, dest, sin = []) {
   const D = fs.readFileSync(datos, "utf8");
   const J = JSON.parse(D);                                                     // falla aquí, y no en el navegador, si el JSON está roto
   fs.mkdirSync(path.join(dest, "entrada"), { recursive: true });
   // V12: los estilos van en un .css del mismo origen (la CSP no deja <style> ni style="…" en línea) y las tipografías @fontsource entran por su @import
   fs.copyFileSync(path.join(WEB, "plantilla.css"), path.join(dest, "entrada", "plantilla.css"));
-  // con la entrada nueva, --sin no concatena: deja en entrada/sin.json los pasos que el plugin «gemelo-sin-pasos» de vite.config.js quita del arranque
+  // --sin no concatena: deja en entrada/sin.json los pasos que el plugin «gemelo-sin-pasos» de vite.config.js quita del arranque
   const sinJson = path.join(dest, "entrada", "sin.json");
   fs.rmSync(sinJson, { force: true });
-  if (entrada === "ts") {
-    if (sin.length) { quitaPasos(leeArranque(), sin); fs.writeFileSync(sinJson, JSON.stringify(sin.map(nombrePaso)) + "\n"); }   // falla aquí si alguno no es un paso
-    fs.writeFileSync(path.join(dest, "entrada", "motor.generado.js"), ENTRADA_TS);
-  } else fs.writeFileSync(path.join(dest, "entrada", "motor.generado.js"), entradaMotor(sin));
+  if (sin.length) { quitaPasos(leeArranque(), sin); fs.writeFileSync(sinJson, JSON.stringify(sin.map(nombrePaso)) + "\n"); }   // falla aquí si alguno no es un paso
+  fs.writeFileSync(path.join(dest, "entrada", "motor.generado.js"), ENTRADA);
   let plantilla = fs.readFileSync(path.join(WEB, "plantilla.html"), "utf8");
   if (J.textos) plantilla = textosFinca(plantilla, J.textos);
   const html = '<!doctype html>\n<html lang="es">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n</head>\n<body>\n' +

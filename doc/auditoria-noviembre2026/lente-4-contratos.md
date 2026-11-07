@@ -7,7 +7,7 @@ Auditoría de noviembre de 2026, v0.2.0, commit `4ab0ae6`. Solo lectura: lo úni
 - **Método y reglas:** `.claude/skills/auditoria/SKILL.md`, `lentes.md`, `ALCANCE.md`, la regla 3 de `CLAUDE.md` y `doc/sistema/CONTRATOS.md` (§1 datos, §2 interfaces).
 - **Esquemas:** `contratos/indice.schema.json`, `tesela.schema.json` y `tileset.schema.json`, con lectura completa. Además miré quién valida cada uno de los ficheros de `contratos/`, buscando su nombre en las pruebas y en la tubería.
 - **Exportadores:** `tuberia/finca_8_teselas.py` (`construye()` de Cerro y `replica()`), `tuberia/hituelo_conv.py`, `tuberia/tiles3d/genera.mjs` (lectura del contrato, relieve, ortofoto, lista de copas, huellas y `extras.gemelo`) y `tuberia/tiles3d/comprueba.mjs`.
-- **Fixture y guardianes:** `pruebas/genera_fixture.py`, `exportadores_sinteticos.py`, `nube_sintetica.py`, `pruebas/contrato_modulos.js`, `guardianes/contratos.test.js` y `guardianes/exportadores.test.js`.
+- **Fixture y guardianes:** `pruebas/genera_fixture.py`, `exportadores_sinteticos.py`, `nube_sintetica.py`, pruebas/contrato_modulos.js (retirado en A3-8c; su derivación vive en `pruebas/guardianes/_pasos.js`), `guardianes/contratos.test.js` y `guardianes/exportadores.test.js`.
 - **Lectura en el motor:**
   - `01_datos` y `02_mundo`, con lectura completa: rejillas, margen, filas y `v`.
   - `04b_escena3d` (raíz del tileset y comprobación de finca) y `04c_olivos_tiles` (contrato tileset v2 y huellas).

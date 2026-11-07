@@ -27,7 +27,7 @@ function corre(THREE, fichero, copas) {
   const THREE = await F.cargaThree(), copas = F.disenoOlivos(NOLIVOS, 11), res = { antes: [], ahora: [] }, mem = { antes: [], ahora: [] };
   console.log("Microbanco de la fauna (Node " + process.version + ", RELATIVO, NO Chrome): " + N + " fotogramas x " + REPS + " repeticiones, " + copas.length + " olivos en el mundo de prueba");
   for (let r = 0; r < REPS; r++) {
-    for (const [k, fichero] of [["antes", "pruebas/guardianes/referencias/16b_fauna_antes.js"], ["ahora", "apps/web/motor/16b_fauna.js"]]) {
+    for (const [k, fichero] of [["antes", "pruebas/guardianes/referencias/16b_fauna_antes.js"], ["ahora", "paso:16b_fauna.js"]]) {
       const x = corre(THREE, fichero, copas); res[k].push(x.ms); if (x.bytes !== null) mem[k].push(x.bytes);
     }
   }

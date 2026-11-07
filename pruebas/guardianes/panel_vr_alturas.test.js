@@ -3,7 +3,6 @@
 // Lee el código (no monta nada): suma los `alto` de cada PanelVR.filas("pestaña", { id, orden, alto }) de apps/web/motor/*.js.
 const { nombresPasos } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const test = require("node:test"), assert = require("node:assert"), fs = require("fs"), path = require("path");
-const MOTOR = path.join(__dirname, "..", "..", "apps", "web", "motor");
 const Y0 = 196, TEXTO_MANDOS = 890 - 11;   // vrY0() sin letrero; el texto de mandos (22 px, línea media en y = 890) empieza hacia 879
 const ESPACIO = TEXTO_MANDOS - Y0;          // 683 px
 // Filas que solo salen en casos concretos y que hoy NO caben con el resto (deuda conocida, anotada en el informe de EV-1g): se excluyen de la suma «normal».

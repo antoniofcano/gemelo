@@ -12,7 +12,7 @@ const { RAIZ, fs, path } = require("./_util");
 const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 const { modulo } = require("./_aparato");
 
-const MOTOR = path.join(RAIZ, "apps", "web", "motor"), lee = f => pasoArranque(f);
+const lee = f => pasoArranque(f);
 const G07 = require("./_fuente").fuenteMotor("07ab_generados.js")   /* A3-2a: talón + generados*.ts */, B04 = require("./_fuente").fuenteMotor("04b_escena3d.js")   /* A3-1b: talón + escena-tiles.ts */, A07 = require("./_fuente").fuenteMotor("07b_arboles.js");   // A3-2b: talón + arboles.ts
 const { AparatoPuro } = modulo({});
 

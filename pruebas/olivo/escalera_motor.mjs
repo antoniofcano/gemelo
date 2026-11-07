@@ -23,10 +23,10 @@ const { conFabrica } = createRequire(import.meta.url)("../guardianes/_materiales
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const OLIVO = path.join(RAIZ, "apps", "web", "olivo"), MOTOR = path.join(RAIZ, "apps", "web", "motor");
+const OLIVO = path.join(RAIZ, "apps", "web", "olivo");
 const THREE = await import(pathToFileURL(path.join(OLIVO, "node_modules", "three-r186", "build", "three.module.js")).href);
 const O = await import(pathToFileURL(path.join(OLIVO, "index.js")).href);
-const lee = f => fs.readFileSync(path.join(MOTOR, f), "utf8");
+const lee = f => createRequire(import.meta.url)("../guardianes/_pasos.js").pasoArranque(f);   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, apps/web/motor/)
 const mal = [], diag = {};
 const exige = (c, m) => { if (!c) mal.push(m); };
 

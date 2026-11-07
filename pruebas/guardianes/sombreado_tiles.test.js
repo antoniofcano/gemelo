@@ -10,7 +10,7 @@ const { pathToFileURL } = require("url");
 const { RAIZ, fs, path } = require("./_util");
 const { pasoArranque } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 
-const WEB = path.join(RAIZ, "apps", "web"), MOTOR = path.join(WEB, "motor"), THREE_JS = path.join(WEB, "node_modules", "three", "build", "three.module.js");
+const WEB = path.join(RAIZ, "apps", "web"), THREE_JS = path.join(WEB, "node_modules", "three", "build", "three.module.js");
 const SALTO = fs.existsSync(THREE_JS) ? null : "three no instalado (cd apps/web && npm ci): el sombreado del tileset NO se ha comprobado";
 const lee = f => pasoArranque(f);
 

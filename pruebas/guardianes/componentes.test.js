@@ -15,7 +15,6 @@ const { pasoArranque, nombresPasos } = require("./_pasos");   // A3-8c: los paso
 const vm = require("vm");
 const Ajv2020 = require("ajv/dist/2020").default;
 
-const MOTOR = path.join(RAIZ, "apps", "web", "motor");
 const NUCLEO = pasoArranque("02c_componentes.js");
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return s.slice(i, f); };
 const Nucleo = require("./_nucleo");   // el núcleo de TypeScript (MUNDOS §9.3): ComponentesPuro y creaComponentes (MU2-5)
@@ -243,7 +242,7 @@ test("la suma de los presupuestos de los encendidos por defecto cabe en el de di
 test("consume resuelto y sin ciclos; un componente no expone nada en su primer nivel ni consume de otro componente; lo que usa de fuera lo declara", () => {
   const M = manifiestos(), d = require("./_pasos").deriva(), ifaces = Object.keys(json("contratos/interfaces.json").interfaces);
   const comp = new Set(COMPONENTES.map(f => f.slice(0, -3)));
-  const esTalon = f => delTs(fs.readFileSync(path.join(MOTOR, f.endsWith(".js") ? f : f + ".js"), "utf8"));
+  const esTalon = f => delTs(pasoArranque(f));
   const expuestosNoComp = new Set(Object.entries(d.expone).filter(([f]) => !comp.has(f.slice(0, -3)) || esTalon(f)).flatMap(([, ns]) => ns));   // lo que expone un talón (A3-1b) también vale
   const expComp = new Set(Object.values(M).flatMap(x => x.expone));
   for (const [f, def] of Object.entries(M)) {
@@ -294,13 +293,14 @@ test("eventos: el catálogo cumple su esquema y dice exactamente quién emite y 
 });
 
 // ---------- quitar funciona
-test("el motor sin cada componente (genera_motor.mjs --sin) es JavaScript válido y nadie más lo nombra", async () => {
-  const { concatenaMotor } = await import("file:///" + path.join(RAIZ, "apps", "web", "herramientas", "genera_motor.mjs").split(path.sep).join("/"));
-  assert.throws(() => concatenaMotor(["no_existe.js"]), /no están en motor/);
+test("el arranque sin cada componente (genera_motor.mjs --sin) es JavaScript válido y nadie más lo nombra", () => {
+  // A3-8c: --sin quita del arranque el paso del componente (herramientas/pasos.mjs, plugin «gemelo-sin-pasos» de vite.config.js); se comprueba el JavaScript que sale
+  const P = require("./_pasos"), ts = lee(P.ARRANQUE);
+  assert.throws(() => P.quitaPasos(ts, ["no_existe.js"]), /no son pasos del arranque/);
   const M = manifiestos();
   for (const f of COMPONENTES) {
-    const tmp = path.join(os.tmpdir(), "gemelo_sin_" + process.pid + "_" + f);
-    fs.writeFileSync(tmp, concatenaMotor([f]));
+    const tmp = path.join(os.tmpdir(), "gemelo_sin_" + process.pid + "_" + f.replace(/\.js$/, ".mjs"));
+    fs.writeFileSync(tmp, P.sinTipos(P.quitaPasos(ts, [f])).replace(/^import [^\n]*$/gm, ""));   // sin las importaciones (no se resuelven fuera de apps/web)
     const r = ejecuta(process.execPath, ["--check", tmp]); fs.unlinkSync(tmp);
     assert.strictEqual(r.status, 0, "sin " + f + ": " + r.stderr);
     const nombres = [M[f].id].concat(M[f].expone);

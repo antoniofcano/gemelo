@@ -45,7 +45,7 @@ Diseño del contrato y de los servicios: [COMPONENTES.md §3](../sistema/COMPONE
 | C12 | (Condicional) servidor de estado de juego si un juego en tiempo real lo pide | decisión de Antonio | opus | ⬜ |
 
 ## Comprobación
-- Guardián en Node (C1): manifiestos válidos, `consume` resoluble y sin ciclos, `presupuesto` y `libera` declarados, suma de presupuestos dentro de `diseno` de `pruebas/presupuesto.json`, eventos en su catálogo, y ningún componente usa en su primer nivel globales de otro componente (derivado con `pruebas/contrato_modulos.js`).
+- Guardián en Node (C1): manifiestos válidos, `consume` resoluble y sin ciclos, `presupuesto` y `libera` declarados, suma de presupuestos dentro de `diseno` de `pruebas/presupuesto.json`, eventos en su catálogo, y ningún componente usa en su primer nivel globales de otro componente (derivado con pruebas/contrato_modulos.js (retirado en A3-8c; su derivación vive en `pruebas/guardianes/_pasos.js`)).
 - «Quitar funciona»: el motor generado sin cada piloto pasa sintaxis y contratos (Node); en Chrome, por el banco, carga y `renderer.info.memory` vuelve a la base tras `libera` (🔶).
 - Las pruebas actuales (`npm run puerta`) siguen en verde en cada fase; los topes de `pruebas/presupuesto.json` no suben por la migración (medido por el banco antes y después, regla 6).
 - **No probado:** el panel VR por filas, sin probar en el Quest (solo con el WebXR simulado); iPhone, sin probar; los presupuestos por componente son declarados (**[SUPUESTO]**) hasta C11. C1-C3 hechos y comprobados en Node y por el banco ([COMPONENTES §6](../sistema/COMPONENTES.md#6-lo-hecho-c1-c3-y-c4-más-abajo)).

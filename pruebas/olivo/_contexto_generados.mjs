@@ -9,11 +9,11 @@ import { createRequire } from "node:module";
 
 export const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const OLIVO = path.join(RAIZ, "apps", "web", "olivo");
-const MOTOR = path.join(RAIZ, "apps", "web", "motor");
+const { pasoArranque } = createRequire(import.meta.url)("../guardianes/_pasos.js");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, apps/web/motor/)
 const { conFabrica } = createRequire(import.meta.url)("../guardianes/_materiales.js");   // Materiales (02i, F1)
 export const THREE = await import(pathToFileURL(path.join(OLIVO, "node_modules", "three-r186", "build", "three.module.js")).href);
 export const O = await import(pathToFileURL(path.join(OLIVO, "index.js")).href);
-export const lee = f => fs.readFileSync(path.join(MOTOR, f), "utf8");
+export const lee = f => pasoArranque(f);
 
 // un trozo de código fuente desde `inicio`: hasta la llave que cierra (función) o el «;» de primer nivel (var), saltando cadenas y comentarios
 export function extrae(src, inicio) {

@@ -51,10 +51,9 @@ test("plan B: sin constructor, sin BatchedMesh, sin WebGL2 o sin datos de la fin
 });
 
 test("el motor lee la bandera solo en ese punto (no se esparcen lecturas de ?olivos= por los módulos)", () => {
-  const fs = require("node:fs"), path = require("node:path"), dir = path.join(__dirname, "..", "..", "apps", "web", "motor");
-  const lee1 = n => fs.readFileSync(path.join(dir, n), "utf8");
-  const lecturas = fs.readdirSync(dir).filter(n => /\.js$/.test(n) && /\[\?&\]olivos=/.test(lee1(n)));
-  assert.deepStrictEqual(lecturas, [], "ningún módulo del motor lee ?olivos= (A3-2a: tampoco el talón de 07ab)");
+  const fs = require("node:fs"), path = require("node:path"), P = require("./_pasos");
+  const lecturas = P.nombresPasos().filter(n => /\[\?&\]olivos=/.test(P.pasoArranque(n)));
+  assert.deepStrictEqual(lecturas, [], "ningún paso del arranque lee ?olivos= (A3-2a: tampoco el de 07ab; A3-8c: los pasos, antes talones de motor/)");
   // en apps/web/src/, solo la decisión pura (generados-escalera.ts)
   const src = path.join(__dirname, "..", "..", "apps", "web", "src"), ts = [];
   (function recorre(d) {

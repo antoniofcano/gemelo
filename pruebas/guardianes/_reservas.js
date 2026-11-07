@@ -66,7 +66,7 @@ function reservas(src, fn, inicio) {
   return out;
 }
 
-/** Las funciones del bucle, por módulo (de apps/web/motor/; las claves «src/…» son de apps/web/src/, el núcleo en TypeScript). «inicio» localiza la función (debe ser único en el fichero). Solo lo que corre a cada fotograma. */
+/** Las funciones del bucle, por módulo de apps/web/src/ (A3-8c: el legado de apps/web/motor/ ya no existe). «inicio» localiza la función (debe ser único en el fichero). Solo lo que corre a cada fotograma. */
 const BUCLE = {
   "src/nucleo/tope-tiles.ts": [["paso (Q0k)", "function paso(s: EstadoTope, m: MuestraTope)"]],   // el lazo del tope del tileset: cada 0,25 s en VR (A3-8a: antes en 02l_tope_tiles.js)
   "src/mundos/exterior/escena-tiles.ts": [["muestraTope", "function muestraTope("], ["sumaVisible", "function sumaVisible("]],   // A3-1b: 04b es un talón de este módulo
@@ -98,7 +98,7 @@ const BUCLE = {
 function recuenta() {
   const tot = {};
   for (const f of Object.keys(BUCLE)) {
-    const src = fs.readFileSync(f.startsWith("src/") ? path.join(RAIZ, "apps", "web", f) : path.join(RAIZ, "apps", "web", "motor", f), "utf8"); tot[f] = { total: 0, porFn: {}, detalle: [], faltan: [] };
+    const src = fs.readFileSync(path.join(RAIZ, "apps", "web", f), "utf8"); tot[f] = { total: 0, porFn: {}, detalle: [], faltan: [] };
     for (const [fn, ini] of BUCLE[f]) {
       const r = reservas(src, fn, ini); if (r === null) { tot[f].faltan.push(fn); continue; }
       tot[f].porFn[fn] = r.length; tot[f].total += r.length; tot[f].detalle.push(...r);

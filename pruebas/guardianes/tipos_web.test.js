@@ -44,14 +44,12 @@ test("dependency-cruiser DETECTA cada frontera rota (árbol temporal)", { skip: 
     f("src/mundos/exterior/hoja.ts", hoja);
     f("src/mundos/molino/hoja.ts", hoja);
     f("src/mundos/comun/hoja.ts", hoja);
-    f("motor/legado.ts", hoja);
     // violaciones, una por regla
     f("src/nucleo/a.ts", 'import "../red/hoja.ts";\n');                    // nucleo-no-importa-de-nadie
     f("src/datos/a.ts", 'import "../nucleo/hoja.ts";\n');                   // datos-no-importa-de-nadie
     f("src/red/a.ts", 'import "../mundos/exterior/hoja.ts";\n');            // red-solo-importa-de-datos
     f("src/mundos/exterior/a.ts", 'import "../../ui/hoja.ts";\n');          // mundos-no-importa-de-ui
     f("src/mundos/molino/a.ts", 'import "../exterior/hoja.ts";\n');         // un-mundo-no-importa-a-otro
-    f("src/ui/a.ts", 'import "../../motor/legado.ts";\n');                  // src-no-importa-del-legado
     f("src/ui/b.ts", 'import "../mundos/comun/hoja.ts";\n');               // ui-solo-importa-de-nucleo-y-datos (A3-7a): ni mundos/comun/…
     f("src/ui/d.ts", 'import "../red/hoja.ts";\n');                        // …ni red/
     f("src/arranque.ts", 'import "./nucleo/hoja.ts";\n');                   // la entrada (A3-8c)…
@@ -62,7 +60,7 @@ test("dependency-cruiser DETECTA cada frontera rota (árbol temporal)", { skip: 
     const salida = JSON.parse(r.stdout);
     const detectadas = new Set(salida.summary.violations.map(v => v.rule.name));
     for (const regla of ["sin-ciclos", "nucleo-no-importa-de-nadie", "datos-no-importa-de-nadie", "red-solo-importa-de-datos",
-      "mundos-no-importa-de-ui", "un-mundo-no-importa-a-otro", "src-no-importa-del-legado", "ui-solo-importa-de-nucleo-y-datos", "nadie-importa-el-arranque"]) {
+      "mundos-no-importa-de-ui", "un-mundo-no-importa-a-otro", "ui-solo-importa-de-nucleo-y-datos", "nadie-importa-el-arranque"]) {
       assert.ok(detectadas.has(regla), `no detecta la regla ${regla}; detectadas: ${[...detectadas].join(", ")}`);
     }
     // A3-7a: las dos de ui/ (a mundos/comun/ y a red/) saltan las dos

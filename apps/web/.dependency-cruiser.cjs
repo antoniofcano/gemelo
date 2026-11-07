@@ -5,7 +5,7 @@
 //   nucleo/  no importa de nadie            datos/   no importa de nadie
 //   red/     importa solo de datos          mundos/  importa de nucleo, datos y red; un mundo no importa a otro
 //   ui/      (A3-7a) importa solo de nucleo y datos; nadie de src/ importa de ui
-//   motor/   (legado) fuera de src/: nada de src/ lo importa
+//   (motor/, el legado, ya no existe desde A3-8c: su regla «src-no-importa-del-legado» se fue con él)
 //   arranque.ts (A3-8c) la entrada del cliente: importa de todos y nadie de src/ la importa
 //   mundos/comun/ (A3-6a) no es un mundo: lo de todo mundo que dibuja (la presencia, los avatares, el muñeco); lo puede usar cualquier mundo y no importa de ninguno
 /** @type {import('dependency-cruiser').IConfiguration} */
@@ -73,13 +73,6 @@ module.exports = {
       severity: "error",
       from: { path: "^src/", pathNot: "^src/arranque\\.ts$" },
       to: { path: "^src/arranque\\.ts$" },
-    },
-    {
-      name: "src-no-importa-del-legado",
-      comment: "Nada en src/ importa de apps/web/motor/: el legado llega por argumento (MUNDOS §9.3).",
-      severity: "error",
-      from: { path: "^src/" },
-      to: { path: "(^|/)motor/" },
     },
   ],
   options: {

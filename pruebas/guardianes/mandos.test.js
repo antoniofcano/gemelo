@@ -8,7 +8,6 @@ const { RAIZ, fs, path } = require("./_util");
 const { montaPagina, saltoPagina } = require("./_pagina");
 
 const SALTO = saltoPagina("los perfiles de los mandos en el build");
-const MOTOR = path.join(RAIZ, "apps", "web", "motor");
 const lee = f => require("./_fuente").fuenteMotor(f);   // A3-6c: de un talón, también su .ts (36_mandos → mundos/comun/mandos.ts)
 // lo que puede anunciar un Quest (1/2/3/3S/Pro) y los genéricos de respaldo (generic-trigger es el de por defecto de la fábrica de three)
 const ESPERADOS = ["generic-hand", "generic-trigger", "generic-trigger-squeeze-thumbstick", "meta-quest-touch-plus", "meta-quest-touch-plus-v2",

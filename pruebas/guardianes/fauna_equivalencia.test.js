@@ -47,7 +47,7 @@ const GUION = (f) => ({
 for (const [nombre, ini] of [["de la tarde a la noche", Date.UTC(2026, 5, 21, 15, 0)], ["de la noche al amanecer", Date.UTC(2026, 5, 21, 2, 30)], ["en invierno, con el sol bajo", Date.UTC(2026, 11, 21, 14, 0)]]) {
   test("16b_fauna.js == su copia anterior, fotograma a fotograma, " + nombre, () => {
     const copas = F.disenoOlivos(500, 11), dtR = F.semilla(99), sem = 1234;
-    const a = F.construye(THREE, "pruebas/guardianes/referencias/16b_fauna_antes.js", copas, sem), b = F.construye(THREE, "apps/web/motor/16b_fauna.js", copas, sem);
+    const a = F.construye(THREE, "pruebas/guardianes/referencias/16b_fauna_antes.js", copas, sem), b = F.construye(THREE, "paso:16b_fauna.js", copas, sem);
     a.g.cur.ms = b.g.cur.ms = ini;
     let huyo = 0, volaron = 0, cerrado = 0;
     for (let f = 0; f < 1500; f++) {
@@ -68,7 +68,7 @@ for (const [nombre, ini] of [["de la tarde a la noche", Date.UTC(2026, 5, 21, 15
 test("el recuerdo de olivos de cerca da lo mismo que recorrer todos aunque el conejo cruce el corro de olivos pegados", () => {
   const copas = F.disenoOlivos(300, 5);
   for (let i = 0; i < 18; i++) for (let j = 0; j < 18; j++) copas.push({ x: 33 + i * 0.9 + (j % 2) * 0.3, y: -37 + j * 0.9, h: 4, oliv: true });   // una cuadrícula de olivos a 0,9 m: los empujones se encadenan
-  const a = F.construye(THREE, "pruebas/guardianes/referencias/16b_fauna_antes.js", copas, 3), b = F.construye(THREE, "apps/web/motor/16b_fauna.js", copas, 3);
+  const a = F.construye(THREE, "pruebas/guardianes/referencias/16b_fauna_antes.js", copas, 3), b = F.construye(THREE, "paso:16b_fauna.js", copas, 3);
   for (const m of [a, b]) { m.Bus.emite("paseo:entra"); m.api.conejos().forEach((c, i) => { const u = c.userData; u.est = "huye"; u.t = 1e9; u.x = 36 + i * 2.1; u.y = -34 + i * 1.7; u.dir = i * 1.1; c.visible = true; }); m.g.pp.x = 40; m.g.pp.y = -30; }
   const r = F.semilla(21), enGrid = copas.slice(copas.length - 324);
   for (let f = 0; f < 1500; f++) {
@@ -83,7 +83,7 @@ test("el recuerdo de olivos de cerca da lo mismo que recorrer todos aunque el co
 // Se compara un vértice (el primero y el último de la pieza) pasado por la matriz del mundo de la malla vieja con el mismo vértice de la geometría nueva pasado por la matriz de su casilla.
 test("AG-1.13 los conejos instanciados dejan cada pieza donde la jerarquía de antes (cuerpo, cola, cabeza, orejas y sombra)", () => {
   const copas = F.disenoOlivos(500, 11), dtR = F.semilla(99);
-  const a = F.construye(THREE, "pruebas/guardianes/referencias/16b_fauna_antes.js", copas, 1234), b = F.construye(THREE, "apps/web/motor/16b_fauna.js", copas, 1234);
+  const a = F.construye(THREE, "pruebas/guardianes/referencias/16b_fauna_antes.js", copas, 1234), b = F.construye(THREE, "paso:16b_fauna.js", copas, 1234);
   const por = nom => b.mallas().find(im => im.name === nom), V = new THREE.Vector3(), W = new THREE.Vector3(), M = new THREE.Matrix4();
   const vert = (geo, i, mat) => V.fromBufferAttribute(geo.attributes.position, i).applyMatrix4(mat).toArray();
   const cerca = (x, y, que) => x.forEach((v, k) => assert.ok(Math.abs(v - y[k]) < 2e-5, que + ": " + x + " vs " + y));
@@ -118,7 +118,7 @@ test("AG-1.13 las llamadas de dibujo de la fauna bajan de 38 a 6 con los mismos 
     if (o.isMesh) { if (!(o.isInstancedMesh && o.count === 0)) { llamadas++; const g = o.geometry, k = (g.index ? g.index.count : g.attributes.position.count) / 3; tri += k * (o.isInstancedMesh ? o.count : 1); } }
     o.children.forEach(anda);
   })(m.gFauna); return { llamadas, tri }; };
-  const copas = F.disenoOlivos(500, 11), a = F.construye(THREE, "pruebas/guardianes/referencias/16b_fauna_antes.js", copas, 1234), b = F.construye(THREE, "apps/web/motor/16b_fauna.js", copas, 1234);
+  const copas = F.disenoOlivos(500, 11), a = F.construye(THREE, "pruebas/guardianes/referencias/16b_fauna_antes.js", copas, 1234), b = F.construye(THREE, "paso:16b_fauna.js", copas, 1234);
   let maxA = { llamadas: 0 }, maxB = { llamadas: 0 };
   for (let f = 0; f < 40; f++) {
     for (const m of [a, b]) m.fotograma(f, 0.03, 0, () => ({ paseando: true, emite: f === 0 ? "paseo:entra" : undefined }));

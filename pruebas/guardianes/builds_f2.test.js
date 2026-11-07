@@ -11,17 +11,16 @@
 // Solo Node (Vite sin navegador). Sin Vite, 3d-tiles-renderer o super-three instalados (cd apps/web && npm ci) se salta con aviso.
 const test = require("node:test"), assert = require("node:assert"), path = require("path"), os = require("os"), { pathToFileURL } = require("url");
 const { RAIZ, fs, lee, ejecuta } = require("./_util");
-const { nombresPasos } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
 
 const WEB = path.join(RAIZ, "apps/web"), VITE = path.join(WEB, "node_modules/vite/bin/vite.js");
 const SUPER = path.join(WEB, "node_modules/super-three"), THREE_DIR = path.join(WEB, "node_modules/three");
 const SALTO_ST = !fs.existsSync(path.join(SUPER, "build/three.module.js")) ? "super-three no instalado (cd apps/web && npm ci): la build de VR NO se ha comprobado" : null;
 const SALTO_VITE = SALTO_ST || (!fs.existsSync(VITE) || !fs.existsSync(path.join(WEB, "node_modules/3d-tiles-renderer/build/index.js")) ? "falta Vite o 3d-tiles-renderer: cd apps/web && npm ci" : null);
 const CHUNKS = d => path.join(d, "src/renderers/shaders/ShaderChunk");
-const MOTOR = path.join(WEB, "motor"), OLIVO = path.join(WEB, "olivo");
+const OLIVO = path.join(WEB, "olivo");
 /** MU5-n: el código migrado del motor, en apps/web/src/ (los .ts sin las pruebas) */
 function tsDeSrc(dir) { const o = []; for (const e of fs.readdirSync(dir, { withFileTypes: true })) { const p = path.join(dir, e.name); if (e.isDirectory()) o.push(...tsDeSrc(p)); else if (e.name.endsWith(".ts") && !e.name.endsWith(".test.ts") && !e.name.endsWith(".d.ts")) o.push(p); } return o; }
-const fuentes = () => [...nombresPasos().map(f => path.join(MOTOR, f)), ...fs.readdirSync(OLIVO).filter(f => f.endsWith(".js")).map(f => path.join(OLIVO, f)), ...tsDeSrc(path.join(WEB, "src"))];   // MU5-n: también lo migrado a src/
+const fuentes = () => [...fs.readdirSync(OLIVO).filter(f => f.endsWith(".js")).map(f => path.join(OLIVO, f)), ...tsDeSrc(path.join(WEB, "src"))];   // MU5-n: también lo migrado a src/
 
 test("super-three: versión exacta (la de BUILDS.vr), instalada, MIT", async t => {
   if (SALTO_ST) return t.skip(SALTO_ST);
@@ -70,7 +69,7 @@ test("todo THREE.X del motor y todo three/addons/… que importa existen en supe
   if (SALTO_ST) return t.skip(SALTO_ST);
   const S = await import(pathToFileURL(path.join(SUPER, "build/three.module.js")).href);
   const usados = new Set(), addons = new Set();
-  for (const f of [...nombresPasos().map(f => path.join(MOTOR, f)), ...tsDeSrc(path.join(WEB, "src"))]) {   // MU5-n: también lo migrado a src/
+  for (const f of tsDeSrc(path.join(WEB, "src"))) {   // A3-8c: todo el cliente está en src/ (el arranque incluido)
     const s = fs.readFileSync(f, "utf8");
     for (const m of s.matchAll(/\bTHREE\.([A-Za-z_]\w*)/g)) usados.add(m[1]);
     for (const m of s.matchAll(/["']three\/addons\/([^"']+)["']/g)) addons.add(m[1]);

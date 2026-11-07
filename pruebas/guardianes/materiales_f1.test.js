@@ -101,12 +101,12 @@ test("la versión nueva (TSL, F4/MU5) solo se usa con el renderizador nuevo; hoy
 
 // ---------------------------------------------------------------- los nombres de la fábrica en el motor (la clave con la que F4 registrará cada versión TSL)
 test("cada material del motor que pasa por la fábrica tiene un nombre literal, en minúsculas con guiones, y uno por sitio", () => {
-  const dir = path.join(RAIZ, "apps/web/motor"), visto = {};
+  const visto = {}, P = require("./_pasos");   // A3-8c: los pasos del arranque (antes, los ficheros de apps/web/motor/)
   // lo que salió del motor a apps/web/src/mundos/ (los .ts) también pasa por la fábrica con su nombre: lo cuenta el recorrido de src/mundos de más abajo, una sola vez por fichero
   // (A3-5: antes también se leían aquí, y un módulo con Materiales.sombreador en su primer commit de MU5-n, antes de su define(), contaba dos veces)
-  const fuentes = fs.readdirSync(dir).filter(f => f.endsWith(".js") && f !== "02i_materiales.js").map(f => [f, path.join(dir, f)]);
-  for (const [f, ruta] of fuentes) {
-    const s = sinComentarios(fs.readFileSync(ruta, "utf8")), re = /[Mm]ateriales\.(parchea|encadena|sombreador)\(([^,)]*)/g;
+  const fuentes = P.nombresPasos().filter(f => f !== "02i_materiales.js");
+  for (const f of fuentes) {
+    const s = sinComentarios(P.pasoArranque(f)), re = /[Mm]ateriales\.(parchea|encadena|sombreador)\(([^,)]*)/g;
     let m;
     while ((m = re.exec(s))) {
       const arg = m[1] === "sombreador" ? m[2].trim() : (s.slice(m.index).match(/^[Mm]ateriales\.\w+\([^,]+,\s*("[^"]*"|[^,]+)/) || [])[1];
@@ -155,16 +155,14 @@ const FUERA = {
   "apps/web/olivo/materiales.js": [2, 0, "encadena(), el punto único de la biblioteca de olivos (lee el parche previo y pone el suyo); el motor la reusa por Materiales.encadena (07ab)"]
 };
 function cuenta(f) {
-  const s = sinComentarios(lee(f));
+  const s = sinComentarios(require("./_pasos").leeFuente(f));   // «paso:NN.js» (un paso del arranque) o un fichero del repo
   return [(s.match(/onBeforeCompile/g) || []).length, (s.match(/new\s+THREE\.ShaderMaterial\b/g) || []).length];
 }
 test("trinquete: los onBeforeCompile y new THREE.ShaderMaterial fuera de la fábrica son los anotados, cada uno con su motivo, y solo pueden bajar", () => {
   const hay = {}, mal = [];
-  for (const d of ["apps/web/motor", "apps/web/olivo"]) {
-    for (const f of fs.readdirSync(path.join(RAIZ, d)).filter(f => f.endsWith(".js") && f !== "02i_materiales.js")) {
-      const c = cuenta(d + "/" + f); if (c[0] || c[1]) hay[d + "/" + f] = c;
-    }
-  }
+  const lista = require("./_pasos").nombresPasos().filter(f => f !== "02i_materiales.js").map(f => "paso:" + f)   // A3-8c: los pasos del arranque, antes motor/
+    .concat(fs.readdirSync(path.join(RAIZ, "apps/web/olivo")).filter(f => f.endsWith(".js")).map(f => "apps/web/olivo/" + f));
+  for (const f of lista) { const c = cuenta(f); if (c[0] || c[1]) hay[f] = c; }
   for (const [f, c] of Object.entries(hay)) {
     const a = FUERA[f];
     if (!a) mal.push(f + ": " + c[0] + " onBeforeCompile y " + c[1] + " ShaderMaterial fuera de la fábrica (usa Materiales.parchea / .encadena / .sombreador de 02i_materiales.js)");
@@ -178,7 +176,7 @@ test("trinquete: los onBeforeCompile y new THREE.ShaderMaterial fuera de la fáb
   }
   // MU5-0: 02i es un talón (sin ninguno) y la fábrica vive en apps/web/src/nucleo/materiales.ts: el tipo MaterialMin, parchea, encadenaPropia (lee el
   // previo y pone el suyo) y el clásico del ejemplo, más el texto de un aviso: 6 onBeforeCompile) y un new ShaderMaterial (sombreador(), con el THREE que recibe: T)
-  assert.deepStrictEqual(cuenta("apps/web/motor/02i_materiales.js"), [0, 0], "02i_materiales.js es un talón");
+  assert.deepStrictEqual(cuenta("paso:02i_materiales.js"), [0, 0], "el paso 02i_materiales del arranque solo cablea");
   const F = cuentaTs("apps/web/src/nucleo/materiales.ts");
   assert.deepStrictEqual(F, [6, 1], "nucleo/materiales.ts: onBeforeCompile (MaterialMin, parchea, encadenaPropia ×2, el ejemplo y un aviso) y un new T.ShaderMaterial");
 });

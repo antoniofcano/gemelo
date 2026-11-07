@@ -41,10 +41,10 @@ test("el arranque del bucle y el WebGLRenderer clásico (lo puro del arranque, e
 });
 
 test("los lectores de renderer.info del motor pasan por InfoDibujo (30_mide.js: lo tiene abierto F0, pendiente)", () => {
-  const fs = require("fs"), dir = path.join(RAIZ, "apps/web/motor"), PENDIENTES = { "30_mide.js": "F0 cambia el medidor a la vez: pasa a InfoDibujo cuando se fusione" };
+  const P = require("./_pasos"), PENDIENTES = { "30_mide.js": "F0 cambia el medidor a la vez: pasa a InfoDibujo cuando se fusione" };
   const mal = [];
-  for (const f of fs.readdirSync(dir).filter(f => f.endsWith(".js") && f !== "02h_render.js")) {
-    const s = fs.readFileSync(path.join(dir, f), "utf8").replace(/\/\/.*$/gm, "");
+  for (const f of P.nombresPasos().filter(f => f !== "02h_render.js")) {   // A3-8c: los pasos del arranque (antes, los ficheros de motor/)
+    const s = P.pasoArranque(f).replace(/\/\/.*$/gm, "");
     if (/renderer\.info\b/.test(s) && !PENDIENTES[f]) mal.push(f);
   }
   assert.deepStrictEqual(mal, [], "leen renderer.info a mano (usa InfoDibujo.lee / .fotograma / .triangulos de 02h_render.js)");

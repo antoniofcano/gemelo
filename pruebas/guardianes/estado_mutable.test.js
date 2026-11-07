@@ -12,7 +12,7 @@
 // Solo Node.
 const test = require("node:test"), assert = require("node:assert");
 const acorn = require("acorn");
-const { ficheros, lee } = require("./_util");
+// (sin _util: lo que lee son los pasos del arranque, de _pasos.js)
 
 const EN_ESTADO = ["exag", "modo", "calidad"];
 // El inventario de A1-13 (2026-11-06): globales de la IIFE reasignadas fuera de su declaración y compartidas entre módulos, que aún no
@@ -116,8 +116,9 @@ function compartidas(A) {
   return out;
 }
 
-const MOTOR = ficheros().filter(f => /^apps\/web\/motor\/[^/]+\.js$/.test(f)).sort();
-const montaje = () => analiza(MOTOR.map(f => ({ nombre: f.slice("apps/web/motor/".length), texto: lee(f) })));
+// A3-8c: los pasos del arranque (apps/web/src/arranque.ts), en orden y dentro de una función, como el cuerpo de arranca() (antes, la IIFE de motor/)
+const { pasos } = require("./_pasos");
+const montaje = () => analiza([{ nombre: "(abre)", texto: "(function () {\n" }].concat(Object.entries(pasos()).map(([nombre, texto]) => ({ nombre, texto })), [{ nombre: "(cierra)", texto: "\n})();\n" }]));
 
 test("exag, modo y calidad viven en Estado: ningún módulo las declara en la IIFE ni las usa sueltas (una local con ese nombre sí vale)", () => {
   const A = montaje(), mal = [];
