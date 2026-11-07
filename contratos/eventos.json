@@ -433,7 +433,7 @@
       "escuchan": []
     },
     "hazas:cambia": {
-      "descripcion": "Han llegado (o se han soltado) las hazas de la api que se ven en este mundo (13b_hazas.js): cuántas y cuántas son tuyas. Quien las dibuja (el componente «lindes-hazas») vuelve a pedir Hazas.lindes() y rehace la linde; sin nadie, no pasa nada.",
+      "descripcion": "Han llegado (o se han soltado) las hazas de la api que se ven en este mundo (mundos/exterior/hazas.ts): cuántas y cuántas son tuyas. Quien las dibuja (el componente «lindes-hazas») vuelve a pedir Hazas.lindes() y rehace la linde; sin nadie, no pasa nada.",
       "datos": {
         "type": "object",
         "required": [
@@ -452,7 +452,7 @@
         }
       },
       "emiten": [
-        "13b_hazas"
+        "mundos/exterior/hazas"
       ],
       "escuchan": [
         "mundos/exterior/lindes",

@@ -220,8 +220,8 @@ function eventosDelCodigo() {
       if (e.isDirectory()) { recorre(path.join(d, e.name), rel + e.name + "/", pre); continue; }
       if (!e.name.endsWith(".ts") || e.name.endsWith(".test.ts")) continue;
       const s = sinComentarios(fs.readFileSync(path.join(d, e.name), "utf8")), mod = pre + rel + e.name.slice(0, -3);
-      // A3-6c: en mundos/comun/ la VR y la locomoción conservan el nombre del legado, Bus
-      const re = rel.startsWith("comun/") || pre === "ui/" ? /\b(?:bus|Bus|n)\.(emite|on)\(\s*"([^"]+)"/g : /\b(?:bus|n)\.(emite|on)\(\s*"([^"]+)"/g;
+      // A3-6c: en mundos/comun/ la VR y la locomoción conservan el nombre del legado, Bus (A3-7b1: y el contenido del exterior que se movió tal cual, p. ej. hazas.ts)
+      const re = rel.startsWith("comun/") || pre === "ui/" || rel.startsWith("exterior/") ? /\b(?:bus|Bus|n)\.(emite|on)\(\s*"([^"]+)"/g : /\b(?:bus|n)\.(emite|on)\(\s*"([^"]+)"/g;
       for (const x of s.matchAll(re)) apunta(x[2], x[1] === "emite", mod);
     }
   }

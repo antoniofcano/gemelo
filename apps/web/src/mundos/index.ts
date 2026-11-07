@@ -141,3 +141,6 @@ export type { Corro, DepsCorro } from "./comun/corro.ts";
 // A3-7a (MU5-n): la transición del mapa al paseo (antes la segunda mitad de 24_pantalla.js), de la locomoción de todo mundo; no es un componente (nada que soltar).
 export { creaTransicion } from "./comun/transicion.ts";
 export type { DepsTransicion, Transicion } from "./comun/transicion.ts";
+// A3-7b1 (MU5-n): el contenido del mundo, del EXTERIOR (parcelas, hazas, historia, vista de familia, fichas del tiempo y del mundo, «Hoy en el campo»), cada uno con su libera() de verdad.
+export { ID_HAZAS, HazasPuro, creaHazas, manifiestoHazas } from "./exterior/hazas.ts";
+export type { DepsHazas } from "./exterior/hazas.ts";

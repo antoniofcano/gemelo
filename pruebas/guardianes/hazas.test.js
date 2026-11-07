@@ -1,5 +1,5 @@
 "use strict";
-// Las hazas en el motor (apps/web/motor/13b_hazas.js, F1 «3c»). En Node, sin navegador: el GeoJSON de GET /api/hazas se valida contra el esquema
+// Las hazas en el motor (apps/web/motor/13b_hazas.js, talón de apps/web/src/mundos/exterior/hazas.ts desde A3-7b1; F1 «3c»). En Node, sin navegador: el GeoJSON de GET /api/hazas se valida contra el esquema
 // `Hazas` de contratos/api.openapi.yaml (ajv) y el validador del motor dice lo mismo; UTM → local con centro_utm; el toque al suelo; la ficha solo con
 // la lista blanca de contratos/haza.schema.json (con procedencia y fecha); y, con un THREE y un fetch falsos, que sin api, con 401 o con datos que no
 // cumplen el contrato no se crea nada ni se escribe en la consola, y que con datos Hazas.lindes() da la linde y «hazas:cambia» lo avisa (el dibujo de la
@@ -9,13 +9,10 @@ const { lee } = require("./_util");
 const Ajv2020 = require("ajv/dist/2020").default;
 const YAML = require("yaml");
 
-const FUENTE = lee("apps/web/motor/13b_hazas.js");
-function puro() {
-  const i = FUENTE.indexOf("// [puro:inicio]"), f = FUENTE.indexOf("// [puro:fin]");
-  assert.ok(i >= 0 && f > i, "13b_hazas.js debe marcar su trozo puro con // [puro:inicio] y // [puro:fin]");
-  return new Function("\"use strict\";\n" + FUENTE.slice(i, f) + "\nreturn HazasPuro;")();
-}
-const P = puro();
+const Mundos = require("./_mundos"), { fuenteMotor } = require("./_fuente");   // A3-7b1: 13b es un talón; su código vive en mundos/exterior/hazas.ts
+const FUENTE = fuenteMotor("13b_hazas.js");
+assert.ok(FUENTE.includes("// [puro:inicio]") && FUENTE.includes("// [puro:fin]"), "hazas.ts debe marcar su trozo puro con // [puro:inicio] y // [puro:fin]");
+const P = Mundos.HazasPuro;
 
 // el esquema del contrato, tal cual (OpenAPI 3.1 = JSON Schema 2020-12)
 const OPENAPI = YAML.parse(lee("contratos/api.openapi.yaml"));
@@ -166,19 +163,16 @@ function entorno({ base, busqueda = "", respuesta }) {
     LineSegments: class { constructor(g, m) { reg.creados++; this.geometry = g; this.material = m; } },
     Raycaster: class { constructor() { this.ray = { origin: {}, direction: {} }; } setFromCamera() {} }, Vector2: class { set() {} },
   };
-  const oyente = (quien) => ({ addEventListener: (ev) => reg.oyentes.push(quien + ":" + ev), getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
+  const oyente = (quien) => ({ addEventListener: (ev) => reg.oyentes.push(quien + ":" + ev), removeEventListener: (ev) => { const i = reg.oyentes.indexOf(quien + ":" + ev); if (i >= 0) reg.oyentes.splice(i, 1); }, getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
   const elemento = () => ({ hidden: true, textContent: "", style: {}, appendChild() {}, addEventListener: (ev) => reg.oyentes.push("dom:" + ev) });
   const D = { base, finca_id: "hituelo", centro_utm: [CX, CY], ext: [-300, 300, 300, -300] };
   const fetch = (url, op) => { reg.fetch.push([url, op]); return typeof respuesta === "function" ? respuesta(url) : Promise.resolve(respuesta); };
   const consola = { log: (...a) => reg.consola.push(a), warn: (...a) => reg.consola.push(a), error: (...a) => reg.consola.push(a), info: (...a) => reg.consola.push(a) };
-  const env = {
-    THREE, D, fetch, console: consola, location: { search: busqueda }, $: () => elemento(), document: { createElement: elemento },
-    window: oyente("window"), lienzo: oyente("lienzo"), camera: { far: 5000 }, SRGB: "srgb", Estado: { exag: 1 }, paseando: false, pp: { x: 0, y: 0 }, objetivo: { x: 0, z: 0 },
-    suelo: () => 0, Mundo: { alCargar: () => reg.oyentes.push("Mundo.alCargar") }, gLinde: { add: o => reg.añadidos.push(o), remove: o => reg.quitados.push(o) },
-    performance: { now: () => 0 }, Entidades: { registra: () => () => reg.oyentes.push("Entidades:quita") }, Bus: { emite: (ev, d) => { reg.eventos.push([ev, d]); return 0; }, on: () => () => {}, hay: () => false },
-  };
-  const nombres = Object.keys(env);
-  const { Hazas } = new Function(...nombres, "\"use strict\";\n" + FUENTE + "\nreturn { Hazas: Hazas };")(...nombres.map(n => env[n]));
+  // A3-7b1: el módulo ya no se evalúa como texto: se monta la fábrica de verdad con las dependencias de mentira
+  const Hazas = Mundos.creaHazas({
+    THREE, D, fetch, ubicacion: { search: busqueda }, ventana: oyente("window"), camera: { far: 5000 }, Estado: { exag: 1 }, paseando: false, pp: { x: 0, y: 0 }, objetivo: { x: 0, z: 0 },
+    suelo: () => 0, Entidades: { registra: () => () => reg.oyentes.push("Entidades:quita") }, Usables: {}, Bus: { emite: (ev, d) => { reg.eventos.push([ev, d]); return 0; }, on: () => () => {}, hay: () => false },
+  });
   return { Hazas, reg };
 }
 const espera = () => new Promise(r => setTimeout(r, 10));

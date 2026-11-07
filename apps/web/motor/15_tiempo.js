@@ -1,6 +1,6 @@
 // ===== CONTRATO DEL MÓDULO (lo comprueba pruebas/guardianes/contratos.test.js) =====
 // Expone: TiempoPuro, ahoraMs, TM, nivelEn, nivel, texBrillo, uViento, uSombra, GLSL_SOMBRA, cur, meta, ins, tMundo, temaBarrera, fmtHora,
-//   fmtClaveDia, num1, rumbo, objetivoMundoBase, pasoHoraMundo, horaMundoTexto, aplicaMundo, TiempoVivo, lindes, nodosTiempoTsl, parcheTiempo, esc,
+//   fmtClaveDia, num1, rumbo, objetivoMundoBase, pasoHoraMundo, horaMundoTexto, aplicaMundo, TiempoVivo, nodosTiempoTsl, parcheTiempo, esc,
 //   colocaBarrera, actualizaTiempo
 // Consume: 01_datos (D, $, FOG0, FOG1), 02_mundo (suelo), 02c_componentes (Bus, Componentes), 02i_materiales (Materiales),
 //   02j_estaticos (Estaticos), 03_escena (scene, camera, SRGB, LUZ_SOL, LUZ_CIELO, hemi, sol, texColor, colorVertSRGB, colorCss, Estado),
