@@ -5,6 +5,7 @@
 // y la hierba y las piedras (21_suelo, con GLSL_SOMBRA). Los uniformes son los MISMOS objetos para todos: los mueve el paso del tiempo (tiempo-paso.ts).
 
 import type { DefMaterial } from "../../nucleo/materiales.ts";
+import { centroPunto } from "./puntos-tsl.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type A = any;
@@ -83,6 +84,16 @@ export function colorSrgbTsl(T: A, base: A, porVertice: boolean): A {
     return col;
   })();
 }
+/** A4-0: un color que el clásico NO multiplica por el color por instancia ni por el del lote (p. ej. el liquen de las piedras, que se mezcla tras el color): el
+ *  NodeMaterial lo multiplicará después, así que aquí se divide antes por él (con c = 0 queda 0, como cualquier color que three multiplique por 0). */
+export function sinColorPorInstancia(T: A, rgb: A): A {
+  return T.Fn(function (_e: A, b: A) {
+    var o = b && b.object, c = T.vec3(rgb);
+    if (o && o.instanceColor) c = c.div(T.max(T.instanceColor, T.vec3(1e-6)));
+    if (o && o.isBatchedMesh && o._colorsTexture) c = c.div(T.max(T.batchColor.rgb, T.vec3(1e-6)));
+    return c;
+  })();
+}
 // lo que no se copia del material clásico al NodeMaterial (lo demás, como hace three al convertir: NodeLibrary.fromMaterial)
 var NO_COPIA: Record<string, 1> = { uuid: 1, id: 1, type: 1, onBeforeCompile: 1, customProgramCacheKey: 1, _listeners: 1, version: 1 };
 /** el clásico de siempre: el MISMO material, con el parche puesto por conTiempo (la misma función de siempre: three usa su texto como clave del programa).
@@ -101,7 +112,9 @@ export function defParcheTiempo(conTiempo: (m: A, viento: boolean) => void, u?: 
       var N = nodosTiempo(T, u.uSombra, o.viento ? u.uViento : null), base = T.vec4(T.materialColor);
       // A4-0: el color por vértice y, ahora también, el de instancia (colorVertSRGB atiende a los dos), de sRGB a lineal
       m.vertexColors = false; m.colorNode = colorSrgbTsl(T, base, !!src.vertexColors);
-      if (o.viento) m.positionNode = N.viento(T.positionGeometry);
+      // en unos puntos, el centro del punto (A4-0: también en su espejo de sprites, puntos-tsl.ts); el viento lo mueve
+      var pos = src.isPointsMaterial ? centroPunto(T) : T.positionGeometry;
+      if (o.viento) m.positionNode = N.viento(pos); else if (src.isPointsMaterial) m.positionNode = pos;
       if (!src.isPointsMaterial) m.outputNode = N.salida(T.positionGeometry.xz);   // el clásico: ot_sombra(position.xz), la posición local
       return m;
     }

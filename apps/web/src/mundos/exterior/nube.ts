@@ -18,6 +18,8 @@
 import type { Manifiesto } from "../../nucleo/componentes.ts";
 import type { DefMaterial, Materiales, MaterialMin } from "../../nucleo/materiales.ts";
 import { RADIO_CARGA } from "./teselas.ts";
+import { colorSrgbTsl } from "./tiempo-parche.ts";
+import { centroPunto, espejoSprites } from "./puntos-tsl.ts";
 
 // three no trae tipos en el repo (como en suelo-fondo.ts): de él solo se toca lo mínimo, sin tiparlo
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -47,14 +49,19 @@ export const DEF_NUBE: DefMaterial<OpcNube> = {
     m.needsUpdate = true;
     return m;
   },
-  // MU5-n, tercer commit: la variante TSL, APAGADA (solo con el WebGPURenderer, que hasta MU6 no existe; nadie la usa hoy) y PARCIAL, no equivalente al clásico: un
-  // PointsNodeMaterial con las propiedades del clásico (el tamaño de su nivel, la atenuación por distancia, el color por vértice y el MISMO objeto de color del maestro,
-  // que el ciclo del día tiñe). FALTA el parche de la luz (parcheTiempo de 15_tiempo: la sombra de nubes y la helada; fila 2 de MATERIALES, sin TSL aún) y, con el
-  // backend WebGPU, el punto mide siempre 1 px (MULTIVIEW §2.3): la fila 9 pasará a sprites instanciados, y eso hay que medirlo en el banco (MU6)
+  // MU5-n, tercer commit (A3-3) y A4-0: la variante TSL, APAGADA (solo con el WebGPURenderer, MU6; nadie la usa hoy). Un PointsNodeMaterial con las propiedades del
+  // clásico (el tamaño de su nivel, la atenuación por distancia y el MISMO objeto de color del maestro, que el ciclo del día tiñe) y (A4-0) lo que el parche del
+  // tiempo hace en unos puntos: el color por vértice, escrito en sRGB, a lineal (colorSrgbTsl; la sombra de nubes y la helada no, tampoco en el clásico: el
+  // sombreador de puntos no tiene <dithering_fragment>, MATERIALES §11.1). Con el backend WebGPU un punto mide 1 px: desde A4-0, con la TSL, cada malla de la nube
+  // se dibuja con su espejo de sprites instanciados (puntos-tsl.ts: el mismo tamaño en pantalla, 2 triángulos por punto, SIN MEDIR). NO se puede decir que sea
+  // equivalente hasta las capturas de MU6.
   tsl: function (o, c) {
-    const Puntos = c.THREE["PointsNodeMaterial"] as new (opc: unknown) => MaterialMin & { color: unknown };
-    const m = new Puntos({ size: o.size, sizeAttenuation: true, vertexColors: true });
+    const Puntos = c.THREE["PointsNodeMaterial"] as new (opc: unknown) => MaterialMin & { color: unknown; colorNode?: unknown; positionNode?: unknown; vertexColors?: boolean };
+    const T = c.TSL as Record<string, any>;   // eslint-disable-line @typescript-eslint/no-explicit-any
+    const m = new Puntos({ size: o.size, sizeAttenuation: true, vertexColors: false });
     m.color = o.color;
+    m.colorNode = colorSrgbTsl(T, T["materialColor"], true);
+    m.positionNode = centroPunto(T);   // el centro del punto, también en el espejo de sprites
     return m;
   }
 };
@@ -176,6 +183,7 @@ export function creaNube(d: DepsNube) {
     for (let i = 0; i < n; i++) { Q[i * 3] = Math.round((X[i]! - cxm) / hx * 32767); Q[i * 3 + 1] = Math.round((Z[i]! - zc) / hz * 32767); Q[i * 3 + 2] = Math.round((-Y[i]! + cym) / hx * 32767); if (i % 40000 === 39999) yield; }
     const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(Q, 3, true)); g.setAttribute("color", new THREE.BufferAttribute(C, 3, true));
     const m = new THREE.Points(g, matsNube[0]); m.userData = { zc: zc, hz: hz }; m.position.set(cxm, zc * Estado.exag, -cym); m.scale.set(hx, hz * Estado.exag, hx); m.visible = false; Estaticos.congela(m);   // AG-1.15: se recoloca en exagNube()
+    if (matsNube[0].isNodeMaterial) espejoSprites(THREE, m);   // A4-0: con la TSL (MU6), la malla se dibuja con su espejo de sprites (puntos-tsl.ts)
     t.nubeX = X.subarray(0, n); t.nubeY = Y.subarray(0, n); t.nubeH = H.subarray(0, n); t.nubeB = B.subarray(0, n); t.nubeCol = C; t.nubeN = n; t.nubeMalla = m; t.nubeNivel = -1; t.nubeDibuja = 0;
     yield* pintaTeselaNubeG(t);
     return m;
