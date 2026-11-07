@@ -19,7 +19,7 @@ test.after(async () => { if (navegador) await navegador.close(); if (srv) srv.cl
 
 // PB8: la geometría (¿se solapa?, ¿cabe?) es la función pura de 34_movibles.js, probada con rectángulos en movibles.test.js; aquí solo se aplica a lo que mide el navegador
 const MoviblesPuro = (function () {
-  const F = lee("apps/web/motor/34_movibles.js"), i = F.indexOf("// [puro:inicio]"), f = F.indexOf("// [puro:fin]");
+  const F = require("./_fuente").fuenteMotor("34_movibles.js"), i = F.indexOf("// [puro:inicio]"), f = F.indexOf("// [puro:fin]");
   return new Function("\"use strict\";\n" + F.slice(i, f) + "\nreturn MoviblesPuro;")();
 })();
 
