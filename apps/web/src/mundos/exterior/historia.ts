@@ -9,12 +9,33 @@
 // ponNdviIdx). Arreglo de la auditoría (L4-12): ndviEn no falla si el índice no trae NDVI. Lo que cambiaría lo que se ve o se hace (L6-10: el foco en «Siguiente» frena las flechas; L3-11, L3-14, L3-15,
 // L3-20: cifras y nombres fijos, una deducción que sale como dato) queda apuntado para el banco.
 import type { Manifiesto } from "../../nucleo/componentes.ts";
-import type { Materiales } from "../../nucleo/materiales.ts";
+import type { DefMaterial, Materiales, MaterialMin } from "../../nucleo/materiales.ts";
 import { creaSoltador } from "../../nucleo/soltador.ts";
 import type { T } from "../comun/tipos.ts";
 import { esc } from "./tiempo-puro.ts";
 
 export const ID_HISTORIA = "historia-recorrido";
+
+// ---------------------------------------------------------------- el material de resalte (MU5-n: por la fábrica, con su nombre de la tabla de MATERIALES §1, fila 16)
+/** el nombre del material en la fábrica: es también la clave de su variante TSL */
+export const MATERIAL_RESALTE = "resalte-parcela";
+/** lo que pide el material: el uniforme de la exageración vertical del terreno (UN.uExag), que mueve el mundo; el sombreador lo lee, no lo copia */
+export interface OpcResalte { uExag: { value: number } }
+/** el sombreado de siempre: la y de cada vértice se multiplica por uExag (la malla se pegó al relieve sin exagerar y sigue la exageración sin tocar su matriz, AG-1.15) */
+export function parcheResalte(sh: unknown, uExag: { value: number }): void {
+  const s = sh as { uniforms: Record<string, unknown>; vertexShader: string };
+  s.uniforms["uExag"] = uExag;
+  s.vertexShader = s.vertexShader.replace("#include <common>", "#include <common>\nuniform float uExag;").replace("#include <begin_vertex>", "#include <begin_vertex>\n transformed.y *= uExag;");
+}
+export const DEF_RESALTE: DefMaterial<OpcResalte> = {
+  clasico: function (o, c) {
+    const Basic = c.THREE["MeshBasicMaterial"] as new (opc: unknown) => MaterialMin;
+    const m = new Basic({ color: 0xffffff, transparent: true, opacity: 0.42, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+    m.onBeforeCompile = function (sh: unknown) { parcheResalte(sh, o.uExag); };
+    m.customProgramCacheKey = function () { return MATERIAL_RESALTE; };
+    return m;
+  }
+};
 
 /** Lo que el talón de 14 le da: THREE, el índice (D) y las utilidades de 01 ($, tinta, fmt), el mundo (02: suelo, copas, cIn, marc, med), la fábrica de materiales (02i), Estaticos (02j), la escena (03),
  *  UN (04d), la cámara orbital (09: orb, pon), el NDVI (10: NDV, pintaNdvi, y ndviIdx por getter con ponNdviIdx para escribirlo), el paseo (12: paseando por getter, salePaseo) y las parcelas (13) */
@@ -101,6 +122,8 @@ export function creaHistoria(dp: DepsHistoria) {
   var THREE: T = dp.THREE, D: T = dp.D, $ = dp.$, tinta = dp.tinta, fmt = dp.fmt, suelo = dp.suelo, copas: T = dp.copas, cIn: T = dp.cIn, marc: T = dp.marc, med = dp.med, Materiales: T = dp.Materiales;
   var Estaticos: T = dp.Estaticos, scene: T = dp.scene, UN: T = dp.UN, orb: T = dp.orb, pon = dp.pon, NDV: T = dp.NDV, pintaNdvi = dp.pintaNdvi, parcelas: T = dp.parcelas, fincas: T = dp.fincas;
   var claseUsda = dp.claseUsda, elegirParcela = dp.elegirParcela, elegirFinca = dp.elegirFinca;
+  Materiales.define(MATERIAL_RESALTE, DEF_RESALTE);
+  var materiales = Materiales.de(ID_HISTORIA);   // lo que cree este componente se libera con su libera()
   var suel = creaSoltador();   // A3-7b1: lo que se engancha a la página se apunta aquí y se suelta en libera()
 
   var OT = D.ot, hist = -1, overlays: T = [], VIVO: T = null;
@@ -122,8 +145,7 @@ export function creaHistoria(dp: DepsHistoria) {
     var m = overlays[k]; m.geometry.dispose(); m.geometry = g; m.userData.listo = true;
   }
   parcelas.forEach(function (pr?: T, k?: T) {   // una malla vacía por parcela; la geometría llega al resaltarla. Sigue la exageración vertical con el mismo uniforme del terreno
-    var mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.42, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
-    Materiales.parchea(mat, "resalte-parcela", function (sh?: T) { sh.uniforms.uExag = UN.uExag; sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nuniform float uExag;").replace("#include <begin_vertex>", "#include <begin_vertex>\n transformed.y *= uExag;"); });
+    var mat = materiales.crea(MATERIAL_RESALTE, { uExag: UN.uExag });   // A3-7b1: por la fábrica, con dueño «historia-recorrido»
     var m = new THREE.Mesh(new THREE.BufferGeometry(), mat); m.renderOrder = 3; m.visible = false; Estaticos.congela(m); scene.add(m); overlays.push(m);   // AG-1.15: sigue la exageración por el uniforme, no por la matriz
   });
   function resalta(mapa?: T) { overlays.forEach(function (m?: T, k?: T) { if (mapa && mapa[k] !== undefined) { if (!m.userData.listo) creaOverlay(k); m.material.color.setHex(mapa[k]); m.visible = true; } else m.visible = false; }); }
@@ -337,7 +359,8 @@ export function creaHistoria(dp: DepsHistoria) {
   function libera() {
     suel.suelta();
     if (hist >= 0) { var cu = $("hCuerpo"), intro = $("hIntro"), ini = $("hIni"); if (cu) cu.hidden = true; if (intro) intro.hidden = false; if (ini) ini.textContent = "Empezar el recorrido"; hist = -1; }
-    overlays.forEach(function (m?: T) { scene.remove(m); m.geometry.dispose(); m.material.dispose(); });
+    overlays.forEach(function (m?: T) { scene.remove(m); m.geometry.dispose(); });
+    materiales.libera();   // los materiales de resalte
     overlays.length = 0;
   }
   return { OT: OT, VIVO: VIVO, HistoriaPuro: HistoriaPuro, libera: libera, estado: function () { return { escena: hist, escenas: ESCENAS.length, mallas: overlays.length }; } };

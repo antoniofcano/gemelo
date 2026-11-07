@@ -5,6 +5,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { ID_HISTORIA, creaHistoria, manifiestoHistoria } from "./historia.ts";
 import { creaMundo, type Mundo } from "../../nucleo/prueba-dom.ts";
+import { creaMateriales } from "../../nucleo/materiales.ts";
+import type { ThreeMin } from "../../nucleo/materiales.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const THREE: any = await import(/* @vite-ignore */ "three" as string);
@@ -23,26 +25,28 @@ function monta(o: { hituelo?: boolean; ndvi?: boolean; titulo?: string } = {}) {
     parcelas: { p1: { tareas: [{ tipo: "t", titulo: o.titulo || "Desvaretar", estado: "completado", fecha: "2026-10-01", avance: null, andados: null, objetivo: null }], fenologia: [] }, p2: { tareas: [], fenologia: [] } } }, paisaje: {} };
   const scene = { children: [] as unknown[], add(x: unknown) { this.children.push(x); }, remove(x: unknown) { const i = this.children.indexOf(x); if (i >= 0) this.children.splice(i, 1); } };
   let idx = 0, sale = 0;
+  const Materiales = creaMateriales({ THREE: THREE as unknown as ThreeMin, busqueda: "" });
   const NDV = o.ndvi === false ? null : { fechas: ["2026-01-01", "2026-06-01"], media: [0.3, 0.4] };
   const H = creaHistoria({
     THREE, D, $: (id: string) => m!.documento.getElementById(id), tinta: () => {}, fmt: (n: number, d = 0) => (n == null ? "–" : n.toFixed(d)), suelo: () => 0, copas: [], cIn: [], marc: [], med: () => 0,
-    Materiales: { parchea: () => {}, define: () => {}, de: () => ({ crea: () => new THREE.MeshBasicMaterial(), estandar: () => new THREE.MeshBasicMaterial(), libera: () => 0 }) },
+    Materiales,
     Estaticos: { congela: () => {} }, scene, UN: { uExag: { value: 1 } }, orb: { az: 0, el: 0, dist: 100 }, pon: () => {}, NDV, pintaNdvi: () => {},
     get ndviIdx() { return idx; }, ponNdviIdx: (i: number) => { idx = i; }, get paseando() { return false; }, salePaseo: () => { sale++; },
     parcelas, fincas, claseUsda: () => "franco", elegirParcela: () => {}, elegirFinca: () => {}
   });
-  return { H, m, scene, D, idx: () => idx, sale: () => sale };
+  return { H, m, scene, D, Materiales, idx: () => idx, sale: () => sale };
 }
 const el = (m: Mundo, id: string) => m.documento.getElementById(id);
 
 describe("historia: ciclo de vida", () => {
   it("crea una malla de resalte por parcela y libera() las saca de la escena y suelta su geometría y su material", () => {
-    const { H, scene } = monta();
+    const { H, scene, Materiales } = monta();
     expect(scene.children.length).toBe(2);
     const mallas = scene.children.slice() as Array<{ geometry: { dispose(): void }; material: { dispose(): void } }>; let g = 0, ma = 0;
     mallas.forEach(x => { const gd = x.geometry.dispose.bind(x.geometry), md = x.material.dispose.bind(x.material); x.geometry.dispose = () => { g++; gd(); }; x.material.dispose = () => { ma++; md(); }; });
+    expect(Materiales.duenos()["historia-recorrido"]).toBe(2);   // un material de resalte por parcela, con su dueño en la fábrica
     H.libera();
-    expect(scene.children.length).toBe(0); expect([g, ma]).toEqual([2, 2]); expect(H.estado().mallas).toBe(0);
+    expect(scene.children.length).toBe(0); expect([g, ma]).toEqual([2, 2]); expect(H.estado().mallas).toBe(0); expect(Materiales.duenos()["historia-recorrido"]).toBeUndefined();
   });
   it("empezar crea los puntos y las escuchas; libera() las quita y deja la ventana como antes de empezar", () => {
     const { H, m } = monta();
