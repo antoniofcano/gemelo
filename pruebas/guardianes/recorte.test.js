@@ -159,7 +159,7 @@ test("15_tiempo: las estrellas no pasan por el dibujo de día (visible = opacity
 
 // ---------------------------------------------------------------- 14_historia: la capa de una parcela (el sombreador multiplica la y por uExag)
 test("14_historia: la capa de la parcela se recorta y su esfera la contiene con uExag 1 y 3 (el sombreador escala la y)", () => {
-  const F = lee("apps/web/motor/14_historia.js");
+  const F = require("./_fuente").fuenteMotor("14_historia.js");
   assert.match(F, /transformed\.y \*= uExag;/, "el sombreador de la capa sigue multiplicando la y por la exageración");
   assert.match(lee("apps/web/plantilla.html"), /id="exag" min="1" max="3"/, "el deslizador de la exageración va de 1 a 3 (lo que cubre la esfera)");
   const T = trozo(F, "  function creaOverlay(k)", "  parcelas.forEach(function (pr, k) {");

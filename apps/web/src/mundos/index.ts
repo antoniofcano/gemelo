@@ -154,3 +154,5 @@ export { ID_FICHAS_TIEMPO, FichasTiempoPuro, manifiestoFichasTiempo } from "./ex
 export type { DepsFichasTiempo } from "./exterior/fichas-tiempo.ts";
 export { ID_PARCELAS, creaParcelas, manifiestoParcelas } from "./exterior/parcelas.ts";
 export type { DepsParcelas, Parcelas } from "./exterior/parcelas.ts";
+export { ID_HISTORIA, HistoriaPuro, creaHistoria, manifiestoHistoria } from "./exterior/historia.ts";
+export type { DepsHistoria, Historia } from "./exterior/historia.ts";
