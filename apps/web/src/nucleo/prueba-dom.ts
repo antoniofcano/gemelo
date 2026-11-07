@@ -1,4 +1,4 @@
-// Dobles del DOM para las pruebas de Vitest de ui/ y de mundos/ (A3-7a, MU5-n; A3-7b1: pasa a nucleo/ para que lo usen también las pruebas de los mundos, que no pueden importar de ui/). Solo lo importan los *.test.ts: no es parte del motor ni del paquete.
+// Dobles del DOM para las pruebas de Vitest de ui/ (A3-7a, MU5-n). Solo lo importan los *.test.ts: no es parte del motor ni del paquete.
 // Vitest corre en Node sin DOM (MUNDOS §9.2); estos dobles dan lo justo para montar cada pieza de la interfaz y comprobar su libera(): elementos con hijos,
 // atributos, clases, estilo y selectores sencillos (#id, .clase, etiqueta, [atributo], [atributo="valor"], descendientes y listas con coma), escuchas
 // contadas (cuántas siguen vivas), relojes contados (setTimeout/setInterval que siguen vivos) y observadores contados. NO es un navegador: ni maquetación
@@ -95,7 +95,7 @@ export function creaMundo(opc: { busqueda?: string; coarse?: boolean } = {}): Mu
   }
   const raiz = el("html"), body = el("body");
   raiz.appendChild(body);
-  const doc: T = escuchable({ documentElement: raiz, body, activeElement: body, hidden: false, createElement: (t: string) => el(t), createTextNode: (t: string) => { const n = el("#text"); n.tagName = ""; n.textContent = t; return n; },
+  const doc: T = escuchable({ documentElement: raiz, body, activeElement: body, hidden: false, createElement: (t: string) => el(t), createElementNS: (_ns: string, t: string) => el(t), createTextNode: (t: string) => { const n = el("#text"); n.tagName = ""; n.textContent = t; return n; },
     getElementById: (id: string) => (function rec(n: T): T { for (const h of n.children) { if (h.id === id) return h; const r = rec(h); if (r) return r; } return null; })(raiz),
     querySelectorAll: (s: string) => raiz.querySelectorAll(s), querySelector: (s: string) => raiz.querySelector(s), contains: (o: T) => raiz.contains(o) });
   const almacen: Record<string, string> = {};

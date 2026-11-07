@@ -1,11 +1,11 @@
 "use strict";
-// F3l, la tarjeta «tu micrófono, en pocas palabras» (46b_primera_vez.js): la lógica pura, sin navegador. Quién la ve, qué dice según la sala y la forma del
+// F3l, la tarjeta «tu micrófono, en pocas palabras» (46b_primera_vez.js, desde A3-7b2 red/voz/primera-vez.ts): la lógica pura, sin navegador. Quién la ve, qué dice según la sala y la forma del
 // micro, que las cifras salen de donde deben (VozPuro.DIST_CORRO) y que lo que afirma es lo que dicen el ADR-0026/0032 (no se graba) y el motor (cómo cortar).
 // El montaje (cuándo sale, el foco, la lámina de VR) está en habla.test.js; lo de Chrome, iPhone y Quest, sin probar.
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return s.slice(i, f); };
-const PV = new Function("\"use strict\";\n" + trozo(lee("apps/web/motor/46b_primera_vez.js"), "// [puro:inicio]", "// [puro:fin]") + "\nreturn PrimeraVezPuro;")();
+const { PrimeraVezPuro: PV } = require("./_mundos");   // A3-7b2: la lógica pura vive en apps/web/src/red/voz/primera-vez.ts; 46b_primera_vez.js es su talón
 const { VozPuro } = require("./_mundos");   // MU5-n (A3-6b): la voz vive en apps/web/src/red/voz/voz.ts; 45_voz.js es su talón
 const todo = t => t.lineas.map(l => l.t + " " + l.txt).join(" ") + " " + t.pie;
 

@@ -1,4 +1,4 @@
-// Los dobles del DOM de las pruebas (A3-7a, MU5-n) viven desde A3-7b1 en nucleo/prueba-dom.ts, para que los use también la prueba de un mundo (que no puede importar de ui/).
-// Esto los deja a mano de las pruebas de ui/ con el mismo nombre. Solo lo importan los *.test.ts.
+// Los dobles del DOM para las pruebas de Vitest de ui/ (A3-7a, MU5-n). Desde A3-7b2 viven en nucleo/prueba-dom.ts, que pueden importar también los tests de mundos/ (una prueba de
+// mundos/ no puede importar de ui/: la frontera de dependency-cruiser); esto solo los reexporta para las pruebas de ui/ de siempre. Solo lo importan los *.test.ts.
 export { creaMundo } from "../nucleo/prueba-dom.ts";
 export type { Mundo } from "../nucleo/prueba-dom.ts";

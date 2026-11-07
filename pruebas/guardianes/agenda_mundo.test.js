@@ -5,12 +5,12 @@
 //     no ofrece nada si la sesión no puede inscribirse, nunca usa HTML (el título es un dato), y la fila del panel VR lista los próximos y dice dónde apuntarse.
 // El registro del componente (con y sin él) y el catálogo de eventos los comprueba componentes.test.js; lo de Chrome está en agenda_mundo_chrome.test.js.
 const test = require("node:test"), assert = require("node:assert");
-const { lee } = require("./_util");
+const { fuenteMotor } = require("./_fuente");
 
-const FUENTE = lee("apps/web/motor/43_agenda.js");
+const FUENTE = fuenteMotor("43_agenda.js");   // A3-7b2: el talón y apps/web/src/ui/agenda.ts, leído como JavaScript (sin tipos ni «dp.»)
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini); return s.slice(i, f); };
 const AP = new Function("\"use strict\";\n" + trozo(FUENTE, "// [puro:inicio]", "// [puro:fin]") + "\nreturn AgendaPuro;")();
-const CUERPO = FUENTE.slice(FUENTE.indexOf("  function AgendaMotor"), FUENTE.indexOf("  // el manifiesto"));
+const CUERPO = FUENTE.slice(FUENTE.indexOf("function AgendaMotor"), FUENTE.indexOf("// el manifiesto"));
 
 const DIA = 86400000, AHORA = Date.now();
 const iso = ms => new Date(ms).toISOString();
@@ -89,7 +89,7 @@ function monta({ prefijo = "/api/", respuestas, conPanel = true, P = null }) {
   g.Bus = { hay: ev => ev === "guiada:entrar" && hayPresencia };
   const n = { on: (e, fn) => { bus[e] = fn; }, limpia: nada,
     emite: (e, d) => { emitidos.push([e, d]); if (e === "guiada:entrar" && hayPresencia) Promise.resolve(P.entraGuiada(d.evento)).then(ok => bus["guiada:entrada"]({ evento: d.evento, ok: !!ok, mensaje: ok ? "" : P.avisoGuiada() })); } };
-  const api = new Function("AgendaPuro", "n", "g", "\"use strict\";\nvar D = g.D, ConfigPuro = g.ConfigPuro, location = g.location, window = g.window, document = g.document, Ventanas = g.Ventanas, Hud = g.Hud, Bus = g.Bus, PanelVR = g.PanelVR;\n" + CUERPO + "\nreturn AgendaMotor(n);")(AP, n, g);
+  const api = new Function("AgendaPuro", "n", "g", "\"use strict\";\nvar D = g.D, ConfigPuro = g.ConfigPuro, location = g.location, window = g.window, document = g.document, Ventanas = g.Ventanas, Hud = g.Hud, Bus = g.Bus, PanelVR = g.PanelVR;\n" + CUERPO + "\nreturn AgendaMotor(undefined, n);")(AP, n, g);
   return { api, llamadas, bus, emitidos, filas, ventanas, iconos, win, restaura: () => { globalThis.fetch = fetchAnt; } };
 }
 const J = (status, cuerpo) => ({ status, cuerpo });

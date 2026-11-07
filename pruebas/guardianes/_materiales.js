@@ -20,6 +20,7 @@ function fabrica(THREE, o) {
 function conFabrica(g) {
   if (!g.Nucleo) g.Nucleo = NUCLEO;
   if (!g.Mundos) g.Mundos = require("./_mundos");   // A3-1b: los talones de 04b, 04c, 04e y 04f toman de Mundos su fábrica
+  if (!g.Interfaz) g.Interfaz = require("./_ui");   // A3-7b2: los talones de la interfaz (46_guiada…) toman de Interfaz su manifiesto
   if (!g.Materiales || !g.InfoDibujo || !g.Estaticos || !g.fusionaGeometrias) { const f = fabrica(g.THREE); if (!g.Materiales) g.Materiales = f.Materiales; if (!g.InfoDibujo) g.InfoDibujo = f.InfoDibujo; if (!g.Estaticos) g.Estaticos = f.Estaticos; if (!g.fusionaGeometrias) g.fusionaGeometrias = f.fusionaGeometrias; }
   return g;
 }

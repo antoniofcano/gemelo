@@ -83,6 +83,8 @@ function nucleo({ busqueda = "", config = null, extra = "", globales = {} } = {}
   const documento = { getElementById: id => id === "config" && config ? { textContent: JSON.stringify(config) } : null };
   const consola = { error: (...a) => errores.push(a.map(String).join(" ")), warn: (...a) => errores.push(a.map(String).join(" ")), log() {} };
   const nombres = Object.keys(globales);
+  // A3-7b2: los componentes que ya viven en apps/web/src/mundos/ (el anfitrión de juegos…) usan el window, el document y el location globales: se los damos a este contexto
+  if (globales.Mundos) { globalThis.window = ventana; globalThis.document = documento; globalThis.location = { search: busqueda }; }
   const f = new Function(...["window", "location", "document", "console", "Nucleo"].concat(nombres), "\"use strict\";\n" + sinCabecera(NUCLEO) + "\n" + extra + "\nreturn { Componentes, Bus, Teclas, ComponentesPuro, Pausa };");
   const r = f(...[ventana, { search: busqueda }, documento, consola, Nucleo].concat(nombres.map(n => globales[n])));
   r.pulsa = (code, extra2) => { const e = Object.assign({ code, target: { tagName: "CANVAS" }, prevenida: false, preventDefault() { e.prevenida = true; } }, extra2 || {}); teclado.forEach(fn => fn(e)); return e; };
@@ -220,7 +222,8 @@ function eventosDelCodigo() {
       if (e.isDirectory()) { recorre(path.join(d, e.name), rel + e.name + "/", pre); continue; }
       if (!e.name.endsWith(".ts") || e.name.endsWith(".test.ts")) continue;
       const s = sinComentarios(fs.readFileSync(path.join(d, e.name), "utf8")), mod = pre + rel + e.name.slice(0, -3);
-      // A3-6c: en mundos/comun/ la VR y la locomoción conservan el nombre del legado, Bus (A3-7b1: y el contenido del exterior que se movió tal cual, p. ej. hazas.ts)
+      // A3-6c: en mundos/comun/ la VR y la locomoción conservan el nombre del legado, Bus
+      // A3-7b1 y A3-7b2 (el exterior que conserva el Bus del legado por dp): y los cuatro del exterior que conservan el Bus del legado por dp (personalización, oficina, juegos y «Cae la cosecha»)
       const re = rel.startsWith("comun/") || pre === "ui/" || rel.startsWith("exterior/") ? /\b(?:bus|Bus|n)\.(emite|on)\(\s*"([^"]+)"/g : /\b(?:bus|n)\.(emite|on)\(\s*"([^"]+)"/g;
       for (const x of s.matchAll(re)) apunta(x[2], x[1] === "emite", mod);
     }
@@ -428,7 +431,7 @@ test("C9a en Node: anfitrión y juego se encuentran por el Bus en cualquier orde
   const iconos = [], ventanas = [];
   const mundo = () => ({ Hud: { icono: d => { iconos.push(d.id); return () => iconos.splice(iconos.indexOf(d.id), 1); }, alterna() {} },
     Ventanas: { registra: id => { ventanas.push(id); return () => ventanas.splice(ventanas.indexOf(id), 1); }, abierta: () => null, cierra() {} },
-    VRX: { on: false }, D: { base: "", finca_id: "cerro" } });
+    VRX: { on: false }, D: { base: "", finca_id: "cerro" }, Mundos: require("./_mundos"), Laminas: {} });
   const arranca = (busqueda, extra) => { const r = nucleo({ busqueda, extra, globales: mundo() }); r.Componentes.arranca(); return r; };
   for (const orden of [H + "\n" + J, J + "\n" + H]) {
     const r = arranca("", orden);
