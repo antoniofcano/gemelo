@@ -17,6 +17,7 @@ import { defEstela } from "./exterior/vida.ts";
 import { defHuella } from "./exterior/huellas-polvo.ts";
 import { DEF_SUELO_FONDO } from "./exterior/suelo-fondo.ts";
 import { creaParcheTiempo, defParcheTiempo } from "./exterior/tiempo-parche.ts";
+import { DEF_RESALTE } from "./exterior/historia.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type A = any;
@@ -63,6 +64,9 @@ describe("A4-0: las TSL ya hechas compilan (WGSL y GLSL, sin GPU)", () => {
     const W = n.W, un = { diffuse: v(new W.Color()), map: v(new W.Texture()), uNubLuz: v(new W.Color()), uNubSom: v(new W.Color()), uOcaso: v(0) };
     for (const ocaso of [true, false]) compila(n, DEF_NUBES.tsl!({ uniforms: un, ocaso }, ctx()), { geometria: geo(W, { esquina: 2, tam: 2, alfa: 1 }) });
     compila(n, DEF_LLUVIA.tsl!({ uniforms: { uT: v(0), uInt: v(1), uViento: v(new W.Vector2()), uColor: v(new W.Color()) } }, ctx()), { objeto: "lineas", geometria: geo(W, { aEnd: 1 }) });
+  });
+  it("resalte-parcela (A3-7b1: la y local por uExag)", () => {
+    compila(n, DEF_RESALTE.tsl!({ uExag: v(1.5) }, ctx()));
   });
   it("huella (instanciada) y suelo-fondo", () => {
     const W = n.W, h = defHuella().tsl!({ uniforms: { uNow: v(0), uColor: v(new W.Color()) } }, ctx());
