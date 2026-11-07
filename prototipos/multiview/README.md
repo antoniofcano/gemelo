@@ -37,6 +37,12 @@ Repite 1, 2 y 3 tres veces (gatillo). Con **OVR Metrics Tool** a la vez, apunta 
 
 **Lo que está probado y lo que no.** Solo Node: las tres builds se construyen con 0.187.0 y llevan cada una su renderizador y una sola three. **No probado**: que se vea bien en un navegador, WebXR, cualquier ms, y si los modos `nuevo` y `super` piden bien las capas en el Quest Browser. Si un modo falla al arrancar, la página enseña el error en la ficha y en la consola (`chrome://inspect`): pásalo tal cual.
 
+
+### Sin cable, por la Wi-Fi de casa (HTTPS con certificado autofirmado)
+WebXR solo funciona en un origen seguro: `http://<IP>` no deja entrar en VR. Para abrirlo sin USB:
+1. En el ordenador: `npm run build` y `npm run sirve:red`. Vite escribe las direcciones «Network»; la buena es la de la Wi-Fi (la del ordenador en la red de casa, como `https://192.168.x.y:4173/`). La primera vez, Windows puede pedir permiso en el cortafuegos para Node: hay que permitirlo en redes privadas.
+2. En el Quest, abrir `https://<IP>:4173/?modo=clasico&n=200`. El casco avisa una vez de que la conexión no es privada (el certificado es autofirmado, de `@vitejs/plugin-basic-ssl`): «Avanzado» → «Continuar». A partir de ahí, las mismas URLs y la misma medida de arriba, cambiando `http://localhost:4173` por `https://<IP>:4173`.
+
 ## Los tres modos
 
 Dos three no pueden convivir en una página (sus clases no son las mismas y `instanceof` falla), así que son **tres builds de Vite** de la misma escena. `index.html` + `elige.js` cargan la que pida `?modo=`.
