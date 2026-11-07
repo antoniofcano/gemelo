@@ -44,3 +44,6 @@ export type { DepsLaminas, Laminas } from "./laminas.ts";
 // A3-7a: Entidades y Usables (antes 02e_entidades.js; EntidadesPuro sigue en nucleo/entidades.ts), componente de todo mundo.
 export { ID_USABLES, creaEntidades, manifiestoEntidades } from "./entidades.ts";
 export type { DepsEntidades, EntidadesUsables } from "./entidades.ts";
+// A3-7b2: el interruptor «Avisarme por correo» (antes 49_avisos_correo.js), componente de todo mundo; su libera() cancela lo que esté en vuelo.
+export { ID_AVISOS_CORREO, creaAvisosCorreo, manifiestoAvisosCorreo } from "./avisos-correo.ts";
+export type { AvisosCorreo, DepsAvisosCorreo } from "./avisos-correo.ts";

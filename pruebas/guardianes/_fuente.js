@@ -53,6 +53,8 @@ const TS_DE = {
   "30_mide.js": "apps/web/src/ui/mide.ts",
   "02d_laminas.js": "apps/web/src/ui/laminas.ts",
   "02e_entidades.js": "apps/web/src/ui/entidades.ts",
+  // A3-7b2: lo social, los juegos y la oficina
+  "49_avisos_correo.js": "apps/web/src/ui/avisos-correo.ts",
   "24_pantalla.js": ["apps/web/src/ui/pantalla.ts", "apps/web/src/mundos/comun/transicion.ts"],   // el menú y la pantalla completa (ui/); la transición del mapa al paseo (comun/)
   // A3-2a: 07ab vive en varios ficheros (la escalera, el horneado, la cola, el sombreado, el lote y el módulo): se leen todos, en este orden
   // A3-6c: la VR y la locomoción, de todo mundo (apps/web/src/mundos/comun/)
