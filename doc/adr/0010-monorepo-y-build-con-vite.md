@@ -1,6 +1,6 @@
 # ADR-0010 — Monorepo y paso de build con Vite
 
-- **Estado:** Aceptado
+- **Estado:** Aceptado; **superado en parte por el [ADR-0033](0033-mundos.md)**: desde A3-8c (2026-11-07) ya no hay concatenación. `apps/web/motor/` se borró y el cliente arranca desde `apps/web/src/arranque.ts` (TypeScript), que Vite empaqueta directamente; `genera_motor.mjs` solo escribe la página y una entrada de dos líneas ([ARCHITECTURE §1](../sistema/ARCHITECTURE.md#1-cómo-se-monta), [MUNDOS §9](../sistema/MUNDOS.md)). El monorepo, Vite y el resto de esta decisión siguen en pie.
 - **Fecha:** 2026-10-28 (aprobado por Antonio con el plan multiusuario)
 
 ## Contexto

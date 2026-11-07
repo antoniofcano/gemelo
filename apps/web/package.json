@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Cliente web del gemelo (escritorio, móvil y Meta Quest): motor de apps/web/motor/ empaquetado con Vite",
+  "description": "Cliente web del gemelo (escritorio, móvil y Meta Quest): apps/web/src/ (entrada src/arranque.ts), empaquetado con Vite",
   "scripts": {
     "motor": "node herramientas/genera_motor.mjs",
     "build": "node herramientas/genera_motor.mjs && node herramientas/suelo_ktx2.mjs && vite build",

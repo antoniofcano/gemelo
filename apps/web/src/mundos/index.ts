@@ -1,6 +1,5 @@
-// La puerta de los mundos hacia el legado (MUNDOS §9.3; MU2-3): lo que exporta este fichero es lo que ve la IIFE de apps/web/motor/ como `Mundos.<nombre>`.
-// Igual que el puente del núcleo (nucleo/index.ts), pero aparte: nucleo/ no puede importar de mundos/ (dependency-cruiser), así que los mundos que el legado
-// monta (hoy solo el exterior) entran por su propio alias, «@gemelo/mundos», que genera_motor.mjs escribe detrás del de «@gemelo/nucleo».
+// Lo que dan los mundos al arranque (src/arranque.ts), que los ve como `Mundos.<nombre>` (import * as Mundos). Va aparte del núcleo porque nucleo/ no puede importar
+// de mundos/ (dependency-cruiser). Hasta A3-8c era el puente con la IIFE de apps/web/motor/ (alias «@gemelo/mundos»); el arranque lo importa por ruta relativa.
 // Los interiores NO pasan por aquí: son trozos perezosos (`import("@gemelo/mundo-bodega")`). El vacío (MU2-6) es la excepción: el interior de prueba,
 // sin assets, que 90_final registra para ?mundo=vacio (MU2-8).
 export { creaCargaTeselas, creaExterior } from "./exterior.ts";

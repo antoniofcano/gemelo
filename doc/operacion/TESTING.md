@@ -18,7 +18,7 @@ El cuello de botella es el **banco** (un solo Chrome con SwiftShader o un Docker
 ## Qué test escribo
 | Cambio | Prueba |
 |---|---|
-| Módulo nuevo en `apps/web/motor/` | `node pruebas/contrato_modulos.js --escribe` (cabecera Expone/Consume, la comprueba `contratos.test.js`); `sintaxis.test.js` lo comprueba solo y envuelto |
+| Módulo nuevo del cliente | en `apps/web/src/` (su frontera la vigila `dependency-cruiser`, `tipos_web.test.js`) y, si el arranque lo crea, un paso nuevo en `apps/web/src/arranque.ts` con su marca `// [paso: NN_nombre]` colocado por lo que consume; `GEMELO_PASOS_ESCRIBE=1 node --test pruebas/guardianes/arranque.test.js` rehace la foto de nombres si cambia a propósito (A3-8c: ya no hay `apps/web/motor/` ni cabeceras «Expone / Consume») |
 | Campo nuevo en el exportador | contrato + esquema + fixture (`contratos.test.js`) |
 | Cambio gráfico | `medir` antes/después (`prueba3.js`) y, si procede, subir/bajar `pruebas/presupuesto.json` con razón |
 | Cambio en VR | `vr_mock.js` + nota de comodidad **no probado en casco** |
@@ -28,11 +28,12 @@ El cuello de botella es el **banco** (un solo Chrome con SwiftShader o un Docker
 ## Qué significa este rojo
 | Guardián | Qué vigila | Por qué existe | Cómo se arregla |
 |---|---|---|---|
-| `sintaxis` | `node --check` de `apps/web/motor/*.js` | un módulo roto rompe todo el motor | corregir el error que imprime |
+| `sintaxis` | `node --check` del arranque (`apps/web/src/arranque.ts` sin tipos) y de cada paso | un paso roto rompe todo el cliente | corregir el error que imprime |
+| `arranque` | los pasos del arranque y su orden, la foto de nombres (`referencias/pasos_nombres.json`), `var`/`function` en `arranca()`, nombres repetidos, lo que se pasa por valor antes de existir, el trinquete de líneas, `--sin` | el orden de creación es el contrato del arranque (A3-8c; recoge `puente`, `trinquete_legado`, `estilo_motor` y `globales_duplicados`, retirados) | si cambian los nombres a propósito, `GEMELO_PASOS_ESCRIBE=1`; si sube el trinquete, la lógica va a su módulo de `src/` |
 | `higiene` | marcas de conflicto, CRLF, `C:\Users`, correos | el repo es público | quitar la ruta/correo; convertir a LF |
 | `version` | versión única en `VERSION`, `package.json`, CHANGELOG, CLAUDE, README, ESTADO | las versiones divergen en silencio | subir todas juntas (skill `release`) |
 | `documentacion` | enlaces relativos, índices, techos, «foto» en histórico | la doc se pudre | añadir la fila, arreglar el enlace, archivar |
-| `contratos` | fixture y `apps/web/motor/` contra los esquemas (JSON Schema 2020-12 con ajv, estricto; también que los esquemas rechazan datos rotos) | el exportador y el motor se desacoplan | cambiar contrato, esquema y fixture a la vez |
+| `contratos` | fixture y las interfaces del cliente (`contratos/interfaces.json`) contra los esquemas (JSON Schema 2020-12 con ajv, estricto; también que los esquemas rechazan datos rotos) | el exportador y el motor se desacoplan | cambiar contrato, esquema y fixture a la vez |
 | `build` | la web de Vite construida con el fixture, las dos fincas con tileset y sin él, y la caché de páginas | un cambio rompe el build | ver el error de Vite |
 | `carga` | 0 errores de consola y topes de dibujo | regresiones de render | mirar consola; si el tope sube a propósito, explicarlo en el commit |
 | `secretos` | claves, datos de explotación, ficheros pesados | datos privados en repo público | sacarlo del historial si ya se subió (consultar antes) |

@@ -1,7 +1,6 @@
-// La puerta del núcleo hacia el legado (MUNDOS §9.3): lo que exporta este fichero es lo que ve la IIFE de apps/web/motor/ como `Nucleo.<nombre>`.
-// genera_motor.mjs escribe `import * as Nucleo from "@gemelo/nucleo";` delante del motor concatenado; el alias «@gemelo/nucleo» → este fichero
-// está en vite.config.js (las dos builds) y en tsconfig.json («paths»). Un módulo legado migrado queda en motor/ como talón: `var X = Nucleo.X;`.
-// Regla: nada de aquí lee globales del legado al cargarse; lo que necesite del legado lo recibe por argumento cuando el talón llama a su fábrica.
+// Lo que el núcleo da al resto del cliente: lo que exporta este fichero es lo que el arranque (src/arranque.ts) ve como `Nucleo.<nombre>` (import * as Nucleo).
+// Hasta A3-8c era el puente con la IIFE de apps/web/motor/ (alias «@gemelo/nucleo»); el legado ya no existe y el arranque lo importa por ruta relativa.
+// Regla: nada de aquí lee globales al cargarse; lo que necesite del arranque lo recibe por argumento cuando el arranque llama a su fábrica.
 export { partesDeVersion } from "./version.ts";
 export { CargaPuro, creaCola, creaColaDeMundo, duenoDe } from "./cola.ts";
 export type { ColaDeMundo } from "./cola.ts";

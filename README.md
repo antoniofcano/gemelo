@@ -13,7 +13,7 @@ Un mundo: **Hituelo** (4 fincas, 27 parcelas, 95 ha, ~5.900 olivos). Cerro Velas
 
 | Carpeta / fichero | Qué es |
 |---|---|
-| `apps/web/motor/*.js` | El motor, en módulos que se concatenan **por orden alfabético** (lo fija `apps/web/herramientas/genera_motor.mjs`) y Vite empaqueta: mundo y teselas (`02`), cola de trabajos (`02b`), escena 3D Tiles (`04b`-`04d`), nube LiDAR (`05`), olivos con 3 niveles (`06`, `07`, `07b`), cámara, sol, paseo, historia, tiempo, vida, minimapa, paisaje, balizas, sonido, suelo, huellas, estación, perros, depuración (`?debug`) y **VR** (`29_vr.js`) |
+| `apps/web/src/` | El cliente en TypeScript, que Vite empaqueta desde su entrada, `apps/web/src/arranque.ts` (crea los objetos en el orden de siempre: sus pasos `// [paso: NN_nombre]` son los antiguos módulos de `apps/web/motor/`, que se borró en A3-8c): mundo y teselas (`02`), cola de trabajos (`02b`), escena 3D Tiles (`04b`-`04d`), nube LiDAR (`05`), olivos con 3 niveles (`06`, `07`, `07b`), cámara, sol, paseo, historia, tiempo, vida, minimapa, paisaje, balizas, sonido, suelo, huellas, estación, perros, depuración (`?debug`) y **VR** (`29_vr.js`) |
 | `apps/web/plantilla.html` | HTML y CSS de la página |
 | `apps/web/herramientas/`, `apps/web/vite.config.js` | Generan el motor y construyen la página con Vite |
 | `tuberia/tiles3d/` | Genera el tileset 3D Tiles de cada finca a partir del contrato v2 |

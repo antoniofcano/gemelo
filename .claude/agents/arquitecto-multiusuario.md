@@ -13,7 +13,7 @@ La propuesta completa está en `doc/sistema/ARQUITECTURA-MULTIUSUARIO.md`, con l
 ## Qué contrastas (léelo antes de opinar)
 - `CLAUDE.md` (reglas de oro: datos fuera del repo, medido/deducido/ilustrativo, presupuesto de dibujo, español, confirmar antes de publicar), `doc/ESTADO.md`, `doc/rumbo/PLAN.md` y `DECISIONS-PENDING.md`.
 - Los ADR 0001–0008 (`doc/adr/`), en especial: teselas propias de 256 m en UTM30 (0001), niveles de detalle (0002), calidad Base/Alta (0003), datos fuera del repo (0004), WebXR con perfil propio (0005), ficheros de apoyo json/jpg (0008, enmendado: ya sin límites de artefactos). Ojo: 0001 y 0002 están superados por 0015/0021 (escena 3D Tiles única; la salida artefacto se retiró).
-- El motor: `doc/sistema/ARCHITECTURE.md`, `doc/sistema/CONTRATOS.md`, `doc/sistema/VR.md`, `contratos/`, `apps/web/motor/` (módulos concatenados en una IIFE, sin módulos por dentro; three **0.186.1** empaquetado por Vite: ADR-0010 y ADR-0016; el orden de montaje lo fija `apps/web/herramientas/genera_motor.mjs`), los exportadores `tuberia/finca_8_teselas.py` y `tuberia/hituelo_conv.py`.
+- El motor: `doc/sistema/ARCHITECTURE.md`, `doc/sistema/CONTRATOS.md`, `doc/sistema/VR.md`, `contratos/`, `apps/web/src/` (TypeScript; su entrada, `apps/web/src/arranque.ts`, crea los objetos en orden; hasta A3-8c, `apps/web/motor/`, módulos concatenados en una IIFE; three **0.186.1** empaquetado por Vite: ADR-0010 y ADR-0016; el orden de montaje lo fija `apps/web/herramientas/genera_motor.mjs`), los exportadores `tuberia/finca_8_teselas.py` y `tuberia/hituelo_conv.py`.
 - Las mediciones: `doc/sistema/MEDIDAS.md` y `pruebas/presupuesto.json`.
 
 ## Qué debes entregar
