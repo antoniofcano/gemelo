@@ -121,7 +121,7 @@ describe("presencia-compartida: de todo mundo y con libera() de verdad (A3-6a)",
     const m: any = nuevo.crea(MATERIAL_NOMBRES, { uniforms: uni });
     expect(m.isNodeMaterial).toBe(true); expect(m.type).toBe("MeshBasicNodeMaterial");
     expect(m).toMatchObject({ transparent: true, depthWrite: false, fog: false, alphaTest: 0.04 });
-    expect(m.colorNode).toBeTruthy(); expect(m.opacityNode).toBeTruthy(); expect(m.vertexNode).toBeFalsy();   // de cara a la cámara: falta (MATERIALES §13.1)
+    expect(m.colorNode).toBeTruthy(); expect(m.opacityNode).toBeTruthy(); expect(m.vertexNode).toBeTruthy();   // A4-0: de cara a la cámara (compila en tsl-compila.test.ts)
     expect(clasico.crea(MATERIAL_NOMBRES, { uniforms: uni })).toMatchObject({ type: "ShaderMaterial" });
     expect(nuevo.cobertura()[MATERIAL_NOMBRES]).toMatchObject({ clasico: true, tsl: true });
   });

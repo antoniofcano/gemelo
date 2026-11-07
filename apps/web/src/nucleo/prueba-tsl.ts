@@ -6,6 +6,7 @@
 // Nodes._createNodeBuilder en el primer dibujo. Eso evalúa cada Fn, infiere los tipos, resuelve atributos, varyings y uniformes y escribe el texto del
 // sombreador: caza los errores que con un NodeMaterial recién creado no salen (un nodo mal encadenado, un tipo que no casa, un atributo que no existe,
 // un Fn que lanza). Los avisos y errores de three por consola durante la construcción se recogen y cuentan como fallo.
+// Y una comprobación de texto de lo que WGSL rechaza y GLSL no: smoothstep con los bordes literales al revés.
 // Qué NO hace (HONESTIDAD): no valida el WGSL ni el GLSL con un compilador de verdad (Tint, naga o el del controlador): un sombreador que se escribe bien
 // pero no lo acepta la tarjeta solo lo destapa el navegador (MU6, banco). Ni dibuja: las capturas clásico frente a TSL son de MU6.
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -111,5 +112,17 @@ export function compila(n: NodosPrueba, material: N, o: OpcCompila = {}): Compil
   } finally { consola["warn"] = guardados.warn as (...a: unknown[]) => void; consola["error"] = guardados.error as (...a: unknown[]) => void; }
   if (avisos.length) throw new Error("three avisó al construir los nodos:\n" + avisos.join("\n"));
   if ((o.solo !== "glsl" && !out.wgsl.fragmento) || (o.solo !== "wgsl" && !out.glsl.fragmento)) throw new Error("los constructores no escribieron el sombreador");
+  // lo que el WGSL rechaza y aquí sí se ve en el texto: un smoothstep con los bordes constantes y al revés (borde0 ≥ borde1) es un error al crear el sombreador
+  // en WGSL (en GLSL vale): se escribe 1 − smoothstep(borde1, borde0, x)
+  const reves = revesSmoothstep(out.wgsl.vertice + "\n" + out.wgsl.fragmento);
+  if (reves.length) throw new Error("smoothstep con los bordes al revés (WGSL lo rechaza): " + reves.join(", "));
   return out;
+}
+
+/** Los smoothstep de un WGSL con los dos bordes literales y el primero ≥ el segundo. */
+export function revesSmoothstep(wgsl: string): string[] {
+  const r: string[] = [], re = /smoothstep\(\s*(-?\d+(?:\.\d+)?(?:e-?\d+)?)\s*,\s*(-?\d+(?:\.\d+)?(?:e-?\d+)?)\s*,/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(wgsl))) if (Number(m[1]) >= Number(m[2])) r.push("smoothstep(" + m[1] + ", " + m[2] + ", …)");
+  return r;
 }

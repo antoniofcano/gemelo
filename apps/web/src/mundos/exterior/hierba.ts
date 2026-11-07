@@ -10,7 +10,7 @@
 import type { Manifiesto } from "../../nucleo/componentes.ts";
 import type { DefMaterial } from "../../nucleo/materiales.ts";
 import { colorSrgbTsl, nodosTiempo, sinColorPorInstancia } from "./tiempo-parche.ts";
-import { aplicaInstancia, columnaInstancia } from "./instancia-tsl.ts";
+import { aplicaInstancia, columnaInstancia } from "../comun/instancia-tsl.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type A = any;
@@ -67,7 +67,7 @@ export const DEF_MATAS: DefMaterial<OpcMatas> = {
     m.colorNode = colorSrgbTsl(T, T.vec4(tx.rgb.mul(T.float(0.5).add(T.smoothstep(0.0, 0.55, uvA.y).mul(0.5))), tx.a), false);   // el pie más oscuro; el color por instancia, a lineal
     // fundido por trama con la distancia: se descarta donde smoothstep(34, 58, d) > ruido o smoothstep(0,9, 0,2, d) > ruido
     var dd = T.length(T.positionView), ign = T.fract(T.fract(T.dot(T.screenCoordinate.xy, T.vec2(0.06711056, 0.00583715))).mul(52.9829189));
-    m.maskNode = T.smoothstep(34.0, 58.0, dd).lessThanEqual(ign).and(T.smoothstep(0.9, 0.2, dd).lessThanEqual(ign));
+    m.maskNode = T.smoothstep(34.0, 58.0, dd).lessThanEqual(ign).and(T.float(1).sub(T.smoothstep(0.2, 0.9, dd)).lessThanEqual(ign));
     if (o.u) {
       var N = nodosTiempo(T, o.u.uSombra, o.u.uViento), num = function (x: A): A { return T.uniform(x.value).onObjectUpdate(function () { return x.value; }); };
       var uT = num(o.u.uViento.uT), uAmp = num(o.u.uViento.uAmp), uDir = num(o.u.uViento.uDir), g = T.positionGeometry, wp = aplicaInstancia(W, T, g), s = g.y;

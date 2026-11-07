@@ -12,7 +12,7 @@ import type { Manifiesto } from "../../nucleo/componentes.ts";
 import type { Materiales } from "../../nucleo/materiales.ts";
 import { fundidoTsl } from "./generados-sombreado.ts";
 import { colorSrgbTsl } from "./tiempo-parche.ts";
-import { aplicaInstancia, columnaInstancia } from "./instancia-tsl.ts";
+import { aplicaInstancia, columnaInstancia } from "../comun/instancia-tsl.ts";
 
 // three no trae tipos en el repo (como en ambiente.ts y presupuesto.ts): de él solo se toca lo mínimo, sin tiparlo; el motor son números, arrays y GLSL
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

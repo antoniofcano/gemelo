@@ -75,7 +75,7 @@ export const DEF_FRUTO_FLOR: DefMaterial<OpcFrutoFlor> = {
     m.sizeNode = tam.mul(uEsc).div(T.max(0.5, mvz.negate())).div(T.screenDPR);
     var vTam = T.varying(tam), vCol = T.varying(col), dd = uvPunto(T).sub(0.5), r2 = T.dot(dd, dd);
     m.maskNode = vTam.greaterThan(0.0).and(r2.lessThanEqual(0.25));
-    var brillo = T.smoothstep(0.07, 0.0, T.length(dd.sub(T.vec2(-0.12, 0.12))));
+    var brillo = T.float(1).sub(T.smoothstep(0.0, 0.07, T.length(dd.sub(T.vec2(-0.12, 0.12)))));   // smoothstep(0.07, 0.0, …) del GLSL: WGSL no deja los bordes al revés
     m.colorNode = T.vec4(T.sRGBTransferEOTF(vCol).mul(uLuz).mul(T.float(0.82).add(T.float(0.25).sub(r2).mul(0.4))).add(uLuz.mul(brillo.mul(0.3))), 1.0);
     return m;
   }

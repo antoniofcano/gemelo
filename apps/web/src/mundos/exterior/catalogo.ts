@@ -8,7 +8,7 @@
 import type { Manifiesto } from "../../nucleo/componentes.ts";
 import type { DefMaterial, Materiales, MaterialMin } from "../../nucleo/materiales.ts";
 import { colorSrgbTsl } from "./tiempo-parche.ts";
-import { columnaInstancia } from "./instancia-tsl.ts";
+import { columnaInstancia } from "../comun/instancia-tsl.ts";
 
 // three no trae tipos en el repo (como en ambiente.ts y presupuesto.ts): de él solo se toca lo mínimo, sin tiparlo
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
