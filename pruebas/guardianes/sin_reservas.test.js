@@ -69,7 +69,7 @@ test("el texto del dron se escribe a 4 Hz como mucho (16_vida.js)", () => {
 });
 
 test("el contador de ?debug refresca su texto cada 500 ms como mucho (28_depura.js)", () => {
-  const cu = R.cuerpo(lee("apps/web/motor/28_depura.js"), "function depuraCuadro(");
+  const cu = R.cuerpo(require("./_fuente").fuenteMotor("28_depura.js"), "function depuraCuadro(");
   const i = cu.indexOf("if (ahora - dep.t0 < 500) return;"), j = cu.indexOf(".textContent");
   assert.ok(i > 0 && j > i, "el texto del contador debe escribirse después de la puerta de 500 ms");
 });

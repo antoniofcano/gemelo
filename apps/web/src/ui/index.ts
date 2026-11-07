@@ -32,3 +32,6 @@ export type { DepsMinimapa, MinimapaUI } from "./minimapa.ts";
 // A3-7a: los ganchos de las pruebas, window.__g (antes 27_debug.js); no es un componente.
 export { creaGanchos } from "./ganchos.ts";
 export type { DepsGanchos, Ganchos } from "./ganchos.ts";
+// A3-7a: el contador de ?debug (antes 28_depura.js), componente de todo mundo.
+export { ID_CONTADOR, creaDepura, manifiestoDepura } from "./depura.ts";
+export type { DepsDepura, Depura } from "./depura.ts";

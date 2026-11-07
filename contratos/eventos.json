@@ -163,7 +163,7 @@
         }
       },
       "emiten": [
-        "28_depura"
+        "ui/depura"
       ],
       "escuchan": [
         "30_mide",

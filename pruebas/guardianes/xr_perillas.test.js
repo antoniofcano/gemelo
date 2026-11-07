@@ -19,7 +19,7 @@ test("cableado: 29_vr usa XrPerillas en un solo sitio, 03_escena el MSAA, y el i
   assert.match(vr, /vrPerfil\(XrPerillas\.fijo\(\) \? XrPerillas\.efectivas\.nivel : 0\)/);
   assert.match(vr, /xr: \{ near: [^}]*fov: /, "window.__vrDebug() trae las perillas");
   assert.match(lee("apps/web/motor/03_escena.js"), /antialias: XrPerillas\.aa/);
-  assert.match(lee("apps/web/motor/28_depura.js"), /XrPerillas\.linea\(\)/);
+  assert.match(require("./_fuente").fuenteMotor("28_depura.js"), /XrPerillas\.linea\(\)/);
   const mide = lee("apps/web/motor/30_mide.js");
   assert.match(mide, /perillas: modoIni === "VR" \? XrPerillas\.linea\(\)/); assert.match(mide, /r\.perillas/);
   // las banderas xr* solo se leen en 02f
