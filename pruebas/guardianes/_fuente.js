@@ -58,6 +58,7 @@ const TS_DE = {
   "13b_hazas.js": "apps/web/src/mundos/exterior/hazas.ts",
   "53_mundo_hoy.js": "apps/web/src/mundos/exterior/mundo-hoy.ts",
   "48_vista_familia.js": "apps/web/src/mundos/exterior/vista-familia.ts",
+  "51_fichas_mundo.js": "apps/web/src/mundos/exterior/fichas-mundo.ts",
   // A3-2a: 07ab vive en varios ficheros (la escalera, el horneado, la cola, el sombreado, el lote y el módulo): se leen todos, en este orden
   // A3-6c: la VR y la locomoción, de todo mundo (apps/web/src/mundos/comun/)
   "36_mandos.js": "apps/web/src/mundos/comun/mandos.ts",

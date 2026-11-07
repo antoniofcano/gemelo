@@ -148,3 +148,5 @@ export { ID_MUNDO_HOY, MundoHoyPuro, manifiestoMundoHoy } from "./exterior/mundo
 export type { DepsMundoHoy } from "./exterior/mundo-hoy.ts";
 export { ID_VISTA_FAMILIA, VistaFamiliaPuro, manifiestoVistaFamilia } from "./exterior/vista-familia.ts";
 export type { DepsVistaFamilia } from "./exterior/vista-familia.ts";
+export { ID_FICHAS_MUNDO, FichasMundoPuro, manifiestoFichasMundo } from "./exterior/fichas-mundo.ts";
+export type { DepsFichasMundo } from "./exterior/fichas-mundo.ts";
