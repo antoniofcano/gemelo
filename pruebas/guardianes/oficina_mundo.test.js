@@ -17,7 +17,7 @@ const contratoModulos = require(path.join(__dirname, "..", "contrato_modulos.js"
 
 const sinCabecera = s => s.startsWith(contratoModulos.MARCA_I) ? s.slice(s.indexOf(contratoModulos.MARCA_F) + contratoModulos.MARCA_F.length + 1) : s;
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return s.slice(i, f); };
-const RED = lee("apps/web/motor/37_red.js"), PRES = lee("apps/web/motor/38_presencia_compartida.js"), LIB = lee("apps/web/motor/26_presencia.js"), OFI = lee("apps/web/motor/39_oficina_mundo.js");
+const RED = lee("apps/web/motor/37_red.js"), PRES = lee("apps/web/motor/38_presencia_compartida.js"), LIB = lee("apps/web/motor/26_presencia.js"), OFI = require("./_fuente").fuenteMotor("39_oficina_mundo.js"), OFI_TALON = lee("apps/web/motor/39_oficina_mundo.js");   // A3-7b2: el talón y apps/web/src/mundos/exterior/oficina-mundo.ts (leído como JavaScript, sin tipos ni «dp.»)
 const NUCLEO = lee("apps/web/motor/02c_componentes.js");
 const { SalaPose, Aspecto, Chat } = require("./_mundos");   // MU5-n (A3-6a): la lógica pura de 26_presencia.js vive en apps/web/src/red/ (pose.ts, sala.ts) y mundos/comun/muneco.ts; el legado la ve como Mundos.<nombre>
 const OP = new Function("\"use strict\";\n" + trozo(OFI, "// [puro:inicio]", "// [puro:fin]") + "\nreturn OficinaMundoPuro;")();
@@ -96,7 +96,7 @@ test("el panel: lo que manda a la api (anuncio y baliza) y cuánto dura un aviso
   assert.strictEqual(OP.hasta(new Date(2026, 9, 30, 18, 30).getTime(), hoy), "hasta las 18:30");
   assert.strictEqual(OP.hasta(new Date(2026, 10, 2, 9, 5).getTime(), hoy), "hasta el 02/11, 09:05");
   assert.strictEqual(OP.otraSala("general"), "visita"); assert.strictEqual(OP.otraSala("visita"), "general");
-  for (const e of ["oficina:anuncio", "oficina:sala"]) assert.deepStrictEqual(EVENTOS.eventos[e].emiten, ["39_oficina_mundo"], e);
+  for (const e of ["oficina:anuncio", "oficina:sala"]) assert.deepStrictEqual(EVENTOS.eventos[e].emiten, ["mundos/exterior/oficina-mundo"], e);
 });
 
 // ---------- los componentes de verdad en el registro de 02c: THREE, DOM, LiveKit y la api de mentira
@@ -154,7 +154,7 @@ function motor({ busqueda = "?presencia=red", rol = "oficina", base = "/teselas/
   const LK = lkFalso(meta), errores = [], cuenta = { mallas: 0, mallasLibres: 0, escena: 0, fetch: [], tipos: {}, quitados: [], ventanas: {}, iconos: [], capas: 0, laminas: [], hudAvisos: [] };
   const fuentes = { red: sinCabecera(RED).replace('import("livekit-client")', "Promise.resolve(LK_FALSO)"),
     presencia: sinCabecera(PRES).replace('import("three/addons/utils/BufferGeometryUtils.js")', "Promise.reject(new Error(\"sin addons en Node\"))"),
-    oficina: sinCabecera(OFI) };
+    oficina: sinCabecera(OFI_TALON) };
   const ventana = { addEventListener() {}, removeEventListener() {} }, visor = new El("div");
   const documento = { getElementById: () => null, createElement: t => new El(t), createTextNode: t => ({ t }), body: new El("body"), activeElement: null };
   const consola = { error: (...a) => errores.push(a.map(String).join(" ")), warn: (...a) => { const t = a.map(String).join(" "); if (!/sin quad ni dron/.test(t)) errores.push(t); }, log() {} };
@@ -184,6 +184,8 @@ function motor({ busqueda = "?presencia=red", rol = "oficina", base = "/teselas/
     }
   };
   conFabrica(g);
+  // A3-7b2: la oficina (mundos/exterior/oficina-mundo.ts) usa el document, el window, el location y el fetch globales: se los damos a este contexto
+  globalThis.document = documento; globalThis.window = ventana; globalThis.location = { search: busqueda, href: "https://gemelo.test/finca/index.html" + busqueda }; globalThis.fetch = g.fetch;
   const nombres = Object.keys(g), codigo = sinCabecera(LIB) + "\n" + ficheros.map(f => fuentes[f]).join("\n");
   const f = new Function(...["window", "location", "document", "console"].concat(nombres), "\"use strict\";\n" + sinCabecera(NUCLEO) + "\n" + codigo + "\nreturn { Componentes, Bus };");
   const r = f(...[ventana, { search: busqueda, href: "https://gemelo.test/finca/index.html" + busqueda }, documento, consola].concat(nombres.map(n => g[n])));

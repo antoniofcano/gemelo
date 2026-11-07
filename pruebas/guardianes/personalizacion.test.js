@@ -10,7 +10,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const { lee } = require("./_util");
 
-const FUENTE = lee("apps/web/motor/42_personalizacion.js");
+const FUENTE = require("./_fuente").fuenteMotor("42_personalizacion.js");   // A3-7b2: el talón y apps/web/src/mundos/exterior/personalizacion.ts, leído como JavaScript (sin tipos ni «dp.»)
 function trozo(ini, fin) {
   const i = FUENTE.indexOf(ini), f = FUENTE.indexOf(fin);
   assert.ok(i >= 0 && f > i, "42_personalizacion.js debe marcar " + ini + " … " + fin);
@@ -220,7 +220,7 @@ function mundoMotor(o) {
   const AHORA = o.ahora || "2026-11-02T10:00:00+01:00";
   class FechaFalsa extends Date { constructor(...a) { super(...(a.length ? a : [AHORA])); } }
   const f = new Function("D", "location", "fetch", "document", "window", "THREE", "Entidades", "Usables", "Laminas", "Hazas", "HazasPuro", "Bus", "camera", "lienzo", "Estado", "VRX", "Image", "createImageBitmap", "console", "Date",
-    "\"use strict\";\n" + trozo("// [puro:inicio]", "// [puro:fin]") + trozo("// [motor:inicio]", "// [motor:fin]") + "\nreturn PersonalizaMotor;");
+    "\"use strict\";\n" + trozo("// [puro:inicio]", "// [puro:fin]") + trozo("// [motor:inicio]", "// [motor:fin]") + "\nreturn function (n) { return PersonalizaMotor(undefined, n); };");
   const HazasPuro = { prefijoApi: () => (o.sinApi ? null : "/api/") };
   const motor = f({ base: "/teselas/hituelo/", finca_id: "hituelo" }, { search: "" }, fetchFalso, documento, {}, { Vector3: V3 }, Entidades, Usables, Laminas, Hazas, HazasPuro, Bus, camera, lienzo, { exag: 1 }, VRX, Imagen, undefined,
     { error: (...a) => reg.errores.push(a.join(" ")) }, FechaFalsa);
@@ -481,5 +481,5 @@ test("el aviso es el de la api, el módulo no usa HTML a mano ni habla con otro 
   assert.ok(!/https?:\/\//.test(FUENTE.replace(/\/\/ .*$/gm, "")), "solo su mismo origen");
   const openapi = lee("contratos/api.openapi.yaml");
   for (const r of ["/api/hazas/{id}/olivos", "/api/olivos/{finca}/{copas_id}", "/api/medios", "/api/personalizaciones/{id}/denuncias", "/api/hazas/{id}/sugerencias", "/api/sesion"]) assert.ok(openapi.includes("  " + r + ":"), r);
-  const eventos = JSON.parse(lee("contratos/eventos.json")).eventos; assert.ok(eventos["usable:elige"].escuchan.includes("42_personalizacion")); assert.deepStrictEqual(eventos["personalizacion:resultado"].emiten, ["42_personalizacion"]);
+  const eventos = JSON.parse(lee("contratos/eventos.json")).eventos; assert.ok(eventos["usable:elige"].escuchan.includes("mundos/exterior/personalizacion")); assert.deepStrictEqual(eventos["personalizacion:resultado"].emiten, ["mundos/exterior/personalizacion"]);
 });

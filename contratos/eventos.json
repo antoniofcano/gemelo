@@ -21,7 +21,7 @@
         }
       },
       "emiten": [
-        "43_agenda"
+        "ui/agenda"
       ],
       "escuchan": []
     },
@@ -170,7 +170,7 @@
         "mundos/comun/presencia",
         "mundos/exterior/lindes",
         "red/voz/voz",
-        "46_guiada",
+        "ui/guiada",
         "mundos/comun/habla",
         "mundos/comun/corro",
         "mundos/exterior/decoraciones"
@@ -197,14 +197,14 @@
           }
         }
       },
-      "emiten": ["42_personalizacion"],
+      "emiten": ["mundos/exterior/personalizacion"],
       "escuchan": ["mundos/exterior/decoraciones"]
     },
     "decoraciones:pide": {
       "descripcion": "P7g (D3): quien dibuja las decoraciones (50_decoraciones), al montarse, pide la última lista; quien la tiene (42_personalizacion) responde con «decoraciones:cambian». Sin nadie que la tenga, no pasa nada (llegará cuando se traiga).",
       "datos": { "type": "object" },
       "emiten": ["mundos/exterior/decoraciones"],
-      "escuchan": ["42_personalizacion"]
+      "escuchan": ["mundos/exterior/personalizacion"]
     },
     "fauna:conejo-cerca": {
       "descripcion": "Una pregunta con respuesta en el mismo objeto: un perro en { x, y } busca, en un radio (m), el conejo visible más cercano; la fauna rellena res con ese conejo (el grupo de three, con su estado en userData) o lo deja en null. Sin fauna (?fauna=0), res queda en null y los perros no persiguen a nadie.",
@@ -259,7 +259,7 @@
         }
       },
       "emiten": [
-        "46_guiada"
+        "ui/guiada"
       ],
       "escuchan": []
     },
@@ -289,7 +289,7 @@
         "mundos/comun/presencia"
       ],
       "escuchan": [
-        "43_agenda"
+        "ui/agenda"
       ]
     },
     "guiada:entrar": {
@@ -307,7 +307,7 @@
         }
       },
       "emiten": [
-        "43_agenda"
+        "ui/agenda"
       ],
       "escuchan": [
         "mundos/comun/presencia"
@@ -336,7 +336,7 @@
         }
       },
       "emiten": [
-        "46_guiada"
+        "ui/guiada"
       ],
       "escuchan": [
         "mundos/comun/habla"
@@ -489,20 +489,20 @@
         }
       },
       "emiten": [
-        "41_cae_la_cosecha"
+        "mundos/exterior/cae-la-cosecha"
       ],
       "escuchan": [
-        "40_juegos"
+        "mundos/exterior/juegos"
       ]
     },
     "juego:pide": {
       "descripcion": "El anfitrión de juegos acaba de montarse y pregunta qué juegos hay: cada juego encendido responde con «juego:ofrece».",
       "datos": {},
       "emiten": [
-        "40_juegos"
+        "mundos/exterior/juegos"
       ],
       "escuchan": [
-        "41_cae_la_cosecha"
+        "mundos/exterior/cae-la-cosecha"
       ]
     },
     "juego:retira": {
@@ -519,10 +519,10 @@
         }
       },
       "emiten": [
-        "41_cae_la_cosecha"
+        "mundos/exterior/cae-la-cosecha"
       ],
       "escuchan": [
-        "40_juegos"
+        "mundos/exterior/juegos"
       ]
     },
     "medida:empieza": {
@@ -773,7 +773,7 @@
         }
       },
       "emiten": [
-        "39_oficina_mundo"
+        "mundos/exterior/oficina-mundo"
       ],
       "escuchan": []
     },
@@ -794,7 +794,7 @@
         }
       },
       "emiten": [
-        "39_oficina_mundo"
+        "mundos/exterior/oficina-mundo"
       ],
       "escuchan": []
     },
@@ -881,13 +881,13 @@
     "oficina:anuncio": {
       "descripcion": "OF10: ha llegado un anuncio de la oficina por la sala (tema «anuncio», mandado por la api sin participante; ya validado y limpio). Para quien quiera reaccionar (un sonido, un lector de pantalla); el aviso, la lámina en VR y la línea del chat ya los pone 39_oficina_mundo.",
       "datos": { "type": "object", "required": ["texto"], "properties": { "texto": { "type": "string", "maxLength": 280 } } },
-      "emiten": ["39_oficina_mundo"],
+      "emiten": ["mundos/exterior/oficina-mundo"],
       "escuchan": []
     },
     "oficina:sala": {
       "descripcion": "OF10: la oficina invita a pasar a otra sala del mundo (tema «sala»; a = «general» o «visita»). La pregunta («Ir» / «Quedarme») ya la hace 39_oficina_mundo; nadie cambia de sala sin pulsar.",
       "datos": { "type": "object", "required": ["a"], "properties": { "a": { "enum": ["general", "visita"] } } },
-      "emiten": ["39_oficina_mundo"],
+      "emiten": ["mundos/exterior/oficina-mundo"],
       "escuchan": []
     },
     "personalizacion:resultado": {
@@ -904,7 +904,7 @@
         }
       },
       "emiten": [
-        "42_personalizacion"
+        "mundos/exterior/personalizacion"
       ],
       "escuchan": []
     },
@@ -1073,7 +1073,7 @@
         }
       },
       "emiten": [
-        "41_cae_la_cosecha"
+        "mundos/exterior/cae-la-cosecha"
       ],
       "escuchan": [
         "mundos/exterior/sonido"
@@ -1142,7 +1142,7 @@
         "ui/entidades"
       ],
       "escuchan": [
-        "42_personalizacion"
+        "mundos/exterior/personalizacion"
       ]
     },
     "usable:suelta": {
@@ -1166,7 +1166,7 @@
         "ui/entidades"
       ],
       "escuchan": [
-        "42_personalizacion"
+        "mundos/exterior/personalizacion"
       ]
     },
     "usable:usa": {
@@ -1285,7 +1285,7 @@
       "escuchan": [
         "ui/hud-personal",
         "mundos/comun/muneca",
-        "46_guiada",
+        "ui/guiada",
         "mundos/comun/habla",
         "mundos/comun/corro"
       ]
@@ -1333,8 +1333,8 @@
         "mundos/comun/vr-sesion"
       ],
       "escuchan": [
-        "40_juegos",
-        "43_agenda"
+        "mundos/exterior/juegos",
+        "ui/agenda"
       ]
     },
     "vr:rig-libera": {
@@ -1376,7 +1376,7 @@
       "escuchan": [
         "ui/laminas",
         "mundos/comun/muneca",
-        "40_juegos"
+        "mundos/exterior/juegos"
       ]
     }
   }

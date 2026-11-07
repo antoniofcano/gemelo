@@ -1,0 +1,532 @@
+// La personalización de los árboles (P7f; decisiones 91-96 y 99-102; doc/sistema/VIDA.md y contratos/vida.md; MU5-n, A3-7b2: antes apps/web/motor/42_personalizacion.js, que queda
+// como talón): los árboles de la haza con nombre y con una foto o pintura. Componente de los mundos ["exterior"] y no de todos: vive de los olivos y las hazas del exterior
+// (Entidades.pos de «olivo:…», Hazas.enPunto, las coordenadas de su cámara); en un interior no hay olivos que nombrar y el nombre sobre el olivo se calcularía con coordenadas
+// que no son las suyas. PARA EL CIERRE (A3-8, MU3): al congelarse el exterior sus fases se paran, pero los nombres son DOM y no cuelgan de las raíces de la escena, así que se quedarían a la vista; hoy el gestor no está cableado a la página (nadie emite «mundo:sale»), y no se ha añadido nada que lo oculte.
+// ---------- «personalización» (P7f; decisiones 91-96, 99-102; doc/sistema/VIDA.md y contratos/vida.md): los árboles de la haza con nombre y con una foto o pintura.
+// Es un COMPONENTE (ADR-0023, bandera ?personaliza=0 la apaga): se registra y nadie lo nombra. Sin servidor (salida artefacto, fixture, sin ?api=) no pide nada,
+// no crea nada y no cambia ninguna ficha. Con servidor:
+//  - pide GET /api/sesion (¿titular?) y, de cada haza que se ve, GET /api/hazas/<id>/olivos (solo lo permitido, decisión 13: nombre y objeto, sin quién lo subió) y lo refresca
+//    cada 2 minutos y tras cada cambio propio;
+//  - COMPLEMENTA la ficha común del olivo (Entidades.complementa, 02e_entidades.js; no hay ficha propia): la fila «Nombre» y la imagen si las hay y, según
+//    quién mira, las acciones de Usables. El titular (sesión del enlace mágico, decisión 96) en un olivo de SU haza: «Nombrar», «Colgar foto o dibujo»,
+//    «Quitar» y «Sugerir a la oficina»; cualquiera en un olivo AJENO con nombre o imagen: «Denunciar». Solo escribe el titular y solo en su haza (lo vuelve a
+//    comprobar la api: 403 solo_titular / no_es_tu_haza); aquí solo se decide qué ofrecer. En VR solo lectura y «Denunciar» (sin motivo ni texto: «otro»):
+//    subir, nombrar y sugerir piden teclado y selector de ficheros, que no hay en VR; la ficha lo dice;
+//  - subir: el fichero (JPEG, PNG o WebP) se reduce en el aparato (canvas, ≤ 1280 px, JPEG 0,85: no gasta datos; la api lo vuelve a codificar a WebP sin EXIF
+//    ni GPS), con el AVISO obligatorio con casilla («sin caras de menores ni datos personales»), POST /api/medios?acepto=true y luego PUT /api/olivos/…;
+//  - en el mundo: el nombre sobre el olivo al acercarse (a menos de 45 m, los 12 más cercanos, en el DOM: 0 llamadas y 0 triángulos; solo se calcula si hay
+//    algo con nombre cerca) y, al elegir un olivo con imagen, una lámina pequeña colgada de él (Laminas: 1 llamada y 1 textura de 512 px, liberadas al soltar).
+//  - P7g (D3): de la misma lista saca las decoraciones de cada olivo («decoracion») y las publica por el Bus («decoraciones:cambian», y otra vez a quien
+//    pregunte con «decoraciones:pide»); las dibuja el componente de las decoraciones (50_decoraciones.js).
+//  - P7g (D4): el titular, en un olivo de SU haza y fuera de VR, ve «Decorar» (o «Cambiar decoración») y, si tiene una, «Quitar decoración»: un recuadro con SOLO las
+//    piezas de la época actual (PersonalizaPuro.epocaDeLaFecha, la misma regla que la api) y la leyenda «ilustrativa». PUT/DELETE /api/olivos/{finca}/{copas_id}/decoracion;
+//    la api vuelve a comprobar titular, haza y época (el 422 fuera_de_epoca se enseña tal cual). Al éxito se refresca la lista de la haza y D3 repinta sin recargar.
+//    Sin 50_decoraciones.js (?decoraciones=0; nadie escucha «decoraciones:cambian») no se ofrece: nadie la dibujaría.
+// Decisión 102: hasta la EIPD solo suben las cuentas de prueba. La api no distingue cuentas: si la subida está apagada responde 503 (subidas_apagadas) y la
+// pantalla lo explica; aquí no se inventa ningún permiso. Los trozos [puro:…] y [motor:…] los evalúa en Node pruebas/guardianes/personalizacion.test.js.
+// Código movido tal cual (se tipan parámetros y variables; lo del legado entra por dp, y THREE por argumento, como en el resto de mundos/exterior/). Su libera() ya quitaba el
+// complemento de la ficha, el recuadro, la lámina y los rótulos; A3-7b2 añade que CANCELA las peticiones a la api en vuelo (AbortController: sesión, olivos de las hazas, nombrar,
+// subir, quitar, decorar, denunciar, sugerir), borra window.__personaliza y, L2-08, cierra el ImageBitmap de la foto también cuando no se usa (una imagen demasiado grande
+// salía sin cerrarlo) o si el dibujo falla; y, L6-12, el recuadro se anuncia con su título (aria-labelledby). Los trozos [puro:…] y [motor:…] los evalúa en Node
+// pruebas/guardianes/personalizacion.test.js (el .ts, leído como JavaScript: sin tipos ni «dp.»).
+import type { Manifiesto } from "../../nucleo/componentes.ts";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type T = any;
+
+export const ID_PERSONALIZACION = "personalizacion";
+
+/** Lo que el talón de 42 le da: THREE, D (01), el Bus y Laminas/Entidades/Usables (02c-02e), lienzo/camera/Estado (03), HazasPuro y Hazas (13b); VRX (29_vr, que el código comprobaba con typeof), por getter */
+export interface DepsPersonalizacion { THREE: T; D: T; Bus: T; Laminas: T; Entidades: T; Usables: T; lienzo: T; camera: T; Estado: T; HazasPuro: T; Hazas: T; readonly VRX: T }
+
+// [puro:inicio] (sin DOM ni THREE: lo evalúa en Node pruebas/guardianes/personalizacion.test.js)
+export var PersonalizaPuro: T = (function () {
+  var RE_FINCA: T = /^[a-z0-9_-]{1,32}$/, URL_MEDIO: T = /^\/api\/medios\/[a-f0-9]{32}\.webp$/, CARACTERES: T = /^[\p{L}\p{N} '’.,;:!¡¿?()-]+$/u;
+  var TIPOS: T = ["image/jpeg", "image/png", "image/webp"], MAX_PX = 1280, MAX_BYTES: T = 8 * 1024 * 1024, MAX_FOTO_PX = 40e6;
+  var MOTIVOS: T = [["menores", "Aparece la cara de un menor"], ["datos_personales", "Hay datos personales"], ["ofensivo", "Es ofensivo"], ["no_es_del_olivar", "No es del olivar"], ["otro", "Otro motivo"]];
+  // el texto del AVISO es el de la api (TEXTO_AVISO, versión 1 en contratos/vida.md); lo comprueba el guardián contra apps/api/src/vida/medios.ts
+  var AVISO = "Sube solo fotos o pinturas del olivo o del campo. No subas caras de menores ni datos personales (nombres, matrículas, direcciones, teléfonos). Lo que subes lo ven al momento las demás familias; la oficina puede retirarlo.";
+  var AVISO_PRUEBAS = "Mientras dure la fase de pruebas, solo suben fotos las cuentas de prueba.";
+  var CERCA_M = 45, MAX_ROTULOS = 12, REFRESCO_S = 120;
+  // P7g D4: cómo se llama cada época en pantalla (el catálogo las llama primavera, verano, otono, invierno) y la leyenda de honestidad (regla 5)
+  var EPOCAS: T = { primavera: "la primavera", verano: "el verano", otono: "el otoño", invierno: "el invierno" };
+  var DECO_ILUSTRATIVA = "Ilustrativa: la decoración la elige tu familia; no la mide el gemelo.";
+  // P7g D4: del catálogo de contratos/decoraciones.json, lo que hace falta para ofrecer (id, nombre y época; el guardián comprueba que es el mismo). Un componente no
+  // consume de otro: el dibujo (triángulos, formas) vive en 50_decoraciones.js y esto es solo la lista que se le ofrece a la familia
+  var PIEZAS: T = [
+    { id: "flores", nombre: "Flores", epoca: "primavera" }, { id: "cinta", nombre: "Cinta de color", epoca: "verano" }, { id: "farolillo", nombre: "Farolillo", epoca: "otono" },
+    { id: "cosecha", nombre: "Cosecha", epoca: "otono" }, { id: "luces", nombre: "Luces", epoca: "invierno" }, { id: "lazo", nombre: "Lazo", epoca: "invierno" }];
+  // la época de la fiesta, la MISMA regla que epocaDeLaFecha de la api (apps/api/src/vida/decoraciones.ts): la estación astronómica del día en hora de Madrid, con fechas
+  // fijas (primavera 21-mar a 20-jun; verano 21-jun a 22-sep; otoño 23-sep a 20-dic; invierno 21-dic a 20-mar). No es la fenología del olivo. Quien manda es la api
+  // (422 fuera_de_epoca); esto solo decide qué se ofrece. El guardián la compara con la de la api en los días límite
+  var PARTES_MADRID: T = typeof Intl !== "undefined" ? new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid", month: "numeric", day: "numeric" }) : null;
+  function epocaDeLaFecha(fecha?: T) {
+    var mes = 0, dia = 0;
+    PARTES_MADRID.formatToParts(fecha).forEach(function (x?: T) { if (x.type === "month") mes = Number(x.value); else if (x.type === "day") dia = Number(x.value); });
+    var mmdd: T = mes * 100 + dia;
+    if (mmdd >= 321 && mmdd <= 620) return "primavera";
+    if (mmdd >= 621 && mmdd <= 922) return "verano";
+    if (mmdd >= 923 && mmdd <= 1220) return "otono";
+    return "invierno";
+  }
+  function piezasDeLaEpoca(epoca?: T) { return PIEZAS.filter(function (p?: T) { return p.epoca === epoca; }); }
+  function piezaPorId(id?: T) { for (var i = 0; i < PIEZAS.length; i++) if (PIEZAS[i].id === id) return PIEZAS[i]; return null; }
+
+  // «olivo:<finca>:<copas_id>» → { finca, copas_id } o null (el id provisional «olivo:<finca>:i<n>» no se puede personalizar: no es estable, decisión 92)
+  function idOlivo(id?: T) {
+    var m: T = /^olivo:([a-z0-9_-]{1,32}):(\d{1,10})$/.exec(String(id == null ? "" : id)); if (!m) return null;
+    var n: T = +m[2]; return n <= 4294967295 ? { finca: m[1], copas_id: n } : null;
+  }
+  function clave(finca?: T, copas?: T) { return finca + ":" + copas; }
+  // la respuesta de GET /api/hazas/<id>/olivos al mapa «finca:copas_id» → { id (de la personalización), nombre, objeto, haza, mia }. Solo entra lo que cumple la lista
+  // blanca (contratos/olivos-haza.schema.json): lo demás se ignora; nunca se confía en la forma de lo que llega de la red
+  function indexa(mapa?: T, resp?: T) {
+    if (!resp || typeof resp !== "object" || !Array.isArray(resp.olivos)) return 0;
+    var n = 0, mia: T = resp.es_mia === true;
+    resp.olivos.forEach(function (o?: T) {
+      if (!o || typeof o !== "object" || !RE_FINCA.test(o.finca) || !(Number.isInteger(o.copas_id) && o.copas_id >= 0 && o.copas_id <= 4294967295) || !Number.isInteger(o.id) || o.id < 1) return;
+      var nombre: T = typeof o.nombre === "string" && o.nombre.length >= 1 && o.nombre.length <= 40 ? o.nombre : null, obj: T = null, q: T = o.objeto;
+      if (q && typeof q === "object" && (q.tipo === "foto" || q.tipo === "pintura") && typeof q.url === "string" && URL_MEDIO.test(q.url) && Number.isInteger(q.ancho) && q.ancho > 0 && Number.isInteger(q.alto) && q.alto > 0)
+        obj = { tipo: q.tipo, url: q.url, ancho: q.ancho, alto: q.alto };
+      if (nombre === null && obj === null) return;
+      mapa[clave(o.finca, o.copas_id)] = { id: o.id, nombre: nombre, objeto: obj, haza: resp.haza_id, mia: mia }; n++;
+    });
+    return n;
+  }
+  // P7g (D3): las decoraciones de la misma respuesta: [{ finca, copas_id, pieza, mia }] de los olivos con «decoracion» (un slug; si la pieza existe en el
+  // catálogo lo decide quien la dibuja, 50_decoraciones.js). Un olivo con solo decoración no entra en el mapa de indexa (no tiene nombre ni imagen que denunciar)
+  function decoraciones(resp?: T) {
+    if (!resp || typeof resp !== "object" || !Array.isArray(resp.olivos)) return [];
+    var out: T = [], mia: T = resp.es_mia === true;
+    resp.olivos.forEach(function (o?: T) {
+      if (!o || typeof o !== "object" || !RE_FINCA.test(o.finca) || !(Number.isInteger(o.copas_id) && o.copas_id >= 0 && o.copas_id <= 4294967295)) return;
+      if (typeof o.decoracion === "string" && /^[a-z]{1,16}$/.test(o.decoracion)) out.push({ finca: o.finca, copas_id: o.copas_id, pieza: o.decoracion, mia: mia });
+    });
+    return out;
+  }
+  // el nombre como lo manda el cliente: espacios normalizados, 1-40 caracteres de los que admite la api. { ok, nombre } o { ok: false, error }
+  function validaNombre(txt?: T) {
+    var s: T = String(txt == null ? "" : txt).normalize("NFC").trim().replace(/\s+/g, " ");
+    if (!s) return { ok: false, error: "Escribe un nombre (hasta 40 letras)." };
+    if (s.length > 40) return { ok: false, error: "El nombre pasa de 40 letras." };
+    if (!CARACTERES.test(s)) return { ok: false, error: "Solo letras, números, espacios y . , ; : ! ¡ ¿ ? ( ) -" };
+    return { ok: true, nombre: s };
+  }
+  // el fichero elegido: tipo admitido y no absurdo; { ok } o { ok: false, error }
+  function validaFichero(f?: T) {
+    if (!f || typeof f !== "object") return { ok: false, error: "Elige una foto o un dibujo." };
+    if (TIPOS.indexOf(String(f.type || "").toLowerCase()) < 0) return { ok: false, error: "Solo se admiten fotos JPEG, PNG o WebP (las de iPhone en formato HEIC, pásalas a JPEG o haz la foto en «Más compatible»)." };
+    if (!(f.size > 0)) return { ok: false, error: "El fichero está vacío." };
+    return { ok: true };
+  }
+  // las medidas tras reducir: el lado mayor a lo sumo max px, sin ampliar nunca y sin deformar
+  function reduce(w?: T, h?: T, max?: T) {
+    max = max || MAX_PX; w = Math.max(1, Math.round(w)); h = Math.max(1, Math.round(h));
+    var k: T = Math.min(1, max / Math.max(w, h)); return { w: Math.max(1, Math.round(w * k)), h: Math.max(1, Math.round(h * k)), reducida: k < 1 };
+  }
+  // el texto de un error de la api (o de la red) para quien está delante; cuerpo = el JSON de la respuesta si lo había
+  function mensajeError(estado?: T, cuerpo?: T, que?: T) {
+    var e: T = cuerpo && typeof cuerpo.error === "string" ? cuerpo.error : "";
+    if (!estado) return "No hay conexión con el servidor. Prueba otra vez en un rato.";
+    if (estado === 401) return "Tu sesión ha caducado. Entra de nuevo con tu enlace.";
+    if (e === "solo_titular" || (estado === 403 && que !== "denuncia")) return e === "no_es_tu_haza" ? "Ese olivo no está en tu haza." : "Solo la persona titular, entrando con su enlace, puede cambiar los árboles de su haza (no desde unas gafas vinculadas).";
+    if (e === "no_es_tu_haza") return "Ese olivo no está en tu haza.";
+    if (estado === 503 || e === "subidas_apagadas") return "Este servidor aún no admite fotos. Por ahora solo suben fotos las cuentas de prueba, y cuando se abra se avisará.";
+    if (estado === 413 || e === "imagen_demasiado_grande") return "La imagen es demasiado grande. Prueba con otra o con una más pequeña.";
+    if (estado === 415 || e === "tipo_no_admitido" || e === "no_es_imagen") return "Solo se admiten fotos JPEG, PNG o WebP.";
+    if (estado === 429 || e === "demasiadas_peticiones") return "Has hecho muchos cambios o subidas seguidos (hay un límite por hora). Espera un rato y vuelve a probar.";
+    if (e === "ya_denunciado") return "Ya lo habías denunciado: la oficina lo está mirando.";
+    if (e === "no_existe" && que === "deco") return "Este olivo ya no tenía decoración.";
+    if (e === "olivo_no_existe" || estado === 404) return que === "denuncia" ? "Eso ya no se ve (puede que lo hayan quitado)." : "No hay ningún olivo con ese número.";
+    if (e === "fuera_de_epoca" && cuerpo && typeof cuerpo.mensaje === "string" && cuerpo.mensaje) return cuerpo.mensaje;   // 422: la api dice qué toca ahora; se enseña tal cual
+    if (estado === 400 && cuerpo && typeof cuerpo.mensaje === "string" && cuerpo.mensaje) return cuerpo.mensaje;   // nombre_no_valido, texto_no_valido… ya vienen en español
+    if (estado === 400) return "Algo del formulario no vale. Revisa lo escrito.";
+    if (estado === 409) return "Otro cambio en el mismo olivo se ha cruzado con este. Vuelve a probar.";
+    return "No se ha podido (error " + estado + "). Prueba otra vez más tarde.";
+  }
+  // qué se ofrece en la ficha de un olivo. Entra: { titular (true|false|null si aún no se sabe), mia (el olivo cae en una haza mía), dato (su personalización o null), vr, estable (tiene copas_id) }.
+  // P7g D4: «decora» = las piezas de la época actual (sin catálogo, undefined: no se ofrece decorar) y «deco» = la pieza que ya tiene (id) o null.
+  // Sale: { acciones: [{ id, txt }], filas: [{ k, v, de? }] } (las filas solo avisan de lo que no se puede hacer aquí)
+  function ofrece(o?: T) {
+    var ac: T = [], filas: T = [], dato: T = o.dato;
+    if (!o.estable) return { acciones: ac, filas: filas };
+    if (o.mia && o.titular === true) {
+      if (o.vr) { filas.push({ k: "Nombrar y fotos", v: "no en VR: se hace desde el móvil o el ordenador (pide teclado y elegir un fichero)" }); }
+      else {
+        ac.push({ id: "nombrar", txt: dato && dato.nombre ? "Cambiar nombre" : "Nombrar" });
+        ac.push({ id: "foto", txt: dato && dato.objeto ? "Cambiar foto o dibujo" : "Colgar foto o dibujo" });
+        if (o.decora && o.decora.length) ac.push({ id: "decorar", txt: o.deco ? "Cambiar decoración" : "Decorar" });
+        if (o.deco) ac.push({ id: "quitardeco", txt: "Quitar decoración" });
+        if (dato) ac.push({ id: "quitar", txt: "Quitar" });
+        ac.push({ id: "sugerir", txt: "Sugerir a la oficina" });
+      }
+    } else if (o.mia && o.titular === false) {
+      filas.push({ k: "Personalizar", v: "solo con tu enlace (no desde unas gafas vinculadas)" });
+    } else if (!o.mia && dato) {
+      ac.push({ id: "denunciar", txt: "Denunciar" });
+    }
+    return { acciones: ac, filas: filas };
+  }
+  // los rótulos que tocan: de los olivos con nombre { x, z, clave, nombre } los que están a menos de `cerca` m de (cx, cz), los `max` más cercanos, de más cerca a más lejos
+  function cercanos(cands?: T, cx?: T, cz?: T, cerca?: T, max?: T) {
+    var r: T = [], c2: T = cerca * cerca, i: T, q: T, dx: T, dz: T, d2: T;
+    for (i = 0; i < cands.length; i++) {
+      q = cands[i]; dx = q.x - cx; dz = q.z - cz; d2 = dx * dx + dz * dz;
+      if (d2 >= c2) continue;
+      if (r.length < max || d2 < r[r.length - 1].d2) {   // inserción en un vector corto y ordenado (max = 12): sin ordenar todo
+        var it: T = { q: q, d2: d2 }, k: T = r.length; if (k < max) r.push(it); else k = max - 1;
+        while (k > 0 && r[k - 1].d2 > d2) { r[k] = r[k - 1]; k--; } r[k] = it;
+      }
+    }
+    return r.map(function (a?: T) { return { q: a.q, d: Math.sqrt(a.d2) }; });
+  }
+  // P7g D4: el rótulo del diálogo de decorar: la época, lo que hay y la leyenda de honestidad; piezas = las de la época actual
+  function textoDecorar(epoca?: T, piezas?: T, actual?: T) {
+    var t: T = "Ahora toca " + (EPOCAS[epoca] || "esta época") + ": " + piezas.map(function (p?: T) { return p.nombre.toLowerCase(); }).join(" o ") + ". Una sola decoración por olivo: la nueva sustituye a la anterior.";
+    if (actual) t += " Ahora tiene: " + actual.toLowerCase() + ".";
+    return t + " " + DECO_ILUSTRATIVA;
+  }
+  // el cuerpo del PUT /api/olivos/…: SOLO lo que cambia (nombre: texto o null; objeto: { tipo, medio_id } o null); lo omitido se queda como estaba (la relación permitida no
+  // da el medio_id de la foto colgada: cambiar el nombre no puede volver a mandarlo)
+  function cuerpoOlivo(cambia?: T) {
+    var o: T = {}; if (cambia && "nombre" in cambia) o.nombre = cambia.nombre; if (cambia && "objeto" in cambia) o.objeto = cambia.objeto; return o;
+  }
+  // el cliente de la api (mismo origen, cookie de sesión): nunca lanza; devuelve { ok, estado, cuerpo }. fetchFn(url, opciones) como el fetch del navegador
+  function Cliente(prefijo?: T, fetchFn?: T) {
+    function llama(metodo?: T, ruta?: T, cuerpo?: T, cabeceras?: T) {
+      var op: T = { method: metodo, credentials: "same-origin", headers: { accept: "application/json" } };
+      Object.keys(cabeceras || {}).forEach(function (k?: T) { op.headers[k] = cabeceras[k]; });
+      if (cuerpo !== undefined) op.body = cuerpo;
+      return Promise.resolve().then(function () { return fetchFn(prefijo + ruta, op); }).then(function (r?: T) {
+        var t: T = r.status === 204 ? Promise.resolve(null) : r.json ? r.json().catch(function () { return null; }) : Promise.resolve(null);
+        return t.then(function (j?: T) { return { ok: r.status >= 200 && r.status < 300, estado: r.status, cuerpo: j }; });
+      }).catch(function () { return { ok: false, estado: 0, cuerpo: null }; });
+    }
+    function json(metodo?: T, ruta?: T, o?: T) { return llama(metodo, ruta, JSON.stringify(o), { "content-type": "application/json" }); }
+    var enc: T = encodeURIComponent;
+    return {
+      sesion: function () { return llama("GET", "sesion"); },
+      olivosDeHaza: function (id?: T) { return llama("GET", "hazas/" + enc(id) + "/olivos"); },
+      sube: function (blob?: T, tipo?: T) { return llama("POST", "medios?acepto=true", blob, { "content-type": tipo }); },   // acepto=true: la casilla del AVISO ya está marcada (la pantalla no deja llegar sin ella)
+      cuelga: function (finca?: T, copas?: T, cuerpo?: T) { return json("PUT", "olivos/" + enc(finca) + "/" + copas, cuerpo); },
+      ponDeco: function (finca?: T, copas?: T, pieza?: T) { return json("PUT", "olivos/" + enc(finca) + "/" + copas + "/decoracion", { pieza: pieza }); },
+      quitaDeco: function (finca?: T, copas?: T) { return llama("DELETE", "olivos/" + enc(finca) + "/" + copas + "/decoracion"); },
+      quita: function (finca?: T, copas?: T) { return llama("DELETE", "olivos/" + enc(finca) + "/" + copas); },
+      denuncia: function (id?: T, motivo?: T, texto?: T) { var o: T = { motivo: motivo }; if (texto) o.texto = texto; return json("POST", "personalizaciones/" + id + "/denuncias", o); },
+      sugiere: function (haza?: T, texto?: T, finca?: T, copas?: T) { var o: T = { texto: texto }; if (finca) { o.finca = finca; o.copas_id = copas; } return json("POST", "hazas/" + enc(haza) + "/sugerencias", o); }
+    };
+  }
+  // el flujo de colgar una imagen: reducir → subir → colgar. reduceFn(archivo) → Promise<{ blob, tipo }> (el navegador la hace con un canvas); devuelve { ok, error?, paso }
+  function cuelgaImagen(cli?: T, reduceFn?: T, archivo?: T, id?: T, tipoObjeto?: T) {
+    var v: T = validaFichero(archivo); if (!v.ok) return Promise.resolve({ ok: false, error: v.error, paso: "fichero" });
+    return Promise.resolve().then(function () { return reduceFn(archivo); }).then(function (r?: T) {
+      if (!r || !r.blob) return { ok: false, error: "No se ha podido leer esa imagen. Prueba con otra.", paso: "reducir" };
+      if (r.blob.size > MAX_BYTES) return { ok: false, error: "La imagen sigue siendo demasiado grande. Prueba con otra.", paso: "reducir" };
+      return cli.sube(r.blob, r.tipo).then(function (s?: T) {
+        if (!s.ok) return { ok: false, error: mensajeError(s.estado, s.cuerpo, "subida"), paso: "subir", estado: s.estado };
+        var medio: T = s.cuerpo && s.cuerpo.id;
+        if (!Number.isInteger(medio)) return { ok: false, error: "El servidor contestó algo raro. Prueba otra vez.", paso: "subir" };
+        return cli.cuelga(id.finca, id.copas_id, cuerpoOlivo({ objeto: { tipo: tipoObjeto === "pintura" ? "pintura" : "foto", medio_id: medio } })).then(function (p?: T) {
+          return p.ok ? { ok: true, paso: "colgar" } : { ok: false, error: mensajeError(p.estado, p.cuerpo, "olivo"), paso: "colgar", estado: p.estado };
+        });
+      });
+    });
+  }
+  return { CERCA_M: CERCA_M, MAX_ROTULOS: MAX_ROTULOS, REFRESCO_S: REFRESCO_S, MAX_PX: MAX_PX, MAX_BYTES: MAX_BYTES, MAX_FOTO_PX: MAX_FOTO_PX, TIPOS: TIPOS, MOTIVOS: MOTIVOS, AVISO: AVISO, AVISO_PRUEBAS: AVISO_PRUEBAS,
+    idOlivo: idOlivo, clave: clave, indexa: indexa, decoraciones: decoraciones, validaNombre: validaNombre, validaFichero: validaFichero, reduce: reduce, mensajeError: mensajeError, ofrece: ofrece,
+    cercanos: cercanos, PIEZAS: PIEZAS, epocaDeLaFecha: epocaDeLaFecha, piezasDeLaEpoca: piezasDeLaEpoca, piezaPorId: piezaPorId, textoDecorar: textoDecorar, DECO_ILUSTRATIVA: DECO_ILUSTRATIVA, cuerpoOlivo: cuerpoOlivo, Cliente: Cliente, cuelgaImagen: cuelgaImagen };
+})();
+// [puro:fin]
+
+// [motor:inicio] (lo evalúa también en Node pruebas/guardianes/personalizacion.test.js con un DOM, un Entidades y un Laminas de mentira)
+export function PersonalizaMotor(dp: DepsPersonalizacion, n: T) {
+  var P: T = PersonalizaPuro, API: T = dp.HazasPuro.prefijoApi(location.search, dp.D.base);
+  if (!API) return { actualiza: function () {}, libera: function () {}, estado: function () { return { api: false }; } };   // sin servidor: ni pide ni crea nada
+  var ctl: T = new AbortController();   // A3-7b2: libera() cancela lo que esté en vuelo
+  var cli: T = P.Cliente(API, function (u?: T, o?: T) { return fetch(u, Object.assign({}, o, { signal: ctl.signal })); });
+  var titular: T = null, mapa: T = {}, decos: T = {}, rotulosDe: T = [], cargadas = 0, hazasVistas: T = {}, tRefresco = 0, tarde = 0, vivo = true, pidiendo = 0;
+  var recuadro: T = null, caja: T = null, pool: T = [], rect: T = null, vec: T = new dp.THREE.Vector3(), imagen: T = null, laminaDe = "", quitaCompl: T = null, contador: T = { rotulos: 0, laminas: 0, subidas: 0 };
+  var ESTILO_BOTON = "font:inherit;color:inherit;min-height:44px;min-width:44px;padding:6px 12px;border-radius:8px;cursor:pointer;background:rgba(64,240,255,0.16);border:1px solid rgba(64,240,255,0.55)";
+
+  // ---- los datos: sesión y, de cada haza, sus olivos con nombre o imagen
+  function indexaTodo() {   // reconstruye el mapa y los rótulos
+    rotulosDe = [];
+    Object.keys(mapa).forEach(function (k?: T) {
+      var d: T = mapa[k]; if (!d.nombre) return;
+      var p: T = k.split(":"), pos: T = dp.Entidades.pos("olivo:" + p[0] + ":" + p[1]); if (!pos) return;
+      rotulosDe.push({ x: pos.x, z: pos.z, clave: k, nombre: d.nombre });
+    });
+  }
+  function traeHaza(h?: T) {
+    pidiendo++;
+    return cli.olivosDeHaza(h.id).then(function (r?: T) {
+      pidiendo--;
+      if (!vivo) return;
+      if (r.ok && r.cuerpo) {
+        var viejas: T = Object.keys(mapa).filter(function (k?: T) { return String(mapa[k].haza) === String(h.id); }); viejas.forEach(function (k?: T) { delete mapa[k]; }); r.cuerpo.es_mia = h.es_mia; r.cuerpo.haza_id = h.id; P.indexa(mapa, r.cuerpo); cargadas++;
+        decos[String(h.id)] = P.decoraciones(r.cuerpo); emiteDecos();
+      }
+      indexaTodo();
+    });
+  }
+  // P7g (D3): las decoraciones de todas las hazas vistas, para quien las dibuje (50_decoraciones.js; si no está, nadie escucha y no pasa nada)
+  function listaDecos() { var l: T = []; Object.keys(decos).forEach(function (k?: T) { l = l.concat(decos[k]); }); return l; }
+  function emiteDecos() { dp.Bus.emite("decoraciones:cambian", { lista: listaDecos() }); }
+  function refrescaTodo() { var l: T = dp.Hazas.vistas(); l.forEach(function (h?: T) { hazasVistas[h.id] = true; }); return Promise.all(l.map(traeHaza)); }
+  function refrescaUna(idHaza?: T) { var l: T = dp.Hazas.vistas().filter(function (h?: T) { return String(h.id) === String(idHaza); }); return Promise.all(l.map(traeHaza)); }
+
+  // ---- la ficha común (Entidades.complementa): la fila del nombre, la de la imagen y las acciones
+  function contexto(id?: T) {
+    var i: T = P.idOlivo(id), pos: T = dp.Entidades.pos(id), hz: T = pos ? dp.Hazas.enPunto(pos.x, -pos.z) : null;
+    return { i: i, pos: pos, haza: hz, mia: !!(hz && hz.es_mia), dato: i ? mapa[P.clave(i.finca, i.copas_id)] || null : null };
+  }
+  // P7g D4: la pieza que ya tiene el olivo (de la lista de su haza) y las de la época actual (sin el componente de las decoraciones, no se ofrece decorar)
+  function decoDe(c?: T) { var l: T = c.haza ? decos[String(c.haza.id)] || [] : []; for (var k = 0; k < l.length; k++) if (l[k].finca === c.i.finca && l[k].copas_id === c.i.copas_id) return l[k].pieza; return null; }
+  function nombreDe(pieza?: T) { var p: T = P.piezaPorId(pieza); return p ? p.nombre : null; }
+  function hayQuienDibuje() { return dp.Bus.hay("decoraciones:cambian"); }   // el componente 50_decoraciones.js escucha ese evento; sin él (?decoraciones=0) nadie la dibujaría
+  function epocaAhora() { return P.epocaDeLaFecha(new Date()); }
+  function complementa(f?: T, id?: T, modo?: T) {
+    var c: T = contexto(id); if (!c.i) return;
+    var of: T = P.ofrece({ titular: titular, mia: c.mia, dato: c.dato, vr: modo === "vr", estable: true, decora: hayQuienDibuje() ? P.piezasDeLaEpoca(epocaAhora()) : undefined, deco: hayQuienDibuje() ? decoDe(c) : null });
+    var filas: T = [];
+    if (c.dato && c.dato.nombre) filas.push({ k: "Nombre", v: c.dato.nombre, de: c.mia ? "puesto por tu familia" : "puesto por la familia de esa haza" });
+    if (c.dato && c.dato.objeto) filas.push({ k: c.dato.objeto.tipo === "pintura" ? "Pintura" : "Foto", v: modo === "vr" ? "colgada junto al árbol" : "colgada junto al árbol al elegirlo", de: "subida por la familia; no la mide el gemelo" });
+    f.filas = filas.concat(f.filas || [], of.filas);
+    if (of.acciones.length) f.acciones = (f.acciones || []).concat(of.acciones.map(function (a?: T) { return { id: a.id, txt: a.txt, fn: function () { return accion(a.id, id, modo); } }; }));
+  }
+  function accion(que?: T, id?: T, modo?: T) {
+    var c: T = contexto(id); if (!c.i) return false;
+    if (modo === "vr") {   // en VR solo lo que no pide teclado: denunciar con el motivo «otro» (la oficina lo mira igual)
+      if (que === "denunciar" && c.dato) { enviaDenuncia(id, c, "otro", ""); return true; }
+      return false;
+    }
+    abrePanel(que, id, c); return true;
+  }
+
+  // ---- el recuadro de pantalla (nombrar, subir, quitar, denunciar, sugerir): un solo recuadro, con textContent siempre
+  function el(tag?: T, css?: T, txt?: T) { var e: T = document.createElement(tag); if (css) e.style.cssText = css; if (txt != null) e.textContent = txt; return e; }
+  function cierraPanel() { if (recuadro && recuadro.parentNode) recuadro.parentNode.removeChild(recuadro); recuadro = null; caja = null; }
+  function abrePanel(que?: T, id?: T, c?: T) {
+    cierraPanel();
+    recuadro = el("div", "position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);padding:12px");
+    recuadro.setAttribute("id", "personalizaPanel"); recuadro.setAttribute("role", "dialog"); recuadro.setAttribute("aria-modal", "true"); recuadro.setAttribute("aria-labelledby", "personalizaPanelTitulo");   // L6-12: el diálogo se anuncia con su título
+    caja = el("div", "max-width:440px;width:100%;max-height:92vh;overflow:auto;background:rgba(20,28,24,0.97);color:#f1f4ee;border-radius:12px;padding:16px;font:16px/1.4 system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,0.6)");
+    recuadro.appendChild(caja);
+    var titulo: T = ({ nombrar: "Nombrar este olivo", foto: "Colgar una foto o un dibujo", decorar: "Decorar este olivo", quitardeco: "Quitar la decoración", quitar: "Quitar lo de este olivo", denunciar: "Denunciar", sugerir: "Sugerir a la oficina" } as T)[que] || "";
+    var h2: T = el("h2", "margin:0 0 10px;font-size:20px", titulo); h2.setAttribute("id", "personalizaPanelTitulo"); caja.appendChild(h2);
+    var msg: T = el("p", "margin:8px 0;min-height:1.4em;color:#ffd27a"); msg.setAttribute("role", "status"); msg.setAttribute("aria-live", "polite"); msg.setAttribute("data-msg", "1");
+    var fila: T = el("div", "display:flex;gap:8px;flex-wrap:wrap;margin-top:12px");
+    var ok: T = el("button", ESTILO_BOTON, "Guardar"), no: T = el("button", ESTILO_BOTON, "Cancelar"); ok.type = no.type = "button"; ok.setAttribute("data-ok", "1"); no.setAttribute("data-cancela", "1");
+    no.addEventListener("click", cierraPanel);
+    recuadro.addEventListener("keydown", function (e?: T) { if (e.key === "Escape") { cierraPanel(); e.stopPropagation(); } e.stopPropagation(); });   // el teclado del recuadro no mueve el mundo
+    function ocupado(si?: T, txt?: T) { if (ok) ok.disabled = si; if (txt) msg.textContent = txt; }
+    function fin(r?: T, hecho?: T) {
+      if (r.ok) { cierraPanel(); refrescaUna(c.haza && c.haza.id).then(function () { dp.Usables.refresca(id); if (hecho) hecho(); }); return; }
+      ocupado(false, r.error || P.mensajeError(r.estado, r.cuerpo, que === "denunciar" ? "denuncia" : "olivo"));
+    }
+    var campo: T = null;
+    if (que === "nombrar") {
+      campo = el("input", "width:100%;box-sizing:border-box;font:inherit;padding:10px;border-radius:8px;border:1px solid #6b7;background:#0c120e;color:inherit"); campo.type = "text"; campo.name = "nombre-olivo"; campo.maxLength = 40; campo.value = c.dato && c.dato.nombre || "";
+      campo.setAttribute("aria-label", "Nombre del olivo"); campo.setAttribute("autocomplete", "off");
+      caja.appendChild(el("p", "margin:0 0 8px", "Hasta 40 letras. Lo verán las demás familias; la oficina puede retirarlo. Sin enlaces, teléfonos ni datos personales."));
+      caja.appendChild(campo);
+      ok.addEventListener("click", function () {
+        var v: T = P.validaNombre(campo.value); if (!v.ok) { msg.textContent = v.error; return; }
+        ocupado(true, "Guardando…");
+        cli.cuelga(c.i.finca, c.i.copas_id, P.cuerpoOlivo({ nombre: v.nombre })).then(function (r?: T) { fin({ ok: r.ok, estado: r.estado, cuerpo: r.cuerpo }); });
+      });
+    } else if (que === "foto") {
+      var arch: T = el("input", "width:100%;box-sizing:border-box;font:inherit;margin:6px 0"); arch.type = "file"; arch.name = "archivo-olivo"; arch.accept = P.TIPOS.join(","); arch.setAttribute("aria-label", "Foto o dibujo");
+      var tipo: T = el("select", "font:inherit;padding:8px;border-radius:8px;margin:6px 0;background:#0c120e;color:inherit"); tipo.name = "tipo-olivo"; tipo.setAttribute("aria-label", "Qué es");
+      [["foto", "Es una foto"], ["pintura", "Es un dibujo o una pintura"]].forEach(function (o?: T) { var op: T = el("option", "", o[1]); op.value = o[0]; tipo.appendChild(op); });
+      var av: T = el("label", "display:flex;gap:10px;align-items:flex-start;margin:10px 0;padding:10px;border-radius:8px;background:rgba(255,210,122,0.12);border:1px solid rgba(255,210,122,0.5)");
+      var chk: T = el("input", "min-width:24px;min-height:24px;margin-top:2px"); chk.type = "checkbox"; chk.name = "acepta-olivo"; chk.setAttribute("data-acepta", "1");
+      av.appendChild(chk); av.appendChild(el("span", "", P.AVISO + " Marco que lo he leído y que lo cumplo."));
+      caja.appendChild(arch); caja.appendChild(tipo); caja.appendChild(av); caja.appendChild(el("p", "margin:4px 0;font-size:14px;opacity:.85", P.AVISO_PRUEBAS + " La foto se reduce en tu aparato antes de subirla y el servidor le quita la ubicación y los datos de la cámara."));
+      ok.textContent = "Subir y colgar"; ok.disabled = true;
+      chk.addEventListener("change", function () { ok.disabled = !chk.checked; });
+      ok.addEventListener("click", function () {
+        if (!chk.checked) { msg.textContent = "Marca que has leído el AVISO."; return; }
+        var f: T = arch.files && arch.files[0], v: T = P.validaFichero(f); if (!v.ok) { msg.textContent = v.error; return; }
+        ocupado(true, "Reduciendo y subiendo…");
+        P.cuelgaImagen(cli, reduceImagen, f, c.i, tipo.value).then(function (r?: T) { if (r.ok) contador.subidas++; fin(r); });
+      });
+    } else if (que === "decorar") {
+      var epoca: T = epocaAhora(), piezas: T = P.piezasDeLaEpoca(epoca), actual: T = decoDe(c), botones: T = [];
+      caja.appendChild(el("p", "margin:0 0 8px", P.textoDecorar(epoca, piezas, actual && nombreDe(actual))));
+      piezas.forEach(function (pz?: T) {
+        var b: T = el("button", ESTILO_BOTON + ";display:block;width:100%;text-align:left;margin:6px 0", pz.nombre + (pz.id === actual ? " (la que tiene ahora)" : ""));
+        b.type = "button"; b.setAttribute("data-pieza", pz.id); b.disabled = pz.id === actual; botones.push(b);
+        b.addEventListener("click", function () {
+          botones.forEach(function (x?: T) { x.disabled = true; }); msg.textContent = "Colgando…";
+          cli.ponDeco(c.i.finca, c.i.copas_id, pz.id).then(function (r?: T) {
+            if (!r.ok) botones.forEach(function (x?: T) { x.disabled = x.getAttribute("data-pieza") === actual; });   // el error se lee y se puede probar otra vez
+            fin({ ok: r.ok, estado: r.estado, cuerpo: r.cuerpo, error: r.ok ? "" : P.mensajeError(r.estado, r.cuerpo, "deco") });
+          });
+        });
+        caja.appendChild(b);
+      });
+      campo = botones.filter(function (x?: T) { return !x.disabled; })[0] || null;   // el foco, en la primera pieza que se puede elegir
+      ok = null;   // sin «Guardar»: tocar una pieza la cuelga (las piezas y «Cancelar»: dos o tres botones)
+    } else if (que === "quitardeco") {
+      caja.appendChild(el("p", "margin:0 0 8px", "Se quita la decoración de este olivo (el nombre y la imagen, si los tiene, se quedan). ¿Seguro?"));
+      ok.textContent = "Quitar decoración";
+      ok.addEventListener("click", function () { ocupado(true, "Quitando…"); cli.quitaDeco(c.i.finca, c.i.copas_id).then(function (r?: T) { fin({ ok: r.ok, estado: r.estado, cuerpo: r.cuerpo, error: r.ok ? "" : P.mensajeError(r.estado, r.cuerpo, "deco") }); }); });
+    } else if (que === "quitar") {
+      caja.appendChild(el("p", "margin:0 0 8px", "Se quitan el nombre y la imagen de este olivo (la oficina conserva el registro, como de lo retirado). ¿Seguro?"));
+      ok.textContent = "Quitar";
+      ok.addEventListener("click", function () { ocupado(true, "Quitando…"); cli.quita(c.i.finca, c.i.copas_id).then(function (r?: T) { fin({ ok: r.ok, estado: r.estado, cuerpo: r.cuerpo }); }); });
+    } else if (que === "denunciar") {
+      caja.appendChild(el("p", "margin:0 0 8px", "Lo mirará la oficina. Mientras tanto se sigue viendo."));
+      campo = el("select", "font:inherit;padding:8px;border-radius:8px;width:100%;margin:6px 0;background:#0c120e;color:inherit"); campo.name = "motivo-denuncia"; campo.setAttribute("aria-label", "Motivo");
+      P.MOTIVOS.forEach(function (m?: T) { var op: T = el("option", "", m[1]); op.value = m[0]; campo.appendChild(op); });
+      var tx: T = el("textarea", "width:100%;box-sizing:border-box;font:inherit;padding:8px;border-radius:8px;min-height:70px;background:#0c120e;color:inherit"); tx.name = "texto-denuncia"; tx.maxLength = 500; tx.setAttribute("aria-label", "Qué ocurre (opcional)");
+      caja.appendChild(campo); caja.appendChild(tx); ok.textContent = "Enviar denuncia";
+      ok.addEventListener("click", function () { ocupado(true, "Enviando…"); enviaDenuncia(id, c, campo.value, tx.value.trim(), fin); });
+    } else if (que === "sugerir") {
+      caja.appendChild(el("p", "margin:0 0 8px", "Un recado para la oficina sobre este olivo o tu haza (una rama partida, un nombre que cambiar…). Sin enlaces ni teléfonos."));
+      campo = el("textarea", "width:100%;box-sizing:border-box;font:inherit;padding:8px;border-radius:8px;min-height:90px;background:#0c120e;color:inherit"); campo.name = "sugerencia-olivo"; campo.maxLength = 1000; campo.setAttribute("aria-label", "Sugerencia");
+      caja.appendChild(campo); ok.textContent = "Enviar";
+      ok.addEventListener("click", function () {
+        var t: T = campo.value.trim(); if (!t) { msg.textContent = "Escribe qué quieres decir."; return; }
+        ocupado(true, "Enviando…"); cli.sugiere(c.haza && c.haza.id, t, c.i.finca, c.i.copas_id).then(function (r?: T) { fin({ ok: r.ok, estado: r.estado, cuerpo: r.cuerpo }); });
+      });
+    }
+    caja.appendChild(msg); if (ok) fila.appendChild(ok); fila.appendChild(no); caja.appendChild(fila);
+    document.body.appendChild(recuadro);
+    var primero: T = campo || caja.querySelector("input,select,button"); if (primero && primero.focus) { try { primero.focus(); } catch (e: T) {} }
+  }
+  function enviaDenuncia(id?: T, c?: T, motivo?: T, texto?: T, hecho?: T) {
+    if (!c.dato) { if (hecho) hecho({ ok: false, error: P.mensajeError(404, null, "denuncia") }); return; }
+    cli.denuncia(c.dato.id, motivo, texto).then(function (r?: T) {
+      var res: T = { ok: r.ok, estado: r.estado, cuerpo: r.cuerpo, error: r.ok ? "" : P.mensajeError(r.estado, r.cuerpo, "denuncia") };
+      if (hecho) hecho(res); else avisoVR(r.ok ? "Denuncia enviada: la oficina lo mirará." : res.error);   // en VR no hay recuadro: el resultado queda en estado() y en la ficha siguiente
+    });
+  }
+  function avisoVR(txt?: T) { lastAviso = txt; try { dp.Bus.emite("personalizacion:resultado", { texto: txt }); } catch (e: T) {} }
+  var lastAviso = "";
+
+  // ---- reducir la imagen en el aparato: un canvas, ≤ 1280 px, JPEG 0,85 (la api vuelve a codificar a WebP y quita EXIF y GPS). Devuelve Promise<{ blob, tipo }>
+  function reduceImagen(f?: T) {
+    var carga: T = typeof createImageBitmap === "function" ? createImageBitmap(f).catch(function () { return cargaImg(f); }) : cargaImg(f);
+    return carga.then(function (im?: T) {
+      var w: T = im.width || im.naturalWidth, h: T = im.height || im.naturalHeight;
+      if (!(w > 0 && h > 0) || w * h > P.MAX_FOTO_PX) { if (im.close) im.close(); return null; }   // A3-7b2: el ImageBitmap se cierra también cuando no se usa
+      var d: T = P.reduce(w, h, P.MAX_PX), cv: T = document.createElement("canvas"); cv.width = d.w; cv.height = d.h;
+      var cx: T = cv.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, d.w, d.h); try { cx.drawImage(im, 0, 0, d.w, d.h); } finally { if (im.close) im.close(); }   // fondo blanco: un PNG con transparencia no sale negro en el JPEG; el ImageBitmap se cierra pase lo que pase
+      return new Promise(function (res?: T) { cv.toBlob(function (b?: T) { cv.width = cv.height = 0; res(b ? { blob: b, tipo: "image/jpeg" } : null); }, "image/jpeg", 0.85); });
+    }).catch(function () { return null; });
+  }
+  function cargaImg(f?: T) {
+    return new Promise(function (res?: T, rej?: T) {
+      var u: T = URL.createObjectURL(f), im: T = new Image();
+      im.onload = function () { URL.revokeObjectURL(u); res(im); }; im.onerror = function () { URL.revokeObjectURL(u); rej(new Error("imagen")); }; im.src = u;
+    });
+  }
+
+  // ---- el nombre sobre el olivo (DOM; ver «presupuesto» arriba): hasta 12 etiquetas reutilizadas, colocadas con transform cada fotograma solo si hay alguna cerca
+  var capa: T = null, cerca: T = [];
+  function creaCapa() {
+    if (capa) return;
+    capa = el("div", "position:fixed;left:0;top:0;width:0;height:0;pointer-events:none;z-index:4;overflow:visible"); capa.setAttribute("id", "rotulosOlivos"); capa.setAttribute("aria-hidden", "true");
+    document.body.appendChild(capa);
+  }
+  function etiqueta(k?: T) {
+    if (pool[k]) return pool[k];
+    var e: T = el("div", "position:absolute;left:0;top:0;white-space:nowrap;padding:2px 8px;border-radius:10px;font:600 14px/1.3 system-ui,sans-serif;color:#fff;background:rgba(0,0,0,0.55);text-shadow:0 1px 2px #000;will-change:transform;display:none");
+    capa.appendChild(e); pool[k] = e; return e;
+  }
+  function ocultaRotulos() { for (var k = 0; k < pool.length; k++) pool[k].style.display = "none"; }
+  function eligeCerca() {   // cada 0,4 s: cuáles de los olivos con nombre tocan
+    var vr: T = typeof dp.VRX !== "undefined" && dp.VRX && dp.VRX.on;
+    if (!rotulosDe.length || vr) { cerca = []; ocultaRotulos(); return; }
+    cerca = P.cercanos(rotulosDe, dp.camera.position.x, dp.camera.position.z, P.CERCA_M, P.MAX_ROTULOS);
+    if (cerca.length) { creaCapa(); rect = dp.lienzo.getBoundingClientRect(); }
+    for (var k: T = cerca.length; k < pool.length; k++) pool[k].style.display = "none";
+  }
+  function colocaRotulos() {   // cada fotograma, solo con algo cerca
+    if (!cerca.length || !rect) return;
+    var pintados = 0;
+    for (var k = 0; k < cerca.length; k++) {
+      var q: T = cerca[k].q, p: T = dp.Entidades.pos("olivo:" + q.clave), e: T = etiqueta(k);
+      if (!p) { e.style.display = "none"; continue; }
+      vec.set(p.x, p.y + 6.2 * dp.Estado.exag, p.z).project(dp.camera);
+      if (vec.z > 1 || vec.z < -1) { e.style.display = "none"; continue; }
+      var sx: T = (vec.x * 0.5 + 0.5) * rect.width + rect.left, sy: T = (-vec.y * 0.5 + 0.5) * rect.height + rect.top;
+      if (e.textContent !== q.nombre) e.textContent = q.nombre;
+      e.style.display = "block"; e.style.opacity = String(Math.max(0.25, 1 - cerca[k].d / P.CERCA_M));
+      e.style.transform = "translate(" + Math.round(sx) + "px," + Math.round(sy) + "px) translate(-50%,-100%)"; pintados++;
+    }
+    contador.rotulos = pintados;
+  }
+
+  // ---- la lámina colgada del olivo elegido (1 llamada, 1 textura de 512 px; se libera al soltar)
+  function abreLamina(id?: T) {
+    var c: T = contexto(id); cierraLamina();
+    if (!c.i || !c.dato || !c.dato.objeto || !c.pos) return;
+    var o: T = c.dato.objeto, ancho = 1.3, alto: T = Math.max(0.7, Math.min(1.7, ancho * o.alto / o.ancho)), W = 512, H: T = Math.round(W * (alto + 0.2) / ancho), lid: T = "personaliza:" + id;
+    var im: T = new Image(); imagen = im; var hecha = false;
+    var dx: T = dp.camera.position.x - c.pos.x, dz: T = dp.camera.position.z - c.pos.z, dl: T = Math.hypot(dx, dz) || 1;
+    dp.Laminas.abre({ id: lid, ancho: ancho, alto: alto + 0.2, w: W, h: H, nombre: "imagen del olivo",
+      en: { x: c.pos.x + dx / dl * 1.2, y: c.pos.y + 2.4 * dp.Estado.exag, z: c.pos.z + dz / dl * 1.2 }, cierraA: { vr: 40, pantalla: 80 },
+      firma: function () { return (hecha ? "1" : "0") + o.url + (c.dato.nombre || ""); },
+      pinta: function (cx?: T, w?: T, h?: T) {
+        cx.fillStyle = "#1b231d"; cx.fillRect(0, 0, w, h);
+        var ih: T = h - 40, cw: T = w - 16;
+        if (hecha && im.naturalWidth) { var k: T = Math.min(cw / im.naturalWidth, ih / im.naturalHeight), dw: T = im.naturalWidth * k, dh: T = im.naturalHeight * k; cx.drawImage(im, (w - dw) / 2, 8 + (ih - dh) / 2, dw, dh); }
+        else { cx.fillStyle = "#e8eee4"; cx.font = "24px system-ui,sans-serif"; cx.textAlign = "center"; cx.fillText("cargando…", w / 2, h / 2); }
+        cx.fillStyle = "#e8eee4"; cx.font = "600 22px system-ui,sans-serif"; cx.textAlign = "center"; cx.fillText((c.dato.nombre || "Olivo").slice(0, 40), w / 2, h - 12);
+      } });
+    laminaDe = lid; contador.laminas++;
+    im.onload = function () { hecha = true; if (laminaDe === lid) dp.Laminas.repinta(lid); };
+    im.onerror = function () { hecha = false; };
+    im.src = o.url;
+  }
+  function cierraLamina() { if (laminaDe) { dp.Laminas.cierra(laminaDe, "cerrada"); laminaDe = ""; } if (imagen) { imagen.onload = imagen.onerror = null; imagen.src = ""; imagen = null; } }
+
+  // ---- montaje
+  quitaCompl = dp.Entidades.complementa("olivo", complementa);
+  n.on("usable:elige", function (e?: T) { if (e && P.idOlivo(e.id)) abreLamina(e.id); else cierraLamina(); });
+  n.on("usable:suelta", function () { cierraLamina(); });
+  n.on("decoraciones:pide", function () { emiteDecos(); });
+  cli.sesion().then(function (r?: T) { if (r.ok && r.cuerpo && typeof r.cuerpo.titular === "boolean") titular = r.cuerpo.titular; });
+  function actualiza(fase?: T, dt?: T) {
+    if (!vivo) return;
+    if (fase === "mundo") { colocaRotulos(); return; }
+    tarde += dt; tRefresco += dt;
+    if (!Object.keys(hazasVistas).length) { if (dp.Hazas.vistas().length && !pidiendo) refrescaTodo(); }   // las hazas llegan después de arrancar: se espera a que estén
+    else if (tRefresco >= P.REFRESCO_S && !pidiendo && !laminaDe && !recuadro) { tRefresco = 0; refrescaTodo(); }
+    eligeCerca();
+  }
+  function estado() { return { api: true, titular: titular, hazas: Object.keys(hazasVistas).length, cargadas: cargadas, conNombre: rotulosDe.length, personalizados: Object.keys(mapa).length, decoraciones: listaDecos().length, rotulos: contador.rotulos, laminas: contador.laminas, lamina: laminaDe, recuadro: !!recuadro, resultado: lastAviso }; }
+  function libera() {
+    vivo = false; ctl.abort(); cierraPanel(); cierraLamina();
+    if (quitaCompl) { quitaCompl(); quitaCompl = null; }
+    if (capa && capa.parentNode) capa.parentNode.removeChild(capa); capa = null; pool = []; cerca = []; mapa = {}; rotulosDe = [];
+    if (Object.keys(decos).length) { decos = {}; emiteDecos(); }   // sin personalización no quedan decoraciones que dibujar
+    try { delete (window as T).__personaliza; } catch (e: T) { (window as T).__personaliza = undefined; }
+  }
+  (window as T).__personaliza = function () { return estado(); };
+  return { actualiza: actualiza, libera: libera, estado: estado };
+}
+// [motor:fin]
+
+export function creaPersonalizacion(dp: DepsPersonalizacion, n: T) { return PersonalizaMotor(dp, n); }
+export type Personalizacion = ReturnType<typeof creaPersonalizacion>;
+
+export function manifiestoPersonalizacion(dp: DepsPersonalizacion): Manifiesto {
+  return {
+    id: ID_PERSONALIZACION, version: 1,
+    consume: ["Entidades", "Usables", "Laminas", "Hazas", "HazasPuro", "VRX"],
+    expone: [],
+    eventos: { escucha: ["usable:elige", "usable:suelta", "decoraciones:pide"], emite: ["personalizacion:resultado", "decoraciones:cambian"] },
+    bandera: { defecto: true, url: "personaliza" },
+    // nada en la escena 3D salvo la lámina del olivo elegido (1 llamada, 2 triángulos, una textura de 512 px, liberada al soltar); los nombres son DOM
+    presupuesto: { llamadas: 1, triangulos: 2, texturasMB: 1 },
+    fases: { mundo: 0, tarde: 0.4 },
+    mundos: ["exterior"],
+    monta: function (n) { return creaPersonalizacion(dp, n as T); },
+    actualiza: { mundo: function (dt, _t, api: T) { api.actualiza("mundo", dt); }, tarde: function (dt, _t, api: T) { api.actualiza("tarde", dt); } },
+    libera: function (api: T) { if (api) api.libera(); }
+  };
+}

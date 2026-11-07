@@ -12,3 +12,5 @@ export { ID_VOZ, VozPuro, creaVoz, manifiestoVoz } from "./voz/voz.ts";
 export type { DepsVoz, Voz } from "./voz/voz.ts";
 export { HablaPuro } from "./voz/habla.ts";
 export { CorroPuro } from "./voz/corro.ts";
+// A3-7b2 (MU5-n): la tarjeta del estreno del micro (antes 46b_primera_vez.js): lógica pura, sin componente.
+export { PrimeraVezPuro } from "./voz/primera-vez.ts";

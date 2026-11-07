@@ -11,7 +11,8 @@ const { describe, before } = test;
 const { RAIZ, lee, fs, path } = require("./_util");
 
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini); return s.slice(i, f); };
-const FUENTE = lee("apps/web/motor/41_cae_la_cosecha.js"), ANFITRION = lee("apps/web/motor/40_juegos.js");
+const { fuenteMotor } = require("./_fuente");   // A3-7b2: el talón y el .ts de apps/web/src/mundos/exterior/ de cada uno, leído como JavaScript (sin tipos ni «dp.»)
+const FUENTE = fuenteMotor("41_cae_la_cosecha.js"), ANFITRION = fuenteMotor("40_juegos.js");
 const P = new Function("\"use strict\";\n" + trozo(FUENTE, "// [puro:inicio]", "// [puro:fin]") + "\nreturn CaeLaCosechaPuro;")();
 const Dib = new Function("\"use strict\";\n" + trozo(FUENTE, "// [dibujo:inicio]", "// [dibujo:fin]") + "\nreturn CaeLaCosechaDibujo;")();
 const JP = new Function("\"use strict\";\n" + trozo(ANFITRION, "// [puro:inicio]", "// [puro:fin]") + "\nreturn JuegosPuro;")();
@@ -192,7 +193,7 @@ test("clasificación por alias (C9c): ruta, validación de lista blanca, nombres
 });
 
 // ---------- el juego en VR (C9b): zonas de la lámina, la palanca, y el anfitrión con una lámina y un mundo de mentira
-const PARTIDA = () => new Function("CaeLaCosechaPuro", "CaeLaCosechaDibujo", "performance", "\"use strict\";\n" + FUENTE.slice(FUENTE.indexOf("  function CaeLaCosechaPartida"), FUENTE.indexOf("  // el manifiesto")) + "\nreturn CaeLaCosechaPartida;")(P, Dib, { now: () => 0 });
+const PARTIDA = () => new Function("CaeLaCosechaPuro", "CaeLaCosechaDibujo", "performance", "\"use strict\";\n" + FUENTE.slice(FUENTE.indexOf("function CaeLaCosechaPartida"), FUENTE.indexOf("// el manifiesto")) + "\nreturn CaeLaCosechaPartida;")(P, Dib, { now: () => 0 });
 
 test("VR: la lámina da cada zona (izquierda, girar, derecha, soltar; Pausa y Salir arriba) y, acabada la partida, «Otra partida» y «Salir»", () => {
   const bt = [{ a: "izquierda" }, { a: "gira" }, { a: "derecha" }, { a: "cae" }], V = JP.VR, z = (x, y, fin) => JP.zonaVR(x / V.w, y / V.h, bt, fin);
@@ -244,11 +245,11 @@ test("VR: el anfitrión abre el juego como lámina (el mundo no se pausa), lo to
     info: id => ({ abierta: !!laminas[id], pintadas: cuenta.pinta }), toca(u, v) { const l = laminas["juego-vr"]; return l ? l.o.alTocar(u, v) : false; }
   };
   const PanelVR = { filas(p, d) { filas.push({ p, d }); return nada; }, cierra() { cuenta.panel++; }, repinta: nada };
-  const cuerpo = ANFITRION.slice(ANFITRION.indexOf("  function JuegosMotor"), ANFITRION.indexOf("  // el manifiesto"));
+  const cuerpo = ANFITRION.slice(ANFITRION.indexOf("function JuegosMotor"), ANFITRION.indexOf("// el manifiesto"));
   const g = { D: { base: "", finca_id: "x" }, ConfigPuro: { prefijoApi: () => null }, Config: { tablaEpocas: () => null }, Pausa: { pon: q => pausas.push(q), quita: nada, activa: () => false },
     Ventanas: { registra: () => nada, abierta: () => false }, Teclas: { registra: () => nada }, Hud: { icono: () => nada, alterna: nada }, VRX, Laminas, PanelVR, window: { localStorage: null }, location: { search: "?semilla=7" }, document: {} };
   const n = { on: (ev, fn) => { bus[ev] = fn; }, limpia: nada, emite: nada };
-  const api = new Function("JuegosPuro", "n", "g", "\"use strict\";\nvar D = g.D, ConfigPuro = g.ConfigPuro, Config = g.Config, Pausa = g.Pausa, Ventanas = g.Ventanas, Teclas = g.Teclas, Hud = g.Hud, VRX = g.VRX, Laminas = g.Laminas, PanelVR = g.PanelVR, window = g.window, location = g.location, document = g.document, performance = { now: () => 0 };\n" + cuerpo + "\nreturn JuegosMotor(n);")(JP, n, g);
+  const api = new Function("JuegosPuro", "n", "g", "\"use strict\";\nvar D = g.D, ConfigPuro = g.ConfigPuro, Config = g.Config, Pausa = g.Pausa, Ventanas = g.Ventanas, Teclas = g.Teclas, Hud = g.Hud, VRX = g.VRX, Laminas = g.Laminas, PanelVR = g.PanelVR, window = g.window, location = g.location, document = g.document, performance = { now: () => 0 };\n" + cuerpo + "\nreturn JuegosMotor(undefined, n);")(JP, n, g);
   const Partida = PARTIDA(); let ultima = null;
   const def = { id: "cae-la-cosecha", titulo: "Cae la cosecha", descripcion: "x", vr: { botones: [{ a: "izquierda", t: "Izquierda" }, { a: "gira", t: "Girar" }, { a: "derecha", t: "Derecha" }, { a: "cae", t: "Soltar" }], palanca: { izquierda: "izquierda", derecha: "derecha", arriba: "gira", abajo: "cae" }, ayuda: "a" }, crea: ctx => (ultima = Partida(ctx, nada)) };
   const fin = () => ultima.estado().fin;
@@ -288,7 +289,7 @@ test("VR (C9b+): al acabar la partida, la lámina enseña tu puesto y la tabla c
     repinta(id, f) { const l = laminas[id]; if (!l) return false; const fm = l.o.firma(); if (!f && fm === l.firma) return false; const c = contexto(); l.o.pinta(c.g, l.o.w, l.o.h); ops.length = 0; ops.push(...c.ops); l.firma = fm; cuenta.pinta++; return true; },
     cierra(id, m) { const l = laminas[id]; if (!l) return false; delete laminas[id]; l.o.alCierra(m); return true; }, info: () => ({}), toca: nada
   };
-  const cuerpo = ANFITRION.slice(ANFITRION.indexOf("  function JuegosMotor"), ANFITRION.indexOf("  // el manifiesto"));
+  const cuerpo = ANFITRION.slice(ANFITRION.indexOf("function JuegosMotor"), ANFITRION.indexOf("// el manifiesto"));
   const CLAS = { juego: "cae-la-cosecha", total: 7, puestos: [{ puesto: 1, alias: "Olivares Sur", puntos: 9000, es_mia: false }, { puesto: 2, alias: null, puntos: 700, es_mia: false }], mia: { puesto: 6, alias: null, puntos: 120, es_mia: true } };
   const fetchAnt = globalThis.fetch, pedidas = [];
   async function juega(prefijo, respuesta) {
@@ -296,7 +297,7 @@ test("VR (C9b+): al acabar la partida, la lámina enseña tu puesto y la tabla c
     const g = { D: { base: "", finca_id: "x" }, ConfigPuro: { prefijoApi: () => prefijo }, Config: { tablaEpocas: () => null }, Pausa: { pon: nada, quita: nada, activa: () => false },
       Ventanas: { registra: () => nada, abierta: () => false }, Teclas: { registra: () => nada }, Hud: { icono: () => nada, alterna: nada }, VRX, Laminas, PanelVR: { filas(p, d) { filas.push(d); return nada; }, cierra: nada, repinta: nada }, window: { localStorage: null }, location: { search: "?semilla=7" }, document: {} };
     const n = { on: (ev, fn) => { bus[ev] = fn; }, limpia: nada, emite: nada };
-    const api = new Function("JuegosPuro", "n", "g", "\"use strict\";\nvar D = g.D, ConfigPuro = g.ConfigPuro, Config = g.Config, Pausa = g.Pausa, Ventanas = g.Ventanas, Teclas = g.Teclas, Hud = g.Hud, VRX = g.VRX, Laminas = g.Laminas, PanelVR = g.PanelVR, window = g.window, location = g.location, document = g.document, performance = { now: () => 0 };\n" + cuerpo + "\nreturn JuegosMotor(n);")(JP, n, g);
+    const api = new Function("JuegosPuro", "n", "g", "\"use strict\";\nvar D = g.D, ConfigPuro = g.ConfigPuro, Config = g.Config, Pausa = g.Pausa, Ventanas = g.Ventanas, Teclas = g.Teclas, Hud = g.Hud, VRX = g.VRX, Laminas = g.Laminas, PanelVR = g.PanelVR, window = g.window, location = g.location, document = g.document, performance = { now: () => 0 };\n" + cuerpo + "\nreturn JuegosMotor(undefined, n);")(JP, n, g);
     let ultima = null; const Partida = PARTIDA();
     bus["juego:ofrece"]({ id: "cae-la-cosecha", titulo: "Cae la cosecha", vr: { botones: [{ a: "izquierda", t: "I" }, { a: "gira", t: "G" }, { a: "derecha", t: "D" }, { a: "cae", t: "S" }], palanca: { abajo: "cae" } }, crea: ctx => (ultima = Partida(ctx, nada)) });
     assert.ok(api.abreVR("cae-la-cosecha"));

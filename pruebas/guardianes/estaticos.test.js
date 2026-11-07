@@ -105,10 +105,10 @@ test("15_tiempo: la barrera de luz de cada linde (malla congelada) da la misma m
   assert.ok(lista(A.escena).slice(1).every(o => !o.matrixAutoUpdate), "grupo y mallas congelados");
 });
 function balizasOficiales(Estaticos) {
-  const F = lee("apps/web/motor/39_oficina_mundo.js"), T = trozo(F, "    function montaGrafica()", "    function refresca()");
+  const F = require("./_fuente").fuenteMotor("39_oficina_mundo.js"), T = trozo(F, "  function montaGrafica()", "  function refresca()");   // A3-7b2: el código vive en mundos/exterior/oficina-mundo.ts
   const scene = new THREE.Scene();
   const f = new Function("THREE", "Estaticos", "scene", "suelo", "OP", "ALTO", "COLOR", "CLARO",
-    "\"use strict\";\nvar gB = null, mCol = null, mBan = null, geos = [], mats = [], m4 = null, v1 = null, v2 = null, q0 = null, vS = null, w0 = null, balizas = [], Estado = { exag: 1 };\n" + T +
+    "\"use strict\";\nvar materiales = { estandar: function (c, o) { return new THREE[c](o); } };   // la fábrica de materiales (A3-7b2)\nvar gB = null, mCol = null, mBan = null, geos = [], mats = [], m4 = null, v1 = null, v2 = null, q0 = null, vS = null, w0 = null, balizas = [], Estado = { exag: 1 };\n" + T +
     "\nreturn { coloca: coloca, pon: function (b, e) { balizas = b; Estado.exag = e; } };");
   return Object.assign(f(THREE, Estaticos, scene, (x, y) => 60 + 0.3 * x - 0.2 * y, { BALIZAS_MAX: 20 }, 18, 0xffcc00, 0xffffff), { scene });
 }

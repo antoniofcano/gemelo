@@ -17,7 +17,7 @@ const contratoModulos = require(path.join(__dirname, "..", "contrato_modulos.js"
 
 const sinCabecera = s => s.startsWith(contratoModulos.MARCA_I) ? s.slice(s.indexOf(contratoModulos.MARCA_F) + contratoModulos.MARCA_F.length + 1) : s;
 const trozo = (s, ini, fin) => { const i = s.indexOf(ini), f = s.indexOf(fin); assert.ok(i >= 0 && f > i, "faltan las marcas " + ini + " … " + fin); return s.slice(i, f); };
-const GUI = lee("apps/web/motor/46_guiada.js"), RED = lee("apps/web/motor/37_red.js"), PRES = lee("apps/web/motor/38_presencia_compartida.js"), LIB = lee("apps/web/motor/26_presencia.js");
+const GUI = require("./_fuente").fuenteMotor("46_guiada.js"), GUI_TALON = lee("apps/web/motor/46_guiada.js"), RED = lee("apps/web/motor/37_red.js"), PRES = lee("apps/web/motor/38_presencia_compartida.js"), LIB = lee("apps/web/motor/26_presencia.js");
 const VOZ = lee("apps/web/motor/45_voz.js"), NUCLEO = lee("apps/web/motor/02c_componentes.js");
 const PURO = trozo(GUI, "// [puro:inicio]", "// [puro:fin]"), MOTOR = trozo(GUI, "// [motor:inicio]", "// [motor:fin]");
 const G = new Function("\"use strict\";\n" + PURO + "\nreturn GuiadaPuro;")();
@@ -150,7 +150,7 @@ function montaGuiada({ papel = "guia", nombre = "guiada-12", respuestas = {}, co
     } };
   const nombres = Object.keys(g);
   const GuiadaMotor = new Function(...nombres, "\"use strict\";\n" + PURO + MOTOR + "\nreturn GuiadaMotor;")(...nombres.map(k => g[k]));
-  const api = GuiadaMotor(n, R, P, Vz);
+  const api = GuiadaMotor(undefined, n, R, P, Vz);
   return { api, sala, emitidos, limpias, llamadas, visor, cuerpoV, filas, abiertas, VRX, ventana, n, tic: (dt = 0.25) => api.tarde(dt) };
 }
 
@@ -301,7 +301,7 @@ function cualquiera() {
 function motor({ busqueda = "?presencia=red", ficheros = ["red", "presencia", "voz", "guiada"], guiadaEstado = 200 } = {}) {
   const LK = lkFalso(), errores = [], fetchs = [];
   const fuentes = { red: sinCabecera(RED).replace('import("livekit-client")', "Promise.resolve(LK_FALSO)"),
-    presencia: sinCabecera(PRES).replace('import("three/addons/utils/BufferGeometryUtils.js")', "Promise.reject(new Error(\"sin addons en Node\"))"), voz: sinCabecera(VOZ), guiada: sinCabecera(GUI) };
+    presencia: sinCabecera(PRES).replace('import("three/addons/utils/BufferGeometryUtils.js")', "Promise.reject(new Error(\"sin addons en Node\"))"), voz: sinCabecera(VOZ), guiada: sinCabecera(GUI_TALON) };
   const ventana = { addEventListener() {}, removeEventListener() {} }, visor = new El("div");
   const documento = { getElementById: () => null, createElement: t => new El(t), createTextNode: t => ({ texto: t }), body: new El("body") };
   const consola = { error: (...a) => errores.push(a.map(String).join(" ")), warn: (...a) => { const t = a.map(String).join(" "); if (!/sin quad ni dron/.test(t)) errores.push(t); }, log() {} };
@@ -322,6 +322,8 @@ function motor({ busqueda = "?presencia=red", ficheros = ["red", "presencia", "v
     }
   };
   conFabrica(g);
+  // A3-7b2: la guiada (ui/guiada.ts) usa el document, el window y el fetch globales (como el resto de ui/): se los damos a este contexto
+  globalThis.document = documento; globalThis.window = ventana; globalThis.fetch = g.fetch;
   const nombres = Object.keys(g), codigo = sinCabecera(LIB) + "\n" + ficheros.map(f => fuentes[f]).join("\n");
   const f = new Function(...["window", "location", "document", "console"].concat(nombres), "\"use strict\";\n" + sinCabecera(NUCLEO) + "\n" + codigo + "\nreturn { Componentes, Bus };");
   const r = f(...[ventana, { search: busqueda, href: "https://gemelo.test/finca/index.html" + busqueda }, documento, consola].concat(nombres.map(k => g[k])));
@@ -371,11 +373,11 @@ test("componentes en Node: si la api no deja entrar en la guiada (cerrada) o la 
 });
 
 test("el manifiesto, los eventos y la api de la presencia: «visita-guiada» con su bandera, presupuesto y eventos del catálogo", () => {
-  const m = /Componentes\.registra\(\{([\s\S]*?)\n  \}\);/.exec(GUI)[1];
-  assert.match(m, /id: "visita-guiada"/); assert.match(m, /bandera: \{ defecto: true, url: "guia" \}/); assert.match(m, /presupuesto: \{ llamadas: 1, triangulos: 2, texturasMB: 1 \}/);
+  const m = /return \{\n    id: ID_GUIADA([\s\S]*?)\n  \};/.exec(GUI)[1];   // A3-7b2: el manifiesto vive en ui/guiada.ts (manifiestoGuiada), de todos los mundos
+  assert.match(GUI, /ID_GUIADA = "visita-guiada"/); assert.match(m, /mundos: "todos"/); assert.match(m, /bandera: \{ defecto: true, url: "guia" \}/); assert.match(m, /presupuesto: \{ llamadas: 1, triangulos: 2, texturasMB: 1 \}/);
   assert.match(m, /consume: \["Red", "Presencia", "Voz"/);
-  for (const e of ["guiada:palabra", "guiada:cierre"]) assert.deepStrictEqual(EVENTOS.eventos[e].emiten, ["46_guiada"], e);
-  for (const e of ["voz:estado", "depura:lineas"]) assert.ok(EVENTOS.eventos[e].escuchan.includes("46_guiada"), e);
+  for (const e of ["guiada:palabra", "guiada:cierre"]) assert.deepStrictEqual(EVENTOS.eventos[e].emiten, ["ui/guiada"], e);
+  for (const e of ["voz:estado", "depura:lineas"]) assert.ok(EVENTOS.eventos[e].escuchan.includes("ui/guiada"), e);
   assert.ok(EVENTOS.eventos["red:estado"].escuchan.includes("red/voz/voz"), "la voz se engancha sola a la sala que entra en una guiada");
   for (const k of ["entraGuiada", "evento", "nombreSala"]) assert.ok(IFACES.apis_de_componentes["presencia-compartida"].miembros.includes(k), k);
 });

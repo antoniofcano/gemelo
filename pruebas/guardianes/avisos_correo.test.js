@@ -6,9 +6,9 @@
 //  - el registro: bandera ?avisos=, presupuesto 0, sin innerHTML ni otro host.
 // Lo de Chrome (la casilla de verdad en Configuración, iPhone, Quest): no probado.
 const test = require("node:test"), assert = require("node:assert");
-const { lee } = require("./_util");
+const { fuenteMotor } = require("./_fuente");
 
-const FUENTE = lee("apps/web/motor/49_avisos_correo.js");
+const FUENTE = fuenteMotor("49_avisos_correo.js");   // A3-7b2: el talón y apps/web/src/ui/avisos-correo.ts, sin tipos ni «dp.»
 function trozo(ini, fin) {
   const i = FUENTE.indexOf(ini), f = FUENTE.indexOf(fin);
   assert.ok(i >= 0 && f > i, "49_avisos_correo.js debe marcar " + ini + " … " + fin);
@@ -113,7 +113,7 @@ test("libera(): quita la casilla y una respuesta tardía ya no registra nada", a
 });
 
 test("registro: bandera ?avisos=, sin GPU, sin eventos; ni innerHTML ni otro host", () => {
-  assert.match(FUENTE, /id: "avisos-correo"/); assert.match(FUENTE, /bandera: \{ defecto: true, url: "avisos" \}/);
+  assert.match(FUENTE, /ID_AVISOS_CORREO = "avisos-correo"/); assert.match(FUENTE, /mundos: "todos"/); assert.match(FUENTE, /bandera: \{ defecto: true, url: "avisos" \}/);
   assert.match(FUENTE, /presupuesto: \{ llamadas: 0, triangulos: 0 \}/);
   assert.doesNotMatch(FUENTE, /innerHTML|https?:\/\//);
   assert.doesNotMatch(FUENTE, /new THREE|THREE\./);
