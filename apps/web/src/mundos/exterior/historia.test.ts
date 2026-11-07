@@ -3,7 +3,7 @@
 // quita, la ventana que vuelve a su estado de antes de empezar, un título hostil que no entra como código (L9-03) y ndviEn sin NDVI (L4-12). HONESTIDAD: sin navegador ni GPU; cómo se
 // ve el recorrido, en el banco.
 import { afterEach, describe, expect, it } from "vitest";
-import { ID_HISTORIA, creaHistoria, manifiestoHistoria } from "./historia.ts";
+import { DEF_RESALTE, ID_HISTORIA, MATERIAL_RESALTE, creaHistoria, manifiestoHistoria } from "./historia.ts";
 import { creaMundo, type Mundo } from "../../nucleo/prueba-dom.ts";
 import { creaMateriales } from "../../nucleo/materiales.ts";
 import type { ThreeMin } from "../../nucleo/materiales.ts";
@@ -68,6 +68,21 @@ describe("historia: ciclo de vida", () => {
     const { H, m, idx } = monta();
     const i = H.estado().escenas; expect(i).toBeGreaterThan(4);
     el(m, "hPuntos").children[4].click(); expect(idx()).toBe(0); H.libera();
+  });
+  it("la variante TSL (apagada): solo con el renderizador nuevo; con three/webgpu y three/tsl de verdad se construye un MeshBasicNodeMaterial con su positionNode y el mismo estado de dibujo", async () => {
+    const rutaW = "three/webgpu", rutaT = "three/tsl";   // por variable: three no trae tipos
+    const W = await import(/* @vite-ignore */ rutaW as string), TSL = await import(/* @vite-ignore */ rutaT as string);
+    const uExag = { value: 2 };
+    const hoy = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: { tipo: "clasico", pedido: "" }, nodos: () => ({ THREE: W, TSL }) });
+    hoy.define(MATERIAL_RESALTE, DEF_RESALTE);
+    const c = hoy.crea(MATERIAL_RESALTE, { uExag }) as { isMeshBasicMaterial?: boolean; onBeforeCompile?: unknown };
+    expect(hoy.ruta(MATERIAL_RESALTE)).toBe("clasico"); expect(c.isMeshBasicMaterial).toBe(true); expect(typeof c.onBeforeCompile).toBe("function");
+    const F = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: { tipo: "nuevo", pedido: "nuevo" }, nodos: () => ({ THREE: W, TSL }) });
+    F.define(MATERIAL_RESALTE, DEF_RESALTE);
+    expect(F.ruta(MATERIAL_RESALTE)).toBe("tsl"); expect(F.cobertura()[MATERIAL_RESALTE]).toMatchObject({ clasico: true, tsl: true });
+    const t = F.crea(MATERIAL_RESALTE, { uExag }) as { isNodeMaterial: boolean; isMeshBasicNodeMaterial: boolean; positionNode: unknown; transparent: boolean; opacity: number; depthWrite: boolean; polygonOffsetFactor: number };
+    expect(t.isNodeMaterial).toBe(true); expect(t.isMeshBasicNodeMaterial).toBe(true); expect(t.positionNode).toBeTruthy();
+    expect([t.transparent, t.opacity, t.depthWrite, t.polygonOffsetFactor]).toEqual([true, 0.42, false, -3]);
   });
   it("diez montajes y liberaciones no dejan escuchas ni mallas", () => {
     for (let i = 0; i < 10; i++) { const { H, m, scene } = monta(); H.libera(); expect(m.escuchas()).toBe(0); expect(scene.children.length).toBe(0); m.limpia(); }

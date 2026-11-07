@@ -34,6 +34,17 @@ export const DEF_RESALTE: DefMaterial<OpcResalte> = {
     m.onBeforeCompile = function (sh: unknown) { parcheResalte(sh, o.uExag); };
     m.customProgramCacheKey = function () { return MATERIAL_RESALTE; };
     return m;
+  },
+  // MU5-n, tercer commit: la variante TSL, APAGADA (solo con el WebGPURenderer, que hasta MU6 no existe; nadie la usa hoy). Un MeshBasicNodeMaterial con el mismo estado de dibujo
+  // (transparente al 42 %, sin escribir profundidad, con el desplazamiento de polígono) y la misma posición: la y local por uExag, con el MISMO { value } de UN.uExag (releído en cada
+  // objeto, onObjectUpdate). FALTA: nada conocido; NO VERIFICADO que el grafo compile ni que se vea igual por ojo (capturas por material: MU6).
+  tsl: function (o, c) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const Tn = c.TSL as any, M = c.THREE["MeshBasicNodeMaterial"] as new (opc: unknown) => MaterialMin & { positionNode: unknown };
+    const uExag = Tn.uniform(o.uExag.value).onObjectUpdate(function () { return o.uExag.value; });
+    const m = new M({ color: 0xffffff, transparent: true, opacity: 0.42, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+    m.positionNode = Tn.vec3(Tn.positionLocal.x, Tn.positionLocal.y.mul(uExag), Tn.positionLocal.z);
+    return m;
   }
 };
 
