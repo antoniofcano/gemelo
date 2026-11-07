@@ -52,7 +52,7 @@ Son tres. Pasados a TSL, desbloquean a casi todos:
 | 13 | `apps/web/src/mundos/exterior/generados-sombreado.ts` (×2: las sombras de las hojas y las de las mallas por lotes) | `gen-profundidad` | `MeshDepthMaterial` + `encadena` | el mismo fundido en la sombra | — | no | no | no | **A** (sin conversión automática) — **TSL parcial (MU5-n, A3-2a)**, sin verificar su vía en el `WebGPURenderer` (§8) |
 | 14 | `mundos/exterior/lejanos.ts` (antes `07ac_lejanos.js`) | `impostor-lejano` | Lambert + parche (recorte alfa) | impostores de 4 variantes, normales del atlas, luz y fundido de `Generados` | sí | no | no | nubes, helada | **A** |
 | 15 | `mundos/exterior/lejanos.ts` (antes `07ac_lejanos.js`) | `impostor-sustituto` | Lambert + parche | sustituto por variante y vista (con silueta, `texelFetch`) | sí | no | no | no | **A** |
-| 16 | `14_historia.js` | `resalte-parcela` | Basic + parche | resalte que sigue `uExag` (`UN.uExag`) | sí | no | no | no | B |
+| 16 | `14_historia.js` | `resalte-parcela` | Basic + parche | resalte que sigue `uExag` (`UN.uExag`) | sí | no | no | no | B — **hecho (MU5-n, A3-7b1):** `define("resalte-parcela", { clasico, tsl })`, la TSL apagada (§17) |
 | 17 | `apps/web/src/mundos/exterior/vida.ts` (antes `16_vida.js`) | `estela` | `ShaderMaterial` | estela del quad y del dron por edad (`uNow`) | no | no | no | no | B — **TSL apagada (MU5-n, A3-5):** `define("estela", { clasico, tsl })` (`MeshBasicNodeMaterial`); §12 |
 | 18 | `18_paisaje.js` | `arroyo` | `ShaderMaterial` | agua del arroyo cuando llueve | no | no | no | `uT`, `uLuz` | B — **hecho (MU5-n, A3-3):** `define("arroyo", { clasico, tsl })`, la TSL apagada (§9.1) |
 | 19 | `19_balizas.js` | `baliza` | `ShaderMaterial` (uno por baliza) | columna con pulso | no | no | no | `uT` | B — **hecho (MU5-n, A3-3):** `define("baliza", { clasico, tsl })`, la TSL apagada (§9.1) |
@@ -483,6 +483,24 @@ Trece módulos del legado pasan a `apps/web/src/ui/` (MUNDOS §1, la frontera nu
 - **Pruebas:** `laminas.test.ts` y `entidades.test.ts` (Vitest, con la fábrica de verdad): el dueño tiene un material por lámina abierta (o el del anillo) y ninguno tras cerrar o liberar; `laminas.test.ts` cuenta además los «dispose» de three (geometría, material y textura de cada lámina). Las pruebas de Node que evalúan el trozo `[motor]` de las láminas o de los usables les dan un doble de la fábrica.
 
 **No probado:** nada de esto en un navegador, en iPhone ni en el Quest (esta tarea no abrió Chrome ni Docker).
+
+## 17. Lo hecho en A3-7b1 (2026-11-07): el contenido del mundo, del exterior
+
+Siete módulos del legado pasan a `apps/web/src/mundos/exterior/` como componentes de los mundos `["exterior"]` (MUNDOS §1 y §2, «Cómo quedó (MU5-n, A3-7b1)»; COMPONENTES §6). Solo uno tiene materiales. Qué toca de la receta del §5 a cada uno:
+
+| Módulo | 1.er commit (TS y componente) | 2.º commit (materiales por la fábrica) | 3.er commit (TSL apagada) |
+|---|---|---|---|
+| `13_parcelas.js` → `parcelas.ts` (`selector-parcelas`) | hecho | **no hace falta:** DOM | **no hace falta** |
+| `13b_hazas.js` → `hazas.ts` (`hazas-mundo`) | hecho | **no hace falta:** solo un `Raycaster` para el toque; la linde la dibuja `lindes.ts` | **no hace falta** |
+| `14_historia.js` → `historia.ts` (`historia-recorrido`) | hecho | hecho: el `MeshBasicMaterial` de cada malla de resalte pasa de `parchea` a `define("resalte-parcela")` + `Materiales.de("historia-recorrido").crea`; el clásico es el de siempre (mismo parche, `UN.uExag` por el mismo `{ value }`) con su clave de programa propia; `libera()` los suelta por la fábrica | hecho: `MeshBasicNodeMaterial` con el mismo estado de dibujo y `positionNode` = la y local por `uExag` (releído por objeto). Probada en Vitest con `three/webgpu` y `three/tsl` de verdad; **no se dibuja** |
+| `35_fichas_tiempo.js` → `fichas-tiempo.ts` | hecho | **no hace falta:** la lámina es de `Laminas` (§16) | **no hace falta** |
+| `48_vista_familia.js` → `vista-familia.ts` | hecho | **no hace falta:** DOM | **no hace falta** |
+| `51_fichas_mundo.js` → `fichas-mundo.ts` | hecho | **no hace falta:** las láminas son de `Laminas` | **no hace falta** |
+| `53_mundo_hoy.js` → `mundo-hoy.ts` | hecho | **no hace falta:** DOM | **no hace falta** |
+
+- **Cobertura (`Materiales.cobertura()`):** `resalte-parcela` tiene clásico y TSL; el resto de la tabla del §1 sigue como estaba. **Fuera de la fábrica:** ninguna fila de `FUERA` que bajar (el `parchea` de 14 ya pasaba por la fábrica).
+- **Pruebas:** `historia.test.ts` (con la fábrica de verdad: un material por parcela con su dueño, ninguno tras `libera()`, y la TSL con `three/webgpu` y `three/tsl`).
+- **No probado:** que la TSL de `resalte-parcela` se vea igual que la clásica (capturas: MU6), ni nada de esto en un navegador, en el Quest o en el iPhone.
 
 ## 18. Lo hecho en A3-7b2 (2026-11-07): lo social, los juegos y la oficina
 
