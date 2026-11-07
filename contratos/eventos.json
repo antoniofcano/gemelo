@@ -21,7 +21,7 @@
         }
       },
       "emiten": [
-        "43_agenda"
+        "ui/agenda"
       ],
       "escuchan": []
     },
@@ -289,7 +289,7 @@
         "mundos/comun/presencia"
       ],
       "escuchan": [
-        "43_agenda"
+        "ui/agenda"
       ]
     },
     "guiada:entrar": {
@@ -307,7 +307,7 @@
         }
       },
       "emiten": [
-        "43_agenda"
+        "ui/agenda"
       ],
       "escuchan": [
         "mundos/comun/presencia"
@@ -1334,7 +1334,7 @@
       ],
       "escuchan": [
         "40_juegos",
-        "43_agenda"
+        "ui/agenda"
       ]
     },
     "vr:rig-libera": {
