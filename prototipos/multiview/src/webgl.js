@@ -24,6 +24,7 @@ export function fabricaWebGL(modo) {
       const renderer = new THREE.WebGLRenderer(op);
       return {
         renderer,
+        backend: "WebGL",
         gl: renderer.getContext(),
         dibuja(escena, camara) { renderer.render(escena, camara); },
         multiviewActivo() { return modo === "super" ? !!renderer.xr.isMultiview : false; },

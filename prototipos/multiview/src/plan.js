@@ -15,13 +15,19 @@ function bit(v, por) { return v == null || v === "" ? por : !(v === "0" || v ===
 export function lee(busqueda, modoBuild) {
   const q = new URLSearchParams(typeof busqueda === "string" ? busqueda : "");
   const modo = MODOS.includes(modoBuild) ? modoBuild : MODOS.includes(q.get("modo")) ? q.get("modo") : "clasico";
+  const vista = q.get("vista") === "pantalla" ? "pantalla" : "vr";   // A4-1: «pantalla» = sin WebXR, el mismo dibujo en un lienzo de la página
   return {
     modo,
+    vista,
+    api: modo === "nuevo" && q.get("api") === "webgpu" ? "webgpu" : "webgl",   // nuevo: backend del WebGPURenderer (webgl = forceWebGL; webgpu = el nativo, si el navegador lo trae)
+    ancho: entero(q.get("ancho"), 390, 100, 4096),      // pantalla: tamaño del lienzo en px CSS (390 × 360: cabe en un iPhone con la ficha debajo)
+    alto: entero(q.get("alto"), 360, 100, 4096),
+    dpr: real(q.get("dpr"), 3, 0.5, 4),                 // pantalla: densidad fija (3 = la del iPhone): el lienzo tiene los mismos píxeles en todos los aparatos
     n: entero(q.get("n"), 200, 10, 2000),               // llamadas de dibujo por ojo (los casos: 100, 200, 400)
     tri: entero(q.get("tri"), 200000, 1000, 2000000),   // triángulos por ojo (el gemelo en VR: ~150-300 k)
     msaa: bit(q.get("msaa"), true),                    // antialias del contexto (y samples de la capa XR)
-    mv: modo === "clasico" ? false : bit(q.get("mv"), true),   // multiview: en clasico no existe; en super y nuevo, &mv=0 lo apaga
-    directo: modo === "nuevo" ? bit(q.get("directo"), true) : false,   // nuevo: DirectRenderPipeline (sin la pasada de salida intermedia)
+    mv: modo === "clasico" || vista === "pantalla" ? false : bit(q.get("mv"), true),   // multiview: en clasico no existe, en pantalla no aplica; en super y nuevo con VR, &mv=0 lo apaga
+    directo: modo === "nuevo" && vista === "vr" ? bit(q.get("directo"), true) : false,   // nuevo en VR: DirectRenderPipeline (sin la pasada de salida intermedia); en pantalla, el render() normal
     escala: real(q.get("escala"), 0.9, 0.5, 1.5),       // setFramebufferScaleFactor (el gemelo: 0,9, Q0b)
     fov: real(q.get("fov"), 1, 0, 1),                   // setFoveation (el gemelo: 1)
     seg: entero(q.get("seg"), 60, 5, 600),              // duración de la medida, en s
