@@ -1,0 +1,23 @@
+{
+ "_nota": "Qué nodo del glb de la fábrica restaurada va a qué mundo y con qué procedencia (regla 5). La leen separa.py y la prueba interiores_blender.test.js. «auxiliar»: sombras pintadas para la vista sin hornear; el horneado las sustituye y no se hornean.",
+ "procedencias": ["medido", "deducido", "ilustrativo", "auxiliar"],
+ "mundos": {
+  "fabrica": {
+   "medido": ["suelo", "pozuelos", "muros", "techo", "maquinaria", "escombro"],
+   "ilustrativo": ["muros_obra", "suelo_obra", "carpinteria", "tejado", "estructura", "maquinaria_rec"],
+   "auxiliar": ["sombras", "sombras_rec"]
+  },
+  "patios": {
+   "ilustrativo": ["patio_suelo", "patio_muros", "patio_carp", "patio_tejado", "patio_arboles", "muros_obra", "tejado", "carpinteria"],
+   "_colecciones": {"FACHADA_FABRICA": ["muros_obra", "tejado", "carpinteria"]},
+   "_nota": "Los patios no tienen muro del lado de la nave: la fachada de la fábrica (muros_obra, tejado, carpinteria) se copia aquí para que se vea desde fuera; en la versión Quest se pueden quitar sus caras interiores."
+  }
+ },
+ "limpieza": {
+  "_nota": "Piezas sueltas del escaneo (tras soldar las costuras de UV a 0,5 mm) con menos de caras_max caras y diagonal menor que diagonal_max_m: se apartan a un objeto «descartes_escaneo» oculto, no se borran. El escombro y la maquinaria no se tocan.",
+  "objetos": ["suelo", "pozuelos", "muros", "techo"],
+  "caras_max": 50,
+  "diagonal_max_m": 0.3,
+  "soldadura_m": 0.0005
+ }
+}
