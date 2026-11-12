@@ -159,6 +159,10 @@ def abre(op):
     return {"caras_quitadas": n}
 
 
+def srgb(c):
+    return c * 12.92 if c <= 0.0031308 else 1.055 * c ** (1 / 2.4) - 0.055
+
+
 class Pieza:
     """Acumula prismas en un bmesh, con UV por proyección de caja (en metros) y color de vértice blanco"""
 
@@ -180,7 +184,7 @@ class Pieza:
             eje = max(range(3), key=lambda k: abs(n[k])); a, b = [k for k in range(3) if k != eje]
             for l, k in zip(f.loops, c):
                 l[self.uv].uv = uvs[k] if uvs else (l.vert.co[a] * UV_M, l.vert.co[b] * UV_M)
-                l[self.col] = (*color, 1)
+                l[self.col] = (*(srgb(c) for c in color), 1)  # la capa de bmesh guarda sRGB; los colores de la obra son lineales
 
     def prisma(self, mn, mx, mat, m=None, color=(1, 1, 1), uv_local=None):
         """uv_local = (ancho, alto): la uv es (x / ancho, z / alto) en las coordenadas sin transformar (una textura por hoja)"""
@@ -193,6 +197,9 @@ class Pieza:
         me = bpy.data.meshes.new(nombre); self.bm.normal_update(); self.bm.to_mesh(me); self.bm.free()
         for n in self.mats:
             me.materials.append(material(n, defs))
+        # «Color» tiene que ser el color por defecto de la malla: los materiales del glb leen «el de por defecto», y sin él
+        # su color base sale negro (y el mapa de luz horneado, a cero)
+        me.color_attributes.active_color = me.color_attributes["Color"]; me.color_attributes.render_color_index = me.color_attributes.find("Color")
         o = bpy.data.objects.new(nombre, me); coleccion("ILUSTRATIVO").objects.link(o)
         o["gemelo_procedencia"] = "ilustrativo"; o["gemelo_obra"] = obra
         return o
@@ -289,7 +296,7 @@ def arbol(op, defs):
     p = Pieza(); rnd = random.Random(op.get("semilla", 1)); tipo = op["tipo"]; ft, celda, fs = FORMAS[tipo]
     x, y, z = op["en"]; h = op["alto"]; w = op.get("ancho", h * 0.3); r = w / 2
     hojas = op["hojas"]; tronco = relleno = op["pintado"]; n = int(op.get("tarjetas", 120))
-    c_tronco = tuple(op.get("color_tronco", (0.20, 0.155, 0.11))); c_relleno = tuple(op.get("color_relleno", (0.05, 0.10, 0.035)))
+    c_tronco = tuple(op.get("color_tronco", (0.11, 0.085, 0.06))); c_relleno = tuple(op.get("color_relleno", (0.05, 0.10, 0.035)))
     ht = h * ft; hc = h - ht; cz = z + ht + hc / 2  # copa: elipsoide de semiejes (r, r, hc/2) centrado en cz
     if tipo in ("copa", "naranjo"):
         rt = max(0.05, w * 0.045)
@@ -338,7 +345,7 @@ def arbol(op, defs):
 def arriate(op, defs):
     """Alcorque cuadrado de ladrillo: cuatro bordillos y la tierra dentro, un poco más baja"""
     p = Pieza(); x, y, z = op["en"]; a = op.get("lado", 1.2) / 2; h = op.get("alto", 0.14); g = op.get("grueso", 0.12); mat = op["material"]
-    col = tuple(op.get("color", (0.50, 0.13, 0.055))); tierra = tuple(op.get("color_tierra", (0.10, 0.07, 0.045)))
+    col = tuple(op.get("color", (0.33, 0.10, 0.05))); tierra = tuple(op.get("color_tierra", (0.05, 0.035, 0.022)))
     for x0, y0, x1, y1 in ((-a, -a, a, -a + g), (-a, a - g, a, a), (-a, -a + g, -a + g, a - g), (a - g, -a + g, a, a - g)):
         p.prisma((x + x0, y + y0, z), (x + x1, y + y1, z + h), mat, color=col)
     p.prisma((x - a + g, y - a + g, z), (x + a - g, y + a - g, z + h * 0.6), mat, color=tierra)
@@ -348,7 +355,7 @@ def arriate(op, defs):
 def maceta(op, defs):
     """Tiesto de barro (tronco de cono con labio) y su mata de tarjetas; con «flores», algunas son flor"""
     p = Pieza(); rnd = random.Random(op.get("semilla", 1)); x, y, z = op["en"]; h = op.get("alto", 0.4); r = op.get("ancho", 0.4) / 2
-    anillos(p, (x, y, z), [(0, r * 0.68), (h * 0.86, r * 0.96), (h * 0.86, r * 1.08), (h, r * 1.08), (h, r * 0.9), (h * 0.9, r * 0.85)], 9, op["material"], giro=0.0, color=tuple(op.get("color", (0.55, 0.20, 0.09))))
+    anillos(p, (x, y, z), [(0, r * 0.68), (h * 0.86, r * 0.96), (h * 0.86, r * 1.08), (h, r * 1.08), (h, r * 0.9), (h * 0.9, r * 0.85)], 9, op["material"], giro=0.0, color=tuple(op.get("color", (0.30, 0.09, 0.04))))
     hp = op.get("planta", 0.5)
     if hp > 0 and op.get("hojas"):
         n = int(op.get("tarjetas", 9)); nf = int(op.get("flores", 0))
@@ -367,9 +374,11 @@ def principal():
     a = argumentos(); obra = json.load(open(a["obra"], encoding="utf-8")); defs = obra.get("materiales", {})
     CARPETA = os.path.dirname(os.path.abspath(a["obra"]))
     hecho = []; tocados = set(); nuevos = []
-    dg = bpy.context.evaluated_depsgraph_get()
+    dg = bpy.context.evaluated_depsgraph_get(); sucio = False
     for op in obra["operaciones"]:
         t = op["op"]
+        if t not in ("aparta", "abre") and sucio:
+            bpy.context.view_layer.update(); dg = bpy.context.evaluated_depsgraph_get(); sucio = False  # que el rayo no vea lo apartado
         if "en" in op and op["en"][2] is None:
             # sin cota: se posa en lo primero que haya bajo el punto, mirando desde 2 m (por debajo de los tejados)
             ok, loc, *_ = bpy.context.scene.ray_cast(dg, Vector((op["en"][0], op["en"][1], op.get("desde_z", 2.0))), Vector((0, 0, -1)), distance=8)
@@ -377,9 +386,9 @@ def principal():
                 raise SystemExit("no hay suelo bajo " + op.get("nombre", "?"))
             op["en"] = [op["en"][0], op["en"][1], loc.z]
         if t == "aparta":
-            r = aparta(op); tocados.add(op["objeto"])
+            r = aparta(op); tocados.add(op["objeto"]); sucio = True
         elif t == "abre":
-            r = abre(op); tocados.add(op["objeto"])
+            r = abre(op); tocados.add(op["objeto"]); sucio = True
         elif t == "caja":
             p = Pieza(); p.prisma(op["min"], op["max"], op["material"], color=tuple(op.get("color", (1, 1, 1)))); o = p.objeto(op["nombre"], defs, op["nombre"]); r = {}
         elif t == "arriate":
