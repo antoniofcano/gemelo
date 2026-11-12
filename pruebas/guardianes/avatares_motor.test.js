@@ -276,7 +276,9 @@ test("en Chrome: con catálogo, los N más cercanos (6 en escritorio) con su VRM
     const v = res[k].vrm;
     assert.strictEqual(v.catalogo, 2); assert.strictEqual(v.cupo, 6); assert.strictEqual(v.fallos, 0, k + ": ningún VRM falla");
     assert.ok(v.conVrm >= 1 && v.conVrm <= 6, k + ": entre 1 y 6 con VRM (" + v.conVrm + ")");
-    assert.ok(v.instancias <= 6, k + ": nunca más instancias que el cupo (" + v.instancias + ")");
+    // el cupo limita los que se ven enteros o entrando; quien sale se funde (0,6 s) y espera oculto en reposo (5 s) antes de soltarse, así que en un relevo
+    // hay instancias de más un momento (por diseño, igual que en el legado). Lo que no puede haber es una instancia que no sea de nadie (fuga).
+    assert.ok(v.instancias <= 6 + v.fundiendo + v.enReposo + v.cargando, k + ": ninguna instancia fuera del cupo que no esté saliendo o en reposo (" + JSON.stringify(v) + ")");
   }
   assert.ok(res.vrm40.texturas < res.vrm40sinComp.texturas || res.vrm40.geometrias < res.vrm40sinComp.geometrias, "compartir debe ahorrar geometrías o texturas de la GPU");
   assert.ok(res.paseo.vrm.propio, "en tercera persona, tu paseante es tu avatar");
