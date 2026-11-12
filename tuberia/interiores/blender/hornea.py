@@ -1,6 +1,6 @@
 # Hornea la luz de un mundo interior preparado (prepara.py) con Cycles en CPU, objeto a objeto.
 #   blender --background <mundo.blend> --python hornea.py -- --salida <carpeta>
-#       [--objetos todos|a,b,c]        qué objetos (por defecto, todos los horneables: fuera AUXILIAR y DESCARTES)
+#       [--objetos todos|a,b,c]        qué objetos (por defecto, todos los horneables: fuera AUXILIAR, DESCARTES y EFECTOS)
 #       [--resolucion 1024|auto|auto-quest]  lado del mapa de luz; auto = gemelo_resolucion_pantalla del objeto,
 #                                      auto-quest = gemelo_resolucion_quest (los deja prepara.py)
 #       [--escala 1.0]                 multiplica la resolución (0.25 para una prueba rápida con la misma proporción)
@@ -38,7 +38,7 @@ def argumentos():
 
 def horneables():
     fuera = set()
-    for n in ("AUXILIAR", "DESCARTES"):
+    for n in ("AUXILIAR", "DESCARTES", "EFECTOS"):
         c = bpy.data.collections.get(n)
         if c:
             fuera |= {o.name for o in c.all_objects}

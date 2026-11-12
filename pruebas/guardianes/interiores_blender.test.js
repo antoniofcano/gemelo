@@ -54,7 +54,7 @@ test("nombraImagenes: nombre por material y ranura, sin acentos, único y determ
 
 test("los guiones de Blender y Node no llevan rutas locales y las dependencias van con versión fijada", () => {
   const fich = fs.readdirSync(DIR).filter(f => /\.(py|mjs)$/.test(f));
-  for (const f of ["descomprime.mjs", "separa.py", "prepara.py", "hornea.py", "planta.py", "puertas.py", "vista.py"]) assert.ok(fich.includes(f), "falta " + f);
+  for (const f of ["descomprime.mjs", "separa.py", "prepara.py", "hornea.py", "planta.py", "puertas.py", "vista.py", "obra.py", "luces.py"]) assert.ok(fich.includes(f), "falta " + f);
   for (const f of fich) {
     const s = fs.readFileSync(path.join(DIR, f), "utf8");
     assert.doesNotMatch(s, /[A-Za-z]:\\?Users|\/Users\/|AppData/, f + " lleva una ruta local");
@@ -63,4 +63,24 @@ test("los guiones de Blender y Node no llevan rutas locales y las dependencias v
   const pkg = JSON.parse(lee("tuberia/interiores/blender/package.json"));
   for (const [n, v] of Object.entries(pkg.dependencies)) assert.match(v, /^\d+\.\d+\.\d+$/, n + " sin versión fijada");
   assert.ok(fs.existsSync(path.join(DIR, "README.md")));
+});
+
+test("la obra y la luz interior son ilustrativas, no tocan lo medido y sus efectos no se hornean (regla 5)", () => {
+  const obra = lee("tuberia/interiores/blender/obra.py"), luces = lee("tuberia/interiores/blender/luces.py");
+  // la obra se niega ante un objeto medido en las dos operaciones que cambian mallas, y lo que quita va a DESCARTES
+  for (const op of ["aparta", "abre"]) {
+    const cuerpo = obra.slice(obra.indexOf("def " + op + "(op):")).split("\n").slice(0, 3).join("\n");
+    assert.ok(cuerpo.includes("no_medido(o)"), op + " debe empezar por no_medido(o)");
+  }
+  assert.match(obra, /gemelo_procedencia"\) == "medido"[\s\S]{0,80}raise SystemExit/);
+  assert.ok(obra.includes('coleccion("DESCARTES")') && obra.includes('o["gemelo_procedencia"] = "ilustrativo"'));
+  // la luz interior: el escaneo deja de dar sombra (no se abre ni se borra) y todo lo creado se marca ilustrativo
+  assert.ok(luces.includes('link_state = "EXCLUDE"'));
+  assert.doesNotMatch(luces, /bmesh\.ops\.delete/, "luces.py no borra geometría del mundo");
+  assert.ok(luces.split('["gemelo_procedencia"] = "ilustrativo"').length - 1 >= 3);
+  assert.ok(luces.includes('esc["gemelo_luz_interior"] = "ilustrativa'));
+  // los haces (colección EFECTOS) no se hornean ni reciben UV de luz
+  for (const g of ["hornea.py", "prepara.py"]) assert.ok(lee("tuberia/interiores/blender/" + g).includes('("AUXILIAR", "DESCARTES", "EFECTOS")'), g + " debe dejar fuera EFECTOS");
+  // el sol dice de dónde sale su orientación
+  assert.ok(lee("tuberia/interiores/blender/prepara.py").includes("gemelo_sol_nota"));
 });
