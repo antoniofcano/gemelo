@@ -108,7 +108,7 @@ def revisa_material(m):
 
 
 def sol_y_cielo(az_geo, el, fuerza_sol, fuerza_cielo, norte=0.0, color=(1, 1, 1), nota=None):
-    esc = bpy.context.scene; az = az_geo + norte
+    esc = bpy.context.scene; az = (az_geo + norte) % 360
     d = bpy.data.lights.get("sol") or bpy.data.lights.new("sol", "SUN")
     d.energy = fuerza_sol; d.angle = math.radians(0.53); d.color = color
     sol = bpy.data.objects.get("sol") or bpy.data.objects.new("sol", d)

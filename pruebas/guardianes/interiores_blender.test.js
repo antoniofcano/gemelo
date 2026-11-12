@@ -54,11 +54,11 @@ test("nombraImagenes: nombre por material y ranura, sin acentos, único y determ
 
 test("los guiones de Blender y Node no llevan rutas locales y las dependencias van con versión fijada", () => {
   const fich = fs.readdirSync(DIR).filter(f => /\.(py|mjs)$/.test(f));
-  for (const f of ["descomprime.mjs", "separa.py", "prepara.py", "hornea.py", "planta.py", "puertas.py", "vista.py", "obra.py", "luces.py"]) assert.ok(fich.includes(f), "falta " + f);
+  for (const f of ["descomprime.mjs", "separa.py", "prepara.py", "hornea.py", "planta.py", "puertas.py", "vista.py", "obra.py", "luces.py", "envejece.py", "texturas.py", "cuenta.py", "recuento.py", "sol.mjs"]) assert.ok(fich.includes(f), "falta " + f);
   for (const f of fich) {
     const s = fs.readFileSync(path.join(DIR, f), "utf8");
     assert.doesNotMatch(s, /[A-Za-z]:\\?Users|\/Users\/|AppData/, f + " lleva una ruta local");
-    if (f.endsWith(".py")) assert.match(s, /sys\.argv\.index\("--"\)/, f + " debe leer sus argumentos tras «--»");
+    if (f.endsWith(".py") && f !== "recuento.py") assert.match(s, /sys\.argv\.index\("--"\)/, f + " debe leer sus argumentos tras «--»");
   }
   const pkg = JSON.parse(lee("tuberia/interiores/blender/package.json"));
   for (const [n, v] of Object.entries(pkg.dependencies)) assert.match(v, /^\d+\.\d+\.\d+$/, n + " sin versión fijada");
@@ -83,4 +83,27 @@ test("la obra y la luz interior son ilustrativas, no tocan lo medido y sus efect
   for (const g of ["hornea.py", "prepara.py"]) assert.ok(lee("tuberia/interiores/blender/" + g).includes('("AUXILIAR", "DESCARTES", "EFECTOS")'), g + " debe dejar fuera EFECTOS");
   // el sol dice de dónde sale su orientación
   assert.ok(lee("tuberia/interiores/blender/prepara.py").includes("gemelo_sol_nota"));
+});
+
+const SIN_SUNCALC = !fs.existsSync(path.join(DIR, "node_modules", "suncalc")) && "sin `npm ci` en tuberia/interiores/blender";
+if (SIN_SUNCALC) console.warn("AVISO interiores_blender: se salta la prueba del sol (" + SIN_SUNCALC + ")");
+test("sol.mjs: el sol sale de una efeméride (suncalc) y el norte de la planta gira el azimut", { skip: SIN_SUNCALC }, async () => {
+  const { sol } = await import(pathToFileURL(path.join(DIR, "sol.mjs")).href);
+  // mediodía solar del solsticio de verano en el ecuador y el meridiano 0: el sol pasa por el norte, a 90 − 23,44 grados
+  const s = sol(0, 0, new Date("2026-06-21T12:02:00Z"));
+  assert.ok(Math.abs(s.elevacion - 66.56) < 0.5, "elevación " + s.elevacion);
+  assert.ok(s.azimut_geografico < 5 || s.azimut_geografico > 355, "azimut " + s.azimut_geografico);
+  // con el norte de la planta a 180 grados, el azimut en planta es el geográfico más 180
+  const g = sol(40, -4, new Date("2026-11-12T15:00:00Z")), p = sol(40, -4, new Date("2026-11-12T15:00:00Z"), 180);
+  assert.ok(g.azimut_geografico > 180 && g.azimut_geografico < 270 && g.elevacion > 0 && g.elevacion < 40);
+  assert.ok(Math.abs(p.azimut_en_planta - (g.azimut_geografico + 180) % 360) < 0.01);
+});
+
+test("lo que envejece y la vegetación son ilustrativos y baratos de exportar (color de vértice y recorte de alfa)", () => {
+  const env = lee("tuberia/interiores/blender/envejece.py"), obra = lee("tuberia/interiores/blender/obra.py");
+  assert.match(env, /gemelo_procedencia"\) == "medido"[\s\S]{0,80}raise SystemExit/, "envejece.py no toca lo medido");
+  assert.ok(env.includes('color_attributes.get("Color")') && !/bmesh|ShaderNode/.test(env), "envejece.py solo escribe el color de vértice");
+  assert.ok(obra.includes('"GREATER_THAN"') && obra.includes('m["gemelo_alfa"]'), "las tarjetas van con alfa recortado, no mezclado");
+  // un solo modo de contar: separa.py y cuenta.py usan recuento.py
+  for (const g of ["separa.py", "cuenta.py"]) assert.match(lee("tuberia/interiores/blender/" + g), /from recuento import recuento/);
 });

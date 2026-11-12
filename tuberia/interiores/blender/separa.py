@@ -11,6 +11,8 @@
 #      (queda la marca «gemelo_unlit» en el material); los «auxiliar» (sombras pintadas) se quedan como estaban;
 #   6. guarda el .blend con las imágenes empaquetadas y escribe <salida>.json con el recuento.
 import bpy, bmesh, sys, json, os, time
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from recuento import recuento, triangulos  # noqa: E402 (el módulo vive junto a este guion)
 
 
 def argumentos():
@@ -18,10 +20,6 @@ def argumentos():
     if len(a) < 4:
         raise SystemExit("uso: … -- <glb> <capas.json> <mundo> <salida.blend> [--sin-limpieza]")
     return {"glb": a[0], "capas": a[1], "mundo": a[2], "salida": a[3], "limpia": "--sin-limpieza" not in a}
-
-
-def triangulos(me):
-    return sum(len(p.vertices) - 2 for p in me.polygons)
 
 
 def coleccion(nombre, padre):
@@ -99,25 +97,6 @@ def a_principled(m):
     nt.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
     m.surface_render_method = "DITHERED"
     return True
-
-
-def recuento(objetos):
-    """Triángulos, llamadas (primitivas = objeto × material usado), materiales, texturas y MB en GPU (RGBA8 con mips)"""
-    r = {"objetos": {}}; tri = llam = 0; mats = set(); imgs = set()
-    for o in objetos:
-        t = triangulos(o.data)
-        usados = sorted({o.data.materials[p.material_index].name for p in o.data.polygons}) if len(o.data.polygons) else []
-        r["objetos"][o.name] = {"procedencia": o.get("gemelo_procedencia"), "triangulos": t, "materiales": usados}
-        tri += t; llam += len(usados); mats |= set(usados)
-    for n in mats:
-        m = bpy.data.materials[n]
-        for nd in (m.node_tree.nodes if m.node_tree else []):
-            if nd.bl_idname == "ShaderNodeTexImage" and nd.image:
-                imgs.add(nd.image.name)
-    mb = sum(bpy.data.images[i].size[0] * bpy.data.images[i].size[1] * 4 * 4 / 3 for i in imgs) / 2 ** 20
-    r.update({"triangulos": tri, "llamadas": llam, "materiales": len(mats), "texturas": len(imgs),
-              "lado_max_px": max([max(bpy.data.images[i].size) for i in imgs] or [0]), "mb_texturas_gpu": round(mb, 1)})
-    return r
 
 
 def principal():
