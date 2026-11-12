@@ -12,6 +12,8 @@
 #       [--destino textura|vertice]    textura: imagen en el UV «luz»; vertice: atributo de color «luz_horneada» por vértice
 #       [--margen 8] [--hilos 0]       margen de dilatación en píxeles; hilos de CPU (0 = todos)
 #       [--guarda-blend]               guarda el .blend con las imágenes o atributos horneados enlazados
+#       [--reanuda]                    salta los objetos cuyo mapa ya está en <salida> (para seguir tras un corte) y
+#                                      va escribiendo hornea.json objeto a objeto
 # Escribe en <salida>: <objeto>_<tipo>.exr (y _dn si hay denoise) y hornea.json con lo que tardó cada objeto.
 # No toca los materiales: añade un nodo de imagen temporal por material para hornear y lo quita al acabar.
 import bpy, sys, json, os, time
@@ -23,11 +25,11 @@ NODO = "gemelo_horneado"
 def argumentos():
     a = sys.argv[sys.argv.index("--") + 1:]
     o = {"salida": None, "objetos": "todos", "resolucion": "auto", "escala": 1.0, "muestras": 64, "rebotes": 4, "denoise": "oidn",
-         "tipo": "luz", "destino": "textura", "margen": 8, "hilos": 0, "guarda-blend": False}
+         "tipo": "luz", "destino": "textura", "margen": 8, "hilos": 0, "guarda-blend": False, "reanuda": False}
     i = 0
     while i < len(a):
         k = a[i].lstrip("-")
-        if k == "guarda-blend":
+        if k in ("guarda-blend", "reanuda"):
             o[k] = True; i += 1; continue
         v = a[i + 1]; i += 2
         o[k] = float(v) if k == "escala" else int(v) if k in ("muestras", "rebotes", "margen", "hilos") else v
@@ -142,7 +144,13 @@ def principal():
         if falta:
             raise SystemExit("no son horneables o no existen: " + ", ".join(sorted(falta)))
     informe = {"blend": os.path.basename(bpy.data.filepath), "parametros": {k: v for k, v in a.items() if k != "salida"}, "objetos": {}}
+    ruta_informe = os.path.join(a["salida"], "hornea.json")
+    if a["reanuda"] and os.path.exists(ruta_informe):
+        informe["objetos"] = json.load(open(ruta_informe, encoding="utf-8")).get("objetos", {})
     for o in objs:
+        hecho = os.path.join(a["salida"], "%s_%s%s.exr" % (o.name, a["tipo"], "_dn" if a["denoise"] == "oidn" else ""))
+        if a["reanuda"] and a["destino"] == "textura" and os.path.exists(hecho) and o.name in informe["objetos"]:
+            print("HORNEA", o.name, "ya estaba: se salta", flush=True); continue
         t = time.time(); fila = {"triangulos": sum(len(p.vertices) - 2 for p in o.data.polygons)}
         bpy.ops.object.select_all(action="DESELECT"); o.select_set(True); bpy.context.view_layer.objects.active = o
         if a["destino"] == "vertice":
@@ -177,9 +185,12 @@ def principal():
         fila["segundos"] = round(time.time() - t, 1)
         informe["objetos"][o.name] = fila
         print("HORNEA", o.name, json.dumps(fila, ensure_ascii=False), flush=True)
+        if a["reanuda"]:
+            json.dump(informe, open(ruta_informe, "w", encoding="utf-8"), indent=1, ensure_ascii=False)
     quita_nodos()
-    informe["segundos_total"] = round(time.time() - t0, 1)
-    json.dump(informe, open(os.path.join(a["salida"], "hornea.json"), "w", encoding="utf-8"), indent=1, ensure_ascii=False)
+    informe["segundos_total"] = round(sum(f.get("segundos", 0) for f in informe["objetos"].values()), 1)
+    informe["segundos_esta_pasada"] = round(time.time() - t0, 1)
+    json.dump(informe, open(ruta_informe, "w", encoding="utf-8"), indent=1, ensure_ascii=False)
     if a["guarda-blend"]:
         bpy.ops.wm.save_mainfile(compress=True)
     print("HORNEA_TOTAL", informe["segundos_total"])
