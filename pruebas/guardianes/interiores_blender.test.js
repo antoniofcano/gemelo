@@ -54,7 +54,7 @@ test("nombraImagenes: nombre por material y ranura, sin acentos, único y determ
 
 test("los guiones de Blender y Node no llevan rutas locales y las dependencias van con versión fijada", () => {
   const fich = fs.readdirSync(DIR).filter(f => /\.(py|mjs)$/.test(f));
-  for (const f of ["descomprime.mjs", "separa.py", "prepara.py", "hornea.py", "planta.py", "puertas.py", "vista.py", "obra.py", "luces.py", "envejece.py", "texturas.py", "cuenta.py", "recuento.py", "sol.mjs"]) assert.ok(fich.includes(f), "falta " + f);
+  for (const f of ["descomprime.mjs", "separa.py", "prepara.py", "hornea.py", "planta.py", "puertas.py", "vista.py", "obra.py", "luces.py", "envejece.py", "texturas.py", "cuenta.py", "recuento.py", "sol.mjs", "exporta.py", "exporta.mjs"]) assert.ok(fich.includes(f), "falta " + f);
   for (const f of fich) {
     const s = fs.readFileSync(path.join(DIR, f), "utf8");
     assert.doesNotMatch(s, /[A-Za-z]:\\?Users|\/Users\/|AppData/, f + " lleva una ruta local");
@@ -106,4 +106,17 @@ test("lo que envejece y la vegetación son ilustrativos y baratos de exportar (c
   assert.ok(obra.includes('"GREATER_THAN"') && obra.includes('m["gemelo_alfa"]'), "las tarjetas van con alfa recortado, no mezclado");
   // un solo modo de contar: separa.py y cuenta.py usan recuento.py
   for (const g of ["separa.py", "cuenta.py"]) assert.match(lee("tuberia/interiores/blender/" + g), /from recuento import recuento/);
+});
+
+test("la exportación cumple el contrato por construcción: luz en el color base, sin compresión y sin tocar lo medido", () => {
+  const py = lee("tuberia/interiores/blender/exporta.py"), mjs = lee("tuberia/interiores/blender/exporta.mjs");
+  assert.match(py, /gemelo_procedencia"\) == "medido"[\s\S]{0,80}raise SystemExit/, "exporta.py no simplifica lo medido");
+  assert.ok(py.includes('("AUXILIAR", "DESCARTES", "EFECTOS")'), "los efectos y los descartes no se exportan");
+  assert.ok(py.includes('"export_lights": False') && py.includes('"export_cameras": False'), "sin luces ni cámaras");
+  assert.doesNotMatch(py, /draco_mesh_compression_enable"\s*:\s*True|meshopt|ktx|basisu|webp/i, "nada que pida un decodificador (contrato v1)");
+  assert.ok(mjs.includes("KHR_materials_unlit") && !/draco|meshopt|KHRTextureBasisu|EXTTextureWebP/i.test(mjs.replace(/\/\/.*$/gm, "")), "el remate solo añade unlit");
+  // el origen sale del manifiesto y es el umbral de la puerta principal; las zonas, de la cota medida del suelo
+  assert.ok(py.includes('pl["origen"]') && py.includes("suelo_en("));
+  // el horneado largo se puede reanudar objeto a objeto
+  assert.ok(lee("tuberia/interiores/blender/hornea.py").includes('"reanuda"'));
 });

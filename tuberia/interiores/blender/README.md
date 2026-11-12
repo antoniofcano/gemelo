@@ -16,9 +16,10 @@ Blender 5.2 en segundo plano; en esta máquina, lo pesado va por el banco: `node
 | 3f | `sol.mjs --lat … --lon … --utc … [--norte N]` | azimut y elevación del sol con `suncalc` (Meeus), y el azimut en planta si se sabe el norte; lo que sale se pasa a `prepara.py --solo-luz` |
 | 4 | `puertas.py -- <salida.json> --carpinteria … --suelos …` | puertas por la forma de la carpintería, umbral con un rayo y hacia dónde se sale (coordenadas de Blender y del glb, rumbo del contrato) |
 | 5 | `planta.py -- <png> [--puertas puertas.json --mundo …]` | planta cenital cortada a una altura, con rejilla de metros y las puertas numeradas |
-| 6 | `hornea.py -- --salida <carpeta> […]` | horneado por objeto (luz, color_luz, ao) a textura (UV «luz») o a vértice, con OIDN; `hornea.json` con los tiempos |
+| 6 | `hornea.py -- --salida <carpeta> […] [--reanuda]` | horneado por objeto (luz, color_luz, ao) a textura (UV «luz») o a vértice, con OIDN; `hornea.json` con los tiempos |
 | 7 | `vista.py -- <png> --desde x,y,z --hacia x,y,z` | render de comprobación (Eevee o Cycles), con su tiempo; con `--horneado <carpeta>` enseña lo que verá el visitante (color × mapa de luz, más los brillos) |
 | 8 | `cuenta.py -- <salida.json>` | triángulos, llamadas, materiales, texturas y MB del mundo tal como está (la misma cuenta que `separa.py`, en `recuento.py`), con los EFECTOS aparte |
+| 9 | `exporta.py -- --horneado … --salida … --manifiesto … --perfil … --mb … --lado …` y `node exporta.mjs <glb>` | el glb del contrato [mundo-interior](../../../contratos/mundo-interior.md): la luz horneada pasa al **color base** (color × mapa de luz por objeto, JPEG, con el lado que cabe en los MB del perfil), las hojas llevan su luz en `COLOR_0`, origen en el umbral de la puerta principal, `mundo.json` con las zonas a la cota medida; el remate pone `KHR_materials_unlit` y los modos de alfa. Después, `node tuberia/interiores/valida.js <carpeta>` |
 
 Dependencias de Node (versión fijada en [package.json](package.json)): `npm ci` o `npm i` en esta carpeta. La lógica pura (`nombres.mjs`) y `capas.json` los vigila `pruebas/guardianes/interiores_blender.test.js`.
 
