@@ -71,7 +71,17 @@ def aplica_horneado(carpeta):
                 nt.links.remove(l)
             nt.links.new(por(color, metal), b.inputs["Base Color"])  # sin difuso propio: solo queda el color de los metales
             suma = nt.nodes.new("ShaderNodeAddShader"); origen = sal.inputs["Surface"].links[0].from_socket
-            nt.links.new(origen, suma.inputs[0]); nt.links.new(em.outputs[0], suma.inputs[1]); nt.links.new(suma.outputs[0], sal.inputs["Surface"])
+            if b.inputs["Alpha"].is_linked:
+                # material recortado (hojas): el recorte se aplica al final, también a la emisión; la translucidez ya va en el mapa
+                alfa = b.inputs["Alpha"].links[0].from_socket
+                for l in list(b.inputs["Alpha"].links):
+                    nt.links.remove(l)
+                tr = nt.nodes.new("ShaderNodeBsdfTransparent"); rec = nt.nodes.new("ShaderNodeMixShader")
+                nt.links.new(b.outputs[0], suma.inputs[0]); nt.links.new(em.outputs[0], suma.inputs[1])
+                nt.links.new(alfa, rec.inputs[0]); nt.links.new(tr.outputs[0], rec.inputs[1]); nt.links.new(suma.outputs[0], rec.inputs[2])
+                nt.links.new(rec.outputs[0], sal.inputs["Surface"])
+            else:
+                nt.links.new(origen, suma.inputs[0]); nt.links.new(em.outputs[0], suma.inputs[1]); nt.links.new(suma.outputs[0], sal.inputs["Surface"])
             if hasattr(m, "cycles"):
                 m.cycles.emission_sampling = "NONE"
         hechos.append(o.name)

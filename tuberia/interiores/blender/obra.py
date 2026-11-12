@@ -6,7 +6,7 @@
 # Se ejecuta siempre sobre el .blend de partida (las operaciones «abre» y «aparta» no se pueden repetir encima).
 # obra.json (privado: lleva las cotas del sitio, no entra en el repo). Coordenadas de Blender, en metros, Z arriba:
 #   {"materiales": {"anil": {"color": [r, g, b], "rugosidad": 0.5, "metal": 0.0},
-#                   "hojas": {"textura": "texturas/hojas.png", "alfa": true, "rugosidad": 0.7},      (de texturas.py; rutas
+#                   "hojas": {"textura": "texturas/hojas.png", "alfa": true, "translucido": 0.5},    (de texturas.py; rutas
 #                   "chapa": {"textura": "texturas/chapa.png", "textura_rugosidad": "texturas/chapa_rug.png"}},  relativas al json)
 #    "operaciones": [
 #     {"op": "aparta", "objeto": "…", "caja": [[x0, y0, z0], [x1, y1, z1]]}     caras dentro de la caja → DESCARTES
@@ -83,6 +83,20 @@ def material(nombre, defs):
             corte = nt.nodes.new("ShaderNodeMath"); corte.operation = "GREATER_THAN"; corte.inputs[1].default_value = 0.5
             nt.links.new(t.outputs["Alpha"], corte.inputs[0]); nt.links.new(corte.outputs[0], b.inputs["Alpha"])
             m["gemelo_alfa"] = "recorte 0.5"
+        if d.get("translucido"):
+            # la hoja deja pasar la luz: a contraluz se enciende en vez de apagarse, y el mapa de luz horneado lo recoge
+            # (en el glTF el material sigue siendo el Principled con su alfa; la translucidez viaja en el mapa de luz)
+            sal = next(n for n in nt.nodes if n.bl_idname == "ShaderNodeOutputMaterial")
+            tl = nt.nodes.new("ShaderNodeBsdfTranslucent"); nt.links.new(mez.outputs[2], tl.inputs["Color"])
+            mezcla = nt.nodes.new("ShaderNodeMixShader"); mezcla.name = "gemelo_translucido"; mezcla.inputs[0].default_value = float(d["translucido"])
+            if d.get("alfa"):
+                tr = nt.nodes.new("ShaderNodeBsdfTransparent"); rec = nt.nodes.new("ShaderNodeMixShader")
+                nt.links.new(corte.outputs[0], rec.inputs[0]); nt.links.new(tr.outputs[0], rec.inputs[1]); nt.links.new(tl.outputs[0], rec.inputs[2])
+                nt.links.new(rec.outputs[0], mezcla.inputs[2])
+            else:
+                nt.links.new(tl.outputs[0], mezcla.inputs[2])
+            nt.links.new(b.outputs[0], mezcla.inputs[1]); nt.links.new(mezcla.outputs[0], sal.inputs["Surface"])
+            m["gemelo_translucido"] = float(d["translucido"])
     if d.get("textura_rugosidad"):
         img = bpy.data.images.load(os.path.join(CARPETA, d["textura_rugosidad"]), check_existing=True); img.colorspace_settings.name = "Non-Color"
         t = nt.nodes.new("ShaderNodeTexImage"); t.image = img; nt.links.new(t.outputs["Color"], b.inputs["Roughness"])
@@ -266,7 +280,7 @@ def tarjeta(p, c, normal, lado, celda, mat, rnd, color, alto=None):
 
 
 FORMAS = {  # tronco (fracción del alto), celda del atlas, tamaño de tarjeta (fracción del ancho)
-    "copa": (0.42, (0, 0), 0.42), "naranjo": (0.38, (0, 0), 0.40), "cipres": (0.06, (1, 0), 0.75), "adelfa": (0.05, (0, 1), 0.48)}
+    "copa": (0.42, (0, 0), 0.22), "naranjo": (0.38, (0, 0), 0.30), "cipres": (0.06, (1, 0), 0.75), "adelfa": (0.05, (0, 1), 0.34)}
 
 
 def arbol(op, defs):
@@ -275,12 +289,13 @@ def arbol(op, defs):
     p = Pieza(); rnd = random.Random(op.get("semilla", 1)); tipo = op["tipo"]; ft, celda, fs = FORMAS[tipo]
     x, y, z = op["en"]; h = op["alto"]; w = op.get("ancho", h * 0.3); r = w / 2
     hojas = op["hojas"]; tronco = relleno = op["pintado"]; n = int(op.get("tarjetas", 120))
-    c_tronco = tuple(op.get("color_tronco", (0.20, 0.155, 0.11))); c_relleno = tuple(op.get("color_relleno", (0.028, 0.055, 0.022)))
+    c_tronco = tuple(op.get("color_tronco", (0.20, 0.155, 0.11))); c_relleno = tuple(op.get("color_relleno", (0.05, 0.10, 0.035)))
     ht = h * ft; hc = h - ht; cz = z + ht + hc / 2  # copa: elipsoide de semiejes (r, r, hc/2) centrado en cz
     if tipo in ("copa", "naranjo"):
         rt = max(0.05, w * 0.045)
         anillos(p, (x, y, z), [(0, rt * 1.5), (ht * 0.5, rt), (ht + hc * 0.35, rt * 0.7)], 6, tronco, color=c_tronco)
-        anillos(p, (x, y, cz - hc * 0.36), [(0, r * 0.35), (hc * 0.25, r * 0.72), (hc * 0.5, r * 0.6), (hc * 0.66, r * 0.2)], 7, relleno, color=c_relleno)
+        e = 0.62 if tipo == "copa" else 1.0  # la copa de lóbulos es más hueca: el relleno, más pequeño, no debe asomar
+        anillos(p, (x, y, cz - hc * 0.3 * e), [(0, r * 0.35 * e), (hc * 0.25 * e, r * 0.72 * e), (hc * 0.5 * e, r * 0.6 * e), (hc * 0.66 * e, r * 0.2 * e)], 7, relleno, color=c_relleno)
     elif tipo == "cipres":
         anillos(p, (x, y, z), [(0, 0.09), (ht, 0.08)], 5, tronco, color=c_tronco)
         anillos(p, (x, y, z + ht), [(0, r * 0.45), (hc * 0.12, r * 0.8), (hc * 0.4, r * 0.72), (hc * 0.75, r * 0.42), (hc * 0.97, r * 0.05)], 7, relleno, color=c_relleno)
