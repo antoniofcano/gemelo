@@ -172,6 +172,26 @@
 		}
 		header @olivos_otros Cache-Control "no-store"
 		respond @olivos_otros "404 Not Found" 404
+		# los interiores del eje B (contratos/mundo-interior.md, decisión 227), igual que infra/dev/Caddyfile: /teselas/<finca>/<mundo>/<pantalla|quest>/
+		# sale de /srv/teselas/<finca>/<mundo>/<perfil>/ (la carpeta salida/ del exportador). SOLO mundo.json y el .glb, revalidados (el nombre
+		# no cambia al rehornear); lo demás de esa carpeta (valida.*, exporta.json, _texturas/) da 404
+		@interiores path_regexp ^/teselas/[^/]+/[a-z][a-z0-9-]{0,31}/(pantalla|quest)/
+		handle @interiores {
+			@permitido_int path_regexp ^/teselas/[^/]+/[a-z][a-z0-9-]{0,31}/(pantalla|quest)/(mundo\.json|[a-z0-9][a-z0-9_.-]*\.glb)$
+			handle @permitido_int {
+				@glb path *.glb
+				header @glb Content-Type "model/gltf-binary"
+				header Cache-Control "private, no-cache"
+				root * /srv
+				file_server {
+					hide .*
+				}
+			}
+			handle {
+				header Cache-Control "no-store"
+				respond "404 Not Found" 404
+			}
+		}
 		@teselas {
 			path /teselas/*
 			not path_regexp ^/teselas/[^/]+/olivos(/|$)

@@ -38,6 +38,10 @@ mkdir -p "$TMP/srv/teselas/hituelo/olivos"
 echo '{}' > "$TMP/srv/teselas/hituelo/olivos/manifiesto.json"
 echo '{}' > "$TMP/srv/teselas/hituelo/olivos/estado.json"
 echo 'RIFF' > "$TMP/srv/teselas/hituelo/olivos/0123456789abcdef0123456789abcdef.webp"
+mkdir -p "$TMP/srv/teselas/hituelo/fabrica/quest"
+echo '{}' > "$TMP/srv/teselas/hituelo/fabrica/quest/mundo.json"
+echo 'glTF' > "$TMP/srv/teselas/hituelo/fabrica/quest/fabrica.glb"
+echo 'PASA' > "$TMP/srv/teselas/hituelo/fabrica/quest/valida.txt"
 
 # ---- api simulada: 204 con la cookie «valida» (un hogar) o «oficina»; con ?para=oficina, solo «oficina» (el hogar, 403);
 #      sin sesión, 303 a / si es navegación y 401 si no. Así se comprueba que Caddy le pasa la consulta ?para=oficina.
@@ -134,6 +138,14 @@ r=$(pide /teselas/hituelo/olivos/0123456789abcdef0123456789abcdef.webp -H "Cooki
 tiene "$r" "^HTTP/1.1 200" && tiene "$r" "^content-type: image/webp" && tiene "$r" "^cache-control: private, max-age=31536000, immutable" && ok "atlas de impostor: webp inmutable y privado" || mal "atlas de impostor: $(head -1 <<<"$r")"
 r=$(pide /teselas/hituelo/olivos/estado.json -H "Cookie: __Host-gemelo=valida")
 tiene "$r" "^HTTP/1.1 404" && ok "el estado del hornero no se sirve" || mal "estado.json del hornero: $(head -1 <<<"$r")"
+r=$(pide /teselas/hituelo/fabrica/quest/fabrica.glb)
+tiene "$r" "^HTTP/1.1 401" && ok "sin sesión, un interior da 401" || mal "interior sin sesión: $(head -1 <<<"$r")"
+r=$(pide /teselas/hituelo/fabrica/quest/fabrica.glb -H "Cookie: __Host-gemelo=valida")
+tiene "$r" "^HTTP/1.1 200" && tiene "$r" "^content-type: model/gltf-binary" && tiene "$r" "^cache-control: private, no-cache" && ok "interior con sesión: glb privado y revalidado" || mal "interior glb: $(head -1 <<<"$r") $(grep -i '^content-type' <<<"$r")"
+r=$(pide /teselas/hituelo/fabrica/quest/mundo.json -H "Cookie: __Host-gemelo=valida")
+tiene "$r" "^HTTP/1.1 200" && ok "interior con sesión: mundo.json" || mal "interior mundo.json: $(head -1 <<<"$r")"
+r=$(pide /teselas/hituelo/fabrica/quest/valida.txt -H "Cookie: __Host-gemelo=valida")
+tiene "$r" "^HTTP/1.1 404" && tiene "$r" "^cache-control: no-store" && ok "lo demás de la salida de un interior no se sirve" || mal "valida.txt de un interior: $(head -1 <<<"$r")"
 
 echo "== oficina, solo con sesión de oficina"
 r=$(pide /oficina/ -H "Sec-Fetch-Mode: navigate")
