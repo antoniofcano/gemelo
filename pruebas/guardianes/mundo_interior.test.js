@@ -71,6 +71,14 @@ test("el manifiesto: esquema, puerta principal en el origen, llegada dentro de u
   assert.ok(tiene(await valida(m, GLB), /id de zona repetido/), "zona repetida");
   m = copia(MAN); m.licencia = { spdx: "CC0-1.0" };
   assert.ok(tiene(await valida(m, GLB), /licencia/), "licencia sin autor");
+  // v1.1: el anclaje en el exterior es opcional (el ejemplo lo trae), pero si viene, entero: pos [x, y] y giro en [0, 360)
+  assert.ok(MAN.anclaje, "el ejemplo trae anclaje (v1.1)");
+  m = copia(MAN); delete m.anclaje;
+  assert.ok((await valida(m, GLB)).ok, "sin anclaje también vale");
+  m = copia(MAN); m.anclaje = { pos: [0, -150], giro: 360 };
+  assert.ok(tiene(await valida(m, GLB), /anclaje/), "giro fuera de [0, 360)");
+  m = copia(MAN); m.anclaje = { pos: [0], giro: 0 };
+  assert.ok(tiene(await valida(m, GLB), /anclaje/), "pos sin y");
 });
 
 test("contratos/mundo-interior.md dice los topes del esquema (perfiles, extensiones e imágenes)", () => {

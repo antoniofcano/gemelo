@@ -18,7 +18,8 @@
 # La plantilla del manifiesto es privada (cotas del sitio); coordenadas de Blender:
 #   {"id": "…", "nombre": "…", "fuente": "mixto", "notas": "…", "licencia": {…}, "origen": [x, y, z], "suelos": ["…"],
 #    "zonas": [{"id": "…", "caja": [x0, y0, x1, y1]}], "puertas": [{"id": "…", "a": "…", "en": [x, y, z], "rumbo": 0,
-#    "ancho": 1.0, "alto": 2.3, "llegada": [x, y], "llegada_rumbo": 180}], "puntos": [{"id": "…", "titulo": "…", "en": [x, y, z]}]}
+#    "ancho": 1.0, "alto": 2.3, "llegada": [x, y], "llegada_rumbo": 180}], "puntos": [{"id": "…", "titulo": "…", "en": [x, y, z]}],
+#    "anclaje": {"pos": [x, y], "giro": 57}}   (opcional, contrato v1.1: dónde cae el origen en el exterior de la finca y el rumbo del +Z del glb; pasa tal cual)
 import bpy, sys, json, os, time, math
 import numpy as np
 from mathutils import Vector
@@ -203,6 +204,8 @@ def manifiesto(pl, glb, perfil):
     m["zonas"] = [{k: v for k, v in z.items() if not k.startswith("_")} for z in zonas]; m["puertas"] = puertas
     if pl.get("puntos"):
         m["puntos"] = [{"id": p["id"], "titulo": p["titulo"], "pos": g(*p["en"])} for p in pl["puntos"]]
+    if pl.get("anclaje"):   # v1.1: ya va en el marco de la finca (no en el de Blender); solo pos y giro (la plantilla puede llevar su _nota)
+        m["anclaje"] = {"pos": [float(pl["anclaje"]["pos"][0]), float(pl["anclaje"]["pos"][1])], "giro": float(pl["anclaje"]["giro"])}
     return m, medidas
 
 

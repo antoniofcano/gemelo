@@ -20,5 +20,6 @@
  ],
  "puntos": [
   { "id": "rueda", "titulo": "La rueda (ilustrativa)", "pos": [0, 1.6, -5.7] }
- ]
+ ],
+ "anclaje": { "pos": [0, -150], "giro": 0 }
 }

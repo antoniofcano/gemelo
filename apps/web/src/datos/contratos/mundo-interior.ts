@@ -46,6 +46,7 @@ export interface MundoInterior {
    * @maxItems 64
    */
   puntos?: Punto[];
+  anclaje?: Anclaje;
 }
 export interface Licencia {
   spdx: string;
@@ -82,4 +83,11 @@ export interface Punto {
   id: string;
   titulo: string;
   pos: Xyz1;
+}
+export interface Anclaje {
+  /**
+   * @minItems 2
+   */
+  pos: [number, number];
+  giro: number;
 }
