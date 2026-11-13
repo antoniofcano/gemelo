@@ -1,0 +1,29 @@
+{
+ "v": 1,
+ "id": "sala-luz",
+ "nombre": "Sala de ejemplo con luz aparte (sintética)",
+ "fuente": "ilustrativo",
+ "notas": "Inventada para el contrato v1.2: la sala de 8 × 6 × 3 m con el mapa de luz aparte del color, una rueda que gira con un rodillo que rueda, una correa y un pistón. No es la fábrica.",
+ "licencia": { "spdx": "CC0-1.0", "autor": "Gemelo (fixture sintético)", "atribucion": "" },
+ "glb": "sala.glb",
+ "unidades": "m",
+ "arriba": "+Y",
+ "zonas": [
+  { "id": "sala", "anillo": [[-3.7, -5.7], [3.7, -5.7], [3.7, -0.3], [0.5, -0.3], [0.5, 0], [-0.5, 0], [-0.5, -0.3], [-3.7, -0.3]], "y": 0 }
+ ],
+ "puertas": [
+  { "id": "principal", "a": "exterior", "pos": [0, 0, 0], "rumbo": 0, "ancho": 1.2, "alto": 2.2, "llegada": { "pos": [0, 0, -1.5], "rumbo": 180 } }
+ ],
+ "luz": {
+  "modo": "mapa",
+  "escala": 2,
+  "nota": "inventada: un degradado hacia la puerta (ilustrativa)",
+  "sonda": [[0.9, 0.85, 0.75], [0, 0, 0.1], [0.2, 0.2, 0.18], [0, 0, 0], [0, 0, 0], [0, 0, 0], [-0.05, -0.05, -0.04], [0, 0, 0], [0, 0, 0]]
+ },
+ "maquinas": [
+  { "id": "rueda", "nombre": "Rueda", "nodo": "rueda", "tipo": "giro", "pivote": [0, 1.6, -5.7], "eje": [0, 0, 1], "velocidad": 6, "luz": "propia", "fuente": "ilustrativo" },
+  { "id": "rodillo", "nodo": "rodillo", "tipo": "giro", "pivote": [0.4, 1.6, -5.65], "eje": [1, 0, 0], "relacion": { "con": "rueda", "factor": -4 }, "luz": "propia", "fuente": "ilustrativo", "nota": "cuelga de la rueda: da vueltas con ella y gira sobre sí" },
+  { "id": "correa", "nodo": "correa", "tipo": "textura", "material": "correa", "uv": [0, 1], "relacion": { "con": "rueda", "factor": 0.05 }, "luz": "horneada", "fuente": "ilustrativo" },
+  { "id": "piston", "nodo": "piston", "tipo": "vaiven", "pivote": [-2, 0.3, -4], "eje": [0, 1, 0], "recorrido": 0.3, "velocidad": 10, "luz": "horneada", "fuente": "ilustrativo" }
+ ]
+}

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://gemelo.invalid/contratos/mundo-interior.schema.json",
-  "$comment": "Contrato de ENTRADA de un mundo interior (contratos/mundo-interior.md, ADR-0033, PLAN MU0-7): el manifiesto mundo.json que acompaña a su glb. JSON Schema 2020-12 estándar; lo valida ajv en tuberia/interiores/valida.js y en pruebas/guardianes/mundo_interior.test.js. Las reglas del glb (materiales estándar, sin luces ni cámaras, extensiones admitidas, presupuesto por perfil) no caben en un esquema: las comprueba el mismo validador con gltf-validator (Khronos) y @gltf-transform/core. $defs.presupuesto es la única fuente de los topes por perfil.",
+  "$comment": "Contrato de ENTRADA de un mundo interior (contratos/mundo-interior.md, ADR-0033, PLAN MU0-7): el manifiesto mundo.json que acompaña a su glb. JSON Schema 2020-12 estándar; lo valida ajv en tuberia/interiores/valida.js y en pruebas/guardianes/mundo_interior.test.js. Las reglas del glb (materiales estándar, sin luces ni cámaras, extensiones admitidas, presupuesto por perfil) no caben en un esquema: las comprueba el mismo validador con gltf-validator (Khronos) y @gltf-transform/core. $defs.presupuesto es la única fuente de los topes por perfil. v1.2 añade luz (el mapa de luz aparte del color) y maquinas[] (piezas con eje que mueve el motor), opcionales y aditivos (ADR-0034).",
   "title": "mundo-interior",
   "type": "object",
   "required": ["v", "id", "nombre", "fuente", "licencia", "glb", "unidades", "arriba", "zonas", "puertas"],
@@ -21,7 +21,9 @@
     "puertas": { "type": "array", "minItems": 1, "maxItems": 8, "items": { "$ref": "#/$defs/puerta" }, "$comment": "puertas[0] es la principal y está en el origen" },
     "animaciones": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/animacion" }, "$comment": "opcional: cada clip del glb, con su nombre exacto (AnimationMixer)" },
     "puntos": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/punto" }, "$comment": "opcional: puntos de interés (cartelas del museo, sitio del ponente)" },
-    "anclaje": { "$ref": "#/$defs/anclaje" }
+    "anclaje": { "$ref": "#/$defs/anclaje" },
+    "luz": { "$ref": "#/$defs/luz" },
+    "maquinas": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/maquina" }, "$comment": "opcional (v1.2): piezas con eje que mueve el motor sin clips (giro, vaivén, traslación, textura que corre); una órbita es un nodo hijo, en el glb, del nodo de otra máquina que gira" }
   },
   "$defs": {
     "presupuesto": {
@@ -98,6 +100,50 @@
         "giro": { "type": "number", "minimum": 0, "exclusiveMaximum": 360, "$comment": "rumbo de brújula (grados desde el norte hacia el este) del eje +Z del glb en el exterior; con la puerta principal a rumbo 0, hacia dónde se sale por ella. Un solo número para ajustar la orientación" }
       },
       "$comment": "v1.1, opcional: dónde está este interior en el exterior de su finca. Con él, el exterior pone una puerta en cada puerta del interior que lleva a «exterior» (contratos/mundo-interior.md §1b). Es dato de la explotación: viaja solo con los datos publicados, nunca en el repo (regla 4)"
+    },
+    "rgb": { "type": "array", "prefixItems": [{ "type": "number" }, { "type": "number" }, { "type": "number" }], "items": false, "minItems": 3, "$comment": "[r, g, b] lineales" },
+    "sonda": { "type": "array", "items": { "$ref": "#/$defs/rgb" }, "minItems": 9, "maxItems": 9, "$comment": "irradiancia en armónicos esféricos de orden 2: 9 coeficientes RGB lineales en el orden de SphericalHarmonics3 de three (L00, L1-1, L10, L11, L2-2, L2-1, L20, L21, L22), en el marco del glb; sale de una panorámica horneada (ilustrativa, como toda la luz)" },
+    "luz": {
+      "type": "object",
+      "required": ["modo"],
+      "additionalProperties": false,
+      "properties": {
+        "modo": { "enum": ["base", "mapa"], "$comment": "base (v1): la luz va dentro del color base; mapa: el color base es el albedo (puede ir en mosaico, TEXCOORD_0) y la luz va aparte, en occlusionTexture con texCoord 1" },
+        "escala": { "type": "number", "exclusiveMinimum": 0, "maximum": 16, "$comment": "lo que vale el blanco del mapa de luz: factor sobre el albedo = valor del mapa (lineal, 0-1) × escala" },
+        "sonda": { "$ref": "#/$defs/sonda", "$comment": "la luz de la sala para lo que no lleva mapa de la sala (las máquinas con luz propia)" },
+        "nota": { "type": "string", "maxLength": 200, "$comment": "de dónde sale la luz (horneada e ilustrativa: regla 5)" }
+      },
+      "$comment": "v1.2, opcional: cómo viaja la luz horneada (contratos/mundo-interior.md §1c, ADR-0034). Sin este campo, modo base (v1). Con modo mapa, escala es obligatoria (lo comprueba el validador)"
+    },
+    "maquina": {
+      "type": "object",
+      "required": ["id", "nodo", "tipo", "luz", "fuente"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,31}$" },
+        "nombre": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "nodo": { "type": "string", "minLength": 1, "maxLength": 64, "$comment": "nombre exacto del nodo del glb que se mueve (único en el glb); su origen es el pivote" },
+        "tipo": { "enum": ["giro", "vaiven", "traslacion", "textura"], "$comment": "giro: rota en torno a eje por el pivote; vaiven: va y vuelve recorrido metros a lo largo de eje, suave; traslacion: va y vuelve a velocidad constante con pausa en los extremos; textura: el color base de material corre en la dirección uv (correas)" },
+        "pivote": { "$ref": "#/$defs/xyz", "$comment": "el origen del nodo en reposo, en el marco del glb (el validador lo compara con el glb, ±1 cm)" },
+        "eje": { "$ref": "#/$defs/xyz", "$comment": "vector unitario en el marco del padre del nodo (en reposo, el del glb); el sentido de giro, por la mano derecha" },
+        "recorrido": { "type": "number", "exclusiveMinimum": 0, "maximum": 50, "$comment": "metros (vaiven, traslacion), desde el reposo en el sentido de eje" },
+        "pausa_s": { "type": "number", "minimum": 0, "maximum": 600, "$comment": "traslacion: parada en cada extremo" },
+        "material": { "type": "string", "minLength": 1, "maxLength": 64, "$comment": "textura: el material del glb cuyo color base corre (en REPEAT)" },
+        "uv": { "type": "array", "prefixItems": [{ "type": "number" }, { "type": "number" }], "items": false, "minItems": 2, "$comment": "textura: dirección [u, v] unitaria en la que corre" },
+        "velocidad": { "type": "number", "minimum": -10000, "maximum": 10000, "$comment": "giro: vueltas por minuto; vaiven: ciclos por minuto; traslacion: m/s; textura: unidades de UV por segundo" },
+        "relacion": {
+          "type": "object",
+          "required": ["con", "factor"],
+          "additionalProperties": false,
+          "properties": { "con": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,31}$" }, "factor": { "type": "number", "minimum": -1000, "maximum": 1000 } },
+          "$comment": "la velocidad sale de la de otra máquina: velocidad = factor × velocidad(con); el factor lleva las unidades (un rulo que rueda: radio de la órbita / radio del rulo; una correa: 2πr/60 entre su largo en UV)"
+        },
+        "luz": { "enum": ["propia", "horneada"], "$comment": "propia: material con luz (sin KHR_materials_unlit) y su oclusión propia en occlusionTexture (texCoord 1), iluminado con luz.sonda: lo que gira o se traslada; horneada: la luz de la sala en reposo, como lo fijo (correas, lo que apenas se mueve)" },
+        "fuente": { "enum": ["ilustrativo", "deducido"], "$comment": "una máquina movida es ilustrativa o deducida, nunca medida (como las animaciones)" },
+        "sonda": { "$ref": "#/$defs/sonda", "$comment": "opcional: la luz en el pivote, si difiere mucho de la de la sala" },
+        "nota": { "type": "string", "maxLength": 200 }
+      },
+      "$comment": "v1.2: una pieza con eje que el motor mueve sin clip (contratos/mundo-interior.md §1d). Lo que el esquema no dice y el validador sí: velocidad o relación (una sola), los campos de cada tipo, nodo único, pivote = origen del nodo, ejes unitarios, relaciones sin ciclos"
     },
     "punto": {
       "type": "object",
