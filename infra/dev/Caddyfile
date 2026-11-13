@@ -199,6 +199,25 @@
 					respond "404 Not Found" 404
 				}
 			}
+			# los interiores del eje B (contratos/mundo-interior.md, decisión 227): /teselas/<finca>/<mundo>/<pantalla|quest>/ sale de /srv/interiores/<mundo>/<perfil>/
+			# (la carpeta salida/ del exportador; GEMELO_DEV_INTERIORES). SOLO mundo.json y el .glb; lo demás de esa carpeta (valida.*, exporta.json, _texturas/) da 404
+			@interiores path_regexp ^/{$FINCA_SERVIDA:hituelo}/[a-z][a-z0-9-]{0,31}/(pantalla|quest)/
+			handle @interiores {
+				@permitido_int path_regexp ^/{$FINCA_SERVIDA:hituelo}/[a-z][a-z0-9-]{0,31}/(pantalla|quest)/(mundo\.json|[a-z0-9][a-z0-9_.-]*\.glb)$
+				handle @permitido_int {
+					uri strip_prefix /{$FINCA_SERVIDA:hituelo}
+					root * /srv/interiores
+					@glb path *.glb
+					header @glb Content-Type "model/gltf-binary"
+					file_server {
+						hide .*
+					}
+				}
+				handle {
+					header Cache-Control "no-store"
+					respond "404 Not Found" 404
+				}
+			}
 			@finca path /{$FINCA_SERVIDA:hituelo}/*
 			handle @finca {
 				uri strip_prefix /{$FINCA_SERVIDA:hituelo}

@@ -639,9 +639,9 @@
         "required": ["id", "desde", "hacia"],
         "additionalProperties": false,
         "properties": {
-          "id": { "enum": ["exterior", "molino", "bodega", "vacio"] },
-          "desde": { "enum": ["exterior", "molino", "bodega", "vacio", null] },
-          "hacia": { "enum": ["exterior", "molino", "bodega", "vacio"] }
+          "id": { "enum": ["exterior", "molino", "bodega", "vacio", "patios", "fabrica"] },
+          "desde": { "enum": ["exterior", "molino", "bodega", "vacio", "patios", "fabrica", null] },
+          "hacia": { "enum": ["exterior", "molino", "bodega", "vacio", "patios", "fabrica"] }
         }
       },
       "ejemplo": { "id": "molino", "desde": "exterior", "hacia": "molino" },
@@ -745,9 +745,9 @@
         "required": ["id", "desde", "hacia"],
         "additionalProperties": false,
         "properties": {
-          "id": { "enum": ["exterior", "molino", "bodega", "vacio"] },
-          "desde": { "enum": ["exterior", "molino", "bodega", "vacio"] },
-          "hacia": { "enum": ["exterior", "molino", "bodega", "vacio"] }
+          "id": { "enum": ["exterior", "molino", "bodega", "vacio", "patios", "fabrica"] },
+          "desde": { "enum": ["exterior", "molino", "bodega", "vacio", "patios", "fabrica"] },
+          "hacia": { "enum": ["exterior", "molino", "bodega", "vacio", "patios", "fabrica"] }
         }
       },
       "ejemplo": { "id": "exterior", "desde": "exterior", "hacia": "molino" },

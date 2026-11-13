@@ -10,6 +10,7 @@
   "ignora": ["CHANGELOG.md", "README.md", "LICENSE", ".gitignore", ".gitattributes"],
   "mapa": {
     "carga": ["apps/web/src/", "apps/web/plantilla.html"],
-    "build": ["apps/web/herramientas/"]
+    "build": ["apps/web/herramientas/"],
+    "interior_chrome": ["apps/web/src/mundos/interior/", "apps/web/src/nucleo/mundos.ts", "apps/web/src/arranque.ts", "modelos/interiores/"]
   }
 }

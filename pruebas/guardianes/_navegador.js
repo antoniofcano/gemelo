@@ -53,15 +53,17 @@ const esCsp = texto => /^\[Report Only\]/.test(texto);
 
 /** Servidor estático mínimo. opciones: { csp: true (manda la CSP de Caddy, solo informe; la piden las pruebas que la miran: carga, web,
  *  escena3d; en el resto solo añadiría avisos «[Report Only]» de las fuentes y estilos de la plantilla), peticiones: [] (apunta cada ruta pedida),
- *  bloquea: RegExp (responde 404 a esas rutas) } */
-function sirve(raiz, { csp = false, peticiones = null, bloquea = null } = {}) {
+ *  bloquea: RegExp (responde 404 a esas rutas), montajes: { "/ruta/": carpeta } (esa ruta sale de otra carpeta) } */
+function sirve(raiz, { csp = false, peticiones = null, bloquea = null, montajes = null } = {}) {
   return new Promise(ok => {
     const s = http.createServer((q, r) => {
       const url = decodeURIComponent(q.url.split("?")[0]);
       if (peticiones) peticiones.push(url);
       if (url === "/favicon.ico") { r.statusCode = 204; return r.end(); }
-      const f = path.join(raiz, url);
-      if (!f.startsWith(raiz) || (bloquea && bloquea.test(url))) { r.statusCode = f.startsWith(raiz) ? 404 : 403; return r.end(); }
+      // montajes: { "/patios/": carpeta } sirve esa ruta de otra carpeta (eje B: un interior junto a la página, como /teselas/<finca>/<mundo>/ en Caddy)
+      const m = montajes && Object.keys(montajes).find(k => url.startsWith(k)), base = m ? path.resolve(montajes[m]) : raiz;
+      const f = path.join(base, m ? url.slice(m.length) : url);
+      if (!f.startsWith(base) || (bloquea && bloquea.test(url))) { r.statusCode = f.startsWith(base) ? 404 : 403; return r.end(); }
       fs.readFile(f, (e, d) => {
         if (e) { r.statusCode = 404; return r.end(); }
         r.setHeader("content-type", TIPOS[path.extname(f)] || "application/octet-stream");

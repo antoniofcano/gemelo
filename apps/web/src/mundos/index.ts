@@ -6,6 +6,9 @@ export { creaCargaTeselas, creaExterior } from "./exterior.ts";
 export type { ConEstilo, DepsAmbienteExterior, DepsCargaTeselas, DepsExterior, Visible } from "./exterior.ts";
 export { creaVacio } from "./vacio.ts";
 export type { DepsVacio, FabricaLuz } from "./vacio.ts";
+// eje B: el cableado de los interiores (registro perezoso en el gestor y ?mundo=); el mundo interior genérico (interior/index.ts) NO pasa por aquí: es un trozo perezoso
+export { cableaInteriores, mundoDeUrl } from "./interior/cableado.ts";
+export type { DepsCableaInteriores, Interiores } from "./interior/cableado.ts";
 // A3-1b (MU5-n): los componentes del exterior que salen del legado (tileset y suelo de fotos). Cada uno, con su libera() de verdad.
 export { creaSueloFondo, manifiestoSueloFondo } from "./exterior/suelo-fondo.ts";
 export type { DepsSueloFondo, SueloFondo } from "./exterior/suelo-fondo.ts";

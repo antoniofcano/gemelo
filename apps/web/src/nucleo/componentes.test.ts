@@ -51,7 +51,7 @@ describe("ComponentesPuro", () => {
   });
 
   it("mundos (MU2-5): una lista sin repetir de los mundos de IdMundo; sin el campo, el exterior", () => {
-    expect(P.MUNDOS).toEqual(["exterior", "molino", "bodega", "vacio"]);
+    expect(P.MUNDOS).toEqual(["exterior", "molino", "bodega", "vacio", "patios", "fabrica"]);
     expect(P.valida(manifiesto({ mundos: ["molino"] }))).toEqual([]);
     expect(P.valida(manifiesto({ mundos: ["exterior", "bodega", "vacio"] }))).toEqual([]);
     for (const m of [[], ["luna"], ["molino", "molino"], "molino", [3]]) expect(P.valida(manifiesto({ mundos: m as IdMundo[] })).filter(e => /^mundos/.test(e)), JSON.stringify(m)).toHaveLength(1);

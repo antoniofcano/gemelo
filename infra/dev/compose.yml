@@ -45,6 +45,9 @@ services:
       # manifiesto.json y los <huella>.br dentro); la escribe el servicio `hornero` (mismo origen abajo); sin GEMELO_DEV_OLIVOS, la
       # de pruebas/salida/olivos-dev/<finca>/
       - ${GEMELO_DEV_OLIVOS:-../../pruebas/salida/olivos-dev/${GEMELO_DEV_FINCA:-hituelo}}:/srv/olivos:ro
+      # los interiores del eje B (/teselas/<finca>/<mundo>/<pantalla|quest>/, contratos/mundo-interior.md, decisión 227): la carpeta salida/ del exportador,
+      # FUERA del repo (GEMELO_DEV_INTERIORES); por defecto pruebas/salida/interiores-dev (ignorada por git y vacía: los interiores dan 404)
+      - ${GEMELO_DEV_INTERIORES:-../../pruebas/salida/interiores-dev}:/srv/interiores:ro
       # el catálogo de avatares VRM (/avatares/…, contratos/avatares.md): la salida de tuberia/avatares/construye.mjs. GEMELO_AVATARES, una carpeta
       # FUERA del repo; por defecto pruebas/salida/avatares (ignorada por git). Sin ficheros ahí, /avatares/catalogo.json da 404
       - ${GEMELO_AVATARES:-../../pruebas/salida/avatares}:/srv/avatares:ro
