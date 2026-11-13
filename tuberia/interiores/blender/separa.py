@@ -12,7 +12,7 @@
 #   6. guarda el .blend con las imágenes empaquetadas y escribe <salida>.json con el recuento.
 import bpy, bmesh, sys, json, os, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from recuento import recuento, triangulos  # noqa: E402 (el módulo vive junto a este guion)
+from recuento import recuento, triangulos, trozos  # noqa: E402 (el módulo vive junto a este guion)
 
 
 def argumentos():
@@ -31,30 +31,14 @@ def coleccion(nombre, padre):
 
 def grumos(o, cfg):
     """Índices (de la malla original) de las caras de piezas sueltas pequeñas, tras soldar las costuras de UV"""
-    bm = bmesh.new(); bm.from_mesh(o.data)
-    capa = bm.faces.layers.int.new("gemelo_idx")
-    for f in bm.faces:
-        f[capa] = f.index
-    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=cfg["soldadura_m"])
-    bm.faces.ensure_lookup_table()
-    vistos, fuera = set(), []
-    for f in bm.faces:
-        if f in vistos:
-            continue
-        pila, caras = [f], []; vistos.add(f)
-        while pila:
-            g = pila.pop(); caras.append(g)
-            for e in g.edges:
-                for h in e.link_faces:
-                    if h not in vistos:
-                        vistos.add(h); pila.append(h)
+    co = o.data.vertices; fuera = []
+    for caras in trozos(o.data, cfg["soldadura_m"]):
         if len(caras) >= cfg["caras_max"]:
             continue
-        vs = [v.co for c in caras for v in c.verts]
+        vs = [co[v].co for c in caras for v in o.data.polygons[c].vertices]
         diag = sum((max(v[k] for v in vs) - min(v[k] for v in vs)) ** 2 for k in range(3)) ** 0.5
         if diag < cfg["diagonal_max_m"]:
-            fuera.extend(c[capa] for c in caras)
-    bm.free()
+            fuera.extend(caras)
     return sorted(set(fuera))
 
 
