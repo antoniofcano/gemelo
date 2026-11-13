@@ -32,7 +32,7 @@ NODO = "gemelo_exporta"
 def argumentos():
     a = sys.argv[sys.argv.index("--") + 1:]
     o = {"horneado": None, "salida": None, "manifiesto": None, "perfil": "pantalla", "mb": 256.0, "lado": 4096, "exposicion": 0.0,
-         "decima": "", "calidad": 90, "glb": "mundo.glb", "modo": "color", "lado-color": 1024, "escala": 2.0, "maquinas-plan": None,
+         "decima": "", "calidad": 90, "glb": "mundo.glb", "modo": "color", "lado-color": 1024, "escala": 1.0, "maquinas-plan": None,
          "sondas": None, "objetos": ""}
     i = 0
     while i < len(a):
@@ -334,7 +334,8 @@ def principal():
 
 # ---- modo «aparte» (fábrica 1.1, contrato mundo-interior §1c y §1d, ADR-0034) ----
 #   blender --background <maquinas.blend> --python exporta.py -- --modo aparte --horneado <carpeta de hornea.py --modo aparte>
-#           --salida … --manifiesto <plantilla> --perfil quest --mb 92 --lado 2048 [--lado-color 1024] [--escala 2]
+#           --salida … --manifiesto <plantilla> --perfil quest --mb 92 --lado 2048 [--lado-color 1024] [--escala 1]
+# (--escala 1: la rodilla de suave() ya deja la luz en [0, 1]; una escala mayor gastaría bits del JPEG en lo que nunca se usa)
 #           [--maquinas-plan <maquinas.plan.json>] [--sondas <sondas.json>] [--objetos a,b,c] [--exposicion 0.0]
 # El color base es el ALBEDO: la textura de color de cada material tal cual (en mosaico, UVMap = TEXCOORD_0, con lado tope
 # --lado-color) y el color de vértice «Color» (el envejecido, COLOR_0, multiplica). La luz va aparte, un JPEG por atlas
