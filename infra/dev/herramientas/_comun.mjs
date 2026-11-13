@@ -110,6 +110,16 @@ export function carpetaTileset() {
 }
 
 /**
+ * GEMELO_DEV_INTERIORES (eje B): la carpeta salida/ del exportador de interiores, con <mundo>/<pantalla|quest>/{mundo.json, <mundo>.glb} dentro, que Caddy
+ * sirve en /teselas/<finca>/<mundo>/<perfil>/ (contratos/mundo-interior.md, decisión 227). Fuera del repo; sin ella, pruebas/salida/interiores-dev (vacía:
+ * los interiores dan 404 y el motor se queda en el exterior con un aviso). Siempre absoluta; el mismo valor por defecto que infra/dev/compose.yml.
+ */
+export function carpetaInteriores() {
+  const v = process.env.GEMELO_DEV_INTERIORES;
+  return v ? fueraDelRepo(v, "GEMELO_DEV_INTERIORES") : path.join(RAIZ, "pruebas", "salida", "interiores-dev");
+}
+
+/**
  * La carpeta de olivos horneados que escribe el hornero y sirve Caddy en /teselas/<finca>/olivos/: GEMELO_DEV_OLIVOS o, si no se
  * da, pruebas/salida/olivos-dev/<finca> (ignorada por git). Siempre absoluta; el mismo valor por defecto que infra/dev/compose.yml.
  */

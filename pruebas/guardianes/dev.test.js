@@ -980,3 +980,19 @@ test("e2e: recorrido de entrada en local (enlace mágico por Mailpit, sesión, h
   }
   } finally { await sueltaTurno(); }
 });
+
+test("eje B: los interiores (/teselas/<finca>/<mundo>/<pantalla|quest>/) salen de GEMELO_DEV_INTERIORES, fuera del repo, y Caddy solo sirve mundo.json y el glb", () => {
+  const c = lee("infra/dev/Caddyfile").split("\n").filter(l => !/^\s*#/.test(l)).join("\n");
+  const bloque = c.slice(c.indexOf("@interiores "), c.indexOf("@finca "));
+  assert.ok(c.indexOf("@interiores ") > c.indexOf("handle_path /teselas/*") && c.indexOf("@interiores ") < c.indexOf("@finca "), "dentro de /teselas/ (tras sesión) y antes que el resto de la finca");
+  const permitido = /@permitido_int path_regexp (\S+)/.exec(bloque);
+  assert.ok(permitido, "una lista de lo que se sirve");
+  const re = new RegExp(permitido[1].replace("{$FINCA_SERVIDA:hituelo}", "hituelo"));
+  for (const si of ["/hituelo/patios/pantalla/mundo.json", "/hituelo/fabrica/quest/fabrica.glb"]) assert.ok(re.test(si), si + " se sirve");
+  for (const no of ["/hituelo/patios/pantalla/valida.txt", "/hituelo/patios/pantalla/exporta.json", "/hituelo/patios/pantalla/_texturas/a.jpg", "/hituelo/patios/otro/mundo.json", "/hituelo/../x/pantalla/mundo.json"]) assert.ok(!re.test(no), no + " NO se sirve");
+  assert.match(bloque, /root \* \/srv\/interiores/);
+  assert.match(bloque, /respond "404 Not Found" 404/, "lo demás, 404");
+  assert.match(lee("infra/dev/compose.yml"), /^\s+- \$\{GEMELO_DEV_INTERIORES:-\.\.\/\.\.\/pruebas\/salida\/interiores-dev\}:\/srv\/interiores:ro$/m, "montada de solo lectura; por defecto, una carpeta ignorada");
+  assert.match(lee("infra/dev/herramientas/levanta.mjs"), /GEMELO_DEV_INTERIORES: carpetaInteriores\(\)/, "levanta la pasa a Compose");
+  assert.match(lee("infra/dev/herramientas/_comun.mjs"), /fueraDelRepo\(v, "GEMELO_DEV_INTERIORES"\)/, "y la exige fuera del repo");
+});

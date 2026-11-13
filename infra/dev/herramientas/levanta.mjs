@@ -4,7 +4,7 @@
 // (compose.red-local.yml). Sin él, todo como siempre.
 //  1. crea infra/dev/.env con claves aleatorias si falta;
 //  2. genera el fixture sintético si falta (o usa datos reales FUERA del repo: GEMELO_DEV_TESELAS, o GEMELO_DEV_FINCA_CARPETA
-//     para la salida de UNA finca como hituelo-v3, y GEMELO_DEV_TILESET para el tileset 3D Tiles de /teselas/<finca>/tileset/ (sin él, el tileset/ que haya junto al indice.json servido: el del fixture), y GEMELO_DEV_OLIVOS para las recetas horneadas de /teselas/<finca>/olivos/);
+//     para la salida de UNA finca como hituelo-v3, y GEMELO_DEV_TILESET para el tileset 3D Tiles de /teselas/<finca>/tileset/ (sin él, el tileset/ que haya junto al indice.json servido: el del fixture), y GEMELO_DEV_OLIVOS para las recetas horneadas de /teselas/<finca>/olivos/, y GEMELO_DEV_INTERIORES para los interiores del eje B, /teselas/<finca>/<mundo>/<perfil>/);
 //  3. construye la web con Vite contra el índice de la finca (GEMELO_DEV_FINCA, por defecto hituelo), con base /teselas/<finca>/,
 //     CON el constructor de olivos (apps/web/olivo, ?olivos=gen) y 3DTilesRendererJS, instalándolos si faltan,
 //     la portada (apps/web/portada → dist-portada, build:portada) y la oficina (apps/web/oficina → dist-oficina, build:oficina),
@@ -24,7 +24,7 @@ import path from "node:path";
 import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { siembra, HOGARES } from "./siembra.mjs";
-import { aseguraEnv, cargaEnv, carpetaFinca, carpetaTeselas, carpetaTileset, carpetaOlivos, carpetaAvatares, olivosDestino, aseguraNpmCi, esFixture, fincaServida, indiceServido, compose, ipRedLocal, motivoSinDocker, npm, aseguraDependencias, puertos, util, RAIZ, ENV, FIXTURE, PG_API, PG_DUENO, SALIDA_DEV, WEB } from "./_comun.mjs";
+import { aseguraEnv, cargaEnv, carpetaFinca, carpetaTeselas, carpetaTileset, carpetaOlivos, carpetaAvatares, carpetaInteriores, olivosDestino, aseguraNpmCi, esFixture, fincaServida, indiceServido, compose, ipRedLocal, motivoSinDocker, npm, aseguraDependencias, puertos, util, RAIZ, ENV, FIXTURE, PG_API, PG_DUENO, SALIDA_DEV, WEB } from "./_comun.mjs";
 
 const SIN_BUILD = process.argv.includes("--sin-build");
 const RED_LOCAL = process.argv.includes("--red-local");
@@ -152,8 +152,9 @@ export async function levanta({ sinBuild = false, redLocal = false } = {}) {
   fs.mkdirSync(carpetaHornero, { recursive: true });
   if (process.platform !== "win32") { try { fs.chmodSync(carpetaHornero, 0o777); } catch (e) { /* si no es nuestra, que lo diga el hornero */ } }
   fs.mkdirSync(carpetaAvatares(), { recursive: true });   // /avatares/: vacía hasta que se construya el catálogo (npm: node tuberia/avatares/construye.mjs)
+  fs.mkdirSync(carpetaInteriores(), { recursive: true });   // eje B: /teselas/<finca>/<mundo>/<perfil>/ (GEMELO_DEV_INTERIORES; vacía, los interiores dan 404)
   // lo que Compose monta: rutas absolutas ya resueltas ("" = no se da, y manda el valor por defecto del compose)
-  const datosCompose = { GEMELO_DEV_TESELAS: teselas, GEMELO_DEV_FINCA_CARPETA: carpeta || "", GEMELO_DEV_TILESET: tileset || "", GEMELO_DEV_OLIVOS: olivosDestino(), GEMELO_AVATARES: carpetaAvatares(), GEMELO_DEV_FINCA: finca };
+  const datosCompose = { GEMELO_DEV_TESELAS: teselas, GEMELO_DEV_FINCA_CARPETA: carpeta || "", GEMELO_DEV_TILESET: tileset || "", GEMELO_DEV_OLIVOS: olivosDestino(), GEMELO_AVATARES: carpetaAvatares(), GEMELO_DEV_INTERIORES: carpetaInteriores(), GEMELO_DEV_FINCA: finca };
   let red = null;
   if (redLocal) {
     red = ipRedLocal();

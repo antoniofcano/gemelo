@@ -110,6 +110,7 @@ Para la prueba de Antonio (decisión 57: navegador, móvil y Quest, cada uno por
 | `GEMELO_DEV_FINCA_CARPETA` | la carpeta de **una** finca con `indice.json` y `t/` directamente dentro (la salida de referencia `hituelo-v3`); se monta de solo lectura y se sirve en `/teselas/<GEMELO_DEV_FINCA>/` |
 | `GEMELO_DEV_TILESET` | la carpeta del tileset (con `tileset.json` directamente dentro); se sirve en `/teselas/<GEMELO_DEV_FINCA>/tileset/` |
 | `GEMELO_DEV_OLIVOS` | la carpeta `olivos/` que escribe el hornero (`<salida>/<finca>/olivos/`, con `manifiesto.json`, `t/` y los `<huella>.br` directamente dentro); se sirve en `/teselas/<GEMELO_DEV_FINCA>/olivos/` (objetos `<huella de 32 hex>.br` con `Content-Encoding: br` e `immutable`; `manifiesto.json` con `no-cache`; el resto de la carpeta, p. ej. `estado.json`, 404). Sin ella, esa ruta da 404 |
+| `GEMELO_DEV_INTERIORES` | la carpeta `salida/` de los interiores del eje B (con `<mundo>/<pantalla\|quest>/{mundo.json, <mundo>.glb}` dentro); se sirve en `/teselas/<GEMELO_DEV_FINCA>/<mundo>/<perfil>/`, solo `mundo.json` y el glb ([Los interiores del eje B](#los-interiores-del-eje-b)). Sin ella, esas rutas dan 404 |
 | `GEMELO_DEV_PUERTO_LIVEKIT_TCP` / `_UDP` | 7881 / 7882; solo para levantar un **segundo** entorno a la vez (con otro `COMPOSE_PROJECT_NAME` y los demás `GEMELO_DEV_PUERTO_*`): el audio de ese segundo no vale |
 | `GEMELO_DEV_FINCA` | `hituelo` (el valor por defecto) |
 | `GEMELO_DEV_IP` | solo si la IP detectada no es la de la WiFi (con `--red-local`) |
@@ -160,6 +161,22 @@ La siembra normal pone hazas sobre el Hituelo sintético del fixture, que no cae
 - WebXR en las Quest con un certificado aceptado a mano (no instalado): no comprobado.
 - El código corto en unas Quest reales (leerlo en el casco, el teclado del navegador de Meta, el sondeo con la pantalla en reposo): no probado; solo con Chrome headless y el agente de usuario del navegador de Meta, y por la IP de la WiFi desde el propio equipo.
 - El QR de Chrome y el camino por USB con este entorno: no probados.
+
+## Los interiores del eje B
+
+Los interiores de Hituelo (los patios y la fábrica) son un glb y su `mundo.json` por perfil ([contratos/mundo-interior.md](../../contratos/mundo-interior.md)), **fuera del repo** (regla 4, decisión 227): la carpeta `salida/` del exportador del eje B, con `<mundo>/<pantalla|quest>/` dentro. El motor los pide en `<D.base><mundo>/<perfil>/` (perfil `quest` en VR o en unas gafas; `pantalla` en escritorio y en móvil; [MUNDOS §3](../sistema/MUNDOS.md#interiores-del-eje-b)).
+
+**Paso a paso** (en el entorno o en `infra/dev/.env`, nunca en el repo; `levanta.mjs` se niega si la carpeta cae dentro del repo, salvo `pruebas/salida/`):
+
+1. `GEMELO_DEV_INTERIORES=<ruta absoluta a la carpeta salida/ de los interiores>` (la que tiene `patios/` y `fabrica/` dentro). Si además quieres el exterior de verdad detrás, las variables de [Prueba en aparatos con Hituelo v3](#prueba-en-aparatos-con-hituelo-v3); si no, el exterior es el fixture sintético y los interiores se ven igual (son de otro marco).
+2. `npm run dev:arriba` (Docker encendido). Caddy sirve `/teselas/<GEMELO_DEV_FINCA>/<mundo>/<pantalla|quest>/` desde esa carpeta, de solo lectura y tras sesión; **solo** `mundo.json` y el `.glb` (lo demás de la carpeta —`valida.*`, `exporta.json`, `_texturas/`— da 404). Sin la variable se monta `pruebas/salida/interiores-dev/` (vacía): los interiores dan 404 y el motor se queda en el exterior con un aviso.
+3. Entra con tu sesión y abre `https://localhost:8743/finca/?mundo=patios` (o `?mundo=fabrica`). Se carga el exterior, se oscurece y aparece el interior en primera persona, con un aviso: el nombre, de qué es y «luz horneada, ilustrativa».
+4. Anda con las flechas o WASD. Por la puerta de la fábrica (al fondo del patio, a la derecha del pasillo) se pasa a la fábrica; por su puerta de entrada se vuelve a los patios; por el portón principal o el lateral se sale al exterior. La verja lleva a «vivienda», que no existe: avisa y no hace nada. Basta con acercarse al umbral (sin pulsar nada).
+5. Para volver a entrar desde el exterior sin recargar: en la consola, `__cambiaMundo("patios")` (el exterior aún no tiene su puerta al cortijo: **[SUPUESTO]**, pendiente de situarlo en el índice). `__interior()` dice qué interior hay, con qué perfil, cuántos triángulos y llamadas, y si está colgado o liberado. Con `?debug`, el contador de siempre.
+
+Para verlos sin Docker (solo en este equipo): el banco sirve una página construida con Vite y monta las carpetas junto a ella (`sirve(…, { montajes: { "/patios/": … } })` de `pruebas/guardianes/_navegador.js`), que es como se midieron; no hay comando para eso: es para pruebas.
+
+**Nota de comodidad (regla 11).** Probado: en Chrome sin pantalla (SwiftShader) por el banco, a 1280 × 720, entrar por `?mundo=`, andar poniendo la pose a mano, cruzar las puertas patios → fábrica → patios → exterior y acercarse a la verja; y con el agente de unas Quest 3 (perfil `quest`), fábrica → patios. **No probado:** andar de verdad con teclado, ratón o la cruceta táctil por los interiores (las zonas a mano pueden dejar pasar por muretes o atascar en un vano), la altura del suelo en el patio con pendiente (hasta 0,87 m dentro de una zona: se flota o se hunde), el radio de 0,6 m de las puertas (¿se cruza sin querer al pasar al lado?), el fundido al cambiar de mundo visto por una persona, la cámara en tercera persona (V) dentro (puede atravesar paredes), el quad (Q) y el dron (E), que siguen a mano dentro (el dron atravesaría el techo: pendiente apagarlos fuera del exterior), los fps, y **nada en móvil, iPhone ni Quest de verdad** (en VR: la llegada recoloca el rig con `vrAparece`, sin probar; el near/far de interior en caliente dentro de la sesión, [NO VERIFICADO], MUNDOS §4).
 
 ## El hornero (O7f)
 
