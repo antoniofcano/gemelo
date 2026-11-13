@@ -1,0 +1,228 @@
+// El mundo interior genérico (eje B; ADR-0033, MUNDOS §2-§5; contrato contratos/mundo-interior.md v1). UN módulo para cualquier glb + mundo.json que
+// cumpla el contrato (regla 12: no uno por mundo): los patios y la fábrica de Hituelo son dos instancias de creaInterior con otro id. Es un trozo
+// perezoso: el arranque (90_final) lo pide con import() al cruzar la puerta o con ?mundo=<id>, y hasta entonces no se descarga nada.
+//
+// carga(ctx): pide <base><id>/<perfil>/mundo.json (perfil «quest» en VR o en unas gafas, «pantalla» si no: InteriorPuro.perfil), lo comprueba
+// (InteriorPuro.valida), pide el glb y lo lee con el GLTFLoader de three (import() en el talón). El GLTFLoader ya respeta lo que el contrato pide:
+// KHR_materials_unlit → MeshBasicMaterial (la luz va horneada en el color base), COLOR_0 → vertexColors (la luz de las hojas) y alphaMode MASK →
+// alphaTest (las hojas, 0,5). Lo único que se toca: los materiales sin luz no pasan por el tone mapping del renderizador (toneMapped = false), porque
+// su color YA es la imagen revelada al hornear; si no, el ACES del exterior la volvería a revelar. Las texturas se suben a la GPU de una en una en la
+// Cola (un trabajo con dueño = id: el gestor lo cancela si el mundo se libera), para no congelar el fotograma con 200 MB de golpe.
+// entra(desde, llegada): cuelga el glb de la escena, pone a quien mira en la llegada de la puerta que lleva al mundo de donde viene (o en la principal)
+// y avisa de qué es (regla 5: nombre · medido/ilustrativo/mixto · luz horneada, ilustrativa). Cada fotograma, el vigía de las puertas: acercarse al
+// umbral cambia de mundo (cruza → gm.cambia); si el destino no está registrado (vivienda, bodega), la puerta queda inerte y lo dice, sin romper.
+// suelo/dentro/obstaculo: las zonas del manifiesto (suelo plano por zona; fuera es pared). alSalir: «libera» (un interior no se guarda congelado:
+// sus texturas son 80-200 MB de GPU). libera(): dispose de geometrías, materiales y texturas (y cierra los ImageBitmap), idempotente.
+// three no trae tipos en el repo: lo que se usa va como tipos mínimos estructurales (como mundos/vacio.ts y nucleo/ambiente.ts).
+import type { MundoInterior } from "../../datos/contratos/mundo-interior.ts";
+import type { Ambiente, LuzAmbiente } from "../../nucleo/ambiente.ts";
+import type { ContextoBase, IdMundo, MundoBase, Pose2, Puerta } from "../../nucleo/mundos.ts";
+import { InteriorPuro } from "./puro.ts";
+import type { PerfilInterior, PuertaPose, Zonas } from "./puro.ts";
+
+export { InteriorPuro };
+export type { PerfilInterior };
+
+/** Lo mínimo de un objeto de three que se usa aquí. */
+export interface Nodo3D {
+  isMesh?: boolean;
+  geometry?: { index?: { count: number } | null; attributes?: { position?: { count: number } }; dispose(): void };
+  material?: Material3D | Material3D[];
+  traverse(fn: (o: Nodo3D) => void): void;
+  parent?: unknown;
+}
+export interface Material3D { isMeshBasicMaterial?: boolean; toneMapped?: boolean; dispose(): void; [k: string]: unknown }
+export interface Textura3D { isTexture: true; dispose(): void; image?: { close?(): void } | null }
+/** El GLTFLoader de three: parseAsync(ArrayBuffer, ruta) */
+export interface CargadorGltf { parseAsync(datos: ArrayBuffer, ruta: string): Promise<{ scene: Nodo3D; animations?: unknown[] }> }
+/** fetch, reducido */
+export type Descarga = (url: string, init: { signal: AbortSignal }) => Promise<{ ok: boolean; status: number; json(): Promise<unknown>; arrayBuffer(): Promise<ArrayBuffer> }>;
+/** cómo crea el arranque una luz (THREE.AmbientLight), como la fábrica del vacío */
+export type FabricaLuzInterior = (tipo: "ambiental", color: number, intensidad: number) => LuzAmbiente & { dispose?(): void };
+
+export interface DepsInterior {
+  readonly id: IdMundo;
+  /** D.base del índice: «/teselas/<finca>/» en el servidor; vacía, junto a la página */
+  readonly base: string;
+  /** ¿sesión de VR ahora? (VRX.on) y la clase del aparato (Aparato.clase(): «escritorio», «movil», «quest») */
+  vr(): boolean;
+  clase(): string;
+  descarga: Descarga;
+  /** import("three/addons/loaders/GLTFLoader.js"), escrito en el arranque para que Vite lo trocee */
+  cargaGltf(): Promise<{ GLTFLoader: new () => CargadorGltf }>;
+  /** la única scene: entra() cuelga el glb y sale() lo descuelga */
+  escena: { add(o: Nodo3D): unknown; remove(o: Nodo3D): unknown };
+  /** la pose de quien mira (12_paseo: pp); en VR, el arranque además recoloca el rig (vrAparece) */
+  pose?: { lee(): Pose2; pon(p: Pose2): void };
+  /** sube una textura a la GPU (renderer.initTexture); sin ella, se sube al primer fotograma que la dibuje */
+  subeTextura?(t: Textura3D): void;
+  /** su luz ambiental (para los materiales que no son «sin luz», p. ej. un vidrio); sin ella, sin luces */
+  luz?: FabricaLuzInterior;
+  /** ¿hay un mundo registrado con ese id? (gm.fichaDe(a) !== "sin_registrar") */
+  existe(a: string): boolean;
+  /** cruzar una puerta: el arranque llama a gm.cambia(a, null, puerta) */
+  cruza(a: IdMundo, puerta: Puerta): void;
+  /** un aviso en el HUD (Hud.aviso) */
+  aviso?(texto: string, ms?: number): void;
+  /** al entrar y al salir: el arranque pone el paseo en primera persona (y lo deja como estaba al salir) */
+  alEntrar?(): void;
+  alSalir?(): void;
+  consola?: { warn(...a: unknown[]): void } | null;
+}
+
+/** MUNDOS §4: el fondo de un interior (lo que se ve por un hueco o sobre el patio abierto) [SUPUESTO: a ojo, un cielo claro y neutro] */
+export const FONDO_INTERIOR = 0xc9d3dc;
+/** near/far de interior: el contrato acota el modelo a 200 m de lado */
+export const CAMARA_INTERIOR = { near: 0.05, far: 250 } as const;
+/** la luz ambiental, solo para materiales que no son «sin luz» (las salidas de hoy: el vidrio) [SUPUESTO: a ojo] */
+export const LUZ_INTERIOR = { color: 0xffffff, intensidad: Math.PI } as const;
+
+/** Lo que el mundo cuenta de sí (?debug, las pruebas y window.__interior). */
+export interface EstadoInterior {
+  id: string; perfil: PerfilInterior | null; ruta: string | null; nombre: string | null; fuente: string | null;
+  triangulos: number; llamadas: number; materiales: number; texturas: number; sinLuz: number; conColor: number; recorte: number;
+  colgado: boolean; liberado: boolean;
+}
+
+function texturasDe(m: Material3D, en: Set<Textura3D>): void {
+  for (const k of Object.keys(m)) { const v = m[k] as Textura3D | null; if (v && typeof v === "object" && v.isTexture) en.add(v); }
+}
+function materialesDe(o: Nodo3D): Material3D[] { return !o.material ? [] : Array.isArray(o.material) ? o.material : [o.material]; }
+
+export function creaInterior(deps: DepsInterior): MundoBase & {
+  readonly sala: null; readonly marco: "local"; presupuesto(p: { clase: "pantalla" } | { clase: "vr"; nivel: number }): { triangulos: number; llamadas: number; puntos: number; texturasMb: number };
+  ambiente(): Ambiente; estado(): EstadoInterior;
+} {
+  const P = InteriorPuro, id = deps.id;
+  let man: MundoInterior | null = null, raiz: Nodo3D | null = null, zonas: Zonas | null = null, puertas: PuertaPose[] = [], vigia: ReturnType<typeof P.creaVigia> | null = null;
+  let luces: Array<LuzAmbiente & { dispose?(): void }> | null = null, colgado = false, liberado = false;
+  const inertes = new Set<string>();   // las puertas a un mundo que no existe ya avisadas en esta visita (hasta alejarse: el vigía las rearma)
+  const est: EstadoInterior = { id, perfil: null, ruta: null, nombre: null, fuente: null, triangulos: 0, llamadas: 0, materiales: 0, texturas: 0, sinLuz: 0, conColor: 0, recorte: 0, colgado: false, liberado: false };
+
+  async function carga(ctx: ContextoBase): Promise<void> {
+    liberado = false; est.liberado = false;
+    const perfil = P.perfil({ vr: deps.vr(), clase: deps.clase() }), ruta = P.ruta(deps.base, id, perfil);
+    est.perfil = perfil; est.ruta = ruta;
+    const rm = await deps.descarga(ruta + "mundo.json", { signal: ctx.senal });
+    if (!rm.ok) throw new Error("«" + id + "»: " + ruta + "mundo.json dio " + rm.status);
+    const m = await rm.json(), errores = P.valida(m, id);
+    if (errores.length) throw new Error("«" + id + "»: el manifiesto no cumple el contrato mundo-interior v1: " + errores.join("; "));
+    const mi = m as MundoInterior;
+    const rg = await deps.descarga(ruta + mi.glb, { signal: ctx.senal });
+    if (!rg.ok) throw new Error("«" + id + "»: " + ruta + mi.glb + " dio " + rg.status);
+    const [datos, lib] = await Promise.all([rg.arrayBuffer(), deps.cargaGltf()]);
+    if (ctx.senal.aborted) throw new Error("«" + id + "»: carga cancelada");
+    const gltf = await new lib.GLTFLoader().parseAsync(datos, ruta);
+    if (ctx.senal.aborted) { suelta(gltf.scene); throw new Error("«" + id + "»: carga cancelada"); }
+    // los materiales: los «sin luz» (KHR_materials_unlit) fuera del tone mapping; se cuentan las mallas, los triángulos y las texturas
+    const mats = new Set<Material3D>(), texs = new Set<Textura3D>();
+    let tri = 0, llam = 0;
+    gltf.scene.traverse(o => {
+      if (!o.isMesh || !o.geometry) return;
+      const g = o.geometry, n = g.index ? g.index.count : g.attributes && g.attributes.position ? g.attributes.position.count : 0;
+      tri += Math.floor(n / 3);
+      for (const mt of materialesDe(o)) { llam++; mats.add(mt); }
+    });
+    est.sinLuz = 0; est.conColor = 0; est.recorte = 0;
+    for (const mt of mats) {
+      if (mt.isMeshBasicMaterial) { mt.toneMapped = false; est.sinLuz++; }
+      if (mt.vertexColors) est.conColor++;
+      if (typeof mt.alphaTest === "number" && mt.alphaTest > 0) est.recorte++;
+      texturasDe(mt, texs);
+    }
+    est.triangulos = tri; est.llamadas = llam; est.materiales = mats.size; est.texturas = texs.size; est.nombre = mi.nombre; est.fuente = mi.fuente;
+    raiz = gltf.scene; man = mi;
+    zonas = P.creaZonas(mi.zonas); puertas = P.puertasPose(mi.puertas); vigia = P.creaVigia(puertas);
+    // las texturas, a la GPU de una en una por la Cola: cada yield deja respirar al fotograma (a oscuras, tras el fundido)
+    const sube = deps.subeTextura;
+    if (sube && texs.size) await new Promise<void>((ok, mal) => {
+      const lista = Array.from(texs);
+      function* trabajo(): Generator<unknown, unknown, unknown> { for (const t of lista) { sube!(t); yield; } return lista.length; }
+      const corta = (): void => mal(new Error("«" + id + "»: carga cancelada"));
+      if (ctx.senal.aborted) { corta(); return; }
+      ctx.senal.addEventListener("abort", corta, { once: true });
+      ctx.cola.pon("texturas", 0, trabajo(), () => { ctx.senal.removeEventListener("abort", corta); ok(); });
+    });
+  }
+
+  function aviso(t: string, ms?: number): void { if (deps.aviso) deps.aviso(t, ms); }
+
+  function entra(desde: Puerta | null, llegada: Pose2 | null): void {
+    if (!raiz || !man || !zonas) throw new Error("«" + id + "»: entra() sin carga()");
+    deps.escena.add(raiz); colgado = true; est.colgado = true;
+    if (deps.alEntrar) deps.alEntrar();
+    // por una puerta, la llegada de la nuestra que lleva al mundo de donde se viene; si no (?mundo=, o una vuelta atrás), donde se dejó o la principal
+    let p: Pose2 = desde ? P.llegada(man, desde.de) : llegada || P.llegada(man, null);
+    // donde se dejó, si fue en el umbral de una puerta (se salió por ella, o falló el cambio al cruzarla): a su llegada, dentro y mirando hacia dentro,
+    // para no aparecer en el vano mirando afuera con la puerta desarmada
+    const enPuerta = puertas.findIndex(pu => P.aUmbral(pu, p.x, p.y) < P.RADIO + P.HISTERESIS);
+    if (!desde && enPuerta >= 0) p = P.poseDe(man.puertas[enPuerta]!.llegada);
+    if (!zonas.dentro(p.x, p.y)) { const c = zonas.obstaculo(p.x, p.y); if (c) p = { x: c.x, y: c.y, ang: p.ang }; }
+    if (deps.pose) deps.pose.pon(p);
+    inertes.clear();
+    if (vigia) vigia.arma(p.x, p.y);
+    aviso(P.rotulo(man), 4000);
+  }
+
+  function actualiza(): void {
+    if (!vigia || !deps.pose) return;
+    const p = deps.pose.lee(), pu = vigia.paso(p.x, p.y);
+    if (!pu) return;
+    if (pu.a !== "exterior" && !deps.existe(pu.a)) {   // a un mundo que no existe (vivienda) o que no está registrado (bodega): inerte, y lo dice una vez por acercamiento
+      if (!inertes.has(pu.id)) { inertes.add(pu.id); aviso("Esta puerta lleva a «" + pu.a + "», que aún no está en el gemelo", 3000); }
+      return;
+    }
+    inertes.delete(pu.id);
+    const puerta: Puerta = { id: id + "→" + pu.a + ":" + pu.id, de: id, a: pu.a as IdMundo, pos: { x: pu.x, y: pu.y }, radio: P.RADIO, histeresis: P.HISTERESIS };
+    deps.cruza(pu.a as IdMundo, puerta);
+  }
+
+  function sale(): Pose2 {
+    if (raiz && colgado) deps.escena.remove(raiz);
+    colgado = false; est.colgado = false;
+    if (deps.alSalir) deps.alSalir();
+    const p = deps.pose ? deps.pose.lee() : null;
+    return p ? { x: p.x, y: p.y, ang: p.ang } : { x: 0, y: 0, ang: 0 };
+  }
+
+  // dispose de todo lo que cuelga de una raíz: geometrías, materiales y sus texturas (y los ImageBitmap del GLTFLoader, que dispose no cierra)
+  function suelta(r: Nodo3D): void {
+    const texs = new Set<Textura3D>(), mats = new Set<Material3D>();
+    r.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+      for (const mt of materialesDe(o)) mats.add(mt);
+    });
+    for (const mt of mats) { texturasDe(mt, texs); mt.dispose(); }
+    for (const t of texs) { t.dispose(); const im = t.image; if (im && typeof im.close === "function") im.close(); }
+  }
+
+  function libera(): void {
+    if (raiz) { if (colgado) deps.escena.remove(raiz); suelta(raiz); }
+    raiz = null; man = null; zonas = null; puertas = []; vigia = null; colgado = false; est.colgado = false;
+    if (luces) for (const l of luces) if (l.dispose) l.dispose();
+    luces = null; liberado = true; est.liberado = true;
+  }
+
+  return {
+    id,
+    alSalir: "libera",
+    sala: null,
+    marco: "local",
+    carga,
+    entra,
+    actualiza,
+    sale,
+    congela(): void { /* nada: sale() ya lo descolgó y el vigía no corre fuera del mundo activo */ },
+    libera,
+    suelo(x: number, y: number): number { return zonas ? zonas.suelo(x, y) : 0; },
+    dentro(x: number, y: number): boolean { return zonas ? zonas.dentro(x, y) : false; },
+    obstaculo(x: number, y: number): Pose2 | null { return zonas ? zonas.obstaculo(x, y) : null; },
+    presupuesto(p) { return { ...(p.clase === "vr" ? P.PRESUPUESTO.quest : P.PRESUPUESTO.pantalla) }; },
+    ambiente(): Ambiente {
+      if (!luces) luces = deps.luz && !liberado ? [deps.luz("ambiental", LUZ_INTERIOR.color, LUZ_INTERIOR.intensidad)] : [];
+      return { cielo: "ninguno", fondo: FONDO_INTERIOR, niebla: null, luces, camara: { near: CAMARA_INTERIOR.near, far: CAMARA_INTERIOR.far }, exag: 1 };
+    },
+    estado(): EstadoInterior { return { ...est }; },
+  };
+}
+export type Interior = ReturnType<typeof creaInterior>;

@@ -13,8 +13,10 @@ import { creaColaDeMundo } from "./cola.ts";
 import type { ColaConDueno, ColaDeMundo } from "./cola.ts";
 import type { Ambiente } from "./ambiente.ts";
 
-/** Los mundos. «vacio» es el interior de prueba de MU2-8 (`?mundo=vacio`), para medir el exterior congelado sin ningún modelo. */
-export type IdMundo = "exterior" | "molino" | "bodega" | "vacio";
+/** Los mundos. «vacio» es el interior de prueba de MU2-8 (`?mundo=vacio`), para medir el exterior congelado sin ningún modelo. «patios» y «fabrica»
+ *  (eje B): los dos interiores de Hituelo, instancias del mundo interior genérico (mundos/interior/), con sus assets fuera del repo (decisión 227).
+ *  Lista cerrada a propósito (MUNDOS §5): los componentes la expanden («todos») y los eventos «mundo:entra/sale» la llevan en su contrato. */
+export type IdMundo = "exterior" | "molino" | "bodega" | "vacio" | "patios" | "fabrica";
 /** En el marco del mundo: x este, y norte (m), ang (rad); como hoy pp.x/pp.y/pp.ang de 12_paseo. */
 export interface Pose2 { x: number; y: number; ang: number }
 
@@ -29,8 +31,9 @@ export interface Puerta {
   readonly radio: number;
   /** hay que alejarse ≥ radio + histeresis para que se rearme */
   readonly histeresis: number;
-  /** en el marco de «a»: 1,5-2 m dentro y mirando hacia dentro */
-  readonly llegada: Pose2;
+  /** en el marco de «a»: 1,5-2 m dentro y mirando hacia dentro. Opcional (eje B): sin ella la decide el mundo de llegada; un interior, con la llegada
+   *  de SU puerta que lleva a «de» (contrato mundo-interior), que el mundo de salida no conoce */
+  readonly llegada?: Pose2;
   readonly requiere?: "sesion" | "invitacion" | "aforo";
 }
 

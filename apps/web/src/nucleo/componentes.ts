@@ -29,7 +29,7 @@ import type { IdMundo } from "./mundos.ts";
 export type Fase = "mundo" | "tarde" | "trasRender" | "pausa";
 const FASES: readonly Fase[] = ["mundo", "tarde", "trasRender", "pausa"];
 /** Los mundos que puede nombrar un manifiesto (los de IdMundo, nucleo/mundos.ts). */
-const MUNDOS = ["exterior", "molino", "bodega", "vacio"] as const satisfies readonly IdMundo[];
+const MUNDOS = ["exterior", "molino", "bodega", "vacio", "patios", "fabrica"] as const satisfies readonly IdMundo[];
 type FaltaEnMundos = Exclude<IdMundo, (typeof MUNDOS)[number]>;
 const _todos: [FaltaEnMundos] extends [never] ? true : never = true;   // si IdMundo gana un mundo, MUNDOS tiene que nombrarlo
 void _todos;

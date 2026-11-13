@@ -6,7 +6,7 @@ La idea en una frase: **un glb autocontenido con materiales estándar y la luz h
 
 **Cómo se comprueba:** `node tuberia/interiores/valida.js <carpeta>` (la carpeta tiene `mundo.json` y su glb). Dice PASA o NO PASA, qué cuesta en cada perfil y por qué falla; con `--json`, lo mismo para una máquina. No usa la red ni el motor. Ejemplo que pasa: [modelos/interiores/ejemplo/](../modelos/interiores/ejemplo/) (sintético, una sala de 8 × 6 × 3 m con una rueda). Lo vigila [mundo_interior.test.js](../pruebas/guardianes/mundo_interior.test.js).
 
-**Dónde viven los de verdad:** fuera del repo (regla 4, decisión 227), servidos por `/teselas/<finca>/<mundo>/`. Aquí solo el contrato, el validador y el ejemplo inventado.
+**Dónde viven los de verdad:** fuera del repo (regla 4, decisión 227), servidos por `/teselas/<finca>/<mundo>/<perfil>/`: una carpeta por perfil con su `mundo.json` y su glb, `quest` (la que pasa el validador: cabe en el perfil objetivo) y, si se quiere más detalle en escritorio, `pantalla` (cabe en el perfil «pantalla»; hoy el validador la da por NO PASA porque mira el objetivo). El motor pide `quest` en una sesión de VR o en unas gafas y `pantalla` en escritorio y en móvil ([MUNDOS §3, «Cómo quedó (eje B)»](../doc/sistema/MUNDOS.md#interiores-del-eje-b)). Aquí solo el contrato, el validador y el ejemplo inventado.
 
 ## 1. El manifiesto (`mundo.json`)
 
