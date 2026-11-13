@@ -188,12 +188,14 @@ test("piezas.py: agrupa los trozos con el criterio documentado y escribe el inve
   // una correa (cuero) toca dos máquinas sin unirlas: es un conjunto propio, marcado como puente
   const d2 = JSON.parse(JSON.stringify(datos));
   d2.trozos.push(t(8, [1.9, 0.9, 0], [1.95, 0.95, 4], 40, [0, 9], ["m_cuero"]), t(9, [1.8, 0.8, 4], [2.6, 1.6, 4.5], 50, [8]));
-  d2.trozos[0].toca.push(8);
+  d2.trozos.push(t(10, [0, 0, 1], [0.5, 0.5, 1], 1, [0]));     // un triángulo suelto de una tapa (medio metro): va con la cuba
+  d2.trozos[0].toca.push(8, 10);
   fs.writeFileSync(path.join(d, "trozos2.json"), JSON.stringify(d2));
   assert.strictEqual(ejecuta(PY, ["-I", path.join(DIR, "piezas.py"), "--", path.join(d, "trozos2.json"), path.join(d, "inv2.json")]).status, 0);
   const inv2 = JSON.parse(fs.readFileSync(path.join(d, "inv2.json"), "utf8"));
   const correa = inv2.conjuntos.find(c => c.materiales.includes("m_cuero"));
   assert.ok(correa.puente && correa.piezas.length === 1, "la correa es su propio conjunto");
   assert.strictEqual(inv2.conjuntos.filter(c => c.piezas.length > 1).length, 1, "la correa no junta la polea de arriba con la cuba");
+  assert.ok(inv2.piezas.find(p => p.ids_trozo.includes(0)).ids_trozo.includes(10), "un triángulo suelto va con lo que toca aunque sea grande");
   assert.doesNotMatch(JSON.stringify(inv), /[A-Za-z]:[\\/]|\/Users\/|AppData/, "el inventario no lleva rutas");
 });

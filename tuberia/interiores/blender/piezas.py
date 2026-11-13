@@ -6,7 +6,9 @@
 #   "trozos": [{"id": 0, "caras": n, "triangulos": n, "min": [x, y, z], "max": [x, y, z], "materiales": ["…"], "toca": [ids]}]}
 # (coordenadas de Blender, Z arriba; «toca»: otros trozos a menos de toque_m, medido en Blender con un BVH).
 # Criterio (el mismo que se escribe en el inventario):
-#   - un trozo es PEQUEÑO si la diagonal de su caja es menor que `pequeno_m` (tornillos, tuercas, arandelas, chavetas, remaches);
+#   - un trozo es PEQUEÑO si la diagonal de su caja es menor que `pequeno_m` (tornillos, tuercas, arandelas, chavetas, remaches)
+#     o si tiene ≤ SUELTO_TRI triángulos (las tapas de cilindro del modelo son abanicos de triángulos sin vértices comunes:
+#     cada triángulo sale como trozo suelto aunque mida medio metro);
 #   - los pequeños que se tocan entre sí forman un racimo; el racimo va con el trozo NO pequeño más grande (por diagonal)
 #     que toque a alguno de sus trozos: así una tuerca va con la columna en la que está, y una tuerca entre una rueda y su
 #     eje va con la rueda, que es lo que se mueve con ella;
@@ -22,6 +24,7 @@
 # Marco del mundo (exporta.py, mundo.json): (x, y, z)_mundo = (x − ox, z − oz, −(y − oy))_blender; tamaños (dx, dz, dy).
 import json, math, sys
 
+SUELTO_TRI = 2
 PUENTE_MATERIALES = ("m_cuero",)
 LINEAL_LARGO_M, LINEAL_GRUESO_M = 3.0, 0.12
 MARCO = "mundo interior: origen en el umbral de la puerta principal, metros, +Y arriba (como mundo.json)"
@@ -51,7 +54,7 @@ def agrupa(trozos, pequeno_m):
     """Lista de grupos (listas de ids de trozo) según el criterio de la cabecera"""
     por_id = {t["id"]: t for t in trozos}
     diag = {t["id"]: diagonal(t) for t in trozos}
-    pequeno = {i for i, d in diag.items() if d < pequeno_m}
+    pequeno = {i for i, d in diag.items() if d < pequeno_m or por_id[i]["triangulos"] <= SUELTO_TRI}
     c = Conjuntos(por_id)
     for i in pequeno:
         for j in por_id[i]["toca"]:
@@ -142,9 +145,9 @@ def inventario(datos, pequeno_m):
                      "materiales": sorted({m for i in g for m in filas[i]["materiales"]})})
     return {
         "v": 1, "objeto": datos["objeto"], "marco": MARCO, "origen_blender": datos["origen_blender"],
-        "criterio": {"soldadura_m": datos["soldadura_m"], "toque_m": datos["toque_m"], "pequeno_m": pequeno_m,
+        "criterio": {"soldadura_m": datos["soldadura_m"], "toque_m": datos["toque_m"], "pequeno_m": pequeno_m, "suelto_tri": SUELTO_TRI,
                      "puente_materiales": list(PUENTE_MATERIALES), "lineal_largo_m": LINEAL_LARGO_M, "lineal_grueso_m": LINEAL_GRUESO_M,
-                     "texto": "trozos sueltos tras soldar a soldadura_m; los de diagonal < pequeno_m que tocan (a menos de toque_m) "
+                     "texto": "trozos sueltos tras soldar a soldadura_m; los de diagonal < pequeno_m (o de <= suelto_tri triángulos) que tocan (a menos de toque_m) "
                               "a uno mayor van con el mayor que tocan; los demás trozos son piezas por sí mismos. Conjuntos: piezas "
                               "que se tocan, sin pasar por las correas ni por lo lineal (carriles, ejes largos), que son conjunto propio"},
         "trozos": len(trozos), "triangulos": sum(t["triangulos"] for t in trozos), "piezas": piezas, "conjuntos": conj}
