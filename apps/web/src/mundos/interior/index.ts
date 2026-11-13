@@ -2,6 +2,8 @@
 // cumpla el contrato (regla 12: no uno por mundo): los patios y la fábrica de Hituelo son dos instancias de creaInterior con otro id. Es un trozo
 // perezoso: el arranque (90_final) lo pide con import() al cruzar la puerta o con ?mundo=<id>, y hasta entonces no se descarga nada.
 //
+// precarga(ctx) (eje B, la puerta del cortijo): lo de carga() que no toca la GPU (el manifiesto, el glb y su parse), adelantado mientras el exterior sigue
+// activo; carga() lo aprovecha si el perfil no ha cambiado (si entre medias se entró en la VR, se suelta y se repite) y solo sube las texturas, a oscuras.
 // carga(ctx): pide <base><id>/<perfil>/mundo.json (perfil «quest» en VR o en unas gafas, «pantalla» si no: InteriorPuro.perfil), lo comprueba
 // (InteriorPuro.valida), pide el glb y lo lee con el GLTFLoader de three (import() en el talón). El GLTFLoader ya respeta lo que el contrato pide:
 // KHR_materials_unlit → MeshBasicMaterial (la luz va horneada en el color base), COLOR_0 → vertexColors (la luz de las hojas) y alphaMode MASK →
@@ -82,6 +84,8 @@ export interface EstadoInterior {
   id: string; perfil: PerfilInterior | null; ruta: string | null; nombre: string | null; fuente: string | null;
   triangulos: number; llamadas: number; materiales: number; texturas: number; sinLuz: number; conColor: number; recorte: number;
   colgado: boolean; liberado: boolean;
+  /** eje B: hay un glb ya bajado y leído por precarga() que carga() aún no ha usado */
+  precargado: boolean;
 }
 
 function texturasDe(m: Material3D, en: Set<Textura3D>): void {
@@ -97,10 +101,12 @@ export function creaInterior(deps: DepsInterior): MundoBase & {
   let man: MundoInterior | null = null, raiz: Nodo3D | null = null, zonas: Zonas | null = null, puertas: PuertaPose[] = [], vigia: ReturnType<typeof P.creaVigia> | null = null;
   let luces: Array<LuzAmbiente & { dispose?(): void }> | null = null, colgado = false, liberado = false;
   const inertes = new Set<string>();   // las puertas a un mundo que no existe ya avisadas en esta visita (hasta alejarse: el vigía las rearma)
-  const est: EstadoInterior = { id, perfil: null, ruta: null, nombre: null, fuente: null, triangulos: 0, llamadas: 0, materiales: 0, texturas: 0, sinLuz: 0, conColor: 0, recorte: 0, colgado: false, liberado: false };
+  const est: EstadoInterior = { id, perfil: null, ruta: null, nombre: null, fuente: null, triangulos: 0, llamadas: 0, materiales: 0, texturas: 0, sinLuz: 0, conColor: 0, recorte: 0, colgado: false, liberado: false, precargado: false };
 
-  async function carga(ctx: ContextoBase): Promise<void> {
-    liberado = false; est.liberado = false;
+  // lo que no toca la GPU: el manifiesto (comprobado), el glb y su parse. La usan precarga() y carga()
+  interface Leido { perfil: PerfilInterior; ruta: string; mi: MundoInterior; escena: Nodo3D }
+  let pendiente: Promise<Leido> | null = null, leido: Leido | null = null;
+  async function lee(ctx: ContextoBase): Promise<Leido> {
     const perfil = P.perfil({ vr: deps.vr(), clase: deps.clase() }), ruta = P.ruta(deps.base, id, perfil);
     est.perfil = perfil; est.ruta = ruta;
     const rm = await deps.descarga(ruta + "mundo.json", { signal: ctx.senal });
@@ -113,7 +119,27 @@ export function creaInterior(deps: DepsInterior): MundoBase & {
     const [datos, lib] = await Promise.all([rg.arrayBuffer(), deps.cargaGltf()]);
     if (ctx.senal.aborted) throw new Error("«" + id + "»: carga cancelada");
     const gltf = await new lib.GLTFLoader().parseAsync(datos, ruta);
-    if (ctx.senal.aborted) { suelta(gltf.scene); throw new Error("«" + id + "»: carga cancelada"); }
+    if (ctx.senal.aborted || liberado) { suelta(gltf.scene); throw new Error("«" + id + "»: carga cancelada"); }
+    return { perfil, ruta, mi, escena: gltf.scene };
+  }
+
+  async function precarga(ctx: ContextoBase): Promise<void> {
+    liberado = false; est.liberado = false;
+    const p = lee(ctx); pendiente = p;
+    try { const l = await p; if (pendiente === p) { leido = l; est.precargado = true; } else suelta(l.escena); }
+    finally { if (pendiente === p) pendiente = null; }
+  }
+
+  async function carga(ctx: ContextoBase): Promise<void> {
+    liberado = false; est.liberado = false;
+    // lo precargado, si lo hay y es del perfil de ahora (entre medias se pudo entrar en la VR); si la precarga falló, se repite aquí
+    let l: Leido | null = leido;
+    if (!l && pendiente) l = await pendiente.then(() => leido, () => null);
+    leido = null; est.precargado = false;
+    if (l && l.perfil !== P.perfil({ vr: deps.vr(), clase: deps.clase() })) { suelta(l.escena); l = null; }
+    if (!l) l = await lee(ctx);
+    else { est.perfil = l.perfil; est.ruta = l.ruta; }
+    const mi = l.mi, gltf = { scene: l.escena };
     // los materiales: los «sin luz» (KHR_materials_unlit) fuera del tone mapping; se cuentan las mallas, los triángulos y las texturas
     const mats = new Set<Material3D>(), texs = new Set<Textura3D>();
     let tri = 0, llam = 0;
@@ -152,7 +178,8 @@ export function creaInterior(deps: DepsInterior): MundoBase & {
     deps.escena.add(raiz); colgado = true; est.colgado = true;
     if (deps.alEntrar) deps.alEntrar();
     // por una puerta, la llegada de la nuestra que lleva al mundo de donde se viene; si no (?mundo=, o una vuelta atrás), donde se dejó o la principal
-    let p: Pose2 = desde ? P.llegada(man, desde.de) : llegada || P.llegada(man, null);
+    // (eje B: la puerta del exterior trae la llegada de la puerta por la que se entra, que el exterior conoce por el anclaje)
+    let p: Pose2 = desde ? desde.llegada || P.llegada(man, desde.de) : llegada || P.llegada(man, null);
     // donde se dejó, si fue en el umbral de una puerta (se salió por ella, o falló el cambio al cruzarla): a su llegada, dentro y mirando hacia dentro,
     // para no aparecer en el vano mirando afuera con la puerta desarmada
     const enPuerta = puertas.findIndex(pu => P.aUmbral(pu, p.x, p.y) < P.RADIO + P.HISTERESIS);
@@ -198,6 +225,8 @@ export function creaInterior(deps: DepsInterior): MundoBase & {
 
   function libera(): void {
     if (raiz) { if (colgado) deps.escena.remove(raiz); suelta(raiz); }
+    if (leido) suelta(leido.escena);   // una precarga que nadie usó (quien andaba se alejó); la que está en vuelo la corta la señal (y lee() suelta lo leído)
+    leido = null; pendiente = null; est.precargado = false;
     raiz = null; man = null; zonas = null; puertas = []; vigia = null; colgado = false; est.colgado = false;
     if (luces) for (const l of luces) if (l.dispose) l.dispose();
     luces = null; liberado = true; est.liberado = true;
@@ -208,6 +237,7 @@ export function creaInterior(deps: DepsInterior): MundoBase & {
     alSalir: "libera",
     sala: null,
     marco: "local",
+    precarga,
     carga,
     entra,
     actualiza,

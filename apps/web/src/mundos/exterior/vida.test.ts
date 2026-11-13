@@ -76,6 +76,16 @@ describe("vida del olivar: el montaje y los mandos del paseo", () => {
     vida.ponQuad(true); expect(vida.E.enDron).toBe(false); expect(vida.E.enQuad).toBe(true);
     vida.ponDron(false); S.paseando = false; vida.ponDron(true); expect(vida.E.enDron).toBe(false);
   });
+  it("eje B, la puerta del cortijo: bloquea() baja del quad y del dron y no deja volver a subir (avisa); el quad aparcado se ve quieto fuera, no dentro", () => {
+    const { vida } = monta(), avisos: string[] = [];
+    vida.ponQuad(true); vida.aparca({ x: 5, y: 6, ang: 0.5 }); vida.bloquea(q => { avisos.push(q); });
+    expect(vida.E.enQuad).toBe(false);
+    vida.ponQuad(true); vida.ponDron(true); expect(vida.E.enQuad).toBe(false); expect(vida.E.enDron).toBe(false); expect(avisos).toEqual(["quad", "dron"]);
+    vida.vidaPaseo(0.016, 0, 0); expect(vida.quad.visible).toBe(false);   // dentro: ni el aparcado
+    vida.bloquea(null); vida.vidaPaseo(0.016, 0, 0);
+    expect(vida.quad.visible).toBe(true); expect(vida.quad.position.x).toBe(5); expect(vida.quad.position.z).toBe(-6); expect(vida.aparcado()).toEqual({ x: 5, y: 6, ang: 0.5 });
+    vida.ponQuad(true); expect(vida.aparcado()).toBeNull();   // subirse lo trae (como siempre: aparece debajo)
+  });
   it("el dron se mueve con el suelo y el borde del mundo ACTIVO y sobrevuela las copas (no las atraviesa)", () => {
     const { vida, S, llamadasMundo } = monta();
     S.mundoSuelo = 10; vida.ponDron(true);

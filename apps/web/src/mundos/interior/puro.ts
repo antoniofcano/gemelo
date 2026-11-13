@@ -7,7 +7,7 @@
 // 12_paseo, Pose2) va en (x, y) con y = −z de three (paseo.ts: persona.position.set(pp.x, suelo, −pp.y)), y su ang avanza por (sin ang, cos ang).
 // El rumbo del contrato son grados desde +Z hacia +X: la dirección (sin r, cos r) en (x, z), que en el marco de quien anda es (sin r, −cos r);
 // por eso ang = π − r. El glb se cuelga tal cual (sin girarlo): el «norte» de un interior no es el de la finca (marco «local»).
-import type { MundoInterior, Puerta as PuertaInterior, Zona } from "../../datos/contratos/mundo-interior.ts";
+import type { Anclaje, MundoInterior, Puerta as PuertaInterior, Zona } from "../../datos/contratos/mundo-interior.ts";
 import type { Pose2 } from "../../nucleo/mundos.ts";
 
 /** Las dos carpetas que deja el exportador del eje B (salida/<mundo>/<perfil>/): «quest», la ligera (cabe en el perfil objetivo del contrato), y
@@ -90,6 +90,11 @@ function valida(m: unknown, idEsperado: string): string[] {
     if (i === 0 && (Math.hypot(q.pos[0]!, q.pos[2]!) > 0.05 || Math.abs(q.pos[1]!) > 0.05)) e.push("la puerta principal («" + q.id + "», la primera) va en el origen (0, 0, 0)");
     if (zv.length && !pisa(ll.pos)) e.push("la llegada de la puerta «" + q.id + "» no cae dentro de ninguna zona a su cota");
   });
+  // v1.1: el anclaje en el exterior es opcional; si viene, tiene que servir (si no, la puerta del exterior caería en cualquier sitio)
+  if (o.anclaje !== undefined) {
+    const an = o.anclaje as Partial<Anclaje> | null;
+    if (!an || typeof an !== "object" || !par(an.pos, 2) || !num(an.giro) || an.giro < 0 || an.giro >= 360) e.push("anclaje: {pos: [x, y], giro en [0, 360)}");
+  }
   for (const [lista, que] of [[zonas, "zona"], [puertas, "puerta"]] as const) {
     const ids = (lista || []).map(x => (x && typeof x === "object" ? (x as { id?: unknown }).id : undefined));
     const rep = ids.filter((x, i) => x !== undefined && ids.indexOf(x) !== i);
@@ -233,4 +238,64 @@ function rotulo(m: Pick<MundoInterior, "nombre" | "fuente">): string {
   return m.nombre + " · " + f + " · luz horneada, ilustrativa";
 }
 
-export const InteriorPuro = { RADIO, HISTERESIS, PRESUPUESTO, perfil, ruta, valida, enPoligono, angDeRumbo, poseDe, llegada, creaZonas, puertasPose, aUmbral, creaVigia, rotulo };
+// ---- v1.1: el interior en el exterior (la puerta del cortijo). El anclaje dice dónde cae el origen del glb en el marco local de la finca y el rumbo de
+// brújula de su eje +Z (giro). Del marco de quien anda dentro (x, y = −z) al del exterior (x este, y norte) hay un giro de φ = π − giro (en sentido
+// antihorario) y una traslación: los dos marcos tienen la misma mano (paseo.ts los dibuja igual), así que no hay espejo. ang (rumbo desde el norte, en
+// sentido horario) pasa como ang − φ. Lo prueba interior/puro.test.ts (ida y vuelta, y las puertas de un ejemplo).
+
+/** radio de disparo de una puerta del exterior y lo que hay que alejarse además para rearmarla (m). Más que dentro (0,6 / 0,8): fuera se llega en quad, a
+ *  12 m/s como mucho (vida.ts: velPaseo); una franja de 2·RADIO_EXT = 2 m no se salta ni a 6 fotogramas por segundo, y el pin del portón tiene unos metros
+ *  de error [SUPUESTO: sin probar andando en un aparato] */
+const RADIO_EXT = 1, HISTERESIS_EXT = 1;
+/** a cuántos metros del umbral aparece quien sale (mirando hacia fuera): más que RADIO_EXT + HISTERESIS_EXT, así que la puerta ya está armada a su espalda */
+const FUERA = 3;
+/** «Ir al cortijo»: a cuántos metros delante de la puerta principal (mirándola), dentro del radio de precarga */
+const FRENTE = 8;
+/** precarga al acercarse (m al umbral) y suelta al alejarse más de esto (la histéresis evita cargar y soltar al pasear por el borde) */
+const PRECARGA = 50, SUELTA = 80;
+
+/** El anclaje como transformación: origen (ax, ay) y φ (rad, antihorario). */
+export interface Transformacion { ax: number; ay: number; phi: number; c: number; s: number }
+function transformacion(an: Anclaje): Transformacion {
+  const phi = Math.PI - an.giro * Math.PI / 180;
+  return { ax: an.pos[0], ay: an.pos[1], phi, c: Math.cos(phi), s: Math.sin(phi) };
+}
+function normaliza(a: number): number { while (a > Math.PI) a -= 2 * Math.PI; while (a <= -Math.PI) a += 2 * Math.PI; return a; }
+/** de quien anda dentro (marco del interior) al exterior */
+function aExterior(t: Transformacion, p: Pose2): Pose2 {
+  return { x: t.ax + t.c * p.x - t.s * p.y, y: t.ay + t.s * p.x + t.c * p.y, ang: normaliza(p.ang - t.phi) };
+}
+/** del exterior al marco de quien anda dentro (la inversa de aExterior) */
+function deExterior(t: Transformacion, p: Pose2): Pose2 {
+  const dx = p.x - t.ax, dy = p.y - t.ay;
+  return { x: t.c * dx + t.s * dy, y: -t.s * dx + t.c * dy, ang: normaliza(p.ang + t.phi) };
+}
+
+/** Una puerta del interior vista desde el exterior: su umbral (PuertaPose en el marco del exterior, para el vigía de siempre), dónde aparece quien sale por
+ *  ella (fuera, mirando hacia fuera) y dónde quien entra (llegada, en el marco del interior). */
+export interface Acceso { mundo: string; puerta: string; umbral: PuertaPose; fuera: Pose2; frente: Pose2; llegada: Pose2; ancho: number; alto: number }
+
+/** Las puertas al exterior de un interior anclado (ninguna si no trae anclaje). La primera, si la hay, es la principal (el contrato la pone primera). */
+function accesos(m: Pick<MundoInterior, "id" | "puertas" | "anclaje">): Acceso[] {
+  if (!m.anclaje) return [];
+  const t = transformacion(m.anclaje), poses = puertasPose(m.puertas);
+  const out: Acceso[] = [];
+  m.puertas.forEach((pu, i) => {
+    if (pu.a !== "exterior") return;
+    const p = poses[i]!, c = aExterior(t, { x: p.x, y: p.y, ang: p.ang });
+    const ux = t.c * p.ux - t.s * p.uy, uy = t.s * p.ux + t.c * p.uy, sx = Math.sin(c.ang), sy = Math.cos(c.ang);
+    out.push({
+      mundo: m.id, puerta: pu.id, ancho: pu.ancho, alto: pu.alto,
+      umbral: { id: pu.id, a: m.id, x: c.x, y: c.y, ux, uy, medio: p.medio, ang: c.ang },
+      fuera: { x: c.x + sx * FUERA, y: c.y + sy * FUERA, ang: c.ang },
+      frente: { x: c.x + sx * FRENTE, y: c.y + sy * FRENTE, ang: normaliza(c.ang + Math.PI) },
+      llegada: poseDe(pu.llegada),
+    });
+  });
+  return out;
+}
+
+export const InteriorPuro = {
+  RADIO, HISTERESIS, PRESUPUESTO, perfil, ruta, valida, enPoligono, angDeRumbo, poseDe, llegada, creaZonas, puertasPose, aUmbral, creaVigia, rotulo,
+  RADIO_EXT, HISTERESIS_EXT, FUERA, FRENTE, PRECARGA, SUELTA, transformacion, aExterior, deExterior, accesos,
+};

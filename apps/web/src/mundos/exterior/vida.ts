@@ -174,15 +174,25 @@ export function creaVida(d: DepsVida) {
     E.vq += (meta - E.vq) * Math.min(1, dt * k); if (Math.abs(E.vq) < 0.02 && !av) E.vq = 0; espeja(E); return E.vq;
   }
   function giroPaseo(vel: any) { if (!E.enQuad) return 1.9; return 2.2 * (0.3 + 0.7 * Math.min(1, Math.abs(vel) / 3)) * (1 - 0.35 * Math.min(1, Math.abs(vel) / 12)); }
+  // eje B (la puerta del cortijo): en un interior no hay quad ni dron (bloquea(aviso): ponQuad(true) y ponDron(true) no hacen nada y lo dicen), y el quad con
+  // el que se llegó se queda aparcado en la puerta (aparca(pose)): se ve allí mientras no se va en él; subirse otra vez (Q) lo quita de allí, como siempre
+  var bloqueo: ((que: "quad" | "dron") => void) | null = null, aparcado: { x: number; y: number; ang: number } | null = null;
+  function bloquea(aviso: ((que: "quad" | "dron") => void) | null) { bloqueo = aviso; if (aviso) { if (E.enQuad) ponQuad(false); if (E.enDron) ponDron(false); } }
+  function aparca(p: { x: number; y: number; ang: number } | null) { aparcado = p ? { x: p.x, y: p.y, ang: p.ang } : null; if (!E.enQuad) quad.visible = false; }
   function ponQuad(v: any) {
+    if (v && bloqueo) { bloqueo("quad"); return; }
     if (v && E.enDron) ponDron(false);
-    E.enQuad = !!v && paseando(); E.vq = 0; espeja(E); estelaQuad.reinicia(); quad.visible = E.enQuad;
+    E.enQuad = !!v && paseando(); E.vq = 0; espeja(E); estelaQuad.reinicia(); quad.visible = E.enQuad; if (E.enQuad) aparcado = null;
     $("btnQuad").setAttribute("aria-pressed", String(E.enQuad)); $("btnQuad").textContent = E.enQuad ? "Bajar del quad" : "Subir al quad"; $("padQuad").setAttribute("aria-pressed", String(E.enQuad));
     if (!E.enQuad) { var u = persona().userData; u.pi.rotation.x = u.pd.rotation.x = u.bi.rotation.x = u.bd.rotation.x = 0; }
   }
   function vidaPaseo(dt: any, gy: any, vel: any) {
     if (E.enDron) { var ud = persona().userData; ud.pi.rotation.x = ud.pd.rotation.x = 0; ud.bi.rotation.x = ud.bd.rotation.x = 1.0; }
-    if (!E.enQuad) { quad.visible = false; return; }
+    if (!E.enQuad) {   // aparcado en la puerta del cortijo (solo fuera: dentro, bloqueo): quieto, en el suelo del exterior
+      quad.visible = !!aparcado && !bloqueo;
+      if (aparcado && !bloqueo) { quad.position.set(aparcado.x, altSuelo(aparcado.x, aparcado.y) + 0.02, -aparcado.y); quad.rotation.set(0, -aparcado.ang, 0); }
+      return;
+    }
     var fx = Math.sin(pp.ang), fz = -Math.cos(pp.ang), u = persona().userData, mov = Math.min(1, Math.abs(vel) / 6);
     quad.visible = true; quad.position.set(pp.x, gy + 0.02 + Math.sin(E.tVida * 31) * 0.012 * mov, -pp.y); inclinaQuad(dt);
     var rueds = quad.userData.ruedas; for (var ir = 0; ir < rueds.length; ir++) rueds[ir].rotation.x -= vel * dt / 0.3;
@@ -222,6 +232,7 @@ export function creaVida(d: DepsVida) {
       : "Flechas o WASD: andar y girar · Mayús: correr · clic en el suelo: ir andando · V: primera persona · Q: quad · E: dron · M: minimapa · Esc: salir";
   }
   function ponDron(v: any) {
+    if (v && bloqueo) { bloqueo("dron"); return; }
     var quiero = !!v && paseando();
     if (quiero && E.enQuad) ponQuad(false);
     E.enDron = quiero; espeja(E); vistaD = 0; ponPrimera(false); dron.visible = E.enDron; anilloDron.visible = E.enDron; estelaDron.reinicia();
@@ -340,6 +351,6 @@ export function creaVida(d: DepsVida) {
     monta: function () { return { libera }; },
     libera: function () { libera(); }
   };
-  return { E, gFauna, quad, dron, dr, anilloDron, altSuelo, quita, mira, temaEstela, velPaseo, giroPaseo, ponQuad, vidaPaseo, ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale, actualizaVida, libera, componente };
+  return { E, gFauna, quad, dron, dr, anilloDron, altSuelo, quita, mira, temaEstela, velPaseo, giroPaseo, ponQuad, vidaPaseo, ponDron, cicloVista, dronMando, camaraDron, vidaEntra, vidaSale, actualizaVida, libera, componente, bloquea, aparca, aparcado: function () { return aparcado ? { x: aparcado.x, y: aparcado.y, ang: aparcado.ang } : null; } };
 }
 export type Vida = ReturnType<typeof creaVida>;

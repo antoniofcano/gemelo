@@ -26,6 +26,16 @@ describe("minimapa", () => {
     U.actualizaMinimapa(0.1); expect(wrap.hidden).toBe(true);
     estado.paseando = true; U.actualizaMinimapa(0.1); expect(wrap.hidden).toBe(false); expect(estado.ortos).toBe(1); expect(estado.capas).toEqual([1, 2]);
   });
+  it("eje B: una capa con toca(x, y) recibe el toque antes que el zoom y, si lo hace suyo, el zoom no cambia; quitarla lo quita", () => {
+    const { U, cv } = monta(), toques: number[][] = [];
+    const quita = U.Minimapa.capa(() => { /* pinta */ }, 6, (x: number, y: number) => { toques.push([x, y]); return x < 50; });
+    const zoom = (): string => cv.title;
+    const antes = zoom();
+    cv.getBoundingClientRect = () => ({ left: 0, top: 0, width: 240, height: 120 });
+    cv.dispatchEvent({ type: "click", clientX: 10, clientY: 10 }); expect(toques.length).toBe(1); expect(zoom()).toBe(antes);
+    cv.dispatchEvent({ type: "click", clientX: 200, clientY: 10 }); expect(toques.length).toBe(2); expect(zoom()).not.toBe(antes);   // no era suyo: el zoom, como siempre
+    quita(); cv.dispatchEvent({ type: "click", clientX: 10, clientY: 10 }); expect(toques.length).toBe(2);
+  });
   it("M pliega el minimapa al pasear (y lo recuerda en el almacén)", () => {
     const { m, cv, estado } = monta(); estado.paseando = true;
     m.ventana.dispatchEvent({ type: "keydown", code: "KeyM", target: {}, preventDefault() { /* doble */ } });

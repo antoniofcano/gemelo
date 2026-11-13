@@ -649,6 +649,7 @@
         "nucleo/mundos"
       ],
       "escuchan": [
+        "mundos/interior/porton",
         "nucleo/componentes"
       ]
     },

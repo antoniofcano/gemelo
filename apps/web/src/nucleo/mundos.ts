@@ -55,6 +55,9 @@ export interface MundoBase<C extends ContextoBase = ContextoBase> {
   readonly alSalir?: "congela" | "libera";
   /** import() de assets, glb, KTX2; puede tardar; abortable con ctx.senal. No toca la escena. */
   carga(ctx: C): Promise<void>;
+  /** Eje B (la puerta del cortijo), opcional: lo que se puede adelantar de carga() mientras otro mundo está activo, sin tocar la escena ni la GPU (la red y el
+   *  parse). El gestor lo llama con precarga(id) y le pasa el MISMO contexto que dará después a carga(), que aprovecha lo hecho. Sin él, precarga() solo hace el import() */
+  precarga?(ctx: C): Promise<void>;
   /** cuelga su raíz y registra sus entidades; síncrono, a oscuras. Su Ambiente lo aplica el gestor justo después (MU2-7: deps.aplicaAmbiente) */
   entra(desde: Puerta | null, llegada: Pose2 | null): void;
   /** cada fotograma, solo si está activo */
@@ -159,6 +162,8 @@ interface Ficha<C extends ContextoBase, W extends MundoBase<C>> {
   limpiezas: Array<() => void>;
   intento: number;
   retorno: Pose2 | null;
+  /** eje B: una precarga en curso o hecha (su señal y su contexto, que carga() reutiliza), o null */
+  previa: { ctrl: AbortController; ctx: C; hecha: Promise<void> } | null;
 }
 
 class ErrorTiempo extends Error { constructor(ms: number) { super("la carga pasó de " + ms + " ms"); this.name = "ErrorTiempo"; } }
@@ -167,7 +172,7 @@ export function creaWorldManager<C extends ContextoBase = ContextoBase, W extend
   const fichas = new Map<IdMundo, Ficha<C, W>>();
   const tiempoMax = typeof deps.tiempoMax === "number" && deps.tiempoMax > 0 ? deps.tiempoMax : TIEMPO_MAX_MS;
   const ahora = (): number => (deps.ahora ? deps.ahora() : 0);
-  let estado: EstadoCambio = "en", actual: Ficha<C, W> | null = null, enCurso = false;
+  let estado: EstadoCambio = "en", actual: Ficha<C, W> | null = null, enCurso = false, destino: IdMundo | null = null;
 
   function log(...a: unknown[]): void { if (deps.consola) deps.consola.error("[mundos]", ...a); }
   function paso(ev: EventoCambio): void {
@@ -180,7 +185,7 @@ export function creaWorldManager<C extends ContextoBase = ContextoBase, W extend
 
   function registra(def: () => Promise<W>, id: IdMundo): void {
     if (fichas.has(id)) throw new Error("WorldManager: «" + id + "» ya está registrado");
-    fichas.set(id, { id, def, mundo: null, estado: "sin_cargar", ctrl: null, limpiezas: [], intento: 0, retorno: null });
+    fichas.set(id, { id, def, mundo: null, estado: "sin_cargar", ctrl: null, limpiezas: [], intento: 0, retorno: null, previa: null });
   }
 
   // libera de verdad: libera(), las limpiezas del contexto, la señal abortada y sus trabajos fuera de la Cola. Queda «sin_cargar».
@@ -190,15 +195,30 @@ export function creaWorldManager<C extends ContextoBase = ContextoBase, W extend
     const ls = f.limpiezas; f.limpiezas = [];
     for (const fn of ls) intenta("limpia " + f.id, fn);
     if (f.ctrl) f.ctrl.abort();
-    f.ctrl = null;
+    if (f.previa) f.previa.ctrl.abort();
+    f.ctrl = null; f.previa = null;
     deps.cola.cancelaDe(f.id);
     f.estado = "sin_cargar";
+  }
+
+  // el contexto de un mundo para una carga (o una precarga, que se lo pasa luego a carga())
+  function contextoDe(f: Ficha<C, W>, ctrl: AbortController): C {
+    const base: ContextoBase = { id: f.id, senal: ctrl.signal, cola: creaColaDeMundo(deps.cola, f.id), limpia: fn => { f.limpiezas.push(fn); } };
+    return deps.contexto ? deps.contexto(base) : (base as C);
+  }
+  async function deDef(f: Ficha<C, W>): Promise<W> {
+    const w = f.mundo || await f.def();
+    if (!w || w.id !== f.id) throw new Error("WorldManager: el talón de «" + f.id + "» dio un mundo «" + (w && w.id) + "»");
+    f.mundo = w;
+    return w;
   }
 
   // import() perezoso (una vez) + carga(), con tope de tiempo. Un mundo «listo» (congelado) no se vuelve a cargar.
   function carga(f: Ficha<C, W>): Promise<void> {
     if (f.estado !== "sin_cargar") return Promise.resolve();
-    const n = ++f.intento, ctrl = new AbortController();
+    // eje B: si hubo precarga, la misma señal y el mismo contexto (carga() aprovecha lo que ya se bajó); si falló, carga() lo vuelve a intentar
+    const pv = f.previa; f.previa = null;
+    const n = ++f.intento, ctrl = pv ? pv.ctrl : new AbortController();
     f.ctrl = ctrl;
     return new Promise<void>((resuelve, rechaza) => {
       let hecho = false;
@@ -207,13 +227,10 @@ export function creaWorldManager<C extends ContextoBase = ContextoBase, W extend
         hecho = true; ctrl.abort(); rechaza(new ErrorTiempo(tiempoMax));
       }, tiempoMax);
       (async () => {
-        const w = f.mundo || await f.def();
-        if (!w || w.id !== f.id) throw new Error("WorldManager: el talón de «" + f.id + "» dio un mundo «" + (w && w.id) + "»");
-        f.mundo = w;
+        if (pv) await pv.hecha.catch(() => undefined);
+        const w = await deDef(f);
         if (ctrl.signal.aborted) return;   // el import() llegó después del tope: ni se empieza carga()
-        const base: ContextoBase = { id: f.id, senal: ctrl.signal, cola: creaColaDeMundo(deps.cola, f.id), limpia: fn => { f.limpiezas.push(fn); } };
-        const ctx = deps.contexto ? deps.contexto(base) : (base as C);
-        await w.carga(ctx);
+        await w.carga(pv ? pv.ctx : contextoDe(f, ctrl));
       })().then(() => {
         if (hecho) {   // llegó después del tope: si nadie lo ha vuelto a pedir, se libera lo que haya hecho mientras tanto
           if (f.intento === n && f.estado === "sin_cargar") libera(f);
@@ -225,6 +242,35 @@ export function creaWorldManager<C extends ContextoBase = ContextoBase, W extend
         hecho = true; cancelaT(); rechaza(e);
       });
     });
+  }
+
+  // Eje B (la puerta del cortijo): adelantar la carga de un mundo que no es el activo (import() y su precarga(), la red y el parse; nada de escena ni de GPU),
+  // para que cruzar su puerta sea casi inmediato. Devuelve si la empezó. No hay tope de tiempo (no hay nadie esperando a oscuras): el tope corre en cambia().
+  // Si falla, se libera lo hecho y carga() empezará de cero. suelta(id) la deshace si quien anda se aleja (libera() del mundo: lo que bajó, fuera).
+  function precarga(id: IdMundo): boolean {
+    const f = fichas.get(id);
+    if (!f || f.estado !== "sin_cargar" || f.previa || (actual && actual.id === id) || (enCurso && destino === id)) return false;
+    const ctrl = new AbortController(), ctx = contextoDe(f, ctrl);
+    const pv: NonNullable<Ficha<C, W>["previa"]> = { ctrl, ctx, hecha: Promise.resolve() };
+    pv.hecha = (async () => {
+      const w = await deDef(f);
+      if (ctrl.signal.aborted) throw new Error("precarga cancelada");
+      if (w.precarga) await w.precarga(ctx);
+    })();
+    pv.hecha.catch((e: unknown) => {
+      if (f.previa !== pv) return;   // ya la tomó carga() (que decide) o se soltó
+      if (!ctrl.signal.aborted) log("precarga " + id, e);
+      libera(f);
+    });
+    f.previa = pv;
+    return true;
+  }
+  /** deshace una precarga que nadie ha usado (libera() del mundo). No toca un mundo cargado, ni el activo, ni el que se está cargando para entrar */
+  function suelta(id: IdMundo): boolean {
+    const f = fichas.get(id);
+    if (!f || !f.previa || f.estado !== "sin_cargar") return false;
+    libera(f);
+    return true;
   }
 
   // entra() y, si el mundo tiene Ambiente y alguien sabe aplicarlo, su Ambiente (MU2-7): siempre juntos, a oscuras
@@ -265,7 +311,7 @@ export function creaWorldManager<C extends ContextoBase = ContextoBase, W extend
     if (actual && actual.id === a) return res(false, "mismo");
     const f = fichas.get(a);
     if (!f) return res(false, "sin_registrar");
-    enCurso = true;
+    enCurso = true; destino = a;
     try {
       if (deps.permiso) {
         let si = false;
@@ -312,7 +358,7 @@ export function creaWorldManager<C extends ContextoBase = ContextoBase, W extend
       await abre();
       paso("abierto");   // → en
       return res(true);
-    } finally { enCurso = false; }
+    } finally { enCurso = false; destino = null; }
   }
 
   /** El primer mundo, al arrancar: sin fundido (el velo de carga de la página ya tapa) y sin mundo de antes. */
@@ -355,6 +401,10 @@ export function creaWorldManager<C extends ContextoBase = ContextoBase, W extend
     registra,
     cambia,
     arranca,
+    precarga,
+    suelta,
+    /** eje B: ¿hay una precarga de ese mundo en curso o hecha, sin usar? (?debug y las pruebas) */
+    precargado(id: IdMundo): boolean { const f = fichas.get(id); return !!(f && f.previa); },
     actualiza,
     antesDelRender,
     get actual(): IdMundo | null { return actual ? actual.id : null; },
