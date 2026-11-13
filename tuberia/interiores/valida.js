@@ -79,8 +79,9 @@ async function valida(manifiesto, bytes) {
   let doc = null;
   try { doc = await new NodeIO().registerExtensions(ALL_EXTENSIONS).readBinary(bytes); }
   catch (e) { errores.push("el glb no se puede leer (¿no es autocontenido?): " + e.message); }
-  let medidas = null; const perfiles = {};
+  let medidas = null, fueraCaja = null, nodos = null; const perfiles = {};
   if (doc) {
+    nodos = new Set(doc.getRoot().listNodes().map(n => n.getName()));
     const raiz = doc.getRoot();
     if (raiz.listCameras().length) errores.push("sin cámaras: el glb trae " + raiz.listCameras().length);
     if (raiz.listSkins().length) errores.push("sin esqueletos en v1: el glb trae " + raiz.listSkins().length);
@@ -101,6 +102,7 @@ async function valida(manifiesto, bytes) {
       for (let k = 0; k < 3; k++) if (max[k] - min[k] > CAJA_MAX) errores.push("el modelo mide " + (max[k] - min[k]).toFixed(0) + " m en " + "xyz"[k] + ": más de " + CAJA_MAX + " m (¿está en metros?)");
       if (min[1] < -0.5) avisos.push("hay geometría " + (-min[1]).toFixed(2) + " m por debajo del origen (el origen va en el suelo de la puerta principal)");
       const fuera = (p, holgura) => p[0] < min[0] - holgura || p[0] > max[0] + holgura || p[2] < min[2] - holgura || p[2] > max[2] + holgura;
+      fueraCaja = fuera;
       (manifiesto.puertas || []).forEach(pu => { if (fuera(pu.pos, 0.5)) errores.push("la puerta «" + pu.id + "» cae fuera del modelo"); });
       (manifiesto.puntos || []).forEach(pt => { if (fuera(pt.pos, 0.5)) errores.push("el punto «" + pt.id + "» cae fuera del modelo"); });
     } else errores.push("el glb no tiene escena");
@@ -126,7 +128,50 @@ async function valida(manifiesto, bytes) {
     if (pu.a === manifiesto.id) errores.push("la puerta «" + pu.id + "» lleva a su propio mundo");
   });
   if (!puertas.some(pu => pu.a === "exterior")) avisos.push("ninguna puerta lleva al exterior");
+  paradas(manifiesto, { errores, avisos, pisa, fueraCaja, nodos, repes });
   return { ok: !errores.length, errores, avisos, medidas, perfiles };
+}
+
+/** palabras de un texto (para el aviso de largo) */
+const palabras = t => (String(t || "").match(/[^\s]+/g) || []).length;
+/** Largo razonable del texto de una ficha (palabras): fuera de esto, aviso [SUPUESTO: lo que se lee de pie en un minuto, sin medir con visitantes]. */
+const TEXTO_MIN = 30, TEXTO_MAX = 150;
+
+/**
+ * v1.1: las paradas de la visita y sus fuentes (contratos/mundo-interior.md §1c). Errores: lo que haría mentir o romper la ficha (ids repetidos, una
+ * fuente o una puerta que no existe, «documentado» sin fuentes, «sin_fuente» con otra procedencia, «medido» en un mundo hecho a mano). Avisos: lo que
+ * hay que mirar pero no impide entrar (una parada a la que no se llega andando, radios que se pisan, una pieza fuera del modelo, un nodo que el glb no
+ * tiene, textos muy cortos o muy largos, un [n] que no es de sus fuentes y lo pendiente de confirmar).
+ */
+function paradas(m, c) {
+  const P = Array.isArray(m.paradas) ? m.paradas : [], F = Array.isArray(m.fuentes) ? m.fuentes : [];
+  c.repes(P, "id", "id de parada"); c.repes(F, "id", "id de fuente");
+  const idsF = F.map(f => f && f.id), idsPu = (Array.isArray(m.puertas) ? m.puertas : []).map(p => p && p.id);
+  P.forEach((pa, i) => {
+    if (!pa || typeof pa !== "object") return;
+    const q = "la parada «" + pa.id + "»", f = pa.ficha || {};
+    if (Array.isArray(pa.pos) && pa.pos.length === 3 && !c.pisa(pa.pos)) c.avisos.push(q + " no cae dentro de ninguna zona a su cota: no se llega andando");
+    if (pa.ancla && Array.isArray(pa.ancla.pos) && c.fueraCaja && c.fueraCaja(pa.ancla.pos, 0.5)) c.avisos.push(q + ": su ancla cae fuera del modelo");
+    if (pa.ancla && typeof pa.ancla.nodo === "string" && c.nodos && !c.nodos.has(pa.ancla.nodo)) c.avisos.push(q + ": el glb no tiene el nodo «" + pa.ancla.nodo + "» (se usa ancla.pos)");
+    if (typeof pa.puerta === "string" && !idsPu.includes(pa.puerta)) c.errores.push(q + " sigue por la puerta «" + pa.puerta + "», que no está en puertas[]");
+    const fu = Array.isArray(f.fuentes) ? f.fuentes : [], pt = Array.isArray(f.procedencia_texto) ? f.procedencia_texto : [];
+    for (const x of fu) if (!idsF.includes(x)) c.errores.push(q + " cita la fuente «" + x + "», que no está en fuentes[]");
+    if (pt.includes("documentado") && !fu.length) c.errores.push(q + ": «documentado» sin fuentes");
+    if (pt.includes("sin_fuente") && pt.length > 1) c.errores.push(q + ": «sin_fuente» no va con otra procedencia del texto");
+    if (f.procedencia_visible === "medido" && m.fuente === "ilustrativo") c.errores.push(q + ": lo que se ve no puede ser «medido» en un mundo ilustrativo");
+    const n = palabras(f.texto);
+    if (typeof f.texto === "string" && (n < TEXTO_MIN || n > TEXTO_MAX)) c.avisos.push(q + ": el texto tiene " + n + " palabras (de " + TEXTO_MIN + " a " + TEXTO_MAX + " se leen de pie)");
+    for (const t of [f.texto, f.dato_curioso]) for (const r of String(t || "").matchAll(/\[(\d+)\]/g)) {
+      const k = +r[1];
+      if (!(k >= 1 && k <= F.length) || !fu.includes(idsF[k - 1])) c.avisos.push(q + ": [" + k + "] no remite a una de sus fuentes (fuentes[" + (k - 1) + "] del mundo)");
+    }
+    if (Array.isArray(f.pendiente) && f.pendiente.length) c.avisos.push(q + ": " + f.pendiente.length + " cosa(s) pendiente(s) de confirmar (no se enseñan como hechas)");
+    for (let j = 0; j < i; j++) {
+      const o = P[j];
+      if (o && Array.isArray(o.pos) && Array.isArray(pa.pos) && Math.hypot(o.pos[0] - pa.pos[0], o.pos[2] - pa.pos[2]) < (o.radio || 0) + (pa.radio || 0)) c.avisos.push(q + " pisa el radio de «" + o.id + "»: se abrirían a la vez");
+    }
+  });
+  if (P.length && !F.length && P.some(pa => pa && pa.ficha && Array.isArray(pa.ficha.fuentes) && pa.ficha.fuentes.length)) c.errores.push("hay paradas con fuentes y el mundo no trae fuentes[]");
 }
 
 function texto(nombre, r) {
@@ -153,5 +198,5 @@ async function principal(argv) {
   return r.ok ? 0 : 1;
 }
 
-module.exports = { valida, mide, dentro, simple, area, PRES };
+module.exports = { valida, mide, dentro, simple, area, PRES, TEXTO_MIN, TEXTO_MAX };
 if (require.main === module) principal(process.argv.slice(2)).then(c => { process.exitCode = c; }, e => { console.error(e); process.exitCode = 1; });

@@ -13,6 +13,14 @@ export type Xyz = [number, number, number];
  * @minItems 3
  */
 export type Xyz1 = [number, number, number];
+/**
+ * @minItems 3
+ */
+export type Xyz2 = [number, number, number];
+/**
+ * @minItems 3
+ */
+export type Xyz3 = [number, number, number];
 
 /**
  * mundo-interior
@@ -47,6 +55,16 @@ export interface MundoInterior {
    */
   puntos?: Punto[];
   anclaje?: Anclaje;
+  /**
+   * @minItems 1
+   * @maxItems 16
+   */
+  paradas?: [Parada, ...Parada[]];
+  /**
+   * @minItems 1
+   * @maxItems 32
+   */
+  fuentes?: [Fuente, ...Fuente[]];
 }
 export interface Licencia {
   spdx: string;
@@ -90,4 +108,42 @@ export interface Anclaje {
    */
   pos: [number, number];
   giro: number;
+}
+export interface Parada {
+  id: string;
+  pos: Xyz2;
+  radio: number;
+  ancla: {
+    pos: Xyz3;
+    nodo?: string;
+    aprox: boolean;
+  };
+  puerta?: string;
+  ficha: Ficha;
+}
+export interface Ficha {
+  titulo: string;
+  texto: string;
+  dato_curioso?: string;
+  nota_visible?: string;
+  procedencia_visible: "medido" | "deducido" | "ilustrativo";
+  /**
+   * @minItems 1
+   * @maxItems 3
+   */
+  procedencia_texto: ["documentado" | "testimonio" | "sin_fuente", ...("documentado" | "testimonio" | "sin_fuente")[]];
+  /**
+   * @maxItems 16
+   */
+  fuentes: string[];
+  /**
+   * @maxItems 16
+   */
+  pendiente?: string[];
+}
+export interface Fuente {
+  id: string;
+  cita: string;
+  url?: string;
+  verificada: boolean;
 }

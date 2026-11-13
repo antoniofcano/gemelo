@@ -20,6 +20,8 @@
 #    "zonas": [{"id": "…", "caja": [x0, y0, x1, y1]}], "puertas": [{"id": "…", "a": "…", "en": [x, y, z], "rumbo": 0,
 #    "ancho": 1.0, "alto": 2.3, "llegada": [x, y], "llegada_rumbo": 180}], "puntos": [{"id": "…", "titulo": "…", "en": [x, y, z]}],
 #    "anclaje": {"pos": [x, y], "giro": 57}}   (opcional, contrato v1.1: dónde cae el origen en el exterior de la finca y el rumbo del +Z del glb; pasa tal cual)
+#   y, opcionales (v1.1), "paradas": […] y "fuentes": […] de la visita del museo: van YA en el marco del glb (el del inventario de piezas) y pasan tal
+#   cual, sin las claves «_…»
 import bpy, sys, json, os, time, math
 import numpy as np
 from mathutils import Vector
@@ -206,7 +208,19 @@ def manifiesto(pl, glb, perfil):
         m["puntos"] = [{"id": p["id"], "titulo": p["titulo"], "pos": g(*p["en"])} for p in pl["puntos"]]
     if pl.get("anclaje"):   # v1.1: ya va en el marco de la finca (no en el de Blender); solo pos y giro (la plantilla puede llevar su _nota)
         m["anclaje"] = {"pos": [float(pl["anclaje"]["pos"][0]), float(pl["anclaje"]["pos"][1])], "giro": float(pl["anclaje"]["giro"])}
+    for k in ("paradas", "fuentes"):   # v1.1: la visita del museo; ya va en el marco del glb (como el inventario de piezas), sin claves «_…» (notas privadas)
+        if pl.get(k):
+            m[k] = sin_notas(pl[k])
     return m, medidas
+
+
+def sin_notas(v):
+    """copia de la plantilla sin las claves que empiezan por «_» (notas de quien la escribe), a cualquier profundidad"""
+    if isinstance(v, dict):
+        return {k: sin_notas(x) for k, x in v.items() if not k.startswith("_")}
+    if isinstance(v, list):
+        return [sin_notas(x) for x in v]
+    return v
 
 
 def principal():
