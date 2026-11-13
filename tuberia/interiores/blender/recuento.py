@@ -1,6 +1,7 @@
 # Recuento de un mundo interior frente al presupuesto del contrato mundo-interior (triángulos, llamadas, materiales,
-# texturas y MB en GPU). Lo comparten separa.py y cuenta.py: una sola manera de contar.
-import bpy
+# texturas y MB en GPU). Lo comparten separa.py y cuenta.py: una sola manera de contar. También las piezas sueltas de una
+# malla (separa.py, para apartar grumos; inventario.py, para partir la maquinaria).
+import bpy, bmesh
 
 
 def triangulos(me):
@@ -24,3 +25,27 @@ def recuento(objetos):
     r.update({"triangulos": tri, "llamadas": llam, "materiales": len(mats), "texturas": len(imgs),
               "lado_max_px": max([max(bpy.data.images[i].size) for i in imgs] or [0]), "mb_texturas_gpu": round(mb, 1)})
     return r
+
+
+def trozos(me, soldadura):
+    """Piezas sueltas de la malla `me` tras soldar sus vértices a `soldadura` m (las costuras de UV del glb parten la malla
+    sin que la pieza esté partida): lista de listas de índices de cara de la malla original, sin modificarla"""
+    bm = bmesh.new(); bm.from_mesh(me)
+    capa = bm.faces.layers.int.new("gemelo_idx")
+    for f in bm.faces:
+        f[capa] = f.index
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=soldadura)
+    vistos, salida = set(), []
+    for f in bm.faces:
+        if f in vistos:
+            continue
+        pila, caras = [f], []; vistos.add(f)
+        while pila:
+            g = pila.pop(); caras.append(g[capa])
+            for e in g.edges:
+                for h in e.link_faces:
+                    if h not in vistos:
+                        vistos.add(h); pila.append(h)
+        salida.append(caras)
+    bm.free()
+    return salida
