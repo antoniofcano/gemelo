@@ -6,7 +6,7 @@
 # área de W vatios en la cámara para ver el interior aunque el sol y el cielo no lleguen: así se distingue «está todo
 # en su sitio» de «falta luz», que es cosa del horneado. Escribe <salida>.json con el tiempo de render.
 # --horneado <carpeta>: enseña lo que verá el visitante, no lo que calcula Cycles: en cada objeto que tenga su mapa
-# <objeto>_luz_dn.exr (o _luz.exr) en la carpeta, el color difuso deja de calcularse y pasa a ser color × mapa de luz
+# <objeto>_luz_dn.exr (o _luz.exr; en el modo aparte, <atlas>_luz o, en las máquinas con luz propia, su oclusión <atlas>_ao) en la carpeta, el color difuso deja de calcularse y pasa a ser color × mapa de luz
 # (emisión, como el lightMap de three); del material quedan solo los brillos (rugosidad, metal y normal) frente a las
 # luces de la escena. Los objetos sin mapa se quedan como están. Solo para esta vista: no se guarda nada en el .blend.
 # --sin-efectos oculta la colección EFECTOS (haces de polvo).
@@ -39,7 +39,8 @@ def aplica_horneado(carpeta):
     """Cada material de cada objeto con mapa pasa a: emisión = color × luz × (1 − metal), más sus brillos"""
     hechos = []
     for o in [x for x in bpy.context.scene.objects if x.type == "MESH" and not x.hide_render]:
-        ruta = next((r for r in (os.path.join(carpeta, o.name + s) for s in ("_luz_dn.exr", "_luz.exr")) if os.path.exists(r)), None)
+        base = o.get("gemelo_atlas_luz") or o.name   # modo aparte: un mapa por atlas; las máquinas con luz propia, su oclusión
+        ruta = next((r for r in (os.path.join(carpeta, base + s) for s in ("_luz_dn.exr", "_luz.exr", "_ao_dn.exr", "_ao.exr")) if os.path.exists(r)), None)
         if ruta is None or "luz" not in o.data.uv_layers:
             continue
         img = bpy.data.images.load(ruta, check_existing=True)
