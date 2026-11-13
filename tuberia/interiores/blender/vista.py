@@ -6,7 +6,8 @@
 # área de W vatios en la cámara para ver el interior aunque el sol y el cielo no lleguen: así se distingue «está todo
 # en su sitio» de «falta luz», que es cosa del horneado. Escribe <salida>.json con el tiempo de render.
 # --horneado <carpeta>: enseña lo que verá el visitante, no lo que calcula Cycles: en cada objeto que tenga su mapa
-# <objeto>_luz_dn.exr (o _luz.exr) en la carpeta, el color difuso deja de calcularse y pasa a ser color × mapa de luz
+# <objeto>_luz_dn.exr (o _luz.exr; en el modo aparte, <atlas>_luz, solo en los objetos que horneó esa carpeta y no en las máquinas con luz
+# propia, que se quedan con la luz de Cycles como en el motor se quedarán con la de la sonda) en la carpeta, el color difuso deja de calcularse y pasa a ser color × mapa de luz
 # (emisión, como el lightMap de three); del material quedan solo los brillos (rugosidad, metal y normal) frente a las
 # luces de la escena. Los objetos sin mapa se quedan como están. Solo para esta vista: no se guarda nada en el .blend.
 # --sin-efectos oculta la colección EFECTOS (haces de polvo).
@@ -38,8 +39,15 @@ def argumentos():
 def aplica_horneado(carpeta):
     """Cada material de cada objeto con mapa pasa a: emisión = color × luz × (1 − metal), más sus brillos"""
     hechos = []
+    inf = os.path.join(carpeta, "hornea.json")
+    aparte = json.load(open(inf, encoding="utf-8")).get("objetos") if os.path.exists(inf) and json.load(open(inf, encoding="utf-8")).get("modo") == "aparte" else None
     for o in [x for x in bpy.context.scene.objects if x.type == "MESH" and not x.hide_render]:
-        ruta = next((r for r in (os.path.join(carpeta, o.name + s) for s in ("_luz_dn.exr", "_luz.exr")) if os.path.exists(r)), None)
+        base = o.get("gemelo_atlas_luz") or o.name   # modo aparte: un mapa por atlas, compartido por varios objetos
+        if aparte is not None and (o.name not in aparte or aparte[o.name].get("clase") == "ao"):
+            # en un atlas compartido, lo que no se horneó en esta carpeta tiene sus islas en negro; y una máquina con luz
+            # propia no lleva la luz de la sala en el mapa (solo su oclusión): las dos se quedan con la luz de Cycles
+            continue
+        ruta = next((r for r in (os.path.join(carpeta, base + s) for s in ("_luz_dn.exr", "_luz.exr")) if os.path.exists(r)), None)
         if ruta is None or "luz" not in o.data.uv_layers:
             continue
         img = bpy.data.images.load(ruta, check_existing=True)

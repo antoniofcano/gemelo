@@ -49,3 +49,24 @@ def trozos(me, soldadura):
         salida.append(caras)
     bm.free()
     return salida
+
+
+def pico_memoria_mb():
+    """Pico de memoria del propio proceso (Windows: PeakWorkingSetSize; si no, ru_maxrss), o None"""
+    try:
+        import ctypes
+        from ctypes import wintypes
+        class PMC(ctypes.Structure):
+            _fields_ = [("cb", wintypes.DWORD), ("PageFaultCount", wintypes.DWORD)] + [(n, ctypes.c_size_t) for n in (
+                "PeakWorkingSetSize", "WorkingSetSize", "QuotaPeakPagedPoolUsage", "QuotaPagedPoolUsage", "QuotaPeakNonPagedPoolUsage",
+                "QuotaNonPagedPoolUsage", "PagefileUsage", "PeakPagefileUsage")]
+        c = PMC(); c.cb = ctypes.sizeof(PMC); k = ctypes.windll.kernel32
+        k.GetCurrentProcess.restype = wintypes.HANDLE
+        f = k.K32GetProcessMemoryInfo; f.argtypes = [wintypes.HANDLE, ctypes.POINTER(PMC), wintypes.DWORD]
+        return round(c.PeakWorkingSetSize / 2 ** 20) if f(k.GetCurrentProcess(), ctypes.byref(c), c.cb) else None
+    except Exception:
+        try:
+            import resource
+            return round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024)
+        except Exception:
+            return None

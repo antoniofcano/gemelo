@@ -1,4 +1,4 @@
-# Contrato `mundo-interior` (v = 1; v1.1 añade `anclaje`, `paradas` y `fuentes`, opcionales)
+# Contrato `mundo-interior` (v = 1; v1.1 añade `anclaje`, `paradas` y `fuentes`; v1.2, `luz` y `maquinas`; todo opcional)
 
 Qué tiene que entregar quien modela un interior (la bodega, la fábrica) para que entre en el gemelo. Es la frontera entre los dos ejes del [PLAN](../doc/rumbo/PLAN.md#mundos-múltiples-adr-0033): el eje B (modelado, a su ritmo) entrega un glb y un manifiesto que pasan el validador, y el eje A (el motor) los carga sin preguntar más. Decisión: [ADR-0033](../doc/adr/0033-mundos.md); interfaces del lado del motor (`World`, `Puerta`, `Ambiente`): [MUNDOS](../doc/sistema/MUNDOS.md).
 
@@ -29,6 +29,8 @@ Esquema: [mundo-interior.schema.json](mundo-interior.schema.json) (JSON Schema 2
 | `anclaje` | *(opcional, v1.1)* `{pos: [x, y], giro}`: dónde está el interior en el exterior de su finca ([§1b](#1b-el-anclaje-v11)) |
 | `paradas[]` | *(opcional, v1.1)* la visita autoguiada (museo), en el orden del recorrido: `{id, pos, radio, ancla, puerta?, ficha}` ([§1c](#1c-la-visita-paradas-y-fuentes-v11)) |
 | `fuentes[]` | *(opcional, v1.1)* `{id, cita, url?, verificada}`: las fuentes de las fichas; un `[n]` en un texto remite a `fuentes[n-1]` |
+| `luz` | *(opcional, v1.2)* `{modo, escala, sonda, nota}`: cómo viaja la luz horneada, en el color base (v1) o en un mapa aparte ([§1d](#1d-la-luz-aparte-v12)) |
+| `maquinas[]` | *(opcional, v1.2)* piezas con eje que el motor mueve sin clips ([§1e](#1e-las-máquinas-v12)) |
 
 **Reglas que el esquema no dice y el validador sí:**
 - **Origen:** `(0, 0, 0)` está en el suelo, en el centro del umbral de la puerta principal, que es `puertas[0]`.
@@ -71,15 +73,47 @@ Una parada (`paradas[i]`; el orden del array es el del recorrido):
 
 **Por qué así y no como el primer borrador** (que traía `orden`, `mira` y `ancla.tipo`): el orden es el del array (como `puertas[0]` es la principal), `ancla.pos` ya es hacia dónde se mira y el tipo se deduce de si hay `nodo`. Cada dato, una vez: no hay dos sitios que puedan contradecirse. `procedencia_texto` es una lista porque las fichas reales mezclan lo documentado con el testimonio.
 
+## 1d. La luz aparte (v1.2)
+
+Opcional y aditivo, como el anclaje. Sin `luz` (o con `modo` `base`), todo sigue como en v1: la luz va dentro del color base. Con `modo` `mapa`, el color base es el **albedo** (puede ir en mosaico, `REPEAT`, en `TEXCOORD_0`) y la luz va **aparte**, en un mapa que se multiplica por él: así caben texturas de color repetidas, brillos y piezas que se mueven ([ADR-0034](../doc/adr/0034-mapa-de-luz-aparte-y-maquinas.md)). Ejemplo que pasa: [modelos/interiores/ejemplo-luz/](../modelos/interiores/ejemplo-luz/).
+
+- **Dónde viaja el mapa:** en la ranura estándar `occlusionTexture` del material, con `texCoord` 1, sobre el segundo UV (`TEXCOORD_1`) de la primitiva. Es glTF 2.0 sin extensiones nuevas; `gltf-validator` lo acepta y las herramientas (`@gltf-transform`, `prune`, `dedup`) no lo pierden. Varios materiales pueden compartir un mapa (un atlas por objeto o por grupo).
+- **Qué vale:** el mapa va en sRGB de 8 bits (JPEG o PNG); su valor lineal (0-1) por `escala` es el factor de luz sobre el albedo (1 = el albedo tal cual). `escala` es obligatoria con `modo` `mapa`.
+- **Los materiales:** con `modo` `mapa`, cada material opaco de lo fijo es `KHR_materials_unlit` con su mapa en `texCoord` 1; las tarjetas con alfa (`MASK`, `BLEND`) pueden seguir llevando la luz en `COLOR_0`. Un material **con luz** (sin unlit) solo vale en una máquina con `luz` `propia` (§1e).
+- **Lo que hace el motor** (three 0.186): `GLTFLoader` no carga la oclusión de un material unlit (pasa a `MeshBasicMaterial`), así que tras cargar, por cada material unlit cuya definición (`parser.associations`, `parser.json`) tiene `occlusionTexture`, pide esa textura (`parser.getDependency`), la marca sRGB con `channel = 1` y la pone de `lightMap` con `lightMapIntensity = π × escala` (el `MeshBasicMaterial` de three divide el mapa de luz entre π). Los materiales con luz los carga `GLTFLoader` tal cual (`aoMap` en el canal 1).
+- **`sonda`:** la luz de la sala para lo que se mueve: 9 coeficientes RGB de armónicos esféricos (orden de `SphericalHarmonics3` de three), para un `LightProbe`. Los brillos de lo que tiene luz los pone el motor con un entorno propio (p. ej. `RoomEnvironment` con `PMREMGenerator`) escalado a la sonda: el entorno no viaja en el glb.
+- **`nota`:** de dónde sale la luz. La luz horneada es **ilustrativa** (regla 5) aunque la nave sea medida.
+
+## 1e. Las máquinas (v1.2)
+
+Opcional y aditivo. Cada entrada de `maquinas[]` es una pieza rígida con su nodo en el glb que el **motor** mueve sin clip (más barato que una animación y con las velocidades atadas entre sí). Una pieza que da vueltas alrededor de otra (un rulo con la cruceta) es un **nodo hijo** en el glb del nodo que gira: la órbita la hereda; su giro propio es otra máquina.
+
+| Campo | Contenido |
+|---|---|
+| `id`, `nombre` | id único (`^[a-z0-9][a-z0-9_-]{0,31}$`) y nombre legible |
+| `nodo` | nombre exacto del nodo del glb, único en el glb; su origen es el **pivote** |
+| `tipo` | `giro` (rota en torno a `eje` por el pivote), `vaiven` (va y vuelve `recorrido` metros por `eje`, suave), `traslacion` (va y vuelve a velocidad constante, con `pausa_s` en los extremos) o `textura` (el color base de `material` corre en la dirección `uv`: las correas) |
+| `pivote` | el origen del nodo en reposo, en el marco del glb (`giro`, `vaiven`, `traslacion`) |
+| `eje` | vector unitario en el marco del padre del nodo (en reposo, el del glb); el sentido de giro, por la mano derecha |
+| `recorrido`, `pausa_s` | metros desde el reposo en el sentido de `eje` (`vaiven`, `traslacion`); segundos de parada en cada extremo (`traslacion`) |
+| `material`, `uv` | (`textura`) el material del glb y la dirección `[u, v]` unitaria en la que corre su color |
+| `velocidad` | `giro`: vueltas por minuto; `vaiven`: ciclos por minuto; `traslacion`: m/s; `textura`: unidades de UV por segundo |
+| `relacion` | `{con, factor}`: en vez de `velocidad`, la de otra máquina por un factor (que lleva las unidades: un rulo que rueda, radio de la órbita entre radio del rulo; una correa, 2πr/60 entre su largo en UV) |
+| `luz` | `propia`: material con luz (sin unlit) y su oclusión propia en `occlusionTexture` (`texCoord` 1), iluminado con la sonda (lo que gira o se traslada); `horneada`: la luz de la sala en reposo, como lo fijo (las correas, lo que apenas se mueve) |
+| `fuente` | `ilustrativo` o `deducido`, nunca `medido` (como las animaciones) |
+| `sonda`, `nota` | *(opcionales)* la luz en el pivote si difiere de la de la sala; una nota |
+
+**Reglas que comprueba el validador:** `velocidad` o `relacion`, una sola; los campos de cada `tipo`; el nodo existe, no se repite y no lo mueven dos máquinas ni una máquina y un clip de `animaciones`; el `pivote` es el origen del nodo en el glb (±1 cm); `eje` y `uv` son unitarios; `relacion.con` existe y no hay ciclos; el `material` de una `textura` tiene textura de color; una máquina con luz `propia` tiene sonda (la suya o `luz.sonda`).
+
 ## 2. Reglas del glb (glTF 2.0 binario)
 
 - **Autocontenido:** un solo `.glb`, sin ficheros ni direcciones externas. Pasa el validador oficial de Khronos (`gltf-validator`) sin errores; los avisos se informan.
 - **Metros y +Y arriba.** El modelo cabe en una caja de 200 m por lado; si no, casi siempre son centímetros o milímetros.
-- **Sin luces ni cámaras.** La luz va **horneada**: en el color base o con `KHR_materials_unlit`, que además es lo más barato en el Quest.
+- **Sin luces ni cámaras.** La luz va **horneada**: en el color base (v1) o en un mapa aparte (v1.2, §1d), con `KHR_materials_unlit`, que además es lo más barato en el Quest; lo que se mueve con luz propia la recibe de la sonda.
 - **Materiales estándar de glTF** (metal-rugosidad) y solo estas extensiones en v1: `KHR_materials_unlit`, `KHR_materials_emissive_strength`, `KHR_texture_transform` y `KHR_mesh_quantization`. Nada de compresión que pida un decodificador (Draco, meshopt, KTX2/Basis) ni de WebP: se abrirán cuando el motor los cargue.
 - **Imágenes:** PNG o JPEG.
 - **Solo triángulos**, sin esqueletos ni morph targets en v1.
-- **Animaciones:** solo mueven nodos (traslación, giro, escala). Una prensa de viga o una rueda son piezas rígidas, y basta con eso.
+- **Animaciones:** solo mueven nodos (traslación, giro, escala). Una prensa de viga o una rueda son piezas rígidas, y basta con eso. Desde v1.2, las piezas con eje pueden ir en `maquinas[]` (§1e) en vez de en clips.
 
 ## 3. Presupuesto por perfil (perfil objetivo: **quest**)
 

@@ -3,6 +3,7 @@
 #   blender --background <mundo.blend> --python exporta.py -- --horneado <carpeta de hornea.py> --salida <carpeta>
 #           --manifiesto <mundo.plantilla.json> --perfil pantalla|quest --mb 256 --lado 4096
 #           [--exposicion 0.0] [--decima objeto:0.5,…] [--calidad 90] [--glb mundo.glb]
+#           [--modo color|aparte]   color (por defecto): lo de abajo; aparte: la luz en un mapa aparte del color (ver «modo aparte» al final)
 # Por objeto:
 #   1. (--decima) simplifica solo objetos ILUSTRATIVOS; ante un MEDIDO se niega;
 #   2. elige el lado de su textura: el del mapa de luz, con el tope --lado, y va bajando a la mitad el objeto con más
@@ -33,11 +34,12 @@ NODO = "gemelo_exporta"
 def argumentos():
     a = sys.argv[sys.argv.index("--") + 1:]
     o = {"horneado": None, "salida": None, "manifiesto": None, "perfil": "pantalla", "mb": 256.0, "lado": 4096, "exposicion": 0.0,
-         "decima": "", "calidad": 90, "glb": "mundo.glb"}
+         "decima": "", "calidad": 90, "glb": "mundo.glb", "modo": "color", "lado-color": 1024, "escala": 1.0, "maquinas-plan": None,
+         "sondas": None, "objetos": ""}
     i = 0
     while i < len(a):
         k = a[i].lstrip("-"); v = a[i + 1]; i += 2
-        o[k] = float(v) if k in ("mb", "exposicion") else int(v) if k in ("lado", "calidad") else v
+        o[k] = float(v) if k in ("mb", "exposicion", "escala") else int(v) if k in ("lado", "calidad", "lado-color") else v
     for k in ("horneado", "salida", "manifiesto"):
         if not o[k]:
             raise SystemExit("falta --" + k)
@@ -344,4 +346,226 @@ def principal():
     print("EXPORTA_TOTAL", json.dumps({k: informe[k] for k in ("perfil", "glb_mb", "triangulos", "llamadas", "texturas_mb_estimado", "segundos")}))
 
 
-principal()
+# ---- modo «aparte» (fábrica 1.1, contrato mundo-interior §1d y §1e, ADR-0034) ----
+#   blender --background <maquinas.blend> --python exporta.py -- --modo aparte --horneado <carpeta de hornea.py --modo aparte>
+#           --salida … --manifiesto <plantilla> --perfil quest --mb 92 --lado 2048 [--lado-color 1024] [--escala 1]
+# (--escala 1: la rodilla de suave() ya deja la luz en [0, 1]; una escala mayor gastaría bits del JPEG en lo que nunca se usa)
+#           [--maquinas-plan <maquinas.plan.json>] [--sondas <sondas.json>] [--objetos a,b,c] [--exposicion 0.0]
+# El color base es el ALBEDO: la textura de color de cada material tal cual (en mosaico, UVMap = TEXCOORD_0, con lado tope
+# --lado-color) y el color de vértice «Color» (el envejecido, COLOR_0, multiplica). La luz va aparte, un JPEG por atlas
+# (<atlas>_luz: la luz × 2^exposición con la rodilla de siempre, entre --escala; <atlas>_ao: la oclusión propia de las máquinas
+# con luz propia), en el UV «luz» (TEXCOORD_1). Aquí el mapa se cuelga de la ranura de oclusión (grupo «glTF Material Output»)
+# para que el exportador escriba TEXCOORD_1 y texCoord 1; exporta.mjs --luz luz_aparte.json pone después la imagen RGB de
+# verdad, KHR_materials_unlit en lo que no tiene luz propia y deja COLOR_0. Un material por material de origen y atlas (y por
+# máquina en las correas, que corren solas). Los metales de lo fijo reciben la luz de su alrededor, como en el modo color.
+# El manifiesto gana luz (modo mapa, escala, la sonda de la sala × 2^exposición) y maquinas[] (maquinas_def.manifiesto).
+# Sin tarjetas con alfa todavía (la fábrica no tiene): si las hay, se niega.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+
+def _luz_propia(o):
+    while o is not None:
+        if o.get("gemelo_maquina"):
+            return o.get("gemelo_luz") == "propia"
+        o = o.parent
+    return False
+
+
+def _imagen_color(m):
+    """La textura de imagen que da el color base del material (buscando aguas arriba del Principled), o None"""
+    b = principled(m)
+    if b is None:
+        return None
+    pila, vistos = [b.inputs["Base Color"]], set()
+    while pila:
+        z = pila.pop()
+        for l in z.links:
+            n = l.from_node
+            if n.name in vistos:
+                continue
+            vistos.add(n.name)
+            if n.bl_idname == "ShaderNodeTexImage" and n.image:
+                return n.image
+            pila.extend(i for i in n.inputs if i.is_linked)
+    return None
+
+
+def _grupo_gltf():
+    g = bpy.data.node_groups.get("glTF Material Output")
+    if g is None:
+        g = bpy.data.node_groups.new("glTF Material Output", "ShaderNodeTree")
+        g.interface.new_socket(name="Occlusion", in_out="INPUT", socket_type="NodeSocketFloat")
+    return g
+
+
+def _material_aparte(nombre, m, color_img, mapa_img, propia):
+    n = bpy.data.materials.new(nombre); n.use_nodes = True; nt = n.node_tree; b = principled(n); ob = principled(m)
+    if color_img is not None:
+        uv = nt.nodes.new("ShaderNodeUVMap"); uv.uv_map = "UVMap"; t = nt.nodes.new("ShaderNodeTexImage"); t.image = color_img
+        nt.links.new(uv.outputs[0], t.inputs[0]); nt.links.new(t.outputs["Color"], b.inputs["Base Color"])
+    elif ob is not None:
+        z = ob.inputs["Base Color"]
+        b.inputs["Base Color"].default_value = tuple(z.default_value)
+    if propia and ob is not None:
+        for k in ("Metallic", "Roughness"):
+            z = ob.inputs[k]; b.inputs[k].default_value = z.default_value if not z.is_linked else (0.5 if k == "Metallic" else 0.6)
+    else:
+        b.inputs["Metallic"].default_value = 0.0; b.inputs["Roughness"].default_value = 1.0
+    uvl = nt.nodes.new("ShaderNodeUVMap"); uvl.uv_map = UV_LUZ; tl = nt.nodes.new("ShaderNodeTexImage"); tl.image = mapa_img
+    nt.links.new(uvl.outputs[0], tl.inputs[0])
+    gr = nt.nodes.new("ShaderNodeGroup"); gr.node_tree = _grupo_gltf(); nt.links.new(tl.outputs["Color"], gr.inputs["Occlusion"])
+    n["gemelo_luz"] = "mapa aparte (UV luz)"
+    return n
+
+
+def _color_reducido(img, lado, carpeta, cache):
+    if img.name in cache:
+        return cache[img.name]
+    w, h = img.size; k = max(1, max(w, h) // lado) if max(w, h) > lado else 1
+    c = img.copy(); c.name = img.name + "_exp"
+    if k > 1:
+        c.scale(max(1, w // k), max(1, h // k))
+    ruta = os.path.join(carpeta, "color_" + "".join(ch if ch.isalnum() or ch in "_-" else "_" for ch in img.name) + ".jpg")
+    c.filepath_raw = ruta; c.file_format = "JPEG"; c.save(); bpy.data.images.remove(c)
+    cache[img.name] = bpy.data.images.load(ruta, check_existing=False)
+    return cache[img.name]
+
+
+def principal_aparte(a):
+    import maquinas_def
+    t0 = time.time(); pl = json.load(open(a["manifiesto"], encoding="utf-8")); os.makedirs(a["salida"], exist_ok=True)
+    tex = os.path.join(a["salida"], "_texturas"); os.makedirs(tex, exist_ok=True)
+    objs = exportables()
+    if a["objetos"]:
+        pedidos = a["objetos"].split(","); objs = [o for o in objs if o.name in pedidos]
+        if set(pedidos) - {o.name for o in objs}:
+            raise SystemExit("no se exportan o no existen: " + ", ".join(sorted(set(pedidos) - {o.name for o in objs})))
+    if any(clase(m) == "tarjeta" for o in objs for m in o.data.materials):
+        raise SystemExit("hay tarjetas con alfa: el modo aparte aún no las lleva (usa --modo color)")
+    man, medidas_zonas = manifiesto(pl, a["glb"], a["perfil"])
+    informe = {"blend": os.path.basename(bpy.data.filepath), "modo": "aparte", "perfil": a["perfil"], "parametros": {k: v for k, v in a.items() if k not in ("horneado", "salida", "manifiesto")}, "objetos": {}, "atlas": {}}
+    # 1. qué atlas pide cada objeto y de qué lado
+    atlas = {}
+    for o in objs:
+        at = (o.get("gemelo_atlas_luz") or o.name) + ("_ao" if _luz_propia(o) else "_luz")
+        if at not in atlas:
+            ruta = next((r for r in (os.path.join(a["horneado"], at + s) for s in ("_dn.exr", ".exr")) if os.path.exists(r)), None)
+            if ruta is None:
+                raise SystemExit(o.name + ": no está horneado el atlas " + at + " en " + a["horneado"])
+            img = bpy.data.images.load(ruta, check_existing=False); nat = img.size[0]; bpy.data.images.remove(img)
+            atlas[at] = {"ruta": ruta, "nativo": nat, "lado": min(nat, a["lado"]), "objetos": []}
+        atlas[at]["objetos"].append(o)
+    colores = {}
+    for o in objs:
+        for m in o.data.materials:
+            im = _imagen_color(m) if m and clase(m) == "horneado" else None
+            if im is not None:
+                w, h = im.size; k = max(1, max(w, h) // a["lado-color"]) if max(w, h) > a["lado-color"] else 1
+                colores[im.name] = (w // k) * (h // k)
+    mb = lambda: (sum(v["lado"] ** 2 for v in atlas.values()) + sum(colores.values())) * 4 * 4 / 3 / 2 ** 20
+    while mb() > a["mb"]:
+        cand = [n for n, v in atlas.items() if v["lado"] > 64]
+        if not cand:
+            break
+        atlas[max(cand, key=lambda n: atlas[n]["lado"])]["lado"] //= 2
+    informe["texturas_mb_estimado"] = round(mb(), 1)
+    # 2. los mapas: luz (con los metales a la luz de alrededor) o la oclusión propia
+    esc = bpy.context.scene; esc.render.engine = "CYCLES"; esc.cycles.device = "CPU"; esc.cycles.samples = 1; esc.cycles.use_denoising = False
+    k_exp = 2.0 ** a["exposicion"]; mapas = {}
+    for at, v in atlas.items():
+        t = time.time(); lado = v["lado"]; mapa = lee_luz(v["ruta"], lado)
+        if at.endswith("_luz"):
+            metal = np.zeros((lado, lado), np.float32)
+            for o in v["objetos"]:
+                ms = [m for m in o.data.materials if m and m.node_tree and clase(m) == "horneado"]
+                if any(con_metal(m) for m in ms):
+                    copias = []
+                    for i, m in enumerate(o.data.materials):
+                        if m in ms:
+                            c = m.copy(); o.data.materials[i] = c; a_emision(c, "metal"); copias.append((i, m, c))
+                    metal = np.maximum(metal, np.clip(hornea_emision(o, lado, max(2, lado // 256))[..., 0], 0, 1))
+                    for i, m, c in copias:
+                        o.data.materials[i] = m; bpy.data.materials.remove(c)
+            if metal.max() > 0:
+                mapa = mapa * (1 - metal[..., None]) + luz_de_alrededor(mapa, metal) * metal[..., None]
+            px = np.clip(suave(mapa * k_exp) / a["escala"], 0, 1)
+            v["metal_medio"] = round(float(metal.mean()), 3)
+        else:
+            px = np.clip(mapa, 0, 1)
+        ruta = os.path.join(tex, "%s_%s.jpg" % (at, a["perfil"])); mapas[at] = guarda_jpeg(ruta, px, a["calidad"])
+        v.update({"jpeg": os.path.basename(ruta), "jpeg_kb": round(os.path.getsize(ruta) / 1024), "segundos": round(time.time() - t, 1)})
+    # 3. materiales
+    hechos, sidecar, cache = {}, {}, {}
+    for o in objs:
+        me = o.data; propia = _luz_propia(o); base_at = o.get("gemelo_atlas_luz") or o.name; at = base_at + ("_ao" if propia else "_luz")
+        if me.uv_layers[0].name == UV_LUZ:
+            raise SystemExit(o.name + ": el primer UV es «luz»: el de color tiene que ir primero (TEXCOORD_0)")
+        for u in [u for u in me.uv_layers if u.name not in ("UVMap", UV_LUZ)]:
+            me.uv_layers.remove(u)
+        for i, m in enumerate(list(me.materials)):
+            if clase(m) == "vidrio":
+                me.materials[i] = material_vidrio(); continue
+            nombre = m.name if "__" in m.name else m.name.split(".")[0] + "__" + base_at + ("_propia" if propia else "")
+            if nombre not in hechos:
+                im = _imagen_color(m)
+                if nombre in bpy.data.materials:   # la correa ya trae su material con este nombre (maquinas.py): el de origen se aparta
+                    bpy.data.materials[nombre].name = nombre + "__origen"
+                hechos[nombre] = _material_aparte(nombre, m, _color_reducido(im, a["lado-color"], tex, cache) if im else None, mapas[at], propia)
+                sidecar[nombre] = {"mapa": os.path.relpath(os.path.join(tex, "%s_%s.jpg" % (at, a["perfil"])), a["salida"]).replace("\\", "/"), "unlit": not propia}
+            me.materials[i] = hechos[nombre]
+        if "Color" in me.color_attributes:
+            me.color_attributes.active_color = me.color_attributes["Color"]
+        informe["objetos"][o.name] = {"atlas": at, "triangulos": sum(len(p.vertices) - 2 for p in me.polygons), "llamadas": len({p.material_index for p in me.polygons}), "propia": propia}
+    informe["atlas"] = {k: {x: y for x, y in v.items() if x not in ("objetos", "ruta")} for k, v in atlas.items()}
+    json.dump(sidecar, open(os.path.join(a["salida"], "luz_aparte.json"), "w", encoding="utf-8"), indent=1, ensure_ascii=False)
+    # 4. el origen en el umbral (solo se mueven las raíces: lo que cuelga de otro va con él) y el glb
+    ox, oy, oz = pl["origen"]; nombres = {o.name for o in objs}
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in objs:
+        if o.parent is None or o.parent.name not in nombres:
+            o.location = o.location - Vector((ox, oy, oz))
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = objs[0]
+    ruta_glb = os.path.join(a["salida"], a["glb"])
+    pide = {"filepath": ruta_glb, "export_format": "GLB", "use_selection": True, "export_apply": True, "export_yup": True, "export_cameras": False,
+            "export_lights": False, "export_animations": False, "export_vertex_color": "ACTIVE", "export_image_format": "AUTO", "export_normals": True,
+            "export_tangents": False, "export_extras": False, "export_attributes": False, "export_skins": False, "export_morph": False}
+    admite = bpy.ops.export_scene.gltf.get_rna_type().properties.keys()
+    bpy.ops.export_scene.gltf(**{k: v for k, v in pide.items() if k in admite})
+    # 5. el manifiesto: luz y máquinas
+    sondas = json.load(open(a["sondas"] or os.path.join(a["horneado"], "sondas.json"), encoding="utf-8")) if (a["sondas"] or os.path.exists(os.path.join(a["horneado"], "sondas.json"))) else {}
+    man["luz"] = {"modo": "mapa", "escala": a["escala"], "nota": "horneada en Blender (Cycles), ilustrativa; luz × 2^%g" % a["exposicion"]}
+    if sondas.get("sala"):
+        man["luz"]["sonda"] = sondas["sala"]["sh"] if k_exp == 1 else [[round(x * k_exp, 5) for x in f] for f in sondas["sala"]["sh"]]
+    if a["maquinas-plan"]:
+        plan = json.load(open(a["maquinas-plan"], encoding="utf-8")); exportados = nombres
+        todas = maquinas_def.manifiesto(plan); dentro = {q["id"] for q in todas if q["nodo"] in exportados}
+        quedan = []
+        for q in todas:
+            if q["id"] not in dentro:
+                continue
+            if "relacion" in q and q["relacion"]["con"] not in dentro:
+                informe.setdefault("maquinas_fuera", []).append(q["id"]); continue
+            if q["id"] in sondas and q["luz"] == "propia":
+                # una sonda puesta dentro de otra pieza (el pivote de un rulo cae dentro de la solera) sale casi negra: entonces vale la de la sala
+                ls, lm = sum(sondas.get("sala", {}).get("sh", [[0, 0, 0]])[0]), sum(sondas[q["id"]]["sh"][0])
+                if ls and lm < 0.1 * ls:
+                    informe.setdefault("sondas_descartadas", []).append(q["id"])
+                else:
+                    q["sonda"] = [[round(x * k_exp, 5) for x in f] for f in sondas[q["id"]]["sh"]]
+            quedan.append(q)
+        man["maquinas"] = quedan
+    json.dump(man, open(os.path.join(a["salida"], "mundo.json"), "w", encoding="utf-8"), indent=1, ensure_ascii=False)
+    informe.update({"glb": a["glb"], "glb_mb": round(os.path.getsize(ruta_glb) / 2 ** 20, 2), "zonas": medidas_zonas, "origen_blender": pl["origen"],
+                    "triangulos": sum(f["triangulos"] for f in informe["objetos"].values()), "llamadas": sum(f["llamadas"] for f in informe["objetos"].values()),
+                    "maquinas": len(man.get("maquinas", [])), "segundos": round(time.time() - t0, 1)})
+    json.dump(informe, open(os.path.join(a["salida"], "exporta.json"), "w", encoding="utf-8"), indent=1, ensure_ascii=False)
+    from recuento import pico_memoria_mb
+    informe["pico_memoria_mb"] = pico_memoria_mb(); json.dump(informe, open(os.path.join(a["salida"], "exporta.json"), "w", encoding="utf-8"), indent=1, ensure_ascii=False)
+    print("EXPORTA_TOTAL", json.dumps({k: informe[k] for k in ("modo", "pico_memoria_mb", "perfil", "glb_mb", "triangulos", "llamadas", "texturas_mb_estimado", "maquinas", "segundos")}))
+
+
+if argumentos()["modo"] == "aparte":
+    principal_aparte(argumentos())
+else:
+    principal()

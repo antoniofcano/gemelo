@@ -54,7 +54,7 @@ test("nombraImagenes: nombre por material y ranura, sin acentos, único y determ
 
 test("los guiones de Blender y Node no llevan rutas locales y las dependencias van con versión fijada", () => {
   const fich = fs.readdirSync(DIR).filter(f => /\.(py|mjs)$/.test(f));
-  for (const f of ["descomprime.mjs", "separa.py", "prepara.py", "hornea.py", "planta.py", "puertas.py", "vista.py", "obra.py", "luces.py", "envejece.py", "texturas.py", "cuenta.py", "recuento.py", "sol.mjs", "exporta.py", "exporta.mjs", "inventario.py", "piezas.py"]) assert.ok(fich.includes(f), "falta " + f);
+  for (const f of ["descomprime.mjs", "separa.py", "prepara.py", "hornea.py", "planta.py", "puertas.py", "vista.py", "obra.py", "luces.py", "envejece.py", "texturas.py", "cuenta.py", "recuento.py", "sol.mjs", "exporta.py", "exporta.mjs", "inventario.py", "piezas.py", "maquinas.py", "maquinas_def.py", "sonda.py"]) assert.ok(fich.includes(f), "falta " + f);
   for (const f of fich) {
     const s = fs.readFileSync(path.join(DIR, f), "utf8");
     assert.doesNotMatch(s, /[A-Za-z]:\\?Users|\/Users\/|AppData/, f + " lleva una ruta local");
@@ -201,4 +201,127 @@ test("piezas.py: agrupa los trozos con el criterio documentado y escribe el inve
   assert.strictEqual(inv2.conjuntos.filter(c => c.piezas.length > 1).length, 1, "la correa no junta la polea de arriba con la cuba");
   assert.ok(inv2.piezas.find(p => p.ids_trozo.includes(0)).ids_trozo.includes(10), "un triángulo suelto va con lo que toca aunque sea grande");
   assert.doesNotMatch(JSON.stringify(inv), /[A-Za-z]:[\\/]|\/Users\/|AppData/, "el inventario no lleva rutas");
+});
+
+// ---- fábrica 1.1: máquinas con eje y luz aparte (contrato mundo-interior v1.2, ADR-0034) ----
+test("maquinas_def.py: piezas por máquina, pivote y eje en el marco del mundo, rodadura, poleas, correas, padres y ciclos; maquinas[] cumple el esquema", { skip: !PY && "sin Python 3" }, () => {
+  const d = propia("maquinas-def");
+  const caja = (c, t) => ({ centro: c, tamano: t });
+  const pz = (id, c, t, mats) => ({ id, conjunto: "C01", triangulos: 10, caja: caja(c, t), materiales: mats || ["m_hierro"] });
+  const inv = { origen_blender: [-5, -7, 0], piezas: [
+    pz("p001", [0, 3, -2], [0.1, 4, 0.1]),           // eje vertical
+    pz("p002", [0.7, 1.5, -2], [0.3, 1.0, 1.0], ["piedra"]),  // rulo: radio 0,5, a 0,7 m del eje
+    pz("p003", [2, 5, -2], [6, 0.1, 0.1]),           // eje del techo (por x)
+    pz("p004", [1, 5, -2], [0.1, 1.0, 1.0]),         // polea grande del techo (radio 0,5)
+    pz("p005", [1, 0.5, -4], [0.2, 0.2, 0.2]),       // polea del motor (radio 0,1)
+    pz("p006", [1, 2.7, -3], [0.1, 4.5, 2], ["m_cuero"]),  // correa
+    pz("p007", [5, 0.5, -5], [1, 1, 1])              // lo fijo
+  ] };
+  const ident = { grupos: { eje: { piezas: ["p001"], caja: caja([0, 3, -2], [0.1, 4, 0.1]) }, rulo: { piezas: ["p002"], caja: caja([0.7, 1.5, -2], [0.3, 1, 1]) },
+    techo: { piezas: ["p003", "p004"], caja: caja([2, 5, -2], [6, 1, 1]) } } };
+  const conf = { maquinas: [
+    { id: "motor", piezas: ["p005"], tipo: "giro", eje: "x", velocidad: 240, luz: "propia" },
+    { id: "techo", grupos: ["techo"], tipo: "giro", eje: "x", pivote: "centro:techo", relacion: { con: "motor", factor: { radios: ["p005", "p004"] } } },
+    { id: "molino", grupos: ["eje"], tipo: "giro", eje: "y", relacion: { con: "techo", factor: 0.5, signo: -1 } },
+    { id: "rulo", grupos: ["rulo"], padre: "molino", tipo: "giro", eje: "radial:molino", relacion: { con: "molino", factor: "rodadura" } },
+    { id: "correa", piezas: ["p006"], tipo: "textura", relacion: { con: "motor", factor: { correa: "p005" } }, luz: "horneada", fuente: "deducido" },
+    { id: "nueva", objetos: ["correa_propia_1"], tipo: "textura", material: "m_cuero", relacion: { con: "molino", factor: { correa_radio: 0.45 } }, luz: "horneada" }
+  ] };
+  const w = (n, o) => fs.writeFileSync(path.join(d, n), JSON.stringify(o));
+  w("ident.json", ident); w("inv.json", inv); w("conf.json", conf);
+  const corre = (c) => { w("conf.json", c); return ejecuta(PY, ["-I", path.join(DIR, "maquinas_def.py"), "--", ...["ident.json", "inv.json", "conf.json", "plan.json"].map(f => path.join(d, f))]); };
+  let r = corre(conf);
+  assert.strictEqual(r.status, 1, "sin las medidas de la correa no hay plan"); assert.match(r.stdout, /falta la medida uv_por_metro/);
+  const c2 = JSON.parse(JSON.stringify(conf)); c2.maquinas[4].uv_por_metro = 2; c2.maquinas[5].uv_por_metro = 2.5;
+  r = corre(c2); assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  const plan = JSON.parse(fs.readFileSync(path.join(d, "plan.json"), "utf8")), q = id => plan.maquinas.find(x => x.id === id);
+  assert.deepStrictEqual(plan.fijas, ["p007"]);
+  assert.deepStrictEqual(q("techo").pivote, [2, 5, -2]); assert.deepStrictEqual(q("techo").pivote_blender, [-3, -5, 5], "(x + ox, oy − z, y + oz)");
+  assert.deepStrictEqual(q("techo").relacion, { con: "motor", factor: 0.2 }, "poleas: r(motriz) / r(movida)");
+  assert.deepStrictEqual(q("molino").relacion, { con: "techo", factor: -0.5 });
+  assert.deepStrictEqual(q("rulo").eje, [1, 0, 0], "radial: del eje del padre hacia el rulo, en planta");
+  assert.deepStrictEqual(q("rulo").relacion, { con: "molino", factor: -1.4 }, "rodadura: −R / r = −0,7 / 0,5");
+  assert.strictEqual(q("correa").relacion.factor, Math.round(2 * Math.PI * 0.1 / 60 * 2 * 1e4) / 1e4, "correa: 2πr/60 × UV por metro");
+  assert.strictEqual(q("correa").material, "m_cuero__maq_correa"); assert.strictEqual(q("rulo").nodo, "maq_rulo"); assert.strictEqual(q("rulo").padre, "molino");
+  assert.deepStrictEqual(q("nueva").objetos, ["correa_propia_1"]); assert.strictEqual(q("nueva").relacion.factor, Math.round(2 * Math.PI * 0.45 / 60 * 2.5 * 1e4) / 1e4);
+  assert.strictEqual(q("motor").luz, "propia"); assert.strictEqual(q("correa").fuente, "deducido"); assert.strictEqual(q("techo").fuente, "ilustrativo");
+  // el manifiesto que sale (maquinas_def.manifiesto) cumple $defs.maquina del contrato
+  const sal = ejecuta(PY, ["-I", "-c", "import json,sys; sys.path.insert(0, sys.argv[1]); import maquinas_def as m; print(json.dumps(m.manifiesto(json.load(open(sys.argv[2], encoding='utf-8')))))", DIR, path.join(d, "plan.json")]);
+  assert.strictEqual(sal.status, 0, sal.stderr);
+  const Ajv2020 = require("ajv/dist/2020").default, esq = JSON.parse(lee("contratos/mundo-interior.schema.json"));
+  const v = new Ajv2020({ strict: true }).addSchema(esq).getSchema(esq.$id + "#/$defs/maquina");
+  for (const m of JSON.parse(sal.stdout)) assert.ok(v(m), m.id + ": " + JSON.stringify(v.errors));
+  // errores: una pieza en dos máquinas, un ciclo de relaciones, un grupo que no existe
+  const c3 = JSON.parse(JSON.stringify(c2)); c3.maquinas[2].grupos = ["eje", "rulo"];
+  assert.match(corre(c3).stdout, /la pieza p002 ya es de molino/);
+  const c4 = JSON.parse(JSON.stringify(c2)); delete c4.maquinas[0].velocidad; c4.maquinas[0].relacion = { con: "techo", factor: 1 };
+  assert.match(corre(c4).stdout, /relacion forma un ciclo/);
+  const c5 = JSON.parse(JSON.stringify(c2)); c5.maquinas[1].grupos = ["no_esta"];
+  assert.match(corre(c5).stdout, /grupo desconocido no_esta/);
+  assert.doesNotMatch(fs.readFileSync(path.join(d, "plan.json"), "utf8"), /[A-Za-z]:[\\/]|\/Users\/|AppData/, "el plan no lleva rutas");
+});
+
+test("sonda.py: los armónicos esféricos de three (orden, base y escala 4π) desde caras de cubo, en el marco del glb", { skip: !PY && "sin Python 3" }, () => {
+  const d = propia("sonda"), n = 8, m = [], m2 = [];
+  const caras = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+  for (const c of caras) for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+    const x = 2 * (i + 0.5) / n - 1, y = 2 * (j + 0.5) / n - 1, p = 1 / Math.pow(x * x + y * y + 1, 1.5);
+    // una dirección cualquiera de la cara (la base de la cara no importa para una luz constante ni para «arriba»)
+    const k = c.findIndex(v => v !== 0), dir = [0, 0, 0]; dir[k] = c[k]; dir[(k + 1) % 3] = x; dir[(k + 2) % 3] = y;
+    m.push([dir, [1, 1, 1], p]);
+    const arriba = dir[2] / Math.hypot(...dir);   // Z de Blender = Y del glb
+    m2.push([dir, [Math.max(0, arriba), 0, 0], p]);
+  }
+  fs.writeFileSync(path.join(d, "m.json"), JSON.stringify(m)); fs.writeFileSync(path.join(d, "m2.json"), JSON.stringify(m2));
+  for (const f of ["m", "m2"]) assert.strictEqual(ejecuta(PY, ["-I", path.join(DIR, "sonda.py"), "--", path.join(d, f + ".json"), path.join(d, f + ".sh.json")]).status, 0);
+  const sh = JSON.parse(fs.readFileSync(path.join(d, "m.sh.json"), "utf8")), sh2 = JSON.parse(fs.readFileSync(path.join(d, "m2.sh.json"), "utf8"));
+  assert.strictEqual(sh.length, 9); assert.ok(Math.abs(sh[0][0] - 0.282095 * 4 * Math.PI) < 1e-3, "luz constante: L00 = 0,282095 × 4π");
+  for (let i = 1; i < 9; i++) assert.ok(Math.abs(sh[i][0]) < 0.02, "luz constante: el resto, cero (" + i + ": " + sh[i][0] + ")");
+  assert.ok(sh2[1][0] > 0.5 && Math.abs(sh2[2][0]) < 0.05 && Math.abs(sh2[3][0]) < 0.05, "la luz de arriba (Z de Blender) es +Y en el glb: L1-1 (y) positivo");
+  assert.strictEqual(sh2[0][1], 0, "solo el canal rojo");
+});
+
+const SIN_GLTF_TUBERIA = !fs.existsSync(path.join(DIR, "node_modules", "@gltf-transform", "core")) && "sin `npm ci` en tuberia/interiores/blender";
+test("exporta.mjs --luz: el mapa RGB en occlusionTexture con texCoord 1, unlit salvo la luz propia, y COLOR_0 se queda", { skip: SIN_GLTF_TUBERIA }, async () => {
+  const { remata } = await import(pathToFileURL(path.join(DIR, "exporta.mjs")).href);
+  const { Document, NodeIO } = require(path.join(DIR, "node_modules", "@gltf-transform", "core"));
+  const doc = new Document(), buf = doc.createBuffer();
+  const prim = mat => doc.createPrimitive().setMaterial(mat)
+    .setAttribute("POSITION", doc.createAccessor().setType("VEC3").setArray(new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0])).setBuffer(buf))
+    .setAttribute("TEXCOORD_0", doc.createAccessor().setType("VEC2").setArray(new Float32Array(6)).setBuffer(buf))
+    .setAttribute("TEXCOORD_1", doc.createAccessor().setType("VEC2").setArray(new Float32Array(6)).setBuffer(buf))
+    .setAttribute("COLOR_0", doc.createAccessor().setType("VEC4").setArray(new Float32Array(12).fill(1)).setBuffer(buf));
+  const fijo = doc.createMaterial("cal__muros"), propia = doc.createMaterial("m_hierro__maquinaria_propia").setMetallicFactor(0.7);
+  const esc = doc.createScene();
+  for (const m of [fijo, propia]) esc.addChild(doc.createNode(m.getName()).setMesh(doc.createMesh().addPrimitive(prim(m))));
+  const bytes = await new NodeIO().writeBinary(doc), jpeg = new Uint8Array(await require(path.join(DIR, "node_modules", "sharp"))({ create: { width: 2, height: 2, channels: 3, background: "#808080" } }).jpeg().toBuffer());
+  const { bytes: sal, resumen } = await remata(bytes, { "cal__muros": { mapa: "_texturas/muros_luz_quest.jpg", unlit: true }, "m_hierro__maquinaria_propia": { mapa: "_texturas/maquinaria_ao_quest.jpg", unlit: false } }, () => jpeg);
+  assert.strictEqual(resumen.mapas, 2); assert.deepStrictEqual(resumen.con_luz, ["m_hierro__maquinaria_propia"]);
+  const { KHRMaterialsUnlit } = require(path.join(DIR, "node_modules", "@gltf-transform", "extensions"));
+  const d2 = await new NodeIO().registerExtensions([KHRMaterialsUnlit]).readBinary(sal), mats = Object.fromEntries(d2.getRoot().listMaterials().map(m => [m.getName(), m]));
+  for (const m of Object.values(mats)) { assert.strictEqual(m.getOcclusionTextureInfo().getTexCoord(), 1, m.getName()); assert.strictEqual(m.getOcclusionTexture().getMimeType(), "image/jpeg"); }
+  assert.ok(mats["cal__muros"].getExtension("KHR_materials_unlit"), "lo fijo, sin luz"); assert.ok(!mats["m_hierro__maquinaria_propia"].getExtension("KHR_materials_unlit"), "la luz propia, con luz");
+  assert.strictEqual(mats["m_hierro__maquinaria_propia"].getMetallicFactor(), 0.7, "guarda su metal");
+  assert.ok(d2.getRoot().listMeshes().every(me => me.listPrimitives().every(p => p.getAttribute("COLOR_0"))), "COLOR_0 (el envejecido) se queda");
+});
+
+test("la tubería de la 1.1 por construcción: copia, nada se borra, horneado aparte reanudable, sonda, mapa en el UV «luz» y vagoneta apagada", () => {
+  const maq = lee("tuberia/interiores/blender/maquinas.py"), hor = lee("tuberia/interiores/blender/hornea.py"), exp = lee("tuberia/interiores/blender/exporta.py");
+  assert.match(maq, /os\.path\.abspath\(a\["guarda"\]\) == abierto[\s\S]{0,40}raise SystemExit/, "maquinas.py no guarda encima del abierto");
+  assert.doesNotMatch(maq, /objects\.remove\(|meshes\.remove\(o|bmesh\.ops\.delete/, "maquinas.py no borra: aparta a DESCARTES");
+  assert.ok(maq.includes("import maquinas_def") && maq.includes("maquinas_def.resuelve("), "el plan sale de maquinas_def.py (Python puro, probado aquí)");
+  assert.ok(maq.includes('if not op.get("activa") or not op.get("tamano"):'), "la vagoneta de la prensa de viga está preparada y apagada sin tamaño");
+  assert.ok(maq.includes("def correas_propias(") && maq.includes("[SUPUESTO]"), "las correas propias del grupo hidráulico dicen que sus medidas son supuestas");
+  assert.ok(maq.includes('o["gemelo_procedencia"] = "ilustrativo"'), "lo nuevo es ilustrativo (regla 5)");
+  assert.ok(hor.includes('"modo": "color"') && hor.includes("def principal_aparte(a):") && hor.includes('a["reanuda"] and o.name in informe["objetos"]'), "hornea.py: modo aparte reanudable");
+  assert.ok(hor.includes('bpy.ops.object.bake(type="AO"') && hor.includes("solo(o, {o.name})"), "la oclusión de una máquina con luz propia es solo la suya");
+  assert.ok(hor.includes("import sonda as _sonda") && hor.includes("_sonda.sh9("), "la sonda sale de sonda.py");
+  assert.ok(exp.includes('"glTF Material Output"') && exp.includes("UV_LUZ") && exp.includes("luz_aparte.json"), "exporta.py: el mapa en la ranura de oclusión sobre el UV «luz»");
+  assert.ok(exp.includes("maquinas_def.manifiesto(") && exp.includes('man["luz"] = {"modo": "mapa"'), "exporta.py escribe luz y maquinas[] en el manifiesto");
+  assert.ok(exp.includes('if o.parent is None or o.parent.name not in nombres:'), "solo se mueven las raíces al origen (lo que cuelga va con su padre)");
+  // las ranuras de material vuelven tras separar (Blender 5 las quitaba)
+  assert.ok(lee("tuberia/interiores/blender/inventario.py").includes("for x in originales:"));
+  // el README cuenta los pasos nuevos
+  const rd = lee("tuberia/interiores/blender/README.md");
+  for (const f of ["maquinas.py", "maquinas_def.py", "sonda.py", "--modo aparte"]) assert.ok(rd.includes(f), "el README no cuenta " + f);
 });

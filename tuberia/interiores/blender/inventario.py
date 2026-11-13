@@ -21,31 +21,10 @@ import numpy as np
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from recuento import trozos as trozos_sueltos  # noqa: E402 (los módulos viven junto a este guion)
+from recuento import trozos as trozos_sueltos, pico_memoria_mb  # noqa: E402 (los módulos viven junto a este guion)
 import piezas  # noqa: E402
 
 GRIS = (0.78, 0.78, 0.76, 1.0)
-
-
-def pico_memoria_mb():
-    """Pico de memoria del propio proceso (Windows: PeakWorkingSetSize; si no, ru_maxrss), o None"""
-    try:
-        import ctypes
-        from ctypes import wintypes
-        class PMC(ctypes.Structure):
-            _fields_ = [("cb", wintypes.DWORD), ("PageFaultCount", wintypes.DWORD)] + [(n, ctypes.c_size_t) for n in (
-                "PeakWorkingSetSize", "WorkingSetSize", "QuotaPeakPagedPoolUsage", "QuotaPagedPoolUsage", "QuotaPeakNonPagedPoolUsage",
-                "QuotaNonPagedPoolUsage", "PagefileUsage", "PeakPagefileUsage")]
-        c = PMC(); c.cb = ctypes.sizeof(PMC); k = ctypes.windll.kernel32
-        k.GetCurrentProcess.restype = wintypes.HANDLE
-        f = k.K32GetProcessMemoryInfo; f.argtypes = [wintypes.HANDLE, ctypes.POINTER(PMC), wintypes.DWORD]
-        return round(c.PeakWorkingSetSize / 2 ** 20) if f(k.GetCurrentProcess(), ctypes.byref(c), c.cb) else None
-    except Exception:
-        try:
-            import resource
-            return round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024)
-        except Exception:
-            return None
 
 
 def argumentos():
@@ -125,7 +104,7 @@ def contactos(ts, co, vi, lt, et, toque):
 def separa_piezas(o, inv, et):
     """Una pieza por objeto «pieza_NNN» con sus materiales de origen: cada pieza toma un material provisional, se separa por
     material (una sola operación) y luego cada cara recupera el suyo (guardado en el atributo «gemelo_mat»)"""
-    me = o.data; nf = len(me.polygons); k = len(me.materials)
+    me = o.data; nf = len(me.polygons); k = len(me.materials); originales = list(me.materials)
     de_trozo = {t: p["n"] for p in inv["piezas"] for t in p["ids_trozo"]}
     pieza_cara = np.array([de_trozo[int(t)] for t in et.tolist()], np.int32)
     mi = np.empty(nf, np.int32); me.polygons.foreach_get("material_index", mi)
@@ -144,9 +123,11 @@ def separa_piezas(o, inv, et):
         if n == 0:
             continue
         v = np.empty(n, np.int32); m.attributes["gemelo_pieza"].data.foreach_get("value", v); pn = int(v[0])
+        # Blender 5 deja en cada trozo separado solo la ranura que usa (la provisional): se le devuelven las de origen, en su orden
+        m.materials.clear()
+        for x in originales:
+            m.materials.append(x)
         m.attributes["gemelo_mat"].data.foreach_get("value", v); m.polygons.foreach_set("material_index", v)
-        while len(m.materials) > k:
-            m.materials.pop(index=len(m.materials) - 1)
         m.attributes.remove(m.attributes["gemelo_mat"]); m.update()
         ob.name = m.name = "pieza_%03d" % pn; objetos[pn] = ob
         ob["gemelo_procedencia"] = "ilustrativo"; ob["gemelo_pieza"] = "p%03d" % pn
