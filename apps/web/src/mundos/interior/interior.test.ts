@@ -195,7 +195,7 @@ describe("guardianes del interior (MUNDOS §8; regla 13)", () => {
     expect(ComponentesPuro.MUNDOS).toContain("patios"); expect(ComponentesPuro.MUNDOS).toContain("fabrica");
   });
   it("interiores sin sombreadores propios: el mundo interior no escribe onBeforeCompile, ShaderMaterial, RawShaderMaterial ni NodeMaterial (ADR-0033 §5)", () => {
-    expect(Object.keys(fuentes).sort()).toEqual(["./cableado.ts", "./index.ts", "./porton.ts", "./puro.ts", "./visita-puro.ts", "./visita.ts"]);
+    expect(Object.keys(fuentes).sort()).toEqual(["./cableado.ts", "./index.ts", "./maquinas-puro.ts", "./maquinas.ts", "./porton.ts", "./puro.ts", "./visita-puro.ts", "./visita.ts"]);
     for (const [f, txt] of Object.entries(fuentes)) expect(txt.replace(/\/\/.*$/gm, ""), f).not.toMatch(/onBeforeCompile|ShaderMaterial|RawShaderMaterial|NodeMaterial/);
   });
 });
@@ -270,5 +270,100 @@ describe("creaInterior: la visita del museo (v1.1)", () => {
     (b.deps as { visita?: unknown }).visita = ui;
     await b.carga(); b.w.entra(null, null);
     expect(b.w.estado()).toMatchObject({ colgado: true, visita: null });
+  });
+});
+
+describe("creaInterior: la luz aparte y las máquinas (v1.2)", () => {
+  const SONDA = Array.from({ length: 9 }, (_, i) => [i === 0 ? 1 : 0, i === 0 ? 1 : 0, i === 0 ? 1 : 0]);
+  const LUZ = { modo: "mapa", escala: 2, sonda: SONDA };
+  const MAQ = [
+    { id: "rueda", nodo: "rueda", tipo: "giro", pivote: [0, 1, 0], eje: [0, 0, 1], velocidad: 60, luz: "propia", fuente: "ilustrativo" },
+    { id: "correa", nodo: "correa", tipo: "textura", material: "cuero", uv: [0, 1], relacion: { con: "rueda", factor: 0.5 }, luz: "horneada", fuente: "ilustrativo" },
+    { id: "piston", nodo: "piston", tipo: "vaiven", pivote: [1, 0, 0], eje: [0, 1, 0], recorrido: 0.3, velocidad: 30, luz: "horneada", fuente: "ilustrativo" },
+  ];
+  /** un glb leído con su parser: tres unlit (dos con el mismo mapa de luz, uno sin él), uno con luz propia (aoMap) y tres nodos que se mueven */
+  function glbLuz() {
+    const suelto = { tex: 0, mat: 0, geo: 0 };
+    const tex = (): any => ({ isTexture: true, offset: { x: 0.1, y: 0, set(x: number, y: number) { this.x = x; this.y = y; } }, dispose() { suelto.tex++; }, clone() { return tex(); } });
+    const mat = (o: Record<string, unknown>): any => ({ toneMapped: true, ...o, dispose() { suelto.mat++; } });
+    const A = mat({ isMeshBasicMaterial: true, map: tex() }), B = mat({ isMeshBasicMaterial: true, name: "cuero", map: tex() }), C = mat({ isMeshBasicMaterial: true }), D = mat({ aoMap: tex(), map: tex() });
+    const json = { materials: [{ occlusionTexture: { index: 5, texCoord: 1 } }, { occlusionTexture: { index: 5, texCoord: 1 } }, {}, { occlusionTexture: { index: 6, texCoord: 1 } }] };
+    const associations = new Map<unknown, { materials?: number }>([[A, { materials: 0 }], [B, { materials: 1 }], [C, { materials: 2 }], [D, { materials: 3 }]]);
+    const pedidas: number[] = [];
+    const parser = { json, associations, getDependency: async (_t: "texture", i: number) => { pedidas.push(i); return tex(); } };
+    const nodo = (name: string, material: any): any => {
+      const n: any = {
+        name, isMesh: true, geometry: { index: { count: 3 }, dispose() { suelto.geo++; } }, material,
+        quaternion: { x: 0, y: 0, z: 0, w: 1, set(x: number, y: number, z: number, w: number) { Object.assign(this, { x, y, z, w }); } },
+        position: { x: name === "piston" ? 1 : 0, y: name === "rueda" ? 1 : 0, z: 0, set(x: number, y: number, z: number) { Object.assign(this, { x, y, z }); } },
+      };
+      n.traverse = (fn: (o: any) => void) => fn(n);
+      return n;
+    };
+    const nodos = [nodo("fijo", A), nodo("correa", B), nodo("otro", C), nodo("rueda", D), nodo("piston", A)];
+    const escena: any = { traverse(fn: (o: any) => void) { fn(escena); for (const n of nodos) fn(n); }, getObjectByName: (s: string) => nodos.find(n => n.name === s) };
+    return { escena, parser, A, B, C, D, nodos, pedidas, suelto };
+  }
+  function bancoLuz(extra: Record<string, unknown> = {}, ui?: unknown) {
+    const b = banco({ manifiesto: { ...MAN, luz: LUZ, maquinas: MAQ, ...extra } }), g = glbLuz(), entornos: Array<{ sonda: number[]; sueltos: number }> = [];
+    (b.deps as any).cargaGltf = async () => ({ GLTFLoader: class { async parseAsync() { return { scene: g.escena, parser: g.parser }; } } });
+    (b.deps as any).entorno = (sonda: number[]) => { const e = { sonda, sueltos: 0 }; entornos.push(e); return { textura: { isTexture: true, dispose() {} }, dispose() { e.sueltos++; } }; };
+    if (ui) (b.deps as { visita?: unknown }).visita = ui;
+    return { b, g, entornos };
+  }
+  it("luz «mapa»: el occlusionTexture de cada unlit pasa a lightMap (canal 1, sRGB, π × escala; un clon por índice), lo de luz propia sale del tone mapping con el entorno de la sonda, y sin luz ambiental", async () => {
+    const { b, g, entornos } = bancoLuz();
+    await b.carga();
+    expect(g.pedidas).toEqual([5]);   // los dos unlit comparten el mapa: se pide una vez
+    expect(g.A.lightMap).toBeDefined(); expect(g.A.lightMap).toBe(g.B.lightMap);
+    expect(g.A.lightMap).toMatchObject({ channel: 1, colorSpace: "srgb" });
+    expect(g.A.lightMapIntensity).toBeCloseTo(2 * Math.PI, 12);
+    expect(g.C.lightMap).toBeUndefined(); expect(g.D.lightMap).toBeUndefined();
+    expect([g.A.toneMapped, g.C.toneMapped, g.D.toneMapped]).toEqual([false, false, false]);
+    expect(entornos.length).toBe(1); expect(entornos[0]!.sonda.length).toBe(27); expect(g.D.envMap).toBeDefined();
+    expect(b.w.estado().luz).toEqual({ modo: "mapa", mapas: 2, propia: 1, entorno: true });
+    b.w.entra(null, null);
+    expect(b.w.ambiente().luces).toEqual([]);
+    b.w.sale(); b.w.libera();
+    expect(entornos[0]!.sueltos).toBe(1); expect(g.D.envMap).toBeNull();
+  });
+  it("sin luz (v1): ni mapas ni entorno, la luz ambiental de siempre y lo con luz sigue en el tone mapping", async () => {
+    const { b, g, entornos } = bancoLuz({ luz: undefined, maquinas: undefined });
+    await b.carga();
+    expect(g.pedidas).toEqual([]); expect(g.A.lightMap).toBeUndefined(); expect(g.D.toneMapped).toBe(true); expect(entornos).toEqual([]);
+    expect(b.w.estado()).toMatchObject({ luz: { modo: "base", mapas: 0, propia: 0, entorno: false }, maquinas: null });
+    b.w.entra(null, null); expect(b.w.ambiente().luces.length).toBe(1);
+  });
+  it("máquinas: arrancan al entrar con rampa (giro por el eje, vaivén por el eje, la textura corre con un clon de su mapa), el interruptor las para, y con «reducir movimiento» entran paradas", async () => {
+    const filas: string[] = [];
+    const ui = { THREE: null, documento: null, PanelVR: { filas: (_p: string, f: { id: string }) => { filas.push(f.id); return () => { filas.splice(filas.indexOf(f.id), 1); }; } } };
+    const { b, g } = bancoLuz({}, ui);
+    const mapaCuero = g.B.map;
+    await b.carga();
+    expect(g.B.map).not.toBe(mapaCuero);   // el clon: no arrastra a otros materiales con el mismo mapa
+    b.w.entra(null, null);
+    expect(filas).toContain("maquinas");
+    expect(b.w.estado().maquinas).toMatchObject({ maquinas: 3, piezas: 3, faltan: [], enMarcha: true, marcha: 0 });
+    for (let i = 0; i < 30; i++) b.w.actualiza(0.1, i * 0.1);
+    const correa = g.nodos[1], rueda = g.nodos[3], piston = g.nodos[4];
+    expect(b.w.estado().maquinas!.marcha).toBe(1);
+    expect(Math.hypot(rueda.quaternion.x, rueda.quaternion.y)).toBeLessThan(1e-12);   // gira en torno a Z
+    expect(Math.abs(rueda.quaternion.z)).toBeGreaterThan(0);
+    expect(rueda.position).toMatchObject({ x: 0, y: 1, z: 0 });   // por su pivote: no se desplaza
+    expect(piston.position.x).toBe(1); expect(piston.position.y).toBeGreaterThanOrEqual(0); expect(piston.position.y).toBeLessThanOrEqual(0.3);
+    expect(correa.material.map.offset.x).toBeCloseTo(0.1, 12); expect(correa.material.map.offset.y).not.toBe(0);
+    b.w.maquinas()!.pon(false);
+    for (let i = 0; i < 20; i++) b.w.actualiza(0.1, 0);
+    const q = { ...rueda.quaternion }; b.w.actualiza(0.1, 0);
+    expect(rueda.quaternion).toMatchObject({ x: q.x, y: q.y, z: q.z, w: q.w });   // parada: nada se mueve
+    b.w.sale(); expect(filas).toEqual([]);
+    const r = bancoLuz({}); (r.b.deps as any).reducido = () => true;
+    await r.b.carga(); r.b.w.entra(null, null);
+    expect(r.b.w.estado().maquinas).toMatchObject({ enMarcha: false, interruptor: false });
+  });
+  it("unas máquinas que el motor no entiende dejan el interior sin máquinas, no sin interior", async () => {
+    const { b } = bancoLuz({ maquinas: [{ ...MAQ[0], velocidad: undefined }] });
+    await b.carga(); b.w.entra(null, null);
+    expect(b.w.estado()).toMatchObject({ colgado: true, maquinas: null });
   });
 });

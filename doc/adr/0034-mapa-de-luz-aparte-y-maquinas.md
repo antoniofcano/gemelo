@@ -1,6 +1,6 @@
 # ADR-0034 — Mapa de luz aparte del color y máquinas con eje en los interiores (contrato mundo-interior v1.2)
 
-- **Estado:** Aceptado (la tubería y el contrato; el motor aún no lo carga)
+- **Estado:** Aceptado (la tubería, el contrato y, desde la rama `eje-b-motor11`, el motor: ver «Comprobación»)
 - **Fecha:** 2026-11-13
 
 ## Contexto
@@ -25,4 +25,5 @@ El mapa de luz viaja en la ranura **estándar `occlusionTexture` con `texCoord` 
 - **Implicaciones futuras:** el mismo camino vale para los patios y la bodega; las tarjetas con alfa aún no pasan por el modo aparte (`exporta.py` se niega). Si Khronos ratifica una extensión de mapa de luz, se migra en una v2.
 
 ## Comprobación
-Esquema, validador y ejemplo sintético [`modelos/interiores/ejemplo-luz/`](../../modelos/interiores/ejemplo-luz/): `mundo_interior_luz.test.js` (cada regla nueva tiene un caso que la rompe). Tubería: `interiores_blender.test.js` (`maquinas_def.py`, `sonda.py`, `exporta.mjs --luz`, y la forma de los guiones). Muestra privada (2026-11-13, por el banco): horneado «aparte» de 13 objetos a resolución baja en 76 s, pico 1,1 GB, glb de 2,6 MB que **pasa el validador** en quest (21,8 MB de texturas). **No probado:** la carga en el motor (no implementada), ningún dispositivo (escritorio, iPhone, Quest), los fps, y el horneado completo (extrapolado).
+Esquema, validador y ejemplo sintético [`modelos/interiores/ejemplo-luz/`](../../modelos/interiores/ejemplo-luz/): `mundo_interior_luz.test.js` (cada regla nueva tiene un caso que la rompe). Tubería: `interiores_blender.test.js` (`maquinas_def.py`, `sonda.py`, `exporta.mjs --luz`, y la forma de los guiones). Muestra privada (2026-11-13, por el banco): horneado «aparte» de 13 objetos a resolución baja en 76 s, pico 1,1 GB, glb de 2,6 MB que **pasa el validador** en quest (21,8 MB de texturas). **No probado:** ningún dispositivo (escritorio, iPhone, Quest), los fps, y el horneado completo (extrapolado).
+**El motor (2026-11-13):** `apps/web/src/mundos/interior/` (index.ts: los mapas de luz y el entorno; maquinas.ts y maquinas-puro.ts: las máquinas y su interruptor), con Vitest y `interior_luz_chrome.test.js` (ONBOARDING, fila 69). Una corrección sobre lo de arriba: la luz de las piezas con luz propia es **solo** el entorno hecho con la sonda (PMREM), sin `LightProbe`: en three 0.186 el entorno también suma luz difusa (`lights_fragment_end`: `irradiance += iblIrradiance`), y los dos juntos la contarían dos veces; y sin entorno los metales saldrían negros.
