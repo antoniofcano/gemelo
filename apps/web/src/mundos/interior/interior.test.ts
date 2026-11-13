@@ -195,7 +195,7 @@ describe("guardianes del interior (MUNDOS §8; regla 13)", () => {
     expect(ComponentesPuro.MUNDOS).toContain("patios"); expect(ComponentesPuro.MUNDOS).toContain("fabrica");
   });
   it("interiores sin sombreadores propios: el mundo interior no escribe onBeforeCompile, ShaderMaterial, RawShaderMaterial ni NodeMaterial (ADR-0033 §5)", () => {
-    expect(Object.keys(fuentes).sort()).toEqual(["./cableado.ts", "./index.ts", "./porton.ts", "./puro.ts"]);
+    expect(Object.keys(fuentes).sort()).toEqual(["./cableado.ts", "./index.ts", "./porton.ts", "./puro.ts", "./visita-puro.ts", "./visita.ts"]);
     for (const [f, txt] of Object.entries(fuentes)) expect(txt.replace(/\/\/.*$/gm, ""), f).not.toMatch(/onBeforeCompile|ShaderMaterial|RawShaderMaterial|NodeMaterial/);
   });
 });
@@ -250,5 +250,25 @@ describe("cableaInteriores (90_final)", () => {
     c.pon({ ok: true, mundo: "patios" }); await c.ventana.__cambiaMundo("patios");
     c.pon({ ok: false, motivo: "fallo_carga", mundo: "exterior" }); await c.ventana.__cambiaMundo("fabrica");
     expect(puestas).toEqual(["/?debug=1&mundo=patios"]);
+  });
+});
+
+describe("creaInterior: la visita del museo (v1.1)", () => {
+  const PARADA = { id: "una", pos: [0, -0.1, -10], radio: 1, ancla: { pos: [0, 1, -12], aprox: true }, ficha: { titulo: "Una", texto: "x", procedencia_visible: "ilustrativo", procedencia_texto: ["sin_fuente"], fuentes: [] } };
+  it("con paradas y lo de la UI, entra() la monta y sale() la suelta; sin UI o con paradas rotas, el interior entra sin visita", async () => {
+    const filas: string[] = [];
+    const ui = { THREE: null, documento: null, PanelVR: { filas: (_p: string, f: { id: string }) => { filas.push(f.id); return () => { filas.splice(filas.indexOf(f.id), 1); }; } } };
+    let b = banco({ manifiesto: { ...MAN, paradas: [PARADA] } });
+    (b.deps as { visita?: unknown }).visita = ui;
+    await b.carga(); b.w.entra(null, null);
+    expect(b.w.estado().visita).toMatchObject({ modo: "oferta", paradas: 1 }); expect(filas).toEqual(["visita", "visita-ficha"]);
+    b.w.sale();
+    expect(b.w.estado().visita).toBeNull(); expect(filas).toEqual([]);
+    b = banco({ manifiesto: { ...MAN, paradas: [PARADA] } }); await b.carga(); b.w.entra(null, null);
+    expect(b.w.estado().visita).toBeNull();   // sin deps.visita
+    b = banco({ manifiesto: { ...MAN, paradas: [{ ...PARADA, pos: [1] }] } });
+    (b.deps as { visita?: unknown }).visita = ui;
+    await b.carga(); b.w.entra(null, null);
+    expect(b.w.estado()).toMatchObject({ colgado: true, visita: null });
   });
 });

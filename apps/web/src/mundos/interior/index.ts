@@ -15,12 +15,18 @@
 // umbral cambia de mundo (cruza → gm.cambia); si el destino no está registrado (vivienda, bodega), la puerta queda inerte y lo dice, sin romper.
 // suelo/dentro/obstaculo: las zonas del manifiesto (suelo plano por zona; fuera es pared). alSalir: «libera» (un interior no se guarda congelado:
 // sus texturas son 80-200 MB de GPU). libera(): dispose de geometrías, materiales y texturas (y cierra los ImageBitmap), idempotente.
+// La visita del museo (v1.1, paradas[]: visita.ts): si el manifiesto trae paradas y el cableado da lo de la UI (deps.visita), entra() la monta (la oferta)
+// y sale() la suelta; actualiza() le pasa cada fotograma. Unas paradas que el motor no entiende (VisitaPuro.valida) dejan el interior sin visita, no sin
+// interior.
 // three no trae tipos en el repo: lo que se usa va como tipos mínimos estructurales (como mundos/vacio.ts y nucleo/ambiente.ts).
 import type { MundoInterior } from "../../datos/contratos/mundo-interior.ts";
 import type { Ambiente, LuzAmbiente } from "../../nucleo/ambiente.ts";
 import type { ContextoBase, IdMundo, MundoBase, Pose2, Puerta } from "../../nucleo/mundos.ts";
 import { InteriorPuro } from "./puro.ts";
 import type { PerfilInterior, PuertaPose, Zonas } from "./puro.ts";
+import { creaVisita } from "./visita.ts";
+import type { DepsVisitaUI, Visita } from "./visita.ts";
+import { VisitaPuro } from "./visita-puro.ts";
 
 export { InteriorPuro };
 export type { PerfilInterior };
@@ -70,6 +76,8 @@ export interface DepsInterior {
   alEntrar?(): void;
   alSalir?(): void;
   consola?: { warn(...a: unknown[]): void } | null;
+  /** la visita del museo (v1.1): lo de la UI (THREE, documento, panel de VR); sin ello, no hay visita aunque el manifiesto traiga paradas */
+  visita?: DepsVisitaUI | null;
 }
 
 /** MUNDOS §4: el fondo de un interior (lo que se ve por un hueco o sobre el patio abierto) [SUPUESTO: a ojo, un cielo claro y neutro] */
@@ -86,6 +94,8 @@ export interface EstadoInterior {
   colgado: boolean; liberado: boolean;
   /** eje B: hay un glb ya bajado y leído por precarga() que carga() aún no ha usado */
   precargado: boolean;
+  /** v1.1: la visita del museo (null sin paradas o fuera del interior) */
+  visita: ReturnType<Visita["estado"]> | null;
 }
 
 function texturasDe(m: Material3D, en: Set<Textura3D>): void {
@@ -95,13 +105,14 @@ function materialesDe(o: Nodo3D): Material3D[] { return !o.material ? [] : Array
 
 export function creaInterior(deps: DepsInterior): MundoBase & {
   readonly sala: null; readonly marco: "local"; presupuesto(p: { clase: "pantalla" } | { clase: "vr"; nivel: number }): { triangulos: number; llamadas: number; puntos: number; texturasMb: number };
-  ambiente(): Ambiente; estado(): EstadoInterior;
+  ambiente(): Ambiente; estado(): EstadoInterior; visita(): Visita | null;
 } {
   const P = InteriorPuro, id = deps.id;
   let man: MundoInterior | null = null, raiz: Nodo3D | null = null, zonas: Zonas | null = null, puertas: PuertaPose[] = [], vigia: ReturnType<typeof P.creaVigia> | null = null;
   let luces: Array<LuzAmbiente & { dispose?(): void }> | null = null, colgado = false, liberado = false;
   const inertes = new Set<string>();   // las puertas a un mundo que no existe ya avisadas en esta visita (hasta alejarse: el vigía las rearma)
-  const est: EstadoInterior = { id, perfil: null, ruta: null, nombre: null, fuente: null, triangulos: 0, llamadas: 0, materiales: 0, texturas: 0, sinLuz: 0, conColor: 0, recorte: 0, colgado: false, liberado: false, precargado: false };
+  const est: EstadoInterior = { id, perfil: null, ruta: null, nombre: null, fuente: null, triangulos: 0, llamadas: 0, materiales: 0, texturas: 0, sinLuz: 0, conColor: 0, recorte: 0, colgado: false, liberado: false, precargado: false, visita: null };
+  let visita: Visita | null = null;
 
   // lo que no toca la GPU: el manifiesto (comprobado), el glb y su parse. La usan precarga() y carga()
   interface Leido { perfil: PerfilInterior; ruta: string; mi: MundoInterior; escena: Nodo3D }
@@ -189,9 +200,16 @@ export function creaInterior(deps: DepsInterior): MundoBase & {
     inertes.clear();
     if (vigia) vigia.arma(p.x, p.y);
     aviso(P.rotulo(man), 4000);
+    if (deps.visita && deps.pose && man.paradas) {
+      const err = VisitaPuro.valida(man);
+      if (err.length) { if (deps.consola) deps.consola.warn("[interior " + id + "] sin visita: " + err.join("; ")); }
+      else { visita = creaVisita({ ...deps.visita, man, escena: deps.escena, pose: deps.pose, vr: deps.vr, existe: deps.existe }); visita.monta(); }
+    }
   }
+  function sueltaVisita(): void { if (visita) { visita.libera(); visita = null; } }
 
   function actualiza(): void {
+    if (visita) visita.cada();
     if (!vigia || !deps.pose) return;
     const p = deps.pose.lee(), pu = vigia.paso(p.x, p.y);
     if (!pu) return;
@@ -205,6 +223,7 @@ export function creaInterior(deps: DepsInterior): MundoBase & {
   }
 
   function sale(): Pose2 {
+    sueltaVisita();
     if (raiz && colgado) deps.escena.remove(raiz);
     colgado = false; est.colgado = false;
     if (deps.alSalir) deps.alSalir();
@@ -224,6 +243,7 @@ export function creaInterior(deps: DepsInterior): MundoBase & {
   }
 
   function libera(): void {
+    sueltaVisita();
     if (raiz) { if (colgado) deps.escena.remove(raiz); suelta(raiz); }
     if (leido) suelta(leido.escena);   // una precarga que nadie usó (quien andaba se alejó); la que está en vuelo la corta la señal (y lee() suelta lo leído)
     leido = null; pendiente = null; est.precargado = false;
@@ -252,7 +272,9 @@ export function creaInterior(deps: DepsInterior): MundoBase & {
       if (!luces) luces = deps.luz && !liberado ? [deps.luz("ambiental", LUZ_INTERIOR.color, LUZ_INTERIOR.intensidad)] : [];
       return { cielo: "ninguno", fondo: FONDO_INTERIOR, niebla: null, luces, camara: { near: CAMARA_INTERIOR.near, far: CAMARA_INTERIOR.far }, exag: 1 };
     },
-    estado(): EstadoInterior { return { ...est }; },
+    estado(): EstadoInterior { return { ...est, visita: visita ? visita.estado() : null }; },
+    /** v1.1: la visita (para las pruebas: __interiorVisita) */
+    visita: (): Visita | null => visita,
   };
 }
 export type Interior = ReturnType<typeof creaInterior>;

@@ -9,7 +9,8 @@
 //   · las puertas: gm.cambia(a, null, puerta); si falla (no por estar ocupado), un aviso en el HUD. Al exterior, con la llegada delante de esa puerta si el
 //     interior está anclado (eje B, la puerta del cortijo: porton.ts);
 //   · la dirección: cada cambio que sale bien deja ?mundo=<id> con history.replaceState (recargar te deja en ese mundo; volver al exterior lo quita);
-//   · la puerta del cortijo (porton.ts): el componente «porton-cortijo» del exterior, y al entrar y salir de un interior, el quad aparcado y el dron.
+//   · la puerta del cortijo (porton.ts): el componente «porton-cortijo» del exterior, y al entrar y salir de un interior, el quad aparcado y el dron;
+//   · la visita del museo (visita.ts, v1.1): lo de la UI que necesita (THREE, el documento, el panel de VR y cómo abrirlo en la pestaña «Mundo»).
 import type { Manifiesto } from "../../nucleo/componentes.ts";
 import type { IdMundo, Pose2, Puerta, ResultadoCambio } from "../../nucleo/mundos.ts";
 import type { T } from "../comun/tipos.ts";
@@ -24,7 +25,7 @@ export interface DepsCableaInteriores {
   ids: readonly IdMundo[];
   /** el índice (#datos): su base es la de las teselas */
   D: { base?: unknown };
-  THREE: T; scene: T; renderer: T; Aparato: { clase(): string }; VRX: { on: boolean };
+  THREE: T; scene: T; renderer: T; Aparato: { clase(): string }; VRX: { on: boolean; pestana?: string; sucio?: boolean };
   vrAparece(x: number, y: number, ang: number): void;
   pose: { lee(): Pose2; pon(p: Pose2): void };
   Paseo: { E: { paseando: boolean; primera: boolean }; entraPaseo(): void };
@@ -38,7 +39,9 @@ export interface DepsCableaInteriores {
   /** eje B, la puerta del cortijo (porton.ts): sin Componentes no hay puerta en el exterior (las pruebas del cableado no la montan) */
   Componentes?: { registra(m: Manifiesto): boolean } | null;
   Vida?: VidaPortones | null;
-  Llegada?: DepsPortones["Llegada"]; Minimapa?: DepsPortones["Minimapa"]; PanelVR?: DepsPortones["PanelVR"];
+  Llegada?: DepsPortones["Llegada"]; Minimapa?: DepsPortones["Minimapa"];
+  /** el panel de VR: las filas (la puerta del cortijo y la visita), la tapa, repintar y abrirlo (la visita) */
+  PanelVR?: (NonNullable<DepsPortones["PanelVR"]> & { tapa?(fn: () => boolean): () => void; repinta?(): void; abierto?(): boolean; conmutaPanel?(): void }) | null;
   Materiales?: T; suelo?(x: number, y: number): number; Estado?: { exag: number };
 }
 
@@ -60,7 +63,7 @@ export function urlConMundo(href: string, id: IdMundo): string | null {
 
 export function cableaInteriores(d: DepsCableaInteriores) {
   let primeraFuera: boolean | null = null, ultimo: IdMundo | null = null, destino: IdMundo | null = null, llegadaFuera: Pose2 | null = null;
-  const creados = new Map<IdMundo, { estado(): unknown }>();
+  const creados = new Map<IdMundo, { estado(): unknown; visita?(): { accion(a: string): void; estado(): unknown } | null }>();
   const aviso = (s: string, ms?: number): void => { const h = d.Hud(); if (h) h.aviso(s, ms); };
   // todo cambio de mundo pasa por aquí: recuerda adónde se va (para el quad y la VR al salir) y, si sale bien, lo apunta en la dirección
   function cambia(a: IdMundo, llegada?: Pose2 | null, puerta?: Puerta | null): Promise<ResultadoCambio> {
@@ -86,6 +89,13 @@ export function cableaInteriores(d: DepsCableaInteriores) {
   }) : null;
   if (d.Componentes && portones) d.Componentes.registra(manifiestoPortones(portones));
   const pose = { lee: d.pose.lee, pon(p: Pose2): void { d.pose.pon(p); if (d.VRX.on) d.vrAparece(p.x, p.y, p.ang); } };
+  const documento = (d.ventana as Record<string, unknown>).document as T | undefined;
+  // la visita en VR: el panel abierto en la pestaña «Mundo», donde van sus filas
+  const abrePanel = (): void => {
+    const P = d.PanelVR; if (!P) return;
+    if (P.abierto && !P.abierto() && P.conmutaPanel) P.conmutaPanel();
+    d.VRX.pestana = "mundo"; d.VRX.sucio = true;
+  };
   function deps(id: IdMundo): DepsInterior {
     return {
       id, base: typeof d.D.base === "string" ? d.D.base : "", vr: () => !!d.VRX.on, clase: () => d.Aparato.clase(),
@@ -113,11 +123,18 @@ export function cableaInteriores(d: DepsCableaInteriores) {
         if (portones) portones.alSaleInterior(destino, llegadaFuera);
       },
       consola: d.consola || null,
+      visita: documento ? { THREE: d.THREE, documento, PanelVR: d.PanelVR || null, abrePanel } : null,
     };
   }
   for (const id of d.ids) d.gm.registra(() => d.modulo().then(m => { const w = m.creaInterior(deps(id)); creados.set(id, w); ultimo = id; return w; }), id);
   // ?debug y las pruebas: el estado del último interior creado o en el que se entró (null si aún no hay ninguno)
   d.ventana.__interior = () => { const w = ultimo ? creados.get(ultimo) : undefined; return w ? w.estado() : null; };
+  // la visita del museo, para ?debug y las pruebas: su estado y, con un argumento, lo mismo que un botón («empieza», «siguiente», «sal»…)
+  d.ventana.__visita = (a?: string) => {
+    const w = ultimo ? creados.get(ultimo) : undefined, v = w && w.visita ? w.visita() : null;
+    if (v && typeof a === "string") v.accion(a);
+    return v ? v.estado() : null;
+  };
   // para las pruebas y la consola (mientras el exterior no tenga su puerta al cortijo [SUPUESTO: no está situado en el índice]): __cambiaMundo("patios")
   d.ventana.__cambiaMundo = (a: IdMundo) => cambia(a);
   // la puerta del cortijo, para ?debug y las pruebas: su estado (accesos, cruces, precargas) y «Ir al cortijo»

@@ -117,6 +117,9 @@ test("la exportación cumple el contrato por construcción: luz en el color base
   assert.ok(mjs.includes("KHR_materials_unlit") && !/draco|meshopt|KHRTextureBasisu|EXTTextureWebP/i.test(mjs.replace(/\/\/.*$/gm, "")), "el remate solo añade unlit");
   // el origen sale del manifiesto y es el umbral de la puerta principal; las zonas, de la cota medida del suelo
   assert.ok(py.includes('pl["origen"]') && py.includes("suelo_en("));
+  // v1.1: las paradas y las fuentes de la visita pasan de la plantilla al mundo.json, sin las notas «_…» de quien la escribe
+  assert.match(py, /for k in \("paradas", "fuentes"\):[\s\S]{0,200}m\[k\] = sin_notas\(pl\[k\]\)/, "exporta.py copia paradas y fuentes");
+  assert.match(py, /def sin_notas\(v\):[\s\S]{0,300}not k\.startswith\("_"\)/, "sin las claves «_…»");
   // el horneado largo se puede reanudar objeto a objeto
   assert.ok(lee("tuberia/interiores/blender/hornea.py").includes('"reanuda"'));
 });

@@ -21,5 +21,46 @@
  "puntos": [
   { "id": "rueda", "titulo": "La rueda (ilustrativa)", "pos": [0, 1.6, -5.7] }
  ],
- "anclaje": { "pos": [0, -150], "giro": 0 }
+ "anclaje": { "pos": [0, -150], "giro": 0 },
+ "paradas": [
+  {
+   "id": "bienvenida", "pos": [-2, 0, -2], "radio": 1,
+   "ancla": { "pos": [0, 1.6, -5.7], "nodo": "rueda", "aprox": false },
+   "ficha": {
+    "titulo": "Una sala inventada",
+    "texto": "Esta sala no existe: es el ejemplo sintético del contrato de los mundos interiores. Sirve para probar la visita autoguiada sin datos de nadie. Al fondo gira una rueda, también inventada, que es lo que describe la parada siguiente.",
+    "procedencia_visible": "ilustrativo",
+    "procedencia_texto": ["sin_fuente"],
+    "fuentes": []
+   }
+  },
+  {
+   "id": "rueda", "pos": [2, 0, -4], "radio": 1,
+   "ancla": { "pos": [0, 1.6, -5.7], "nodo": "rueda", "aprox": false },
+   "ficha": {
+    "titulo": "La rueda que gira",
+    "texto": "La rueda gira en bucle con una animación del glb, como giraría una pieza rígida de una máquina [1]. No mueve nada ni está medida: es una pieza ilustrativa que el contrato admite para probar las animaciones y las paradas de la visita [2].",
+    "dato_curioso": "La rueda tarda lo mismo en cada vuelta porque su animación es un bucle [1].",
+    "nota_visible": "Una rueda modelada a mano para el ejemplo.",
+    "procedencia_visible": "ilustrativo",
+    "procedencia_texto": ["documentado"],
+    "fuentes": ["ejemplo-a", "ejemplo-b"]
+   }
+  },
+  {
+   "id": "salida", "pos": [2.5, 0, -1.2], "radio": 0.8, "puerta": "principal",
+   "ancla": { "pos": [0, 1.1, 0], "aprox": true },
+   "ficha": {
+    "titulo": "Por aquí se sale",
+    "texto": "La última parada del ejemplo enlaza con la puerta principal, que lleva al exterior. En un interior de verdad, la última parada puede enlazar con la puerta de otra sala, aunque esa sala todavía no esté en el gemelo.",
+    "procedencia_visible": "ilustrativo",
+    "procedencia_texto": ["sin_fuente"],
+    "fuentes": []
+   }
+  }
+ ],
+ "fuentes": [
+  { "id": "ejemplo-a", "cita": "Fuente inventada para el ejemplo del contrato (no existe).", "verificada": true },
+  { "id": "ejemplo-b", "cita": "Otra fuente inventada, leída solo en extracto (tampoco existe).", "url": "https://example.org/ejemplo", "verificada": false }
+ ]
 }

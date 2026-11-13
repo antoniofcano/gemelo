@@ -81,6 +81,42 @@ test("el manifiesto: esquema, puerta principal en el origen, llegada dentro de u
   assert.ok(tiene(await valida(m, GLB), /anclaje/), "pos sin y");
 });
 
+test("v1.1, las paradas de la visita: el ejemplo las trae sin avisos; lo que mentiría es error y lo que hay que mirar, aviso", async () => {
+  const avisa = (r, re) => r.avisos.some(a => re.test(a));
+  assert.ok(Array.isArray(MAN.paradas) && MAN.paradas.length >= 2 && Array.isArray(MAN.fuentes), "el ejemplo trae paradas y fuentes (v1.1)");
+  let m = copia(MAN); delete m.paradas; delete m.fuentes;
+  assert.ok((await valida(m, GLB)).ok, "sin paradas también vale");
+  // errores: el esquema (procedencia del modelo, radio, campos de más) y las reglas que mentirían o romperían la ficha
+  m = copia(MAN); m.paradas[0].ficha.procedencia_visible = "inventado";
+  assert.ok(tiene(await valida(m, GLB), /mundo\.json\/paradas\/0\/ficha\/procedencia_visible/), "procedencia fuera del enum");
+  m = copia(MAN); m.paradas[0].radio = 0.1;
+  assert.ok(tiene(await valida(m, GLB), /paradas\/0\/radio/), "radio demasiado pequeño");
+  m = copia(MAN); m.paradas.push(copia(m.paradas[0]));
+  assert.ok(tiene(await valida(m, GLB), /id de parada repetido/), "parada repetida");
+  m = copia(MAN); m.paradas[1].ficha.fuentes.push("no-existe");
+  assert.ok(tiene(await valida(m, GLB), /fuente «no-existe»/), "fuente que no está en fuentes[]");
+  m = copia(MAN); m.paradas[2].puerta = "trasera";
+  assert.ok(tiene(await valida(m, GLB), /puerta «trasera»/), "puerta que no está en puertas[]");
+  m = copia(MAN); m.paradas[1].ficha.fuentes = [];
+  assert.ok(tiene(await valida(m, GLB), /«documentado» sin fuentes/), "documentado sin fuentes");
+  m = copia(MAN); m.paradas[0].ficha.procedencia_texto = ["sin_fuente", "testimonio"];
+  assert.ok(tiene(await valida(m, GLB), /«sin_fuente» no va con otra/), "sin_fuente con otra procedencia");
+  m = copia(MAN); m.paradas[0].ficha.procedencia_visible = "medido";
+  assert.ok(tiene(await valida(m, GLB), /no puede ser «medido» en un mundo ilustrativo/), "medido en un mundo hecho a mano");
+  m = copia(MAN); m.fuentes[0].url = "javascript:alert(1)";
+  assert.ok(tiene(await valida(m, GLB), /fuentes\/0\/url/), "una url que no es https");
+  // avisos: pasa, pero se dice
+  const pasaYAvisa = async (cambio, re, que) => { const mm = copia(MAN); cambio(mm); const r = await valida(mm, GLB); assert.ok(r.ok, que + ": " + r.errores.join(" | ")); assert.ok(avisa(r, re), que + ": " + r.avisos.join(" | ")); };
+  await pasaYAvisa(x => { x.paradas[0].pos = [0, 0, -9]; }, /no cae dentro de ninguna zona/, "parada fuera de las zonas");
+  await pasaYAvisa(x => { x.paradas[0].pos = [-2, 1, -2]; }, /no cae dentro de ninguna zona/, "parada a otra cota");
+  await pasaYAvisa(x => { x.paradas[1].pos = [-1.5, 0, -2.5]; }, /pisa el radio de «bienvenida»/, "radios que se pisan");
+  await pasaYAvisa(x => { x.paradas[0].ancla.pos = [0, 1, -30]; }, /ancla cae fuera del modelo/, "ancla fuera del modelo");
+  await pasaYAvisa(x => { x.paradas[0].ancla.nodo = "prensa"; }, /no tiene el nodo «prensa»/, "nodo que el glb no tiene");
+  await pasaYAvisa(x => { x.paradas[0].ficha.texto = "Muy corto."; }, /palabras/, "texto demasiado corto");
+  await pasaYAvisa(x => { x.paradas[0].ficha.texto += " [2]"; }, /\[2\] no remite/, "un [n] que no es de sus fuentes");
+  await pasaYAvisa(x => { x.paradas[0].ficha.pendiente = ["¿cuántos rulos?"]; }, /pendiente/, "lo pendiente de confirmar");
+});
+
 test("contratos/mundo-interior.md dice los topes del esquema (perfiles, extensiones e imágenes)", () => {
   const md = lee("contratos/mundo-interior.md"), num = n => n.toLocaleString("es-ES").replace(/ /g, ".");
   for (const [k, t] of Object.entries(PRES.perfiles)) {

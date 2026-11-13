@@ -1,4 +1,4 @@
-# Contrato `mundo-interior` (v = 1; v1.1 añade `anclaje`, opcional)
+# Contrato `mundo-interior` (v = 1; v1.1 añade `anclaje`, `paradas` y `fuentes`, opcionales)
 
 Qué tiene que entregar quien modela un interior (la bodega, la fábrica) para que entre en el gemelo. Es la frontera entre los dos ejes del [PLAN](../doc/rumbo/PLAN.md#mundos-múltiples-adr-0033): el eje B (modelado, a su ritmo) entrega un glb y un manifiesto que pasan el validador, y el eje A (el motor) los carga sin preguntar más. Decisión: [ADR-0033](../doc/adr/0033-mundos.md); interfaces del lado del motor (`World`, `Puerta`, `Ambiente`): [MUNDOS](../doc/sistema/MUNDOS.md).
 
@@ -27,12 +27,14 @@ Esquema: [mundo-interior.schema.json](mundo-interior.schema.json) (JSON Schema 2
 | `animaciones[]` | *(opcional)* `{nombre, bucle, fuente}`: cada clip del glb con su nombre exacto; `fuente` es `ilustrativo` o `deducido`, nunca `medido` |
 | `puntos[]` | *(opcional)* `{id, titulo, pos}`: cartelas del museo, sitio del ponente |
 | `anclaje` | *(opcional, v1.1)* `{pos: [x, y], giro}`: dónde está el interior en el exterior de su finca ([§1b](#1b-el-anclaje-v11)) |
+| `paradas[]` | *(opcional, v1.1)* la visita autoguiada (museo), en el orden del recorrido: `{id, pos, radio, ancla, puerta?, ficha}` ([§1c](#1c-la-visita-paradas-y-fuentes-v11)) |
+| `fuentes[]` | *(opcional, v1.1)* `{id, cita, url?, verificada}`: las fuentes de las fichas; un `[n]` en un texto remite a `fuentes[n-1]` |
 
 **Reglas que el esquema no dice y el validador sí:**
 - **Origen:** `(0, 0, 0)` está en el suelo, en el centro del umbral de la puerta principal, que es `puertas[0]`.
 - **Llegadas:** cada `llegada` cae dentro de una zona, a su cota (±10 cm).
 - **Zonas:** cada zona es un polígono simple (no se corta a sí misma) de al menos 0,5 m².
-- **Ids:** los de zonas, puertas, puntos y animaciones no se repiten.
+- **Ids:** los de zonas, puertas, puntos, animaciones, paradas y fuentes no se repiten.
 - **Dentro del modelo:** las puertas y los puntos caen dentro de la caja del modelo.
 - **Puertas:** ninguna lleva a su propio mundo. Si ninguna lleva al exterior, sale un aviso.
 
@@ -44,6 +46,30 @@ Un campo opcional y aditivo (`v` sigue siendo 1: un manifiesto sin él vale igua
 - `giro`: el **rumbo de brújula** (grados desde el norte hacia el este, en `[0, 360)`) del eje +Z del glb en el exterior. Si la puerta principal tiene `rumbo` 0, es hacia dónde se sale por ella. Un solo número para corregir la orientación.
 - Del marco de quien anda dentro (x, −z del glb) al del exterior hay un giro de `φ = 180° − giro` (antihorario) y la traslación `pos`; los dos marcos tienen la misma mano, así que no hay espejo.
 - **Es dato de la explotación** (regla 4): el de verdad va solo en los datos publicados (la plantilla privada del exportador lo lleva y `exporta.py` lo copia). El ejemplo sintético trae uno inventado en el fixture. Se dice de dónde sale (medido, un pin, deducido) en la plantilla, no aquí.
+
+## 1c. La visita: paradas y fuentes (v1.1)
+
+Dos campos opcionales y aditivos (`v` sigue siendo 1). Con ellos, al entrar en el interior se ofrece «Empezar la visita» o pasear libre: una marca en el suelo por parada, la siguiente resaltada, y al llegar se abre su ficha ([MUNDOS §3, «La visita del museo»](../doc/sistema/MUNDOS.md#la-visita-del-museo)).
+
+Una parada (`paradas[i]`; el orden del array es el del recorrido):
+
+| Campo | Contenido |
+|---|---|
+| `id` | id de la parada, único |
+| `pos` | `[x, y, z]` donde se para quien visita: en el suelo, dentro de una zona y a su cota |
+| `radio` | m en planta (0,5 a 5): al entrar en él se abre la ficha |
+| `ancla` | `{pos, nodo?, aprox}`: lo que describe la parada (la pieza) y hacia dónde se mira; `nodo`, el del glb si la pieza lo tiene (el motor aún no lo resalta); `aprox: true` si `pos` no sale de la geometría de la pieza |
+| `puerta` | *(opcional)* id de una puerta de este mundo con la que sigue el recorrido; si lleva a un mundo que aún no está, el motor dice «próximamente» |
+| `ficha` | `{titulo, texto, dato_curioso?, nota_visible?, procedencia_visible, procedencia_texto[], fuentes[], pendiente?[]}` |
+
+- **Regla 5 en la ficha:** `procedencia_visible` es lo que se ve (`medido`, `deducido` o `ilustrativo`; en un modelo hecho a mano, `ilustrativo`) y `nota_visible` dice qué no prueba el modelo. `procedencia_texto` es lo que cuenta el texto: `documentado` (fuente escrita), `testimonio` (de quien lo vivió o lo sabe) o `sin_fuente`; varias a la vez si el texto mezcla (una ficha documentada con un añadido de la familia es `["documentado", "testimonio"]`).
+- **`pendiente`:** lo que espera confirmación. Nunca se enseña como hecho: el motor solo dice cuántas preguntas quedan abiertas. Lo que no está confirmado no va en `texto` ni en `dato_curioso`.
+- **Texto llano** (el motor lo pinta con `textContent`). `fuentes[]` de la ficha son ids de `fuentes[]` del mundo; una fuente con `verificada: false` (solo se leyó un extracto) se enseña con ese aviso; `url`, solo `https://`.
+- **Es dato de la explotación** (regla 4): las paradas de verdad van solo en los datos publicados (las escribe la plantilla privada y `exporta.py` las copia tal cual, ya en el marco del glb). El ejemplo sintético trae tres inventadas.
+
+**Lo que dice el validador.** Error (mentiría o rompería la ficha): ids de parada o de fuente repetidos, una fuente o una puerta que no existe, `documentado` sin fuentes, `sin_fuente` junto a otra procedencia, `medido` en un mundo `ilustrativo`, una `url` que no es `https://`. Aviso (pasa, pero hay que mirarlo): una parada fuera de las zonas o a otra cota (no se llega andando), radios que se pisan, un ancla fuera del modelo, un `nodo` que el glb no tiene, un texto de menos de 30 o más de 150 palabras, un `[n]` que no es de sus fuentes y lo pendiente de confirmar.
+
+**Por qué así y no como el primer borrador** (que traía `orden`, `mira` y `ancla.tipo`): el orden es el del array (como `puertas[0]` es la principal), `ancla.pos` ya es hacia dónde se mira y el tipo se deduce de si hay `nodo`. Cada dato, una vez: no hay dos sitios que puedan contradecirse. `procedencia_texto` es una lista porque las fichas reales mezclan lo documentado con el testimonio.
 
 ## 2. Reglas del glb (glTF 2.0 binario)
 
@@ -72,5 +98,6 @@ Lo que dibuja el interior entero; mientras tanto, el exterior está congelado. E
 ## 4. Lo que queda abierto
 
 - **Sonido** de las máquinas: irá en una v2 del manifiesto, con MU4.
+- **Idiomas** de las fichas de la visita y **resaltar el nodo** de la pieza (`ancla.nodo`): cuando haga falta; hoy las fichas van en español y el ancla es un punto.
 - **Splats:** solo si pasa la prueba de humo de MU4-0 (decisión 223).
 - **Texturas comprimidas** (KTX2) y **mallas comprimidas** (meshopt): cuando el motor tenga sus decodificadores, medido en el Quest.
