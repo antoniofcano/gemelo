@@ -142,6 +142,19 @@ body { background: #0b0d0a; color: var(--fg); font-family: var(--body); font-siz
 .ficha dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 0; font-variant-numeric: tabular-nums; }
 .ficha dt { color: var(--muted); } .ficha dd { margin: 0; text-align: right; }
 .ficha > button { position: absolute; top: 2px; right: 2px; min-width: 44px; min-height: 44px; border: 0; background: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; }   /* la × con sitio para el dedo */
+/* la visita del museo (eje B, mundos/interior/visita.ts): el mismo cristal que la ficha, más ancho para leer prosa; botones de 44 px */
+#visitaMuseo { width: min(380px, calc(100% - 20px)); }
+#visitaMuseo p { margin: 0 0 8px; line-height: 1.45; font-size: 15px; }
+#visitaMuseo .visita-procedencia { color: var(--muted); font-size: 13px; }
+#visitaMuseo .visita-anuncio { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); margin: 0; }
+#visitaMuseo details { margin: 0 0 8px; font-size: 13px; } #visitaMuseo ul { margin: 4px 0 0; padding-left: 18px; }
+#visitaMuseo .visita-botones { display: flex; flex-wrap: wrap; gap: 8px; }
+#visitaMuseo .visita-botones button { font: inherit; color: inherit; min-height: 44px; min-width: 44px; padding: 6px 12px; border-radius: 8px; cursor: pointer; background: rgba(255,255,255,0.06); border: 1px solid var(--hud-borde); }
+#visitaMuseo .visita-botones .visita-primario { background: rgba(64,240,255,0.16); border-color: rgba(64,240,255,0.55); }
+#visitaMuseo .visita-botones button:disabled { cursor: default; opacity: 0.6; }
+#visitaMuseo .visita-botones button:focus-visible { outline: 2px solid #40f0ff; outline-offset: 2px; }
+#visitaMuseo.visita-compacta { width: auto; padding: 6px; }
+.ficha:not([hidden]) ~ #visitaMuseo { top: auto; bottom: calc(var(--sa-b, 0px) + 96px); }
 
 /* ventanas: una grande a la vez (decisión 87). Lateral bajo la barra en escritorio; hoja inferior en móvil vertical; lateral alto en horizontal */
 .ventana { position: absolute; z-index: 25; top: calc(var(--sa-t) + 64px); right: calc(var(--sa-r) + 10px); width: min(380px, calc(100% - 20px)); max-height: calc(100% - var(--sa-t) - var(--sa-b) - 84px); display: flex; flex-direction: column; background: var(--hud-fuerte); border: 1px solid var(--hud-borde); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.35); font-size: 13.5px; }
