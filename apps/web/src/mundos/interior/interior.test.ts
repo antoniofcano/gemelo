@@ -6,7 +6,7 @@ import { creaCola, creaColaDeMundo } from "../../nucleo/cola.ts";
 import { ComponentesPuro } from "../../nucleo/componentes.ts";
 import type { ContextoBase, IdMundo, Pose2, Puerta } from "../../nucleo/mundos.ts";
 import { creaInterior, FONDO_INTERIOR } from "./index.ts";
-import { cableaInteriores, mundoDeUrl } from "./cableado.ts";
+import { cableaInteriores, mundoDeUrl, urlConMundo } from "./cableado.ts";
 import type { DepsInterior, Material3D, Nodo3D, Textura3D } from "./index.ts";
 import type { MundoInterior } from "../../datos/contratos/mundo-interior.ts";
 
@@ -101,6 +101,22 @@ describe("creaInterior: carga", () => {
     const b = banco(); const p = b.w.carga(b.ctx); b.ctrl.abort();
     await expect(p).rejects.toThrow(/cancelada/);
   });
+  it("precarga() (eje B): baja y lee el glb sin tocar la GPU; carga() lo aprovecha (no lo vuelve a pedir) y solo sube las texturas", async () => {
+    const b = banco();
+    await b.w.precarga!(b.ctx);
+    expect(b.pedidas.length).toBe(2); expect(b.subidas.length).toBe(0); expect(b.w.estado().precargado).toBe(true); expect(b.colgados).toEqual([]);
+    await b.carga();
+    expect(b.pedidas.length).toBe(2); expect(b.subidas.length).toBe(2); expect(b.w.estado()).toMatchObject({ precargado: false, triangulos: 1510 });
+  });
+  it("si entre la precarga y la carga se entra en la VR, lo precargado se suelta y se pide la carpeta «quest»; libera() suelta una precarga sin usar", async () => {
+    const o = { vr: false }, b = banco(o);
+    await b.w.precarga!(b.ctx); o.vr = true;
+    await b.carga();
+    expect(b.pedidas.slice(2)).toEqual(["/teselas/hituelo/patios/quest/mundo.json", "/teselas/hituelo/patios/quest/patios.glb"]);
+    expect(b.g.cuenta.geo).toBe(3);   // la escena de «pantalla», soltada
+    const c = banco(); await c.w.precarga!(c.ctx); c.w.libera();
+    expect(c.g.cuenta).toEqual({ geo: 3, mat: 3, tex: 2, cerrados: 2 }); expect(c.w.estado().precargado).toBe(false);
+  });
 });
 
 describe("creaInterior: entrar, andar, puertas y salir", () => {
@@ -120,6 +136,10 @@ describe("creaInterior: entrar, andar, puertas y salir", () => {
     b.w.sale();
     b.w.entra(null, { x: 2.9, y: 15, ang: 1.5 });   // se dejó en el umbral de la puerta de la fábrica: a su llegada, dentro y mirando hacia dentro
     expect(b.pp.x).toBeCloseTo(1.5); expect(b.pp.y).toBeCloseTo(15); expect(b.pp.ang).toBeCloseTo(-Math.PI / 2);
+    b.w.sale();
+    // eje B: la puerta del exterior trae la llegada de la puerta del interior por la que se entra (la conoce por el anclaje)
+    b.w.entra({ id: "y", de: "exterior", a: "patios", pos: { x: 0, y: 0 }, radio: 1, histeresis: 1, llegada: { x: 1.5, y: 5, ang: 1 } }, null);
+    expect(b.pp).toMatchObject({ x: 1.5, y: 5, ang: 1 });
   });
   it("suelo, dentro y obstaculo son los de sus zonas; antes de cargar, nadie está dentro", async () => {
     const b = banco();
@@ -175,7 +195,7 @@ describe("guardianes del interior (MUNDOS §8; regla 13)", () => {
     expect(ComponentesPuro.MUNDOS).toContain("patios"); expect(ComponentesPuro.MUNDOS).toContain("fabrica");
   });
   it("interiores sin sombreadores propios: el mundo interior no escribe onBeforeCompile, ShaderMaterial, RawShaderMaterial ni NodeMaterial (ADR-0033 §5)", () => {
-    expect(Object.keys(fuentes).sort()).toEqual(["./cableado.ts", "./index.ts", "./puro.ts"]);
+    expect(Object.keys(fuentes).sort()).toEqual(["./cableado.ts", "./index.ts", "./porton.ts", "./puro.ts"]);
     for (const [f, txt] of Object.entries(fuentes)) expect(txt.replace(/\/\/.*$/gm, ""), f).not.toMatch(/onBeforeCompile|ShaderMaterial|RawShaderMaterial|NodeMaterial/);
   });
 });
@@ -219,5 +239,16 @@ describe("cableaInteriores (90_final)", () => {
     expect(d.existe("fabrica")).toBe(true); expect(d.existe("vivienda")).toBe(false); expect(d.base).toBe("/teselas/hituelo/");
     c.pon({ ok: false, motivo: "ocupado" }); d.cruza("fabrica", {} as Puerta); await new Promise(r => setTimeout(r, 0)); expect(c.avisos).toEqual([]);
     c.pon({ ok: false, motivo: "tiempo" }); d.cruza("fabrica", {} as Puerta); await new Promise(r => setTimeout(r, 0)); expect(c.avisos).toEqual(["No se ha podido entrar en «fabrica»"]);
+  });
+  it("la dirección (eje B): cada cambio que sale bien pone ?mundo=<id> con replaceState; volver al exterior lo quita; lo demás se conserva", async () => {
+    expect(urlConMundo("https://x.es/gemelo/?debug#a", "patios")).toBe("/gemelo/?debug&mundo=patios#a");
+    expect(urlConMundo("https://x.es/?mundo=patios&debug=1", "exterior")).toBe("/?debug=1");
+    expect(urlConMundo("https://x.es/?mundo=fabrica", "patios")).toBe("/?mundo=patios"); expect(urlConMundo("https://x.es/?mundo=fabrica", "exterior")).toBe("/");
+    expect(urlConMundo("no es una url", "patios")).toBeNull();
+    const c = cable(), puestas: string[] = [];
+    c.ventana.location = { href: "https://x.es/?debug=1", search: "?debug=1" }; c.ventana.history = { state: null, replaceState: (_s: unknown, _t: string, u: string) => { puestas.push(u); } };
+    c.pon({ ok: true, mundo: "patios" }); await c.ventana.__cambiaMundo("patios");
+    c.pon({ ok: false, motivo: "fallo_carga", mundo: "exterior" }); await c.ventana.__cambiaMundo("fabrica");
+    expect(puestas).toEqual(["/?debug=1&mundo=patios"]);
   });
 });

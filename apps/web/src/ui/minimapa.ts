@@ -32,6 +32,7 @@ export function creaMinimapa(dp: DepsMinimapa) {
     function cambia() { mini.cerca = !mini.cerca; mini.t = 1; mini.cv.title = mini.cerca ? "Vista cercana: toca para ver toda la finca" : "Toda la finca: toca para acercar"; pintaZoom(); }
     escucha(mini.cv, "click", function (e?: T) {
       var r: T = mini.cv.getBoundingClientRect(), x: T = (e.clientX - r.left) * MW / (r.width || MW), y: T = (e.clientY - r.top) * MH / (r.height || MH), mejor: T = null, dm: T = TOQUE * TOQUE;
+      if (Minimapa.toca(x, y)) { mini.sel = null; return; }   // una capa con toque (la puerta del cortijo) manda
       mini.pts.forEach(function (p?: T) { var d: T = (p.px - x) * (p.px - x) + (p.py - y) * (p.py - y); if (d < dm) { dm = d; mejor = p; } });
       if (!mejor) {   // I4: el rombo de una baliza abre su aviso («¿Ir a esta baliza?»); fuera de puntos y rombos, cambia el zoom, como siempre
         var bal: T = null, db: T = TOQUE * TOQUE;
@@ -75,15 +76,17 @@ export function creaMinimapa(dp: DepsMinimapa) {
   })();
   // punto de extensión (ADR-0023, C2): Minimapa.capa(fn, orden?) añade una capa al minimapa; fn(c, X, Y, info) pinta sobre el contexto 2D con X(este) e Y(norte)
   // en píxeles del mapa, info = { cerca, MW, MH }. Se pinta tras balizas y perros y antes de la gente, de ti y del dron, en orden creciente. Devuelve quita.
+  // Eje B (la puerta del cortijo): toca(x, y), opcional, recibe un toque en el mapa (px) antes que la gente, las balizas y el zoom; si devuelve true, es suyo.
   var Minimapa: T = (function () {
     var capas: T = [];
-    function capa(fn?: T, orden?: T) {
+    function capa(fn?: T, orden?: T, toca?: T) {
       if (typeof fn !== "function") return function () {};
-      var c: T = { fn: fn, orden: orden || 0 }; capas.push(c); capas.sort(function (a?: T, b?: T) { return a.orden - b.orden; }); mini.t = 1;
+      var c: T = { fn: fn, orden: orden || 0, toca: typeof toca === "function" ? toca : null }; capas.push(c); capas.sort(function (a?: T, b?: T) { return a.orden - b.orden; }); mini.t = 1;
       return function () { var i: T = capas.indexOf(c); if (i >= 0) capas.splice(i, 1); mini.t = 1; };
     }
     function pinta(c?: T, X?: T, Y?: T, info?: T) { for (var i: T = 0; i < capas.length; i++) { c.save(); try { capas[i].fn(c, X, Y, info); } catch (e: T) {} c.restore(); } }
-    return { capa: capa, pinta: pinta, cuantas: function () { return capas.length; }, olvida: function () { capas.length = 0; } };   // olvida: A3-7a, para libera()
+    function toca(x?: T, y?: T) { for (var i: T = capas.length - 1; i >= 0; i--) { var f: T = capas[i].toca; if (!f) continue; try { if (f(x, y)) { mini.t = 1; return true; } } catch (e: T) {} } return false; }
+    return { capa: capa, pinta: pinta, toca: toca, cuantas: function () { return capas.length; }, olvida: function () { capas.length = 0; } };   // olvida: A3-7a, para libera()
   })();
   // tu rastro: un punto cada 2,5 m, hasta 240 (AG-1.4c: sin Math.hypot —se compara el cuadrado— y sin crear un par nuevo por punto una vez lleno: se recicla el más viejo)
   function actualizaRastro() {

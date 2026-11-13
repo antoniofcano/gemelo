@@ -1,4 +1,4 @@
-# Contrato `mundo-interior` (v = 1)
+# Contrato `mundo-interior` (v = 1; v1.1 añade `anclaje`, opcional)
 
 Qué tiene que entregar quien modela un interior (la bodega, la fábrica) para que entre en el gemelo. Es la frontera entre los dos ejes del [PLAN](../doc/rumbo/PLAN.md#mundos-múltiples-adr-0033): el eje B (modelado, a su ritmo) entrega un glb y un manifiesto que pasan el validador, y el eje A (el motor) los carga sin preguntar más. Decisión: [ADR-0033](../doc/adr/0033-mundos.md); interfaces del lado del motor (`World`, `Puerta`, `Ambiente`): [MUNDOS](../doc/sistema/MUNDOS.md).
 
@@ -26,6 +26,7 @@ Esquema: [mundo-interior.schema.json](mundo-interior.schema.json) (JSON Schema 2
 | `puertas[]` | `{id, a, pos, rumbo, ancho, alto, llegada: {pos, rumbo}}`: `a` es el mundo al que lleva; `rumbo` en grados desde +Z hacia +X, hacia donde se sale; `llegada`, dónde aparece quien entra por ella |
 | `animaciones[]` | *(opcional)* `{nombre, bucle, fuente}`: cada clip del glb con su nombre exacto; `fuente` es `ilustrativo` o `deducido`, nunca `medido` |
 | `puntos[]` | *(opcional)* `{id, titulo, pos}`: cartelas del museo, sitio del ponente |
+| `anclaje` | *(opcional, v1.1)* `{pos: [x, y], giro}`: dónde está el interior en el exterior de su finca ([§1b](#1b-el-anclaje-v11)) |
 
 **Reglas que el esquema no dice y el validador sí:**
 - **Origen:** `(0, 0, 0)` está en el suelo, en el centro del umbral de la puerta principal, que es `puertas[0]`.
@@ -34,6 +35,15 @@ Esquema: [mundo-interior.schema.json](mundo-interior.schema.json) (JSON Schema 2
 - **Ids:** los de zonas, puertas, puntos y animaciones no se repiten.
 - **Dentro del modelo:** las puertas y los puntos caen dentro de la caja del modelo.
 - **Puertas:** ninguna lleva a su propio mundo. Si ninguna lleva al exterior, sale un aviso.
+
+## 1b. El anclaje (v1.1)
+
+Un campo opcional y aditivo (`v` sigue siendo 1: un manifiesto sin él vale igual). Con él, el exterior pone una puerta por cada puerta del interior que lleva a `exterior` y se entra andando ([MUNDOS §3, «La puerta del cortijo»](../doc/sistema/MUNDOS.md#la-puerta-del-cortijo)).
+
+- `pos`: `[x, y]` en metros en el **marco local de la finca** (x este, y norte, desde `centro_utm` de su índice): dónde cae en el exterior el origen del glb, es decir, el umbral de la puerta principal.
+- `giro`: el **rumbo de brújula** (grados desde el norte hacia el este, en `[0, 360)`) del eje +Z del glb en el exterior. Si la puerta principal tiene `rumbo` 0, es hacia dónde se sale por ella. Un solo número para corregir la orientación.
+- Del marco de quien anda dentro (x, −z del glb) al del exterior hay un giro de `φ = 180° − giro` (antihorario) y la traslación `pos`; los dos marcos tienen la misma mano, así que no hay espejo.
+- **Es dato de la explotación** (regla 4): el de verdad va solo en los datos publicados (la plantilla privada del exportador lo lleva y `exporta.py` lo copia). El ejemplo sintético trae uno inventado en el fixture. Se dice de dónde sale (medido, un pin, deducido) en la plantilla, no aquí.
 
 ## 2. Reglas del glb (glTF 2.0 binario)
 

@@ -175,3 +175,63 @@ describe("InteriorPuro: presupuesto y rótulo", () => {
     expect(P.rotulo({ nombre: "Patios", fuente: "ilustrativo" })).toMatch(/ilustrativo · luz horneada, ilustrativa$/);
   });
 });
+
+describe("InteriorPuro: el interior en el exterior (v1.1, anclaje)", () => {
+  const cerca = (a: number, b: number, e = 1e-9): void => { expect(Math.abs(a - b)).toBeLessThan(e); };
+  it("giro 0: el +Z del glb mira al norte; quien sale por la principal (rumbo 0) mira al norte y la sala queda al sur", () => {
+    const t = P.transformacion({ pos: [100, 50], giro: 0 });
+    const salida = P.aExterior(t, { x: 0, y: 0, ang: P.angDeRumbo(0) });   // en el umbral, mirando hacia donde se sale
+    cerca(salida.x, 100); cerca(salida.y, 50); cerca(Math.cos(salida.ang), 1);   // ang 0 = norte
+    const fondo = P.aExterior(t, { x: 0, y: 10, ang: 0 });   // 10 m dentro (y = −z)
+    cerca(fondo.x, 100); cerca(fondo.y, 40);
+  });
+  it("giro 90: el +Z mira al este; +X del glb (a la izquierda de quien sale por la principal: los dos marcos tienen la misma mano) queda al norte", () => {
+    const t = P.transformacion({ pos: [0, 0], giro: 90 });
+    const s = P.aExterior(t, { x: 0, y: 0, ang: P.angDeRumbo(0) });
+    cerca(Math.sin(s.ang), 1);   // ang π/2 = este
+    const der = P.aExterior(t, { x: 1, y: 0, ang: 0 });
+    cerca(der.x, 0); cerca(der.y, 1);
+  });
+  it("ida y vuelta: deExterior deshace aExterior (posición y rumbo)", () => {
+    const t = P.transformacion({ pos: [-37.5, 81.25], giro: 123 });
+    for (const p of [{ x: 0, y: 0, ang: 0 }, { x: 4, y: 20, ang: 2 }, { x: -12, y: 2.5, ang: -3 }]) {
+      const v = P.deExterior(t, P.aExterior(t, p));
+      cerca(v.x, p.x, 1e-9); cerca(v.y, p.y, 1e-9); cerca(Math.cos(v.ang - p.ang), 1, 1e-12);
+    }
+  });
+  it("accesos: una puerta en el exterior por cada puerta a «exterior»; ninguna sin anclaje; quien sale aparece FUERA m fuera mirando hacia fuera", () => {
+    const m = patiosFalsos();
+    expect(P.accesos(m)).toEqual([]);
+    m.anclaje = { pos: [10, 20], giro: 0 };
+    m.puertas.push({ id: "lateral", a: "exterior", pos: [3, -0.1, -10], rumbo: 90, ancho: 3, alto: 2.3, llegada: { pos: [1.5, -0.1, -10], rumbo: 270 } });
+    const a = P.accesos(m);
+    expect(a.map(x => x.puerta)).toEqual(["principal", "lateral"]);
+    const [pr, la] = a as [typeof a[0], typeof a[0]];
+    cerca(pr.umbral.x, 10); cerca(pr.umbral.y, 20); cerca(pr.fuera.x, 10); cerca(pr.fuera.y, 20 + P.FUERA); cerca(Math.cos(pr.fuera.ang), 1);
+    cerca(pr.frente.y, 20 + P.FRENTE); cerca(Math.cos(pr.frente.ang), -1);   // «Ir al cortijo»: delante, mirando la puerta (al sur)
+    expect(pr.llegada).toEqual(P.poseDe(m.puertas[0]!.llegada));
+    // el umbral, del ancho de la puerta y perpendicular a la salida: a medio ancho por un lado está en el umbral; a 1 m hacia fuera, a 1 m
+    cerca(P.aUmbral(pr.umbral, 10 + 3, 20), 0); cerca(P.aUmbral(pr.umbral, 10, 21), 1);
+    // la lateral (+X del glb: a la izquierda de quien sale mirando al norte), a 3 m al oeste y 10 al sur del portón; se sale hacia el oeste
+    cerca(la.umbral.x, 7); cerca(la.umbral.y, 10); cerca(Math.sin(la.fuera.ang), -1); cerca(la.fuera.x, 7 - P.FUERA);
+  });
+  it("el vigía de siempre con los radios del exterior: llegar en quad no se salta la franja; aparecer fuera deja la puerta armada", () => {
+    const m = patiosFalsos(); m.anclaje = { pos: [0, 0], giro: 0 };
+    const a = P.accesos(m)[0]!, v = P.creaVigia([a.umbral], P.RADIO_EXT, P.HISTERESIS_EXT);
+    v.arma(a.fuera.x, a.fuera.y); expect(v.armadas()).toEqual([true]);   // FUERA > RADIO_EXT + HISTERESIS_EXT
+    expect(P.FUERA).toBeGreaterThan(P.RADIO_EXT + P.HISTERESIS_EXT);
+    // en quad a 12 m/s y 6 fotogramas por segundo: 2 m por fotograma, desde 3 m fuera hacia dentro
+    let cruza = null;
+    for (let y = 3; y > -5 && !cruza; y -= 2) cruza = v.paso(0.5, y);
+    expect(cruza).toBe(a.umbral);
+    expect(P.PRECARGA).toBeLessThan(P.SUELTA); expect(P.FRENTE).toBeLessThan(P.PRECARGA);
+  });
+  it("valida(): el anclaje es opcional, y si viene, pos [x, y] y giro en [0, 360) (el ejemplo del contrato lo trae y vale)", () => {
+    const e = ejemplo(); expect(e.anclaje).toBeTruthy(); expect(P.valida(e, "sala-ejemplo")).toEqual([]);
+    const m = patiosFalsos(); expect(P.valida(m, "patios")).toEqual([]);
+    for (const mal of [{ pos: [1], giro: 0 }, { pos: [1, 2], giro: 360 }, { pos: [1, 2] }, null]) {
+      expect(P.valida({ ...m, anclaje: mal }, "patios").join(" "), JSON.stringify(mal)).toMatch(/anclaje/);
+    }
+    expect((esquema as any).properties.anclaje).toBeTruthy();
+  });
+});

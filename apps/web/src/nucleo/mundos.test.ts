@@ -356,7 +356,59 @@ describe("WorldManager con mundos falsos", () => {
 
   it("el gestor no recibe ni toca renderer, scene ni renderer.xr: sus dependencias son el fundido, la Cola y el reloj", () => {
     const b = banco();
-    expect(Object.keys(b.gm).sort()).toEqual(["actual", "actualiza", "ambiente", "antesDelRender", "arranca", "cambia", "dentro", "estado", "fichaDe", "obstaculo", "reaplicaAmbiente", "registra", "retorno", "suelo"]);
+    expect(Object.keys(b.gm).sort()).toEqual(["actual", "actualiza", "ambiente", "antesDelRender", "arranca", "cambia", "dentro", "estado", "fichaDe", "obstaculo", "precarga", "precargado", "reaplicaAmbiente", "registra", "retorno", "suelo", "suelta"]);
+  });
+});
+
+describe("precarga y suelta (eje B, la puerta del cortijo)", () => {
+  // un mundo con precarga(): apunta el contexto que recibe y deja la promesa en manos de la prueba
+  function conPrecarga(b: ReturnType<typeof banco>, id: IdMundo) {
+    const w = b.pon(id, { alSalir: "libera" }) as ReturnType<typeof mundoFalso> & { precarga?(c: ContextoBase): Promise<void> };
+    const ctxs: ContextoBase[] = [];
+    let suelta: () => void = () => {}, falla: (e: Error) => void = () => {};
+    w.precarga = (c: ContextoBase) => { ctxs.push(c); return new Promise<void>((ok, mal) => { suelta = ok; falla = mal; }); };
+    return { w, ctxs, termina: () => suelta(), falla: (e: Error) => falla(e) };
+  }
+  it("precarga hace el import() y precarga() con el exterior activo; carga() recibe EL MISMO contexto y el cambio no repite el import()", async () => {
+    const b = banco(); b.pon("exterior"); const m = conPrecarga(b, "patios");
+    await b.gm.arranca("exterior");
+    expect(b.gm.precarga("patios")).toBe(true);
+    expect(b.gm.precarga("patios")).toBe(false);   // ya hay una
+    await Promise.resolve(); await Promise.resolve();
+    expect(b.defs.patios).toBe(1); expect(m.ctxs.length).toBe(1); expect(b.gm.precargado("patios")).toBe(true);
+    expect(b.gm.actual).toBe("exterior"); expect(b.fundido.traza).toEqual([]);   // nada se ve: ni fundido ni cambio
+    m.termina();
+    const r = await b.gm.cambia("patios");
+    expect(r.ok).toBe(true); expect(b.defs.patios).toBe(1);
+    expect(m.w.ctx()).toBe(m.ctxs[0]);   // carga() con el contexto de la precarga
+    expect(b.gm.precargado("patios")).toBe(false);
+  });
+  it("cambia() con la precarga aún en vuelo la espera (no carga dos veces)", async () => {
+    const b = banco(); b.pon("exterior"); const m = conPrecarga(b, "patios");
+    await b.gm.arranca("exterior"); b.gm.precarga("patios");
+    const p = b.gm.cambia("patios");
+    await new Promise(r => setTimeout(r, 0));
+    expect(b.gm.estado).toBe("cargando"); expect(m.w.llamadas.carga).toBe(0);
+    m.termina();
+    expect((await p).ok).toBe(true); expect(m.w.llamadas.carga).toBe(1); expect(b.defs.patios).toBe(1);
+  });
+  it("suelta() la deshace (libera() y la señal abortada); no toca el activo ni lo que no se precargó", async () => {
+    const b = banco(); b.pon("exterior"); const m = conPrecarga(b, "patios");
+    await b.gm.arranca("exterior");
+    expect(b.gm.suelta("patios")).toBe(false);
+    b.gm.precarga("patios"); await Promise.resolve(); await Promise.resolve();
+    expect(b.gm.suelta("patios")).toBe(true);
+    expect(m.w.llamadas.libera).toBe(1); expect(m.ctxs[0]!.senal.aborted).toBe(true); expect(b.gm.precargado("patios")).toBe(false);
+    expect(b.gm.fichaDe("patios")).toBe("sin_cargar");
+    expect(b.gm.suelta("exterior")).toBe(false); expect(b.gm.precarga("exterior")).toBe(false);   // el activo, ni precarga ni suelta
+  });
+  it("si la precarga falla, se libera lo hecho y el cambio empieza de cero", async () => {
+    const b = banco(); b.pon("exterior"); const m = conPrecarga(b, "patios");
+    await b.gm.arranca("exterior"); b.gm.precarga("patios"); await Promise.resolve(); await Promise.resolve();
+    m.falla(new Error("red")); await new Promise(r => setTimeout(r, 0));
+    expect(b.gm.precargado("patios")).toBe(false); expect(m.w.llamadas.libera).toBe(1);
+    const r = await b.gm.cambia("patios");
+    expect(r.ok).toBe(true); expect(m.w.ctx()).not.toBe(m.ctxs[0]);
   });
 });
 
