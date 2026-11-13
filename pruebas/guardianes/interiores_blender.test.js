@@ -120,3 +120,16 @@ test("la exportación cumple el contrato por construcción: luz en el color base
   // el horneado largo se puede reanudar objeto a objeto
   assert.ok(lee("tuberia/interiores/blender/hornea.py").includes('"reanuda"'));
 });
+
+test("una capa medida se puede dejar de enseñar, pero no tocar: «descarta» mueve objetos enteros a DESCARTES sin abrir su malla", () => {
+  const obra = lee("tuberia/interiores/blender/obra.py");
+  const cuerpo = obra.slice(obra.indexOf("def descarta(op):"), obra.indexOf("def srgb(c):"));
+  assert.ok(cuerpo.length > 100 && cuerpo.includes('coleccion("DESCARTES")') && cuerpo.includes("hide_render = True"));
+  assert.doesNotMatch(cuerpo, /bmesh|to_mesh|from_mesh|\.remove\(o|objects\.remove/, "descarta no edita ni borra mallas");
+  // lo que «abre» y «aparta» quitan tampoco se borra: pasa por a_descartes
+  const fin = { aparta: "def abre(op):", abre: "def descarta(op):" };
+  for (const op of ["aparta", "abre"]) {
+    const c = obra.slice(obra.indexOf("def " + op + "(op):"), obra.indexOf(fin[op]));
+    assert.ok(c.includes("a_descartes(o, bm,"), op + " deja lo quitado en DESCARTES");
+  }
+});

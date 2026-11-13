@@ -10,7 +10,9 @@
 #                   "chapa": {"textura": "texturas/chapa.png", "textura_rugosidad": "texturas/chapa_rug.png"}},  relativas al json)
 #    "operaciones": [
 #     {"op": "aparta", "objeto": "…", "caja": [[x0, y0, z0], [x1, y1, z1]]}     caras dentro de la caja → DESCARTES
-#     {"op": "abre", "objeto": "…", "caja": [[…], […]]}                         corta el objeto por la caja y vacía el hueco
+#     {"op": "abre", "objeto": "…", "caja": [[…], […]]}                         corta el objeto por la caja; lo de dentro → DESCARTES
+#     {"op": "descarta", "objetos": ["…"], "nota": "…"}                         objetos enteros → DESCARTES, sin tocar su malla
+#                                                                               (lo único que se permite con lo MEDIDO)
 #     {"op": "caja", "nombre": "…", "min": […], "max": […], "material": "…"}    un prisma (tapia, columna, murete, solera)
 #     {"op": "porton", "nombre": "…", "de": [x, y], "a": [x, y], "z": z, "alto": h, "apertura": grados,
 #      "dentro": [dx, dy], "material": "…"}                                     dos hojas con bisagra en «de» y en «a»
@@ -113,18 +115,12 @@ def dentro(p, caja, eps=1e-4):
     return all(caja[0][k] - eps <= p[k] <= caja[1][k] + eps for k in range(3))
 
 
-def aparta(op):
-    """Las caras con el centro dentro de la caja pasan a un objeto descartes_<objeto> de DESCARTES"""
-    o = bpy.data.objects[op["objeto"]]; no_medido(o); caja = op["caja"]
-    bm = bmesh.new(); bm.from_mesh(o.data)
-    caras = [f for f in bm.faces if dentro(o.matrix_world @ f.calc_center_median(), caja)]
-    if not caras:
-        bm.free(); return {"caras": 0}
+def a_descartes(o, bm, caras):
+    """Saca `caras` del bmesh de `o` (en coordenadas locales) y las deja en descartes_<objeto>, en DESCARTES; no borra nada"""
     bm.faces.index_update(); idx = {f.index for f in caras}
     otro = bm.copy(); otro.faces.ensure_lookup_table()
     bmesh.ops.delete(otro, geom=[f for f in otro.faces if f.index not in idx], context="FACES")
-    n = len(caras)
-    bmesh.ops.delete(bm, geom=caras, context="FACES"); bm.to_mesh(o.data); bm.free()
+    bmesh.ops.delete(bm, geom=caras, context="FACES")
     nombre = "descartes_" + o.name; d = bpy.data.objects.get(nombre)
     me = bpy.data.meshes.new(nombre + "_" + str(len(bpy.data.meshes))); otro.to_mesh(me); otro.free()
     for m in o.data.materials:
@@ -136,11 +132,22 @@ def aparta(op):
         d["gemelo_nota"] = "piezas apartadas por obra.py (lo confirmado del sitio las sustituye); no se borran"
     else:
         bm2 = bmesh.new(); bm2.from_mesh(d.data); bm2.from_mesh(me); bm2.to_mesh(d.data); bm2.free(); bpy.data.meshes.remove(me)
+
+
+def aparta(op):
+    """Las caras con el centro dentro de la caja pasan a un objeto descartes_<objeto> de DESCARTES"""
+    o = bpy.data.objects[op["objeto"]]; no_medido(o); caja = op["caja"]
+    bm = bmesh.new(); bm.from_mesh(o.data)
+    caras = [f for f in bm.faces if dentro(o.matrix_world @ f.calc_center_median(), caja)]
+    n = len(caras)
+    if caras:
+        a_descartes(o, bm, caras); bm.to_mesh(o.data)
+    bm.free()
     return {"caras": n}
 
 
 def abre(op):
-    """Corta el objeto por las seis caras de la caja (solo las caras que la tocan) y vacía lo que queda dentro"""
+    """Corta el objeto por las seis caras de la caja (solo las caras que la tocan) y lo de dentro pasa a DESCARTES"""
     o = bpy.data.objects[op["objeto"]]; no_medido(o); caja = [Vector(op["caja"][0]), Vector(op["caja"][1])]
     bm = bmesh.new(); bm.from_mesh(o.data); bm.transform(o.matrix_world)
     def toca(f):
@@ -154,9 +161,26 @@ def abre(op):
             bmesh.ops.bisect_plane(bm, geom=geom, plane_co=caja[lado], plane_no=n, dist=1e-5)
     fuera = [f for f in bm.faces if dentro(f.calc_center_median(), caja)]
     n = len(fuera)
-    bmesh.ops.delete(bm, geom=fuera, context="FACES")
-    bm.transform(o.matrix_world.inverted()); bm.to_mesh(o.data); bm.free(); o.data.update()
-    return {"caras_quitadas": n}
+    bm.transform(o.matrix_world.inverted())
+    if fuera:
+        a_descartes(o, bm, fuera)
+    bm.to_mesh(o.data); bm.free(); o.data.update()
+    return {"caras_apartadas": n}
+
+
+def descarta(op):
+    """Objetos enteros a DESCARTES, ocultos y sin tocar su malla (vale para lo MEDIDO: una capa que este mundo no enseña)"""
+    c = coleccion("DESCARTES"); hechos = []
+    for n in op["objetos"]:
+        o = bpy.data.objects.get(n)
+        if o is None:
+            raise SystemExit("no existe el objeto que se quiere descartar: " + n)
+        for col in list(o.users_collection):
+            col.objects.unlink(o)
+        c.objects.link(o); o.hide_render = True; o.hide_viewport = True
+        o["gemelo_nota"] = op.get("nota", "capa que este mundo no enseña (obra.py); no se borra")
+        hechos.append(n)
+    return {"objetos": hechos, "triangulos": sum(sum(len(p.vertices) - 2 for p in bpy.data.objects[n].data.polygons) for n in hechos)}
 
 
 def srgb(c):
@@ -299,7 +323,7 @@ def arbol(op, defs):
     c_tronco = tuple(op.get("color_tronco", (0.11, 0.085, 0.06))); c_relleno = tuple(op.get("color_relleno", (0.05, 0.10, 0.035)))
     ht = h * ft; hc = h - ht; cz = z + ht + hc / 2  # copa: elipsoide de semiejes (r, r, hc/2) centrado en cz
     if tipo in ("copa", "naranjo"):
-        rt = max(0.05, w * 0.045)
+        rt = max(0.04, w * (0.045 if tipo == "copa" else 0.024))
         anillos(p, (x, y, z), [(0, rt * 1.5), (ht * 0.5, rt), (ht + hc * 0.35, rt * 0.7)], 6, tronco, color=c_tronco)
         e = 0.62 if tipo == "copa" else 1.0  # la copa de lóbulos es más hueca: el relleno, más pequeño, no debe asomar
         anillos(p, (x, y, cz - hc * 0.3 * e), [(0, r * 0.35 * e), (hc * 0.25 * e, r * 0.72 * e), (hc * 0.5 * e, r * 0.6 * e), (hc * 0.66 * e, r * 0.2 * e)], 7, relleno, color=c_relleno)
@@ -345,10 +369,18 @@ def arbol(op, defs):
 def arriate(op, defs):
     """Alcorque cuadrado de ladrillo: cuatro bordillos y la tierra dentro, un poco más baja"""
     p = Pieza(); x, y, z = op["en"]; a = op.get("lado", 1.2) / 2; h = op.get("alto", 0.14); g = op.get("grueso", 0.12); mat = op["material"]
-    col = tuple(op.get("color", (0.33, 0.10, 0.05))); tierra = tuple(op.get("color_tierra", (0.05, 0.035, 0.022)))
+    col = tuple(op.get("color", (0.36, 0.14, 0.07))); tierra = tuple(op.get("color_tierra", (0.16, 0.12, 0.065)))
     for x0, y0, x1, y1 in ((-a, -a, a, -a + g), (-a, a - g, a, a), (-a, -a + g, -a + g, a - g), (a - g, -a + g, a, a - g)):
         p.prisma((x + x0, y + y0, z), (x + x1, y + y1, z + h), mat, color=col)
     p.prisma((x - a + g, y - a + g, z), (x + a - g, y + a - g, z + h * 0.6), mat, color=tierra)
+    if op.get("hojas"):
+        # unas matas bajas con flor al pie del árbol, como en los arriates de las fotos
+        rnd = random.Random(op.get("semilla", 1)); n = int(op.get("matas", 6))
+        for k in range(n):
+            ang = rnd.uniform(0, 2 * math.pi); rr = rnd.uniform(0.25, 0.8) * (a - g); lado = rnd.uniform(0.22, 0.34)
+            c = Vector((x + math.cos(ang) * rr, y + math.sin(ang) * rr, z + h * 0.6 + lado * 0.4)); flor = k % 3 == 0
+            tarjeta(p, c, Vector((math.cos(ang), math.sin(ang), rnd.uniform(0.3, 1.0))), lado * (0.6 if flor else 1), (1, 1) if flor else (0, 0), op["hojas"], rnd,
+                    (1, 1, 1) if flor else (0.8, 0.85, 0.7))
     return p.objeto(op["nombre"], defs, op["nombre"])
 
 
@@ -377,7 +409,7 @@ def principal():
     dg = bpy.context.evaluated_depsgraph_get(); sucio = False
     for op in obra["operaciones"]:
         t = op["op"]
-        if t not in ("aparta", "abre") and sucio:
+        if t not in ("aparta", "abre", "descarta") and sucio:
             bpy.context.view_layer.update(); dg = bpy.context.evaluated_depsgraph_get(); sucio = False  # que el rayo no vea lo apartado
         if "en" in op and op["en"][2] is None:
             # sin cota: se posa en lo primero que haya bajo el punto, mirando desde 2 m (por debajo de los tejados)
@@ -389,6 +421,8 @@ def principal():
             r = aparta(op); tocados.add(op["objeto"]); sucio = True
         elif t == "abre":
             r = abre(op); tocados.add(op["objeto"]); sucio = True
+        elif t == "descarta":
+            r = descarta(op); sucio = True
         elif t == "caja":
             p = Pieza(); p.prisma(op["min"], op["max"], op["material"], color=tuple(op.get("color", (1, 1, 1)))); o = p.objeto(op["nombre"], defs, op["nombre"]); r = {}
         elif t == "arriate":
@@ -403,7 +437,7 @@ def principal():
             o = maceta(op, defs); r = {}
         else:
             raise SystemExit("operación desconocida: " + t)
-        if t not in ("aparta", "abre"):
+        if t not in ("aparta", "abre", "descarta"):
             if op.get("grupo"):
                 o["gemelo_grupo"] = op["grupo"]
             nuevos.append(o); r["triangulos"] = sum(len(f.vertices) - 2 for f in o.data.polygons)

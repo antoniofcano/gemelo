@@ -74,7 +74,8 @@ def luz_de_hueco(h, cielo, col, tapan):
     o = bpy.data.objects.new(ld.name, ld); col.objects.link(o)
     o.location = c - d * cielo.get("separacion", 0.35)
     o.rotation_euler = d.to_track_quat("-Z", "Z").to_euler()  # el área alumbra hacia su −Z; su Y local queda vertical
-    o.light_linking.blocker_collection = tapan
+    if tapan is not None:
+        o.light_linking.blocker_collection = tapan
     o["gemelo_procedencia"] = "ilustrativo"; o["gemelo_nota"] = "cielo que entraría por el hueco " + h["nombre"]
     o.visible_camera = False
     return o
@@ -158,11 +159,12 @@ def haz(h, haces, t, dg, saltar, col, mat, semilla):
 def principal():
     a = argumentos(); spec = json.load(open(a["luces"], encoding="utf-8")); esc = bpy.context.scene
     luces = coleccion("LUCES", vacia=True); efectos = coleccion("EFECTOS", vacia=True)
-    tapan = no_tapan(spec.get("no_tapan", []))
+    # sin «no_tapan» no hay enlace de sombras: todo tapa (una colección vacía querría decir que nada tapa)
+    tapan = no_tapan(spec["no_tapan"]) if spec.get("no_tapan") else None
     sol = bpy.data.objects.get("sol")
     if sol is None:
         raise SystemExit("la escena no tiene sol: pasa antes prepara.py")
-    sol.light_linking.blocker_collection = tapan
+    sol.light_linking.blocker_collection = tapan  # None quita el enlace que hubiera
     hechos = [n for n in spec.get("cristales", []) if n in bpy.data.materials and cristal(bpy.data.materials[n])]
     az, el = math.radians(esc["gemelo_sol_azimut"]), math.radians(esc["gemelo_sol_elevacion"])
     t = -Vector((math.sin(az) * math.cos(el), math.cos(az) * math.cos(el), math.sin(el)))  # hacia donde viaja la luz del sol
@@ -183,7 +185,7 @@ def principal():
     for p in spec.get("puntos", []):
         ld = bpy.data.lights.new(p["nombre"], "POINT"); ld.energy = p["w"]; ld.color = p.get("color", (1, 1, 1)); ld.shadow_soft_size = p.get("radio", 0.1)
         o = bpy.data.objects.new(p["nombre"], ld); luces.objects.link(o); o.location = p["en"]; o["gemelo_procedencia"] = "ilustrativo"
-    esc["gemelo_luz_interior"] = "ilustrativa: el escaneo no da sombra al sol ni a las luces de hueco (luces.py)"
+    esc["gemelo_luz_interior"] = "ilustrativa (luces.py)" + (": " + ", ".join(spec["no_tapan"]) + " no da sombra al sol ni a las luces de hueco" if spec.get("no_tapan") else "")
     destino = os.path.abspath(a["guarda"]) if a["guarda"] else bpy.data.filepath
     bpy.ops.wm.save_as_mainfile(filepath=destino, compress=True)
     json.dump(informe, open(os.path.splitext(destino)[0] + ".luces.json", "w", encoding="utf-8"), indent=1, ensure_ascii=False)
