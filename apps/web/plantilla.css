@@ -155,6 +155,11 @@ body { background: #0b0d0a; color: var(--fg); font-family: var(--body); font-siz
 #visitaMuseo .visita-botones button:focus-visible { outline: 2px solid #40f0ff; outline-offset: 2px; }
 #visitaMuseo.visita-compacta { width: auto; padding: 6px; }
 .ficha:not([hidden]) ~ #visitaMuseo { top: auto; bottom: calc(var(--sa-b, 0px) + 96px); }
+/* las máquinas de un interior (eje B, v1.2, mundos/interior/maquinas.ts): un solo interruptor, a la izquierda (la visita va a la derecha); 44 px */
+#maquinasInterior { width: auto; padding: 6px; right: auto; left: calc(var(--sa-l, 0px) + 10px); }
+#maquinasInterior button { font: inherit; color: inherit; min-height: 44px; min-width: 44px; padding: 6px 12px; border-radius: 8px; cursor: pointer; background: rgba(255,255,255,0.06); border: 1px solid var(--hud-borde); }
+#maquinasInterior button[aria-pressed="false"] { background: rgba(64,240,255,0.16); border-color: rgba(64,240,255,0.55); }
+#maquinasInterior button:focus-visible { outline: 2px solid #40f0ff; outline-offset: 2px; }
 
 /* ventanas: una grande a la vez (decisión 87). Lateral bajo la barra en escritorio; hoja inferior en móvil vertical; lateral alto en horizontal */
 .ventana { position: absolute; z-index: 25; top: calc(var(--sa-t) + 64px); right: calc(var(--sa-r) + 10px); width: min(380px, calc(100% - 20px)); max-height: calc(100% - var(--sa-t) - var(--sa-b) - 84px); display: flex; flex-direction: column; background: var(--hud-fuerte); border: 1px solid var(--hud-borde); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.35); font-size: 13.5px; }

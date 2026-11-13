@@ -10,7 +10,9 @@
 //     interior está anclado (eje B, la puerta del cortijo: porton.ts);
 //   · la dirección: cada cambio que sale bien deja ?mundo=<id> con history.replaceState (recargar te deja en ese mundo; volver al exterior lo quita);
 //   · la puerta del cortijo (porton.ts): el componente «porton-cortijo» del exterior, y al entrar y salir de un interior, el quad aparcado y el dron;
-//   · la visita del museo (visita.ts, v1.1): lo de la UI que necesita (THREE, el documento, el panel de VR y cómo abrirlo en la pestaña «Mundo»).
+//   · la visita del museo (visita.ts, v1.1): lo de la UI que necesita (THREE, el documento, el panel de VR y cómo abrirlo en la pestaña «Mundo»);
+//   · la luz aparte (v1.2): el entorno de las piezas con luz propia, hecho con la sonda (entornoDeSonda: SphericalHarmonics3 de three en un
+//     equirectangular pequeño y PMREMGenerator), y si el sistema pide reducir el movimiento (las máquinas entran paradas).
 import type { Manifiesto } from "../../nucleo/componentes.ts";
 import type { IdMundo, Pose2, Puerta, ResultadoCambio } from "../../nucleo/mundos.ts";
 import type { T } from "../comun/tipos.ts";
@@ -61,9 +63,34 @@ export function urlConMundo(href: string, id: IdMundo): string | null {
   return u.pathname + (q.length ? "?" + q.join("&") : "") + u.hash;
 }
 
+/** lado del equirectangular de la sonda: PMREM toma un cubo de lado ancho/4 (64 px: lodMax 6) [SUPUESTO: de sobra para 9 armónicos] */
+const ANCHO_SONDA = 256;
+
+/** El entorno de lo que tiene luz propia (contrato §1d): la radiancia de la sonda (9 × RGB, SphericalHarmonics3.getAt) en un equirectangular de
+ *  256 × 128, pasado por PMREMGenerator (lo que three usa para los brillos y la luz difusa de un envMap). Se hace una vez al cargar el interior. */
+export function entornoDeSonda(THREE: T, renderer: T, sonda: number[]): { textura: T; dispose(): void } | null {
+  if (!THREE || !renderer || !THREE.PMREMGenerator || !THREE.SphericalHarmonics3 || !THREE.DataUtils || sonda.length !== 27) return null;
+  // en medio flotante (HalfFloat): el flotante entero no siempre se filtra en las gafas (OES_texture_float_linear)
+  const sh = new THREE.SphericalHarmonics3().fromArray(sonda), W = ANCHO_SONDA, H = W / 2, px = new Uint16Array(W * H * 4), h = (v: number): number => THREE.DataUtils.toHalfFloat(Math.max(0, v));
+  const n = new THREE.Vector3(), c = new THREE.Vector3();
+  for (let j = 0; j < H; j++) {
+    const th = ((j + 0.5) / H - 0.5) * Math.PI, ct = Math.cos(th), st = Math.sin(th);
+    for (let i = 0; i < W; i++) {
+      const ph = ((i + 0.5) / W - 0.5) * 2 * Math.PI, k = (j * W + i) * 4;   // la inversa de equirectUv de three: u = atan(z, x)/2π + ½, v = asin(y)/π + ½
+      sh.getAt(n.set(ct * Math.cos(ph), st, ct * Math.sin(ph)), c);
+      px[k] = h(c.x); px[k + 1] = h(c.y); px[k + 2] = h(c.z); px[k + 3] = h(1);
+    }
+  }
+  const eq = new THREE.DataTexture(px, W, H, THREE.RGBAFormat, THREE.HalfFloatType);
+  eq.mapping = THREE.EquirectangularReflectionMapping; eq.needsUpdate = true;
+  const pm = new THREE.PMREMGenerator(renderer), rt = pm.fromEquirectangular(eq);
+  pm.dispose(); eq.dispose();
+  return { textura: rt.texture, dispose: () => rt.dispose() };
+}
+
 export function cableaInteriores(d: DepsCableaInteriores) {
   let primeraFuera: boolean | null = null, ultimo: IdMundo | null = null, destino: IdMundo | null = null, llegadaFuera: Pose2 | null = null;
-  const creados = new Map<IdMundo, { estado(): unknown; visita?(): { accion(a: string): void; estado(): unknown } | null }>();
+  const creados = new Map<IdMundo, { estado(): unknown; visita?(): { accion(a: string): void; estado(): unknown } | null; maquinas?(): { pon(on: boolean): void; estado(): unknown } | null }>();
   const aviso = (s: string, ms?: number): void => { const h = d.Hud(); if (h) h.aviso(s, ms); };
   // todo cambio de mundo pasa por aquí: recuerda adónde se va (para el quad y la VR al salir) y, si sale bien, lo apunta en la dirección
   function cambia(a: IdMundo, llegada?: Pose2 | null, puerta?: Puerta | null): Promise<ResultadoCambio> {
@@ -124,6 +151,8 @@ export function cableaInteriores(d: DepsCableaInteriores) {
       },
       consola: d.consola || null,
       visita: documento ? { THREE: d.THREE, documento, PanelVR: d.PanelVR || null, abrePanel } : null,
+      entorno: sonda => entornoDeSonda(d.THREE, d.renderer, sonda),
+      reducido: () => { const mm = d.ventana.matchMedia as ((q: string) => { matches: boolean }) | undefined; try { return !!(mm && mm.call(d.ventana, "(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; } },
     };
   }
   for (const id of d.ids) d.gm.registra(() => d.modulo().then(m => { const w = m.creaInterior(deps(id)); creados.set(id, w); ultimo = id; return w; }), id);
@@ -134,6 +163,12 @@ export function cableaInteriores(d: DepsCableaInteriores) {
     const w = ultimo ? creados.get(ultimo) : undefined, v = w && w.visita ? w.visita() : null;
     if (v && typeof a === "string") v.accion(a);
     return v ? v.estado() : null;
+  };
+  // las máquinas (v1.2), para ?debug y las pruebas: su estado y, con «marcha» o «para», lo mismo que el interruptor
+  d.ventana.__maquinas = (a?: string) => {
+    const w = ultimo ? creados.get(ultimo) : undefined, m = w && w.maquinas ? w.maquinas() : null;
+    if (m && (a === "marcha" || a === "para")) m.pon(a === "marcha");
+    return m ? m.estado() : null;
   };
   // para las pruebas y la consola (mientras el exterior no tenga su puerta al cortijo [SUPUESTO: no está situado en el índice]): __cambiaMundo("patios")
   d.ventana.__cambiaMundo = (a: IdMundo) => cambia(a);
