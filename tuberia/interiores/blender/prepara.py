@@ -1,15 +1,18 @@
 # Prepara un .blend de mundo interior (de separa.py) para hornear la luz, sin hornear:
 #   blender --background <mundo.blend> --python prepara.py -- [--margen-uv 0.004] [--margen-uv-denso 0.001] [--denso-tri-m2 100]
 #           [--objetivo-tm 80] [--angulo-uv 66] [--azimut 210]
-#           [--elevacion 50] [--sol 3.0] [--cielo 1.0] [--forma-uv CONCAVE|CONVEX|AABB] [--objetos a,b] [--solo-luz] [--guarda <otro.blend>]
+#           [--elevacion 50] [--norte 0] [--sol 3.0] [--color-sol r,g,b] [--cielo 1.0] [--nota-sol "…"]
+#           [--forma-uv CONCAVE|CONVEX|AABB] [--objetos a,b] [--solo-luz] [--solo-uv] [--guarda <otro.blend>]
 #   1. segundo juego de UV «luz» por objeto (Smart UV Project, con margen entre islas; el UV de las texturas no se toca)
 #      y, por objeto, su superficie, la ocupación del UV, los téxeles por metro que saldrían a 1024, 2048 y 4096 y la
 #      resolución que da --objetivo-tm (en pantalla hasta 4096, en Quest hasta 2048; queda en gemelo_resolucion_*);
 #   2. comprueba que cada Principled tiene color, normal y ORM (oclusión/rugosidad/metal) conectados como en el glb;
 #   3. sol y cielo parametrizados: la orientación real de la nave NO se sabe ([SUPUESTO]); el azimut se mide en planta
 #      desde +Y de Blender (= −Z del glb) hacia +X, y queda en la escena (gemelo_sol_azimut, gemelo_sol_elevacion);
+#      --norte N dice hacia dónde cae el norte real (grados en planta desde +Y hacia +X): entonces --azimut es el
+#      azimut geográfico del sol y en planta se pone azimut + N; --color-sol tiñe el sol (lineal), para un sol bajo;
 #   4. Cycles en CPU con valores de partida para hornear (hornea.py los sustituye por los suyos).
-# Con --solo-luz rehace solo el sol y el cielo (no toca los UV). Escribe <blend>.prepara.json con lo medido.
+# Con --solo-luz rehace solo el sol y el cielo (no toca los UV); con --solo-uv, solo los UV de --objetos (no toca la luz). Escribe <blend>.prepara.json con lo medido.
 import bpy, bmesh, sys, json, math, os, time
 from mathutils import Vector
 
@@ -18,20 +21,21 @@ UV_LUZ = "luz"
 
 def argumentos():
     a = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    o = {"margen-uv": 0.004, "angulo-uv": 66.0, "azimut": 210.0, "elevacion": 50.0, "sol": 3.0, "cielo": 1.0, "solo-luz": False, "guarda": None, "forma-uv": "CONCAVE", "objetos": None, "margen-uv-denso": 0.001, "denso-tri-m2": 100.0, "objetivo-tm": 80.0}
+    o = {"margen-uv": 0.004, "angulo-uv": 66.0, "azimut": 210.0, "elevacion": 50.0, "sol": 3.0, "cielo": 1.0, "solo-luz": False, "guarda": None, "forma-uv": "CONCAVE", "objetos": None, "margen-uv-denso": 0.001, "denso-tri-m2": 100.0, "objetivo-tm": 80.0,
+         "norte": 0.0, "color-sol": "1,1,1", "solo-uv": False, "nota-sol": None}
     i = 0
     while i < len(a):
         k = a[i].lstrip("-")
-        if k == "solo-luz":
+        if k in ("solo-luz", "solo-uv"):
             o[k] = True; i += 1; continue
-        o[k] = a[i + 1] if k in ("guarda", "forma-uv", "objetos") else float(a[i + 1]); i += 2
+        o[k] = a[i + 1] if k in ("guarda", "forma-uv", "objetos", "color-sol", "nota-sol") else float(a[i + 1]); i += 2
     return o
 
 
 def horneables():
     """Objetos de malla visibles en el render, fuera de AUXILIAR y DESCARTES"""
     fuera = set()
-    for n in ("AUXILIAR", "DESCARTES"):
+    for n in ("AUXILIAR", "DESCARTES", "EFECTOS"):
         c = bpy.data.collections.get(n)
         if c:
             fuera |= {o.name for o in c.all_objects}
@@ -103,10 +107,10 @@ def revisa_material(m):
     return r
 
 
-def sol_y_cielo(az, el, fuerza_sol, fuerza_cielo):
-    esc = bpy.context.scene
+def sol_y_cielo(az_geo, el, fuerza_sol, fuerza_cielo, norte=0.0, color=(1, 1, 1), nota=None):
+    esc = bpy.context.scene; az = (az_geo + norte) % 360
     d = bpy.data.lights.get("sol") or bpy.data.lights.new("sol", "SUN")
-    d.energy = fuerza_sol; d.angle = math.radians(0.53)
+    d.energy = fuerza_sol; d.angle = math.radians(0.53); d.color = color
     sol = bpy.data.objects.get("sol") or bpy.data.objects.new("sol", d)
     if sol.name not in esc.collection.objects:
         esc.collection.objects.link(sol)
@@ -128,9 +132,10 @@ def sol_y_cielo(az, el, fuerza_sol, fuerza_cielo):
     fondo = nt.nodes.new("ShaderNodeBackground"); fondo.inputs["Strength"].default_value = fuerza_cielo
     sal = nt.nodes.new("ShaderNodeOutputWorld")
     nt.links.new(cielo.outputs["Color"], fondo.inputs["Color"]); nt.links.new(fondo.outputs["Background"], sal.inputs["Surface"])
-    esc["gemelo_sol_azimut"] = az; esc["gemelo_sol_elevacion"] = el
-    esc["gemelo_sol_nota"] = "[SUPUESTO] orientación de la nave desconocida: azimut en planta desde +Y de Blender (= −Z del glb) hacia +X"
-    return {"azimut": az, "elevacion": el, "sol_w_m2": fuerza_sol, "cielo": fuerza_cielo, "tipo_cielo": cielo.sky_type}
+    esc["gemelo_sol_azimut"] = az; esc["gemelo_sol_elevacion"] = el; esc["gemelo_norte"] = norte
+    esc["gemelo_sol_nota"] = nota or "[SUPUESTO] orientación de la nave desconocida: azimut en planta desde +Y de Blender (= −Z del glb) hacia +X"
+    return {"azimut_en_planta": az, "azimut_geografico": az_geo, "norte": norte, "elevacion": el, "sol_w_m2": fuerza_sol,
+            "color_sol": list(color), "cielo": fuerza_cielo, "tipo_cielo": cielo.sky_type, "nota": esc["gemelo_sol_nota"]}
 
 
 def cycles_de_partida():
@@ -172,12 +177,25 @@ def principal():
         informe["area_total_m2"] = round(area, 1)
         mats = {m.name: revisa_material(m) for o in objs for m in o.data.materials if m}
         informe["materiales"] = mats
-        cycles_de_partida()
-    informe["sol_y_cielo"] = sol_y_cielo(a["azimut"], a["elevacion"], a["sol"], a["cielo"])
+        if not a["solo-uv"]:
+            cycles_de_partida()
+    if not a["solo-uv"]:
+        informe["sol_y_cielo"] = sol_y_cielo(a["azimut"], a["elevacion"], a["sol"], a["cielo"], a["norte"],
+                                             tuple(float(x) for x in a["color-sol"].split(",")), a["nota-sol"])
     destino = os.path.abspath(a["guarda"]) if a["guarda"] else bpy.data.filepath
     bpy.ops.wm.save_as_mainfile(filepath=destino, compress=True)
     informe["segundos"] = round(time.time() - t0, 1)
-    json.dump(informe, open(os.path.splitext(destino)[0] + ".prepara.json", "w", encoding="utf-8"), indent=1, ensure_ascii=False)
+    # una pasada parcial (--objetos, --solo-luz, --solo-uv) completa el informe que hubiera, no lo pisa
+    ruta = os.path.splitext(destino)[0] + ".prepara.json"
+    if (a["objetos"] or a["solo-luz"] or a["solo-uv"]) and os.path.exists(ruta):
+        previo = json.load(open(ruta, encoding="utf-8"))
+        for k in ("uv_luz", "materiales"):
+            if k in previo:
+                previo[k].update(informe.get(k, {})); informe[k] = previo[k]
+        if "uv_luz" in informe:
+            informe["area_total_m2"] = round(sum(f["area_m2"] for f in informe["uv_luz"].values()), 1)
+        informe = {**previo, **informe}
+    json.dump(informe, open(ruta, "w", encoding="utf-8"), indent=1, ensure_ascii=False)
     print("PREPARA", json.dumps({k: v for k, v in informe.items() if k in ("area_total_m2", "sol_y_cielo", "segundos")}, ensure_ascii=False))
 
 
