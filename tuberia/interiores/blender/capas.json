@@ -3,6 +3,7 @@
  "procedencias": ["medido", "deducido", "ilustrativo", "auxiliar"],
  "mundos": {
   "fabrica": {
+   "_nota": "El glb trae dos capas superpuestas (el escaneo del estado actual y la obra restaurada). Desde el 2026-11-13 el mundo fábrica enseña SOLO la restaurada: separa.py sigue repartiendo las dos, y la obra del mundo (obra.py, «descarta») lleva lo medido a DESCARTES sin tocarlo. Los pozuelos son de la bodega, otro mundo futuro.",
    "medido": ["suelo", "pozuelos", "muros", "techo", "maquinaria", "escombro"],
    "ilustrativo": ["muros_obra", "suelo_obra", "carpinteria", "tejado", "estructura", "maquinaria_rec"],
    "auxiliar": ["sombras", "sombras_rec"]
