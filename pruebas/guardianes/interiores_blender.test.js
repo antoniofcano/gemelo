@@ -305,6 +305,22 @@ test("exporta.mjs --luz: el mapa RGB en occlusionTexture con texCoord 1, unlit s
   assert.ok(d2.getRoot().listMeshes().every(me => me.listPrimitives().every(p => p.getAttribute("COLOR_0"))), "COLOR_0 (el envejecido) se queda");
 });
 
+test("exporta.mjs: dos correas iguales conservan cada una su material (base__maq_<id>); lo demás igual se junta", { skip: SIN_GLTF_TUBERIA }, async () => {
+  const { remata } = await import(pathToFileURL(path.join(DIR, "exporta.mjs")).href);
+  const { Document, NodeIO } = require(path.join(DIR, "node_modules", "@gltf-transform", "core"));
+  const doc = new Document(), buf = doc.createBuffer(), esc = doc.createScene();
+  const nombres = ["m_cuero__maq_correa_a", "m_cuero__maq_correa_b", "cal__uno", "cal__dos"];
+  for (const n of nombres) {
+    const p = doc.createPrimitive().setMaterial(doc.createMaterial(n).setBaseColorFactor([0.5, 0.4, 0.3, 1]))
+      .setAttribute("POSITION", doc.createAccessor().setType("VEC3").setArray(new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0])).setBuffer(buf));
+    esc.addChild(doc.createNode(n).setMesh(doc.createMesh().addPrimitive(p)));
+  }
+  const { bytes: sal } = await remata(await new NodeIO().writeBinary(doc), null, () => null);
+  const quedan = (await new NodeIO().readBinary(sal)).getRoot().listMaterials().map(m => m.getName());
+  for (const n of ["m_cuero__maq_correa_a", "m_cuero__maq_correa_b"]) assert.ok(quedan.includes(n), n + " se perdió en dedup (la correa no correría por su cuenta)");
+  assert.strictEqual(quedan.filter(n => n.startsWith("cal__")).length, 1, "los materiales iguales que no son de máquina sí se juntan");
+});
+
 test("la tubería de la 1.1 por construcción: copia, nada se borra, horneado aparte reanudable, sonda, mapa en el UV «luz» y vagoneta apagada", () => {
   const maq = lee("tuberia/interiores/blender/maquinas.py"), hor = lee("tuberia/interiores/blender/hornea.py"), exp = lee("tuberia/interiores/blender/exporta.py");
   assert.match(maq, /os\.path\.abspath\(a\["guarda"\]\) == abierto[\s\S]{0,40}raise SystemExit/, "maquinas.py no guarda encima del abierto");

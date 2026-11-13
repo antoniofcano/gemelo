@@ -44,6 +44,9 @@ export async function remata(bytes, luz = null, leeFichero = f => fs.readFileSyn
     const m = p.getMaterial();
     if (p.getAttribute('COLOR_0') && !(m && m.getAlphaMode() === 'MASK')) { p.setAttribute('COLOR_0', null); resumen.sin_color = (resumen.sin_color || 0) + 1; }
   }
+  // los materiales propios de una máquina (base__maq_<id>, maquinas_def.py) no se juntan: una correa que corre desplaza el
+  // mapa de SU material, y dos correas iguales con un solo material correrían a la misma velocidad. dedup compara los extras.
+  for (const m of doc.getRoot().listMaterials()) if (/__maq_/.test(m.getName())) m.setExtras({ ...m.getExtras(), gemelo_material: m.getName() });
   await doc.transform(prune(), dedup());
   // dedup junta mapas iguales y deja la ranura con texCoord 0: se vuelve a poner
   if (luz) for (const m of doc.getRoot().listMaterials()) if (luz[m.getName()] && m.getOcclusionTexture()) m.getOcclusionTextureInfo().setTexCoord(1);
