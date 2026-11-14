@@ -133,7 +133,7 @@ export var HazasPuro: T = (function () {
       var filas: T = [], ot = "OlivarTrack · leído el " + fecha(f.datos_de);
       var quien = f.es_mia ? "Tu haza." : "Haza de otro hogar. Ves sus datos públicos; no quién es su titular.";
       if (!f.es_mia && typeof f.alias === "string" && f.alias) quien += " El hogar se muestra como «" + f.alias + "».";
-      if (num(f.superficie_ha)) filas.push({ k: "Superficie", v: n1(f.superficie_ha, 2) + " ha", de: "medida sobre la linde que dibuja la oficina" });
+      if (num(f.superficie_ha)) filas.push({ k: "Superficie", v: n1(f.superficie_ha, 2) + " ha", de: "calculada sobre la linde que dibuja la oficina" });
       var ol = f.olivos || {};
       if (ol.lidar && num(ol.lidar.n)) filas.push({ k: "Olivos contados", v: n1(ol.lidar.n), de: "detectado (LiDAR + regla) · " + (ol.lidar.fuente || "LiDAR") });
       if (ol.declarado) filas.push({ k: "Olivos declarados", v: num(ol.declarado.n) ? n1(ol.declarado.n) : "sin dato", de: "declarado" + (ol.declarado.fuente ? " · " + ol.declarado.fuente : "") });

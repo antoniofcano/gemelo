@@ -221,7 +221,7 @@ export function creaHistoria(dp: DepsHistoria) {
   };
 
   var ESCENAS_H: T = !esH ? [] : [
-    { t: "Cuatro fincas, veintisiete parcelas", fuente: "OlivarTrack · fincas y olivosParcela",
+    { t: fincas.length + (fincas.length === 1 ? " finca, " : " fincas, ") + parcelas.length + (parcelas.length === 1 ? " parcela" : " parcelas"), fuente: "OlivarTrack · fincas y olivosParcela",
       ir: function () { pon("orto"); marca("cLinde", true); marca("cCopas", false); marca("cMarc", false); marca("cDesf", false); marca("cNdvi", false); marca("cTinte", false); marca("cSolo", false); pintaTodo(colF); vistaFinca(-1, -0.5, 0.78, 1); },
       html: function () {
         var ha = parcelas.reduce(function (a?: T, p?: T) { return a + p.ha; }, 0), pastos = parcelas.filter(function (p?: T) { return p.pasto; });

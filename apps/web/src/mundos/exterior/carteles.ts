@@ -93,7 +93,7 @@ export const CartelesPuro = (function () {
     const area = num(f.superficie_ha) ? n1(f.superficie_ha, 2) + " ha" : "", ol = f.olivos && f.olivos.lidar, oli = ol && num(ol.n) && ol.naturaleza === "detectado" ? n1(ol.n) + " olivos" : "";
     const fu = oli ? txt(ol.fuente, 40) || "LiDAR" : "";
     if (area && oli) o.datos.push({ txt: area + " · " + oli, de: "detectado (LiDAR + regla) · linde y " + fu });
-    else if (area) o.datos.push({ txt: "Superficie: " + area, de: "medida sobre la linde de la oficina" });
+    else if (area) o.datos.push({ txt: "Superficie: " + area, de: "calculada sobre la linde de la oficina" });
     else if (oli) o.datos.push({ txt: "Olivos contados: " + n1(ol.n), de: "detectado (LiDAR + regla) · " + fu });
     const fe = ultimo(f.fenologia), av = ctx && recoleccion(ctx.hoy) ? f.avance : null, porc = av && num(av.pct) && av.pct <= 100 ? av.pct : null, partes: string[] = [];   // fuera de recolección ni se mira el avance
     if (fe) partes.push(fenologia(fe.bbch));

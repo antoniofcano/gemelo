@@ -94,3 +94,12 @@ test("L3-16, L3-17 y L3-18: lo supuesto se dice (alturas mínimas, arroyo con ag
   assert.doesNotMatch(est, /el arroyo lleva agua/);
   assert.doesNotMatch(lee("apps/web/src/mundos/exterior/parcelas.ts"), /consultado el 25-oct-2026/);
 });
+
+test("L3-07 y L3-14: la superficie de una haza es «calculada» sobre su linde (no «medida») y la historia no lleva recuentos de fincas escritos a mano", () => {
+  const malas = [];
+  for (const f of FUENTES.filter(f => f.startsWith("apps/web/src/"))) lee(f).split("\n").forEach((l, i) => {
+    if (/^\s*(\/\/|\*|\/\*)/.test(l)) return;
+    if (/medida sobre la linde/.test(l) || /"(Una|Dos|Tres|Cuatro|Cinco) fincas?, /.test(l)) malas.push(f + ":" + (i + 1));
+  });
+  assert.deepStrictEqual(malas, []);
+});
