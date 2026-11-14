@@ -339,6 +339,12 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 
 
 ### Corregido
+- Puerta pesada del 2026-11-15:
+  - Visita guiada: la palabra vence a los 2 min aunque su temporizador salte 1 ms antes de su hora; antes podía no vencer nunca.
+  - Expulsar: la oficina o el guía ven las conexiones que de verdad tenía quien sale; el centinela ya no se adelanta a la ruta.
+  - Corros: al salir de uno, la voz no vuelve a entrar en la sala ya borrada.
+  - Pantallas estrechas: la columna del estado ya no tapa «⋯» y el chat se aparta para dejar ver «Hablar». Probado en Chrome sin pantalla; iPhone y Quest no probados.
+  - Pruebas: las e2e que expulsan usan familias propias en cada pasada.
 - Seguridad de la api (auditoría del 2026-11-14 de lo que la de noviembre no miró: 0 críticos, 0 altos, 4 medios y 8 bajos, todos arreglados):
   - Solo titular: borrar la cuenta, descargar sus datos, cambiar el alias y cerrar todas sus sesiones ya no se pueden hacer desde unas gafas vinculadas.
   - Cuentas de oficina: borrar una pide confirmación reciente y nunca deja sin la última admin; una cuenta oficina no cierra ni ve las sesiones de un admin.
