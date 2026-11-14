@@ -405,10 +405,12 @@ paths:
   /api/sesion/salir-todas:
     post:
       summary: Cierra todas las sesiones del hogar
+      description: "Solo con sesión de titular (enlace o llave): unas gafas vinculadas no echan al resto de aparatos de la cuenta (403 solo_titular; para salir ellas, POST /api/sesion/salir). Auditoría A-02 (2026-11-14)"
       security: [{ sesion: [] }]
       responses:
         "204": { description: cerradas }
         "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "solo_titular (unas gafas vinculadas, también las de la oficina: ADR-0028) u Origin no admitido", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
 
   /api/interno/autoriza:
     get:
@@ -503,6 +505,7 @@ paths:
   /api/yo/alias:
     put:
       summary: Alias del hogar (3–20 caracteres) y si se muestra en sus hazas
+      description: "Solo con sesión de titular (enlace o llave); unas gafas vinculadas, 403 solo_titular (auditoría A-02)"
       security: [{ sesion: [] }]
       requestBody:
         required: true
@@ -512,6 +515,8 @@ paths:
       responses:
         "204": { description: guardado }
         "400": { description: alias no válido o reservado }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "solo_titular (unas gafas vinculadas, también las de la oficina: ADR-0028) u Origin no admitido", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "409": { description: alias ocupado }
 
   /api/yo/normas:
@@ -734,19 +739,23 @@ paths:
   /api/yo/datos:
     get:
       summary: Todo lo que se guarda del hogar (derecho de acceso y portabilidad, RGPD)
-      description: "Incluye `llaves_de_acceso` (OF13b-4): por llave, nombre, creada_en, ultima_vez_en, revocada_en, sincronizada y descubrible (las vivas y las revocadas, que se guardan para la auditoría hasta borrar la cuenta). Nunca el id de credencial, la clave pública ni el contador. La exportación de la oficina (GET /api/admin/hogares/{id}/exportar) usa la misma lista"
+      description: "Incluye `llaves_de_acceso` (OF13b-4): por llave, nombre, creada_en, ultima_vez_en, revocada_en, sincronizada y descubrible (las vivas y las revocadas, que se guardan para la auditoría hasta borrar la cuenta). Nunca el id de credencial, la clave pública ni el contador. La exportación de la oficina (GET /api/admin/hogares/{id}/exportar) usa la misma lista. Lleva el correo: solo con sesión de titular (enlace o llave); unas gafas vinculadas, 403 solo_titular (auditoría A-02)"
       security: [{ sesion: [] }]
       responses:
         "200": { description: JSON para descargar }
         "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "solo_titular (unas gafas vinculadas, también las de la oficina: ADR-0028)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
 
   /api/yo:
     delete:
       summary: Borra la cuenta y, en cascada, todo lo suyo (derecho de supresión, RGPD)
+      description: "Solo con sesión de titular (enlace o llave): unas gafas vinculadas, 403 solo_titular. Una cuenta de oficina o admin, además, con confirmación reciente (403 confirmacion_requerida) y nunca la última cuenta admin activa (409 ultimo_admin), como al borrar desde la oficina. Auditoría A-01 (2026-11-14)"
       security: [{ sesion: [] }]
       responses:
         "204": { description: borrada }
         "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "solo_titular (unas gafas vinculadas), confirmacion_requerida (cuenta de oficina sin confirmación reciente) u Origin no admitido", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { description: "ultimo_admin: es la única cuenta admin activa", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
 
   /api/admin/hogares:
     get:
@@ -838,6 +847,7 @@ paths:
   /api/admin/hogares/{id}/sesiones:
     get:
       summary: "Sesiones abiertas de una cuenta ({ sesiones: [{ id, aparato, por_codigo_corto, creada_en, ultima_actividad_en, expira_en }], aparatos_oficina })"
+      description: "Las de otra cuenta de oficina o admin, solo un admin (403 sin_permiso; las propias, sí). Auditoría A-10"
       security: [{ sesion: [] }]
       parameters: [{ $ref: "#/components/parameters/Id" }]
       responses:
@@ -904,7 +914,7 @@ paths:
 
   /api/admin/hogares/{id}/haza:
     put:
-      summary: "Asigna (o quita, con null) la haza de una familia (decisión 91: una por hogar; suelta las demás). Si la tenía otra familia se le quita y se dice en quitada_a"
+      summary: "Asigna (o quita, con null) la haza de una familia (decisión 91: una por hogar; suelta las demás). Si la tenía otra familia se le quita y se dice en quitada_a. A una cuenta de oficina o admin, solo un admin (403, auditoría A-10)"
       security: [{ sesion: [] }]
       parameters: [{ $ref: "#/components/parameters/Id" }]
       requestBody:
@@ -1198,15 +1208,18 @@ paths:
   /api/admin/hogares/{id}/revocar:
     post:
       summary: Cierra todas las sesiones de un hogar
+      description: "Oficina (rol oficina o admin). Las de otra cuenta de oficina o admin, solo un admin (403 sin_permiso; las propias, sí). Auditoría A-03 (2026-11-14)"
       security: [{ sesion: [] }]
       parameters: [{ $ref: "#/components/parameters/Id" }]
       responses:
         "204": { description: cerradas }
+        "404": { description: la cuenta no existe }
         "403": { $ref: "#/components/responses/SinPermiso" }
 
   /api/admin/hazas/{id}/hogar:
     put:
       summary: Asigna (o quita) la haza a un hogar (decisión 12)
+      description: "Con un hogar, las mismas reglas que PUT /api/admin/hogares/{id}/haza: una cuenta de baja no recibe hazas (409 de_baja, decisión 108), un hogar tiene una haza (decisión 91: suelta las otras que tuviera) y a una cuenta de oficina o admin solo la toca un admin (403). Con null, quita el titular (403 si el titular es una cuenta de oficina y no eres admin). Auditoría A-04 (2026-11-14)"
       security: [{ sesion: [] }]
       parameters: [{ $ref: "#/components/parameters/Id" }]
       requestBody:
@@ -1218,6 +1231,7 @@ paths:
         "204": { description: asignada }
         "400": { description: el hogar no existe }
         "404": { description: la haza no existe }
+        "409": { description: "de_baja: la cuenta está de baja (reactívala antes)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "403": { $ref: "#/components/responses/SinPermiso" }
 
   /api/admin/sincronia:

@@ -5,12 +5,13 @@
 //  - escribir (personalizar, subir, sugerir): sesión de TITULAR (nacida del enlace mágico, no de unas gafas vinculadas:
 //    decisión 96) y solo en olivos que caen dentro de una haza asignada a su hogar;
 //  - ver y denunciar: cualquier sesión (decisión 16);
-//  - bandeja y retirar: rol admin (la oficina).
+//  - bandeja y retirar: la oficina (rol oficina o admin, guarda OFICINA).
 // Límites: por IP en cada ruta y, además, por hogar y hora (subidas y escrituras), con el mismo texto para todos.
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { requiereRol, requiereSesion } from "../auth/roles.ts";
+import { requiereTitular } from "../oficina/acceso.ts";
 import { audita, esOficina } from "../auth/servicio.ts";
 import { enTransaccion } from "../bd/pool.ts";
 import type { Contexto } from "../contexto.ts";
@@ -45,12 +46,8 @@ export function olivoPublico(f: FilaPublica) {
   };
 }
 
-/** Sesión de titular: con sesión (401 si no) y nacida del enlace mágico (403 si es de un aparato vinculado). */
-export async function soloTitular(req: FastifyRequest, rep: FastifyReply): Promise<void> {
-  await requiereSesion(req, rep);
-  if (rep.sent) return;
-  if (req.session.origen === "vinculo") await rep.code(403).send({ error: "solo_titular", mensaje: TEXTO_SOLO_TITULAR });
-}
+/** Sesión de titular: con sesión (401 si no) y nacida del enlace mágico (403 si es de un aparato vinculado). La guarda es la común (oficina/acceso.ts). */
+export const soloTitular = requiereTitular(TEXTO_SOLO_TITULAR);
 
 const falla = (codigo: number, error: string, mensaje?: string): Respuesta => ({ codigo, cuerpo: mensaje ? { error, mensaje } : { error } });
 
@@ -304,11 +301,11 @@ export async function rutasVida(app: FastifyInstance, ctx: Contexto): Promise<vo
   });
 
   // ---------------------------------------------------------------- la oficina
-  const soloAdmin = requiereRol("oficina", "admin");
+  const soloOficina = requiereRol("oficina", "admin");   // rol oficina o admin (no solo admin: OFICINA.md)
   const ESTADOS = ["nueva", "vista", "pasada_ot", "descartada"] as const;
 
   app.get<{ Querystring: { estado?: (typeof ESTADOS)[number]; limite?: number } }>("/api/admin/bandeja", {
-    preHandler: soloAdmin,
+    preHandler: soloOficina,
     schema: { querystring: { type: "object", additionalProperties: false, properties: { estado: { type: "string", enum: [...ESTADOS] }, limite: { type: "integer", minimum: 1, maximum: 500 } } } },
   }, async (req, rep) => {
     const r = await bd.query(
@@ -339,7 +336,7 @@ export async function rutasVida(app: FastifyInstance, ctx: Contexto): Promise<vo
   // Cambiar el estado de una entrada. «pasada_ot» exige el id de la propuesta creada en OlivarTrack (el gemelo no escribe
   // allí por su cuenta, decisión 94). Descartar una denuncia la da por resuelta con «se mantiene».
   app.post<{ Params: { id: number }; Body: { estado: "vista" | "pasada_ot" | "descartada"; ot_propuesta_id?: string } }>("/api/admin/bandeja/:id/estado", {
-    preHandler: soloAdmin,
+    preHandler: soloOficina,
     schema: {
       params: PARAM_ID,
       body: {
@@ -369,7 +366,7 @@ export async function rutasVida(app: FastifyInstance, ctx: Contexto): Promise<vo
   // Retirar en un clic (decisión 93): deja de verse y de servirse al momento; las denuncias quedan resueltas, lo pendiente
   // de la bandeja sobre ese contenido pasa a «vista», el hogar recibe un aviso y queda en la auditoría.
   app.post<{ Params: { id: number }; Body: { motivo: string } }>("/api/admin/personalizaciones/:id/retirar", {
-    preHandler: soloAdmin,
+    preHandler: soloOficina,
     schema: { params: PARAM_ID, body: { type: "object", additionalProperties: false, required: ["motivo"], properties: { motivo: { type: "string", minLength: 1, maxLength: 200 } } } },
   }, async (req, rep) => {
     const motivo = limpia(req.body.motivo);
@@ -395,7 +392,7 @@ export async function rutasVida(app: FastifyInstance, ctx: Contexto): Promise<vo
   // La oficina solo ve y retira decoraciones (decisión 178): quita la decoración de una personalización visible; lo demás
   // (nombre, foto) se queda. Avisa al hogar y queda en la auditoría.
   app.post<{ Params: { id: number }; Body: { motivo: string } }>("/api/admin/personalizaciones/:id/decoracion/retirar", {
-    preHandler: soloAdmin,
+    preHandler: soloOficina,
     schema: { params: PARAM_ID, body: { type: "object", additionalProperties: false, required: ["motivo"], properties: { motivo: { type: "string", minLength: 1, maxLength: 200 } } } },
   }, async (req, rep) => responde(rep, await enTransaccion(bd, c => retiraDecoracionOficina(c, { personalizacion: req.params.id, oficinaId: req.session.hogarId!, motivo: req.body.motivo }))));
 }
