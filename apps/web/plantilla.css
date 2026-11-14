@@ -58,6 +58,10 @@ body { background: #0b0d0a; color: var(--fg); font-family: var(--body); font-siz
 
 /* arriba a la izquierda: estado (brújula, cómo te mueves, el tiempo) */
 .hud-estado { position: absolute; top: calc(var(--sa-t) + 10px); left: calc(var(--sa-l) + 10px); display: flex; flex-direction: column; gap: 6px; align-items: flex-start; max-width: calc(100% - 20px); }
+/* L6-05: la voz (la palabra, el micro y el corro) en su sitio, bajo «lo tuyo»; la columna va por encima de la palanca y de los flotantes (z 22) y por debajo de ventanas y fichas */
+.hud-estado { z-index: 23; }
+.hud-voz { display: grid; gap: 6px; width: min(320px, calc(100vw - 20px)); }
+.hud-voz:empty { display: none; }
 .hud-fila { display: flex; gap: 6px; align-items: center; position: relative; flex-wrap: wrap; }
 .norte { width: var(--toque); height: var(--toque); border-radius: 50%; display: grid; place-items: center; padding: 0; font-family: var(--display); font-weight: 700; font-size: .8125rem; line-height: 1; cursor: pointer; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .norte span { display: block; transition: transform .15s; }

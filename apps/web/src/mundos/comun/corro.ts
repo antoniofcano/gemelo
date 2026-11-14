@@ -364,12 +364,54 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
     try { no.focus(); } catch (e: any) {}   // el foco en «Ahora no» (como el aviso de F3j): aceptar es una decisión expresa
   }
   var claveCaja: any = "";
+  // L6-05: la caja vive en su sitio reservado del HUD (#hudVoz, bajo «lo tuyo» en la columna del estado: no tapa el tiempo ni «lo tuyo», y Movibles ya aparta
+  // el chat y el mapa de esa columna); sin él (otra página, las pruebas), flota como antes
+  function ranura() { try { return document.getElementById ? document.getElementById("hudVoz") : null; } catch (e: any) { return null; } }
+  // L6-06: cada fila (y cada invitación enviada) se crea una vez y se pone al día en su sitio: los botones no se destruyen cuando alguien empieza o deja de hablar,
+  // así no se pierde el foco ni un toque a medias; solo cuando entra o sale alguien se reordena, y el foco vuelve al botón que lo tenía
+  var filasCaja: any = Object.create(null), filasEnv: any = Object.create(null);
+  var CSS_MINI: any = "font:inherit;color:inherit;background:none;border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:1px 10px;margin-left:6px;cursor:pointer;min-height:";
+  function mini(txt?: any) { var h: any = px(); return el("button", { type: "button", style: CSS_MINI + h + "px;min-width:" + h + "px" }, [txt]); }
+  function filaCaja(f?: any) {
+    var r: any = filasCaja[f.prefijo];
+    if (!r) {
+      r = filasCaja[f.prefijo] = { f: f, span: el("span", {}, []) }; r.li = el("li", { style: "margin:3px 0" }, [r.span]);
+      if (!f.yo) {
+        r.sil = mini("Silenciar"); r.sil.title = "Solo en este aparato; nadie se entera"; r.sil.addEventListener("click", function () { silencia(r.f.prefijo, !r.f.callado); });
+        r.blo = mini("Bloquear"); r.blo.addEventListener("click", function () { var ids: any = identidadesDe(r.f.prefijo); if (ids.length) bloquea(ids[0], r.f.alias); });   // bloquear y avisar piden su identidad en la sala libre: la de su avatar, si se le ve
+        r.avi = mini("Avisar"); r.avi.addEventListener("click", function () { var ids: any = identidadesDe(r.f.prefijo); if (ids.length) abreAvisar(ids[0], r.f.alias); });
+        [r.sil, r.blo, r.avi].forEach(function (b?: any) { r.li.appendChild(b); });
+      }
+    }
+    r.f = f;
+    var t: any = (f.habla ? "🔊 " : "") + f.alias + (f.habla ? " · habla" : "") + (f.callado ? " · silenciado por ti" : ""); if (r.span.textContent !== t) r.span.textContent = t;
+    if (r.sil) {
+      var ts: any = f.callado ? "Volver a oír" : "Silenciar"; if (r.sil.textContent !== ts) r.sil.textContent = ts; r.sil.setAttribute("aria-pressed", f.callado ? "true" : "false");
+      var hay: any = identidadesDe(f.prefijo).length > 0; r.blo.hidden = !hay; r.avi.hidden = !hay;
+    }
+    return r.li;
+  }
+  function filaEnviada(i?: any) {
+    var r: any = filasEnv[i.id];
+    if (!r) { r = filasEnv[i.id] = { b: mini("Retirar") }; r.b.addEventListener("click", function () { retiraInv(i.id); }); r.li = el("li", { style: "margin:3px 0;opacity:0.85" }, [el("span", {}, ["Esperando a " + i.alias + "…"]), r.b]); }
+    return r.li;
+  }
+  function ordena(lista?: any, nodos?: any, mapa?: any, vivos?: any) {   // deja en la lista justo esos nodos, en ese orden, tocando lo mínimo
+    Object.keys(mapa).forEach(function (k?: any) { if (!vivos[k]) delete mapa[k]; });
+    var igual: any = lista.children.length === nodos.length && nodos.every(function (n?: any, i?: any) { return lista.children[i] === n; });
+    if (igual) return;
+    var foco: any = null; try { foco = document.activeElement; } catch (e: any) { foco = null; }
+    while (lista.firstChild) lista.removeChild(lista.firstChild);
+    nodos.forEach(function (n?: any) { lista.appendChild(n); });
+    if (foco && foco.focus && nodos.some(function (n?: any) { return n === foco || (n.contains && n.contains(foco)); })) { try { foco.focus(); } catch (e: any) {} }
+  }
   function pintaCaja() {
     var w: any = C.vista(E, hablanPorPrefijo(), callados);
     if (!w.visible || vr()) { if (caja) caja.hidden = true; claveCaja = ""; return; }
     var k: any = JSON.stringify(w); if (caja && !caja.hidden && k === claveCaja) return; claveCaja = k;
     if (!caja) {
-      caja = el("section", { id: "corroCaja", "aria-label": "Tu corro con voz", style: "position:absolute;left:12px;top:56px;z-index:31;width:min(300px,calc(100% - 24px));max-height:46%;overflow:auto;padding:8px 10px;border-radius:12px;background:rgba(16,20,24,0.9);color:#fff;font:.875rem/1.4 system-ui,sans-serif;box-sizing:border-box" });
+      var sitio: any = ranura();
+      caja = el("section", { id: "corroCaja", "aria-label": "Tu corro con voz", style: (sitio ? "position:relative;width:100%;max-height:40vh;" : "position:absolute;left:12px;top:56px;z-index:31;width:min(300px,calc(100% - 24px));max-height:46%;") + "overflow:auto;padding:8px 10px;border-radius:12px;background:rgba(16,20,24,0.9);color:#fff;font:.875rem/1.4 system-ui,sans-serif;box-sizing:border-box" });
       caja._t = el("h3", { style: "margin:0 0 4px;font-size:.875rem" }); caja._l = el("ul", { style: "list-style:none;margin:0;padding:0" });
       caja._h = el("p", { id: "corroHablan", role: "status", "aria-live": "polite", "aria-atomic": "true", style: "margin:4px 0;font-weight:600;color:#ffd58a" });
       caja._e = el("ul", { style: "list-style:none;margin:4px 0 0;padding:0" });
@@ -377,33 +419,12 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
       caja._s.addEventListener("click", function () { sale("salir"); });
       caja._n = el("p", { style: "margin:4px 0 0;font-size:.6875rem;opacity:0.75" }, ["Solo os oís quienes estáis en esta lista. Nada se graba."]);
       [caja._t, caja._l, caja._h, caja._e, caja._s, caja._n].forEach(function (x?: any) { caja.appendChild(x); });
-      (visor || document.body).appendChild(caja);
+      (sitio || visor || document.body).appendChild(caja);
     }
     caja.hidden = false; caja._t.textContent = w.titulo; caja._h.textContent = w.hablan; caja._s.hidden = !E.corro; caja._n.hidden = !E.corro;
-    while (caja._l.firstChild) caja._l.removeChild(caja._l.firstChild);
-    w.filas.forEach(function (f?: any) {
-      var hijos: any = [el("span", {}, [(f.habla ? "🔊 " : "") + f.alias + (f.habla ? " · habla" : "") + (f.callado ? " · silenciado por ti" : "")])];
-      if (!f.yo) {
-        var b: any = el("button", { type: "button", style: "font:inherit;color:inherit;background:none;border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:1px 10px;margin-left:6px;cursor:pointer;min-height:" + px() + "px;min-width:" + px() + "px", "aria-pressed": f.callado ? "true" : "false", title: "Solo en este aparato; nadie se entera" }, [f.callado ? "Volver a oír" : "Silenciar"]);
-        b.addEventListener("click", function () { silencia(f.prefijo, !f.callado); });
-        hijos.push(b);
-        var ids: any = identidadesDe(f.prefijo);   // bloquear y avisar piden su identidad en la sala libre: la de su avatar, si se le ve
-        if (ids.length) {
-          var bb: any = el("button", { type: "button", style: "font:inherit;color:inherit;background:none;border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:1px 10px;margin-left:6px;cursor:pointer;min-height:" + px() + "px;min-width:" + px() + "px" }, ["Bloquear"]);
-          bb.addEventListener("click", function () { bloquea(ids[0], f.alias); });
-          var ba: any = el("button", { type: "button", style: "font:inherit;color:inherit;background:none;border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:1px 10px;margin-left:6px;cursor:pointer;min-height:" + px() + "px;min-width:" + px() + "px" }, ["Avisar"]);
-          ba.addEventListener("click", function () { abreAvisar(ids[0], f.alias); });
-          hijos.push(bb, ba);
-        }
-      }
-      caja._l.appendChild(el("li", { style: "margin:3px 0" }, hijos));
-    });
-    while (caja._e.firstChild) caja._e.removeChild(caja._e.firstChild);
-    w.enviadas.forEach(function (i?: any) {
-      var r: any = el("button", { type: "button", style: "font:inherit;color:inherit;background:none;border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:1px 10px;margin-left:6px;cursor:pointer;min-height:" + px() + "px;min-width:" + px() + "px" }, ["Retirar"]);
-      r.addEventListener("click", function () { retiraInv(i.id); });
-      caja._e.appendChild(el("li", { style: "margin:3px 0;opacity:0.85" }, [el("span", {}, ["Esperando a " + i.alias + "…"]), r]));
-    });
+    var vf: any = {}, ve: any = {};
+    ordena(caja._l, w.filas.map(function (f?: any) { vf[f.prefijo] = 1; return filaCaja(f); }), filasCaja, vf);
+    ordena(caja._e, w.enviadas.map(function (i?: any) { ve[i.id] = 1; return filaEnviada(i); }), filasEnv, ve);
   }
   function hablanPorPrefijo() { var o: any = {}; Object.keys(hablan).forEach(function (id?: any) { var p: any = C.prefijoDe(id); if (p) o[p] = true; }); return o; }
   function repintaTodo() { if (!vivo) return; pintaInvitacion(); pintaCaja(); if (typeof dp.PanelVR !== "undefined" && dp.PanelVR && dp.PanelVR.repinta) dp.PanelVR.repinta(); }
@@ -601,7 +622,7 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
     if (avisoP) { var a: any = avisoP; a.res(false); }
     cierraAvisar(); cierraDialogo(); cierraLamina();
     if (invEl && invEl.parentNode) invEl.parentNode.removeChild(invEl); invEl = null;
-    if (caja && caja.parentNode) caja.parentNode.removeChild(caja); caja = null;
+    if (caja && caja.parentNode) caja.parentNode.removeChild(caja); caja = null; filasCaja = Object.create(null); filasEnv = Object.create(null);
     quitaFilas.splice(0).forEach(function (q?: any) { try { q(); } catch (e: any) {} });
     [quitaAcc, quitaTipo, quitaTema].forEach(function (q?: any) { if (q) try { q(); } catch (e: any) {} }); quitaAcc = quitaTipo = quitaTema = null;
     quitaAjustes(); libera3D(); materiales.libera();   // A3-6b: y lo que la fábrica tenga de este dueño

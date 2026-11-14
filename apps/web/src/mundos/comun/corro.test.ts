@@ -45,7 +45,7 @@ class El {
   addEventListener(n: string, f: (e: unknown) => void) { (this.oy[n] = this.oy[n] || []).push(f); } removeEventListener() {}
   focus() {} getContext() { return new Proxy({}, { get: (_t, k) => (k === "measureText" ? () => ({ width: 10 }) : () => {}), set: () => true }); }
 }
-function monta({ vr = false } = {}) {
+function monta({ vr = false, ranura = null as El | null } = {}) {
   const srv = { corro: { sala: SALA, miembros: [{ prefijo: YO, alias: "Yo", yo: true }, { prefijo: ANA, alias: "Ana" }] } as any, retenidas: [] as (() => void)[], retener: false };
   const J = (st: number, j: unknown) => ({ ok: st < 300, status: st, json: () => Promise.resolve(j) });
   const fetch = (u: string, o: any) => {
@@ -69,14 +69,15 @@ function monta({ vr = false } = {}) {
   const Ajustes = { registra: (_p: string, _e: unknown, _t: unknown, fn: (k: string, v: unknown) => void) => { cuenta.pestana++; fn("voz.cercania", true); return () => { cuenta.pestanaQuitada++; }; }, lee: () => true, pon: () => true, pinta() {} };
   const Materiales = creaMateriales({ THREE: THREE as unknown as ThreeMin, busqueda: "" });
   const dp: DepsCorro = { THREE, scene, camera: new THREE.PerspectiveCamera(), Materiales, location: { search: "" }, window: {}, fetch,
-    document: { createElement: (t: string) => new El(t), createTextNode: (t: string) => ({ texto: t }), body: new El("body"), activeElement: null },
+    document: { createElement: (t: string) => new El(t), createTextNode: (t: string) => ({ texto: t }), body: new El("body"), activeElement: null, getElementById: (id: string) => (id === "hudVoz" ? ranura : null) },
     D: {}, ConfigPuro: { prefijoApi: () => "/api/" }, LaminasPuro: { lineas: (t: string) => [t] }, visor,
     VRX: { on: vr }, Aparato: { clase: () => "escritorio" }, PanelVR: { filas: (_p: string, d: unknown) => { filas.push(d); return () => { cuenta.filasQuitadas++; }; }, repinta() {} },
     Ajustes, Hud: { aviso() {} }, Laminas: { abre: (o: { id: string }) => { laminas[o.id] = o; return true; }, cierra: (id: string) => { delete laminas[id]; return true; }, hay: (id: string) => id in laminas, repinta: () => true },
     Entidades: { registra: () => { cuenta.tipos++; return () => { cuenta.tiposQuitados++; }; } }, TextDecoder: undefined };
-  const n = { emite: () => 0, on: (e: string) => { bus[e] = (bus[e] || 0) + 1; limpias.push(() => { bus[e]!--; }); }, limpia: (f: () => void) => { limpias.push(f); return f; } };
+  const oy: Record<string, ((d?: unknown) => void)[]> = {};
+  const n = { emite: () => 0, on: (e: string, f: (d?: unknown) => void) => { bus[e] = (bus[e] || 0) + 1; (oy[e] = oy[e] || []).push(f); limpias.push(() => { bus[e]!--; }); }, limpia: (f: () => void) => { limpias.push(f); return f; } };
   const api: any = creaCorro(dp, n, R, P, Vz);
-  return { api, srv, scene, visor, filas, cuenta, laminas, bus, voz, dp, libera: () => { api.libera(); limpias.splice(0).forEach(f => f()); }, gancho: (a: string, x?: unknown) => (dp.window as any).__corro(a, x) };
+  return { api, srv, scene, visor, filas, cuenta, laminas, bus, voz, dp, oy, libera: () => { api.libera(); limpias.splice(0).forEach(f => f()); }, gancho: (a: string, x?: unknown) => (dp.window as any).__corro(a, x) };
 }
 const espera = async (k = 6) => { for (let i = 0; i < k; i++) await new Promise(r => setTimeout(r, 0)); };
 /** lo que cuelga de la escena: geometrías, materiales y texturas, para ver que se sueltan con su dispose */
@@ -115,6 +116,28 @@ describe("creaCorro: componente de todo mundo con libera() de verdad (A3-6b)", (
     expect(m.cuenta.temaQuitado).toBe(m.cuenta.tema); expect(m.cuenta.pestanaQuitada).toBe(m.cuenta.pestana);
     expect(m.voz.corro).toBe(false); expect((m.dp.window as any).__corro).toBeUndefined();
     expect(Object.values(m.bus).every(v => v === 0)).toBe(true);
+  });
+
+  it("L6-05: con el sitio reservado del HUD (#hudVoz) la caja del corro va allí y no flota sobre el estado", async () => {
+    const ranura = new El("div"), m = monta({ ranura });
+    await espera(); m.voz.entra!(true); await espera(); m.api.tarde(0.25); await espera();
+    const caja = ranura.children.find(c => c.attrs.id === "corroCaja" || c.id === "corroCaja");
+    expect(caja).toBeTruthy(); expect(m.visor.children.some(c => c === caja)).toBe(false);
+    expect(String((caja as any).style.cssText)).not.toMatch(/position:absolute/);
+    m.libera(); expect(ranura.children).toHaveLength(0);
+  });
+  it("L6-06: cuando alguien empieza o deja de hablar, la lista se pone al día sin rehacer sus botones (no se pierde el foco ni el toque)", async () => {
+    const m = monta();
+    await espera(); m.voz.entra!(true); await espera(); m.api.tarde(0.25); await espera();
+    const caja = m.visor.children.find(c => c.id === "corroCaja" || c.attrs.id === "corroCaja") as any, lista = caja._l as El;
+    const botones = () => lista.children.flatMap(li => li.children.filter(h => h.tagName === "BUTTON"));
+    const antes = botones(); expect(antes.length).toBeGreaterThanOrEqual(1);
+    (m.oy["voz:habla"] || []).forEach(f => f({ identidad: ANA_ID, habla: true })); m.api.tarde(0.25);
+    expect(lista.children.map(li => li.children[0]!.textContent).join("|")).toMatch(/Ana · habla/);
+    expect(botones()).toEqual(antes);   // los mismos nodos: el que tenía el foco sigue ahí
+    (m.oy["voz:habla"] || []).forEach(f => f({ identidad: ANA_ID, habla: false })); m.api.tarde(0.25);
+    expect(botones()).toEqual(antes);
+    m.libera();
   });
 
   it("hallazgo A3-6b: liberado mientras la voz entraba en el corro, la voz sale en cuanto entra", async () => {

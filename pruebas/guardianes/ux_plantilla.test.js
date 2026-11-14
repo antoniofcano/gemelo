@@ -199,3 +199,11 @@ test("L6-09: la Ayuda describe los controles de hoy (la palanca, tocar el suelo 
   const kbd = new Set([...ayuda.matchAll(/<kbd>([^<]+)<\/kbd>/g)].map(m => m[1]));
   for (const k of ["W A S D", "Mayús", "Intro", "Inicio", "0", "Q", "E", "V", "Espacio", "C", "L", "1", "6", "M", "H", "F", "F1", "Esc", "←", "→", "T"]) assert.ok(kbd.has(k), "falta <kbd>" + k + "</kbd> en la Ayuda");
 });
+
+test("L6-05: la voz (la palabra de la guiada, el micro y el corro) tiene su sitio reservado en la columna del estado, bajo «lo tuyo», y sus módulos lo usan", () => {
+  const estado = PL.slice(PL.indexOf('id="hudEstado"'), PL.indexOf("<!-- arriba a la derecha"));
+  assert.ok(estado.indexOf('id="hudVoz"') > estado.indexOf('id="hudPersonal"'), "#hudVoz dentro de #hudEstado, después de «lo tuyo»");
+  assert.match(css, /\.hud-estado \{ z-index: 23; \}/, "la columna por encima de la palanca y los flotantes");
+  for (const f of ["apps/web/src/mundos/comun/corro.ts", "apps/web/src/mundos/comun/habla.ts", "apps/web/src/ui/guiada.ts"]) assert.match(lee(f), /getElementById\("hudVoz"\)/, f + " usa #hudVoz");
+  assert.match(lee("apps/web/src/ui/hud.ts"), /"hudEstado"/, "Hud.zonasProhibidas guarda la columna del estado (con la voz dentro) de los flotantes");
+});

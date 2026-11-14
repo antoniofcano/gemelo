@@ -314,8 +314,9 @@ export function creaHabla(dp: DepsHabla, n?: any, Vz?: any, Gd?: any) {
   function monta() {
     if (caja) return;
     var h: any = px();
+    var sitio: any = null; try { sitio = document.getElementById ? document.getElementById("hudVoz") : null; } catch (e: any) { sitio = null; }   // L6-05: su sitio reservado en el HUD (bajo «lo tuyo»); sin él, flota como antes
     caja = el("div", { id: "hablaCaja", role: "group", "aria-label": "Micrófono de la visita guiada", hidden: true,
-      style: "position:absolute;left:50%;top:50px;transform:translateX(-50%);z-index:31;width:max-content;max-width:min(440px,calc(100% - 24px));padding:8px 10px;border-radius:16px;background:rgba(16,20,24,0.92);color:#fff;font:.875rem/1.4 system-ui,sans-serif;box-sizing:border-box;text-align:center" });
+      style: (sitio ? "position:relative;width:100%;" : "position:absolute;left:50%;top:50px;transform:translateX(-50%);z-index:31;width:max-content;max-width:min(440px,calc(100% - 24px));") + "padding:8px 10px;border-radius:16px;background:rgba(16,20,24,0.92);color:#fff;font:.875rem/1.4 system-ui,sans-serif;box-sizing:border-box;text-align:center" });
     icoEl = el("span", { "aria-hidden": "true", style: "margin-right:6px" }); txtEl = el("span");
     estadoEl = el("div", { id: "hablaEstado", role: "status", "aria-live": "polite", "aria-atomic": "true", style: "font-weight:600;margin:0 0 4px" }, [icoEl, txtEl]);
     boton = el("button", { id: "hablaBoton", type: "button", style: CSS_BTN + ";min-height:" + h + "px;min-width:" + h + "px" }, ["Hablar"]);
@@ -326,7 +327,7 @@ export function creaHabla(dp: DepsHabla, n?: any, Vz?: any, Gd?: any) {
     var fila: any = el("div", { style: "display:flex;flex-wrap:wrap;justify-content:center;align-items:center" }, [boton, silencio, etiqueta]);
     caja.appendChild(estadoEl); caja.appendChild(fila); caja.appendChild(avisoEl);
     caja._et = etiqueta;
-    (visor || document.body).appendChild(caja);
+    (sitio || visor || document.body).appendChild(caja);
     // el botón: pulsar = clic; mantener = apretar y soltar (el puntero), o la barra y Intro mantenidas
     boton.addEventListener("pointerdown", function (e?: any) { if (modoAj === "mantener" && esMicro()) { puntero = true; if (e.preventDefault) e.preventDefault(); gesto("baja", "boton"); } else if (esMano()) { /* el clic */ } });
     ["pointerup", "pointercancel", "pointerleave"].forEach(function (nm?: any) { boton.addEventListener(nm, function () { if (puntero) { puntero = false; gesto("suelta", "boton"); } }); });

@@ -151,9 +151,10 @@ export function GuiadaMotor(dp: DepsGuiada, n: T, R: T, P: T, Vz: T) {
   }
   function montaTira() {
     if (tira) return;
-    tira = el("div", { id: "guiadaPalabra", style: "position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:31;max-width:min(420px,calc(100% - 32px));padding:6px 12px;border-radius:999px;background:rgba(16,20,24,0.9);color:#fff;font:600 .875rem/1.4 system-ui,sans-serif;box-sizing:border-box;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis", hidden: true, "aria-hidden": "true" });
+    var sitio: T = null; try { sitio = document.getElementById ? document.getElementById("hudVoz") : null; } catch (e: T) { sitio = null; }   // L6-05: con las cajas de voz, bajo «lo tuyo»; no cae sobre la telemetría del dron
+    tira = el("div", { id: "guiadaPalabra", style: (sitio ? "position:relative;max-width:100%;" : "position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:31;max-width:min(420px,calc(100% - 32px));") + "padding:6px 12px;border-radius:999px;background:rgba(16,20,24,0.9);color:#fff;font:600 .875rem/1.4 system-ui,sans-serif;box-sizing:border-box;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis", hidden: true, "aria-hidden": "true" });
     avisos = el("div", { id: "guiadaAvisos", role: "status", "aria-live": "polite", style: "position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap" });
-    (dp.visor || document.body).appendChild(tira); (dp.visor || document.body).appendChild(avisos);
+    (sitio || dp.visor || document.body).appendChild(tira); (dp.visor || document.body).appendChild(avisos);
   }
   function pintaTira() {
     if (!tira) return;
