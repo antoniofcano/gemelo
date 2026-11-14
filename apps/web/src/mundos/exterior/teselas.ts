@@ -106,6 +106,8 @@ export interface DepsMundo {
   /** la Cola del exterior (02b_cola: ColaExt), que se monta después: por eso es una función. Sin ella (null), se decodifica en el acto */
   cola?: (() => ColaMin | null | undefined) | null;
   consola?: Consola;
+  /** Estado.exag (L8-08): la exageración vertical; la cámara está en metros de la escena (exagerados) y la cota de la tesela, sin exagerar. Sin ella, 1 */
+  exag?: (() => number) | null;
 }
 
 /** L2-03: a partir de aquí (m, en 3D, al rectángulo de la tesela) se sueltan los datos de una tesela cargada. Por encima de los 1800 de carga (RADIO_CARGA)
@@ -205,6 +207,7 @@ export function creaMundo(deps: DepsMundo) {
       const M = D.mosaico; c.drawImage(mos.img, (vx0 - M.x0) / M.res, (M.yN - vy1) / M.res, ancho / M.res, alto / M.res, 0, 0, dw, dh); return;
     }
     c.fillStyle = "#8d8668"; if (c.fillRect) c.fillRect(0, 0, dw, dh);
+    if (mos.img) { const M = D.mosaico; c.drawImage(mos.img, (vx0 - M.x0) / M.res, (M.yN - vy1) / M.res, ancho / M.res, alto / M.res, 0, 0, dw, dh); }   // L8-13: debajo, el mosaico de 1 m, para que donde falta la tesela no quede el color liso
     lista.forEach(function (t) {
       const im: (LienzoMin | ImagenMin) | null = t.ortCv || (t.ortImg && t.ortImg.complete && t.ortImg.naturalWidth ? t.ortImg : null); if (!im) return;
       const ax0 = Math.max(vx0, t.v[0] as number), ax1 = Math.min(vx0 + ancho, t.v[2] as number), ay1 = Math.min(vy1, t.v[3] as number), ay0 = Math.max(vy1 - alto, t.v[1] as number); if (ax1 <= ax0 || ay1 <= ay0) return;
@@ -253,7 +256,7 @@ export function creaMundo(deps: DepsMundo) {
   let enVuelo = 0;
   function dist(t: Tesela, px: number, py: number, pz: number): number {   // distancia en 3D de un punto de la cámara al rectángulo de la tesela
     const v = t.v as [number, number, number, number], hx = (v[2] - v[0]) / 2, hy = (v[3] - v[1]) / 2, mx = (v[0] + v[2]) / 2, my = (v[1] + v[3]) / 2;
-    const dx = Math.max(0, Math.abs(px - mx) - hx), dz = Math.max(0, Math.abs(pz + my) - hy), dy = Math.max(0, py - (t.hc === undefined ? 0 : t.hc)); return Math.sqrt(dx * dx + dz * dz + dy * dy);
+    const dx = Math.max(0, Math.abs(px - mx) - hx), dz = Math.max(0, Math.abs(pz + my) - hy), dy = Math.max(0, py - (t.hc === undefined ? 0 : t.hc * (deps.exag ? deps.exag() || 1 : 1))); return Math.sqrt(dx * dx + dz * dz + dy * dy);   // L8-08: la cota, exagerada como la cámara
   }
   // L1-05: los oyentes, uno por rebanada en la Cola (sin Cola, en el acto)
   function* avisaG(t: Tesela, gen: number): Generator<unknown, void, unknown> {
@@ -288,7 +291,8 @@ export function creaMundo(deps: DepsMundo) {
   function* aseguraOrto(t: Tesela): Generator<unknown, void, unknown> {   // decodifica (en su propia rebanada) la ortofoto de la tesela y de sus vecinas cargadas: el color de un punto a veces cae en la de al lado
     const ks = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
     for (let i = 0; i < ks.length; i++) {
-      const k = ks[i] as [number, number], v = G[(t.ky + k[1] - ky0) * NKX + (t.kx + k[0] - kx0)]; if (!v || v.ortPix || !v.ortImg || !v.ortImg.complete || !v.ortImg.naturalWidth) continue;
+      const k = ks[i] as [number, number], v = vecina(t, k[0], k[1]); if (!v ||   // L8-09: vecina() comprueba los límites en x y en y
+         v.ortPix || !v.ortImg || !v.ortImg.complete || !v.ortImg.naturalWidth) continue;
       if (k[0] || k[1]) { if (Math.abs(k[0]) + Math.abs(k[1]) > 1) continue; }   // las diagonales no hacen falta: el desplazamiento es de pocos metros
       v.uso = ahoraMs(); decodificaOrto(v); yield;
     }

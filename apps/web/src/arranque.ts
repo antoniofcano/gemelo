@@ -68,6 +68,7 @@ function arranca(): void {
     imagen: function () { return new Image() as any; },
     trae: function (u) { return fetch(u); },
     cola: function () { return typeof ColaExt !== "undefined" ? ColaExt : null; },   // 02b_cola se monta después: se pregunta al llegar cada tesela
+    exag: function () { return typeof Estado !== "undefined" ? Estado.exag : 1; },   // L8-08: la cota de la tesela se exagera como la cámara
     consola: console
   });
   var suelo = Mundo.suelo, copaAlta = Mundo.copaAlta, colorSuelo = Mundo.colorSuelo, orto = Mundo.orto;

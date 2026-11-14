@@ -17,9 +17,10 @@ function jsonTesela(cota: number): string {
   return JSON.stringify({ dtm: aB64(dtm), chm: aB64(chm), suelo: aB64(suelo), pts: aB64(pts), np: 2 });
 }
 /** un mundo de n teselas en fila (x = 0, 4, 8…), con un fetch que se resuelve a mano (pendientes) y una Cola del exterior si se pide */
-function monta(o: { n?: number; conCola?: boolean } = {}) {
+function monta(o: { n?: number; conCola?: boolean; rejilla?: Array<[number, number]>; exag?: () => number } = {}) {
   const n = o.n || 2, teselas: Record<string, { kx: number; ky: number; v: number[]; np: number }> = {};
   for (let i = 0; i < n; i++) teselas["k" + i] = { kx: i, ky: 0, v: [i * TS, 0, (i + 1) * TS, TS], np: 2 };
+  if (o.rejilla) { for (const k of Object.keys(teselas)) delete teselas[k]; o.rejilla.forEach(([kx, ky]) => { teselas["k" + kx + "_" + ky] = { kx, ky, v: [kx * TS, ky * TS, (kx + 1) * TS, (ky + 1) * TS], np: 2 }; }); }
   let reloj = 0;
   const pendientes: Array<{ url: string; resuelve: (r: RespuestaMin) => void }> = [], imagenes: ImagenMin[] = [];
   let tic = 0;   // el reloj de la Cola avanza 1 ms en cada lectura: corre(1.5) hace exactamente una rebanada
@@ -30,7 +31,7 @@ function monta(o: { n?: number; conCola?: boolean } = {}) {
     lienzo: () => ({ width: 2, height: 2, getContext: () => ({ drawImage() {}, getImageData: () => ({ data: new Uint8ClampedArray(16) }) }) }),
     imagen: () => { const im: ImagenMin = { onload: null, onerror: null, src: "", complete: true, naturalWidth: 2, width: 2, height: 2 }; imagenes.push(im); return im; },
     trae: (url) => new Promise<RespuestaMin>((resuelve) => { pendientes.push({ url, resuelve }); }),
-    cola: o.conCola === false ? null : () => colaExt, consola: { error() {} }
+    cola: o.conCola === false ? null : () => colaExt, consola: { error() {} }, ...(o.exag ? { exag: o.exag } : {})
   };
   const M = creaMundo(deps);
   /** responde a la petición i con la tesela de cota z (o con un 404) y deja que corran las promesas */
@@ -144,5 +145,40 @@ describe("el componente «mundo-teselas»", () => {
     M.actualiza(2, 50, -2); await responde(0, 5); cola.corre(1e6);
     M.componente.libera(null);
     expect((M.lista[0] as Tesela).dtm).toBeNull();
+  });
+});
+
+describe("L8-08: la distancia a una tesela exagera su cota como la cámara", () => {
+  it("con una cámara a 2 m sobre un suelo de 80 m, la distancia es 2 con cualquier exageración (antes, 82 con exag 2)", () => {
+    for (const e of [1, 2, 3]) {
+      const { M } = monta({ exag: () => e }), t = M.lista[0] as Tesela; t.hc = 80;
+      expect(M.dist(t, 2, 80 * e + 2, -2)).toBeCloseTo(2, 9);
+    }
+  });
+  it("sin exag en las dependencias (otros montajes), como siempre: exag 1", () => {
+    const { M } = monta(), t = M.lista[0] as Tesela; t.hc = 80; expect(M.dist(t, 2, 82, -2)).toBeCloseTo(2, 9);
+  });
+});
+
+describe("L8-09: aseguraOrto no toma por vecina la tesela del borde opuesto de la fila de al lado", () => {
+  it("la vecina este de una tesela del borde este no es la del borde oeste de la fila siguiente; la vecina real sí se decodifica", () => {
+    const { M } = monta({ rejilla: [[1, 0], [0, 1], [0, 0]] });   // rejilla 2 × 2 con el hueco (1,1): G[2] sería (0,1)
+    const t = M.lista[0] as Tesela, ajena = M.lista[1] as Tesela, oeste = M.lista[2] as Tesela;
+    const imagenOk = (): ImagenMin => ({ onload: null, onerror: null, src: "", complete: true, naturalWidth: 2, width: 2, height: 2 });
+    t.ortImg = imagenOk(); ajena.ortImg = imagenOk(); oeste.ortImg = imagenOk();
+    for (const _ of M.aseguraOrto(t)) { /* una rebanada por tesela */ }
+    expect(t.ortPix).toBeTruthy(); expect(oeste.ortPix).toBeTruthy();   // ella y su vecina oeste (kx 0, ky 0)
+    expect(ajena.ortPix).toBeNull();   // la (0,1) no es vecina de (1,0) por el lado este
+  });
+});
+
+describe("L8-13: el minimapa de cerca pinta el mosaico donde falta la tesela", () => {
+  it("la vista de cerca (≤ 1,5 teselas) dibuja primero el mosaico de 1 m y luego las ortofotos de las teselas; sin mosaico, el color liso de siempre", () => {
+    const { M, imagenesListas } = monta();
+    const llamadas: string[] = [], c = { fillStyle: "", fillRect() { llamadas.push("liso:" + c.fillStyle); }, drawImage(im: { src: string }) { llamadas.push(im.src.endsWith("m.jpg") ? "mosaico" : "tesela"); } };
+    M.pintaOrto(c as never, 0, 4, 4, 4, 64, 64); expect(llamadas).toEqual(["liso:#8d8668"]);   // sin mosaico: lo liso
+    llamadas.length = 0; M.arranca(() => {}); imagenesListas();
+    M.pintaOrto(c as never, 0, 4, 4, 4, 64, 64);
+    expect(llamadas[0]).toBe("liso:#8d8668"); expect(llamadas).toContain("mosaico"); expect(llamadas.indexOf("mosaico")).toBe(1);
   });
 });
