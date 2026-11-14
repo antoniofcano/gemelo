@@ -232,7 +232,10 @@ export var PersonalizaPuro: T = (function () {
       });
     });
   }
-  return { CERCA_M: CERCA_M, MAX_ROTULOS: MAX_ROTULOS, REFRESCO_S: REFRESCO_S, MAX_PX: MAX_PX, MAX_BYTES: MAX_BYTES, MAX_FOTO_PX: MAX_FOTO_PX, TIPOS: TIPOS, MOTIVOS: MOTIVOS, AVISO: AVISO, AVISO_PRUEBAS: AVISO_PRUEBAS,
+  // L6-16: la opacidad del nombre sobre un olivo a d metros (se desvanece hasta CERCA_M): nunca por debajo de 0,7, para que el texto se lea sobre el cielo o el suelo claros
+  var OPACIDAD_MIN_ROTULO = 0.7;
+  function opacidadRotulo(d?: T) { return Math.max(OPACIDAD_MIN_ROTULO, Math.min(1, 1 - d / CERCA_M)); }
+  return { CERCA_M: CERCA_M, OPACIDAD_MIN_ROTULO: OPACIDAD_MIN_ROTULO, opacidadRotulo: opacidadRotulo, MAX_ROTULOS: MAX_ROTULOS, REFRESCO_S: REFRESCO_S, MAX_PX: MAX_PX, MAX_BYTES: MAX_BYTES, MAX_FOTO_PX: MAX_FOTO_PX, TIPOS: TIPOS, MOTIVOS: MOTIVOS, AVISO: AVISO, AVISO_PRUEBAS: AVISO_PRUEBAS,
     idOlivo: idOlivo, clave: clave, indexa: indexa, decoraciones: decoraciones, validaNombre: validaNombre, validaFichero: validaFichero, reduce: reduce, mensajeError: mensajeError, ofrece: ofrece,
     cercanos: cercanos, PIEZAS: PIEZAS, epocaDeLaFecha: epocaDeLaFecha, piezasDeLaEpoca: piezasDeLaEpoca, piezaPorId: piezaPorId, textoDecorar: textoDecorar, DECO_ILUSTRATIVA: DECO_ILUSTRATIVA, cuerpoOlivo: cuerpoOlivo, Cliente: Cliente, cuelgaImagen: cuelgaImagen };
 })();
@@ -285,19 +288,28 @@ export function PersonalizaMotor(dp: DepsPersonalizacion, n: T) {
   function nombreDe(pieza?: T) { var p: T = P.piezaPorId(pieza); return p ? p.nombre : null; }
   function hayQuienDibuje() { return dp.Bus.hay("decoraciones:cambian"); }   // el componente 50_decoraciones.js escucha ese evento; sin él (?decoraciones=0) nadie la dibujaría
   function epocaAhora() { return P.epocaDeLaFecha(new Date()); }
+  // L6-08: en VR «Denunciar» se confirma (la primera pulsación arma «Confirmar denuncia» durante 8 s; la segunda envía) y el resultado sale en la misma ficha
+  // (fila «Denuncia»; la ficha de VR se repinta cuando cambia), además del evento «personalizacion:resultado»
+  var ARMADO_MS = 8000, armado: T = {}, resultadoVR: T = {};
+  function armadoDe(id?: T) { return !!(armado[id] && Date.now() - armado[id] < ARMADO_MS); }
   function complementa(f?: T, id?: T, modo?: T) {
     var c: T = contexto(id); if (!c.i) return;
     var of: T = P.ofrece({ titular: titular, mia: c.mia, dato: c.dato, vr: modo === "vr", estable: true, decora: hayQuienDibuje() ? P.piezasDeLaEpoca(epocaAhora()) : undefined, deco: hayQuienDibuje() ? decoDe(c) : null });
     var filas: T = [];
     if (c.dato && c.dato.nombre) filas.push({ k: "Nombre", v: c.dato.nombre, de: c.mia ? "puesto por tu familia" : "puesto por la familia de esa haza" });
     if (c.dato && c.dato.objeto) filas.push({ k: c.dato.objeto.tipo === "pintura" ? "Pintura" : "Foto", v: modo === "vr" ? "colgada junto al árbol" : "colgada junto al árbol al elegirlo", de: "subida por la familia; no la mide el gemelo" });
+    if (modo === "vr" && armadoDe(id)) filas.push({ k: "Denuncia", v: "pulsa «Confirmar denuncia» para enviarla a la oficina" });
+    else if (modo === "vr" && resultadoVR[id]) filas.push({ k: "Denuncia", v: resultadoVR[id] });
     f.filas = filas.concat(f.filas || [], of.filas);
-    if (of.acciones.length) f.acciones = (f.acciones || []).concat(of.acciones.map(function (a?: T) { return { id: a.id, txt: a.txt, fn: function () { return accion(a.id, id, modo); } }; }));
+    if (of.acciones.length) f.acciones = (f.acciones || []).concat(of.acciones.map(function (a?: T) { return { id: a.id, txt: modo === "vr" && a.id === "denunciar" && armadoDe(id) ? "Confirmar denuncia" : a.txt, fn: function () { return accion(a.id, id, modo); } }; }));
   }
   function accion(que?: T, id?: T, modo?: T) {
     var c: T = contexto(id); if (!c.i) return false;
     if (modo === "vr") {   // en VR solo lo que no pide teclado: denunciar con el motivo «otro» (la oficina lo mira igual)
-      if (que === "denunciar" && c.dato) { enviaDenuncia(id, c, "otro", ""); return true; }
+      if (que === "denunciar" && c.dato) {
+        if (!armadoDe(id)) { armado[id] = Date.now(); delete resultadoVR[id]; refrescaFicha(id); return true; }   // L6-08: la primera pulsación solo pide confirmar
+        delete armado[id]; resultadoVR[id] = "enviando…"; refrescaFicha(id); enviaDenuncia(id, c, "otro", ""); return true;
+      }
       return false;
     }
     abrePanel(que, id, c); return true;
@@ -305,9 +317,14 @@ export function PersonalizaMotor(dp: DepsPersonalizacion, n: T) {
 
   // ---- el recuadro de pantalla (nombrar, subir, quitar, denunciar, sugerir): un solo recuadro, con textContent siempre
   function el(tag?: T, css?: T, txt?: T) { var e: T = document.createElement(tag); if (css) e.style.cssText = css; if (txt != null) e.textContent = txt; return e; }
-  function cierraPanel() { if (recuadro && recuadro.parentNode) recuadro.parentNode.removeChild(recuadro); recuadro = null; caja = null; }
+  var focoAntes: T = null;   // L6-12: quien tenía el foco al abrir el recuadro; al cerrarlo, vuelve allí
+  function cierraPanel() {
+    var habia: T = !!recuadro; if (recuadro && recuadro.parentNode) recuadro.parentNode.removeChild(recuadro); recuadro = null; caja = null;
+    var f: T = focoAntes; focoAntes = null; if (habia && f && f.focus) { try { f.focus(); } catch (e: T) {} }
+  }
   function abrePanel(que?: T, id?: T, c?: T) {
     cierraPanel();
+    try { focoAntes = document.activeElement || null; } catch (e: T) { focoAntes = null; }
     recuadro = el("div", "position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);padding:12px");
     recuadro.setAttribute("id", "personalizaPanel"); recuadro.setAttribute("role", "dialog"); recuadro.setAttribute("aria-modal", "true"); recuadro.setAttribute("aria-labelledby", "personalizaPanelTitulo");   // L6-12: el diálogo se anuncia con su título
     caja = el("div", "max-width:440px;width:100%;max-height:92vh;overflow:auto;background:rgba(20,28,24,0.97);color:#f1f4ee;border-radius:12px;padding:16px;font:1rem/1.4 system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,0.6)");
@@ -318,7 +335,15 @@ export function PersonalizaMotor(dp: DepsPersonalizacion, n: T) {
     var fila: T = el("div", "display:flex;gap:8px;flex-wrap:wrap;margin-top:12px");
     var ok: T = el("button", ESTILO_BOTON, "Guardar"), no: T = el("button", ESTILO_BOTON, "Cancelar"); ok.type = no.type = "button"; ok.setAttribute("data-ok", "1"); no.setAttribute("data-cancela", "1");
     no.addEventListener("click", cierraPanel);
-    recuadro.addEventListener("keydown", function (e?: T) { if (e.key === "Escape") { cierraPanel(); e.stopPropagation(); } e.stopPropagation(); });   // el teclado del recuadro no mueve el mundo
+    recuadro.addEventListener("keydown", function (e?: T) {
+      e.stopPropagation();   // el teclado del recuadro no mueve el mundo
+      if (e.key === "Escape") { cierraPanel(); return; }
+      if (e.key !== "Tab" || !recuadro) return;   // L6-12: trampa de foco (aria-modal): Tab y Mayús+Tab dan la vuelta dentro del recuadro
+      var orden: T = Array.prototype.slice.call(recuadro.querySelectorAll("input,select,textarea,button,a")).filter(function (x?: T) { return !x.disabled && !x.hidden; });
+      if (!orden.length) return;
+      var i: T = orden.indexOf(document.activeElement), atras: T = !!e.shiftKey;
+      if (i < 0 || (!atras && i === orden.length - 1) || (atras && i === 0)) { if (e.preventDefault) e.preventDefault(); orden[i < 0 || !atras ? 0 : orden.length - 1].focus(); }
+    });
     function ocupado(si?: T, txt?: T) { if (ok) ok.disabled = si; if (txt) msg.textContent = txt; }
     function fin(r?: T, hecho?: T) {
       if (r.ok) { cierraPanel(); refrescaUna(c.haza && c.haza.id).then(function () { dp.Usables.refresca(id); if (hecho) hecho(); }); return; }
@@ -400,9 +425,10 @@ export function PersonalizaMotor(dp: DepsPersonalizacion, n: T) {
     if (!c.dato) { if (hecho) hecho({ ok: false, error: P.mensajeError(404, null, "denuncia") }); return; }
     cli.denuncia(c.dato.id, motivo, texto).then(function (r?: T) {
       var res: T = { ok: r.ok, estado: r.estado, cuerpo: r.cuerpo, error: r.ok ? "" : P.mensajeError(r.estado, r.cuerpo, "denuncia") };
-      if (hecho) hecho(res); else avisoVR(r.ok ? "Denuncia enviada: la oficina lo mirará." : res.error);   // en VR no hay recuadro: el resultado queda en estado() y en la ficha siguiente
+      if (hecho) hecho(res); else { resultadoVR[id] = r.ok ? "enviada: la oficina lo mirará" : res.error; refrescaFicha(id); avisoVR(r.ok ? "Denuncia enviada: la oficina lo mirará." : res.error); }   // en VR no hay recuadro: el resultado sale en la ficha (L6-08)
     });
   }
+  function refrescaFicha(id?: T) { try { if (dp.Usables && dp.Usables.refresca) dp.Usables.refresca(id); } catch (e: T) {} }
   function avisoVR(txt?: T) { lastAviso = txt; try { dp.Bus.emite("personalizacion:resultado", { texto: txt }); } catch (e: T) {} }
   var lastAviso = "";
 
@@ -433,7 +459,7 @@ export function PersonalizaMotor(dp: DepsPersonalizacion, n: T) {
   }
   function etiqueta(k?: T) {
     if (pool[k]) return pool[k];
-    var e: T = el("div", "position:absolute;left:0;top:0;white-space:nowrap;padding:2px 8px;border-radius:10px;font:600 .875rem/1.3 system-ui,sans-serif;color:#fff;background:rgba(0,0,0,0.55);text-shadow:0 1px 2px #000;will-change:transform;display:none");
+    var e: T = el("div", "position:absolute;left:0;top:0;white-space:nowrap;padding:2px 8px;border-radius:10px;font:600 .875rem/1.3 system-ui,sans-serif;color:#fff;background:rgba(0,0,0,0.72);text-shadow:0 1px 2px #000;will-change:transform;display:none");
     capa.appendChild(e); pool[k] = e; return e;
   }
   function ocultaRotulos() { for (var k = 0; k < pool.length; k++) pool[k].style.display = "none"; }
@@ -454,7 +480,7 @@ export function PersonalizaMotor(dp: DepsPersonalizacion, n: T) {
       if (vec.z > 1 || vec.z < -1) { e.style.display = "none"; continue; }
       var sx: T = (vec.x * 0.5 + 0.5) * rect.width + rect.left, sy: T = (-vec.y * 0.5 + 0.5) * rect.height + rect.top;
       if (e.textContent !== q.nombre) e.textContent = q.nombre;
-      e.style.display = "block"; e.style.opacity = String(Math.max(0.25, 1 - cerca[k].d / P.CERCA_M));
+      e.style.display = "block"; e.style.opacity = String(P.opacidadRotulo(cerca[k].d));   // L6-16: nunca por debajo de 0,7
       e.style.transform = "translate(" + Math.round(sx) + "px," + Math.round(sy) + "px) translate(-50%,-100%)"; pintados++;
     }
     contador.rotulos = pintados;
@@ -500,7 +526,7 @@ export function PersonalizaMotor(dp: DepsPersonalizacion, n: T) {
   }
   function estado() { return { api: true, titular: titular, hazas: Object.keys(hazasVistas).length, cargadas: cargadas, conNombre: rotulosDe.length, personalizados: Object.keys(mapa).length, decoraciones: listaDecos().length, rotulos: contador.rotulos, laminas: contador.laminas, lamina: laminaDe, recuadro: !!recuadro, resultado: lastAviso }; }
   function libera() {
-    vivo = false; ctl.abort(); cierraPanel(); cierraLamina();
+    vivo = false; ctl.abort(); focoAntes = null; cierraPanel(); cierraLamina(); armado = {}; resultadoVR = {};
     if (quitaCompl) { quitaCompl(); quitaCompl = null; }
     if (capa && capa.parentNode) capa.parentNode.removeChild(capa); capa = null; pool = []; cerca = []; mapa = {}; rotulosDe = [];
     if (Object.keys(decos).length) { decos = {}; emiteDecos(); }   // sin personalización no quedan decoraciones que dibujar
