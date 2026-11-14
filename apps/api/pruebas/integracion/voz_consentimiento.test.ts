@@ -6,7 +6,7 @@
 //   3. Con consentimiento todo sigue igual; una versión vieja en la base (como tras subir VOZ_AVISO_VERSION) vuelve a no valer.
 //   4. Retirar con la palabra dada: se le quita en la sala y se baja su mano (auditoría con motivo «consentimiento»).
 //   5. «Mis datos» lleva el consentimiento; borrar el hogar lo borra (cascada).
-//   6. El plazo: la función de la base borra solo las acciones de la voz fuera de plazo (y no el resto de la auditoría); gemelo_api no puede borrar de la auditoría
+//   6. El plazo: la función de la base borra solo las acciones de la voz fuera de plazo (y no el resto de la auditoría), con el corte acotado en la base (0028, A-11); gemelo_api no puede borrar de la auditoría
 //      a mano pero sí llamar a la función.
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
@@ -177,9 +177,15 @@ test("el plazo (decisión 164): la función de la base borra solo la auditoría 
   assert.equal(await cuenta("voz.consentimiento_retirado", "2026-02-02", "2026-02-03"), 1);
   for (const [a, d] of [["hogar.borrado", "2025-03-01"], ["enlace.pedido", "2025-03-01"], ["admin.evento_guia", "2025-05-05"]] as const)
     assert.equal(await cuenta(a, d, d.slice(0, 8) + String(Number(d.slice(8)) + 1).padStart(2, "0")), 1, a + " no es de la voz: se queda");
-  // 5 de octubre de 2027: ahora cae la campaña 2025/26
-  assert.equal(await purgaAuditoriaVoz(bd.app, new Date("2027-10-05T12:00:00Z")), 3);
-  assert.equal(await cuenta("guiada.cerrada", "2026-06-01", "2026-06-02"), 0);
+  // 5 de octubre de 2027: cae la campaña 2025/26... pero desde la 0028 (auditoría A-11) la base acota el corte al plazo de HOY: mientras el reloj de
+  // la base no llegue a octubre de 2027, la api no puede adelantar la purga (antes de esa fecha, nada; después, las tres)
+  const yaToca = corteAuditoriaVoz(new Date()) >= new Date("2026-10-01T00:00:00Z");
+  assert.equal(await purgaAuditoriaVoz(bd.app, new Date("2027-10-05T12:00:00Z")), yaToca ? 3 : 0);
+  assert.equal(await cuenta("guiada.cerrada", "2026-06-01", "2026-06-02"), yaToca ? 0 : 1);
+  // A-11: una fila de voz de hoy no la borra ni un corte del año 2100 que pase la api
+  await pon("guiada.palabra_dada", new Date().toISOString());
+  assert.equal(Number((await bd.app.query<{ n: number }>("SELECT purga_auditoria_voz('2100-01-01') AS n")).rows[0]!.n), 0, "el corte se acota al del plazo");
+  assert.equal(Number((await bd.dueno.query<{ n: string }>("SELECT count(*) AS n FROM auditoria WHERE accion = 'guiada.palabra_dada' AND cuando > now() - interval '1 day'")).rows[0]!.n), 1);
   // gemelo_api sigue sin poder borrar de la auditoría a mano
   await assert.rejects(bd.app.query("DELETE FROM auditoria WHERE accion = 'enlace.pedido'"), /permission denied|permiso denegado/i);
   // ni la función acepta a quien no es gemelo_api (PUBLIC sin EXECUTE) — el rol dueño, sí

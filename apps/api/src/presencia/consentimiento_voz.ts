@@ -10,6 +10,7 @@
 //    `guiada.*` (manos, palabra, silenciar, expulsar, cerrar), `corro.*` (F3k-1, migración 0025) y las de consentimiento retirado (y los «dado» de quien ya no tiene consentimiento vigente).
 //    Es una función SECURITY DEFINER de la base, porque `gemelo_api` no puede borrar de `auditoria` (solo-añadir, migración 0001). [SUPUESTO] campaña de
 //    octubre a septiembre (las zonas horarias no importan: el corte es un día de margen); la valida Antonio con la EIPD.
+//    Desde la 0028 (auditoría A-11) la función acota ella misma el corte al de este plazo: la api no puede pedirle que borre lo reciente.
 //  · ÁMBITO (F3k-1, ADR-0032, decisión 211; migración 0025): el consentimiento es por ámbito. «guiada» es el de F3j (todo lo de arriba, sin cambios);
 //    «cercania» es el aviso propio de la voz por cercanía en la visita libre (con quién se habla, sin moderación en directo, sin grabar, la declaración de
 //    mayor de edad de M1, cómo avisar y salir), con su propia versión (VOZ_CERCANIA_AVISO_VERSION) y su texto (propuesto en contratos/voz-consentimiento.md;
