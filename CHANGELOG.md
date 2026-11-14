@@ -339,6 +339,15 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 
 
 ### Corregido
+- VR, olivos y rendimiento (auditoría de noviembre, lentes 7, 5, 1 y 2). Probado con dobles en Vitest y Node; Quest e iPhone no probados:
+  - Precompilado en VR: al entrar, los sombreadores se precompilan con la cámara y el destino de la sesión (multiview).
+  - Salto a zona sin cargar: el fundido espera a negro al relieve fino, 2 s como mucho.
+  - Mundo sin parcelas: ya no rompe el panel ni el paseo.
+  - Nivel 0 de los olivos: lleva la sombra de las nubes y la helada.
+  - Cambios de nivel de los olivos: tienen histéresis; con la cámara quieta no se vuelven a subir sus búferes.
+  - `Ajustes.lee` tiene caché.
+  - Ortofoto decodificada: ya no guarda su lienzo, la mitad de memoria.
+  - `vite dev` con la build de VR avisa de que el parche del multiview no se aplica.
 - Interacción y accesibilidad (auditoría de noviembre, lente 6; decisión 239). Probado en Node; navegador pendiente en el banco; iPhone, Quest y lector de pantalla no probados:
   - «Tamaño del texto» agranda también el HUD, el menú, las ventanas y las cajas de voz.
   - Con alto contraste se distingue lo pulsado.
