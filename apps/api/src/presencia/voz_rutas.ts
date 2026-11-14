@@ -76,6 +76,15 @@ export class ExpulsadosGuiada {
     e.marca(hogar, ahora);
   }
   esta(evento: number, hogar: number, ahora = Date.now()): boolean { return this.porEvento.get(evento)?.esta(hogar, ahora) ?? false; }
+  private readonly enCurso = new Map<number, Expulsados>();   // solo su «sacando», por evento
+  /** Como Expulsados.sacando, para la expulsión de una guiada: el centinela no toca ese hogar en ESA guiada mientras la ruta lo saca. */
+  sacando(evento: number, hogar: number): () => void {
+    let e = this.enCurso.get(evento);
+    if (!e) { e = new Expulsados(); this.enCurso.set(evento, e); }
+    const suelta = e.sacando(hogar), quien = e;
+    return () => { suelta(); if (!quien.hayEnCurso() && this.enCurso.get(evento) === quien) this.enCurso.delete(evento); };
+  }
+  enCursoDe(evento: number, hogar: number): boolean { return this.enCurso.get(evento)?.enCursoDe(hogar) ?? false; }
   /** L9-06: las marcas vigentes (evento y hogar), para que el centinela vuelva a sacar de `guiada-<evento>` a quien entre con un token anterior */
   vivos(ahora = Date.now()): { evento: number; hogar: number }[] {
     const r: { evento: number; hogar: number }[] = [];
@@ -308,10 +317,15 @@ export async function rutasVoz(app: FastifyInstance, bd: Bd, d: DepsVoz): Promis
     const hogar = hogarDeIdentidad(lk, req.body.identidad, (await apuntados(bd, ev)).filter(h => h !== e.guia_id));
     if (hogar === null) return falla(rep, 409, "no_es_familia_apuntada");
     expulsadosGuiada.marca(ev, hogar);
-    // H-3: la marca, en la auditoría ANTES de llamar a LiveKit (si falla, el centinela le saca igual y un reinicio la reconstruye)
-    await audita(bd, req.session.hogarId!, MARCA_GUIADA, { evento: ev, hogar });
-    await palabra.olvidaHogar(ev, hogar, req.session.hogarId!);
-    const conexiones = await voz.expulsaHogar(SALA_GUIADA(ev), prefijoHogar(lk, hogar));
+    // mientras esta ruta le saca, el centinela no (si no, le sacaba él en medio y aquí contaba 0 conexiones: voz_guiada_dev, 2026-11-14)
+    const suelta = expulsadosGuiada.sacando(ev, hogar);
+    let conexiones: number;
+    try {
+      // H-3: la marca, en la auditoría ANTES de llamar a LiveKit (si falla, el centinela le saca igual y un reinicio la reconstruye)
+      await audita(bd, req.session.hogarId!, MARCA_GUIADA, { evento: ev, hogar });
+      await palabra.olvidaHogar(ev, hogar, req.session.hogarId!);
+      conexiones = await voz.expulsaHogar(SALA_GUIADA(ev), prefijoHogar(lk, hogar));
+    } finally { suelta(); }
     const motivo = req.body.motivo?.trim().replace(/\s+/g, " ") || null;
     await audita(bd, req.session.hogarId!, "guiada.expulsado", { evento: ev, hogar, conexiones, ...(motivo ? { motivo } : {}) });
     return { conexiones };

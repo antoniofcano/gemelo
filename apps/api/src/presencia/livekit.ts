@@ -291,6 +291,24 @@ export class ModeradorLiveKit implements ModeradorSala, ModeradorVoz {
  */
 export class Expulsados {
   private readonly hasta = new Map<number, number>();
+  private readonly enCurso = new Map<number, number>();
+  /**
+   * La ruta que expulsa avisa de que lo está sacando AHORA (entre su marca y su RemoveParticipant, con la auditoría y LiveKit por medio, que con
+   * carga tardan segundos): el centinela no lo toca mientras tanto, así el recuento de conexiones que ve quien expulsa es el de verdad y el registro no dice
+   * «volvió a entrar» de quien aún no había salido. Devuelve cómo soltarlo (idempotente; la ruta lo llama en un finally).
+   */
+  sacando(hogarId: number): () => void {
+    this.enCurso.set(hogarId, (this.enCurso.get(hogarId) ?? 0) + 1);
+    let suelto = false;
+    return () => {
+      if (suelto) return; suelto = true;
+      const n = (this.enCurso.get(hogarId) ?? 1) - 1;
+      if (n > 0) this.enCurso.set(hogarId, n); else this.enCurso.delete(hogarId);
+    };
+  }
+  /** ¿Lo está sacando ahora una ruta? (el centinela lo deja para su pasada siguiente) */
+  enCursoDe(hogarId: number): boolean { return this.enCurso.has(hogarId); }
+  hayEnCurso(): boolean { return this.enCurso.size > 0; }
   /** marca (o alarga) la expulsión; nunca la acorta: una marca reconstruida tarde desde la auditoría (H-3) no pisa una más nueva */
   marca(hogarId: number, ahora = Date.now()): void { this.hasta.set(hogarId, Math.max(this.hasta.get(hogarId) ?? 0, ahora + TTL_S * 1000)); }
   /** los hogares con la marca vigente (el centinela solo llama a LiveKit si hay alguno) */

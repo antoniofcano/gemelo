@@ -38,6 +38,12 @@ export async function expulsa(d: DepsExpulsion, adminId: number, hogarId: number
   const r = await d.bd.query("SELECT 1 FROM hogares WHERE id = $1", [hogarId]);
   if (!r.rowCount) return { ok: false, motivo: "no_existe" };
   d.expulsados.marca(hogarId);
+  // mientras esta función le saca, el centinela no (si no, le sacaba él en medio y la oficina veía menos conexiones de las que había)
+  const suelta = d.expulsados.sacando(hogarId);
+  try { return await sacaYApunta(d, adminId, hogarId, motivo); } finally { suelta(); }
+}
+/** Lo de expulsa() tras la marca: la auditoría (H-3: antes de LiveKit), el corro, las salas y el resultado. */
+async function sacaYApunta(d: DepsExpulsion, adminId: number, hogarId: number, motivo: string | null): Promise<ResultadoExpulsion> {
   await audita(d.bd as Bd, adminId, MARCA_GENERAL, { hogar: hogarId });
   const prefijo = prefijoHogar(d.lk, hogarId), donde: string[] = [];
   let conexiones = 0;

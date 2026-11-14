@@ -247,3 +247,51 @@ test("H-3: RecuperaMarcas solo lee la auditoría hasta que sale bien; una marca 
   assert.equal(await rec.intenta(), true); assert.equal(lecturas, 2, "hecha, no vuelve a leer");
   assert.ok(exp.esta(7, t0 + 600_000 + TTL_S * 1000 - 1), "la marca nueva no se acorta con la vieja");
 });
+
+// ---------------------------------------------------------------- la ruta que expulsa y el centinela, a la vez (voz_guiada_dev, 2026-11-14)
+
+test("Expulsados.sacando: mientras la ruta lo saca consta «en curso»; soltar es idempotente y dos a la vez se cuentan", () => {
+  const e = new Expulsados(), g = new ExpulsadosGuiada();
+  assert.equal(e.enCursoDe(7), false);
+  const s1 = e.sacando(7), s2 = e.sacando(7);
+  assert.equal(e.enCursoDe(7), true);
+  s1(); s1(); assert.equal(e.enCursoDe(7), true, "soltar dos veces el mismo no suelta el otro");
+  s2(); assert.equal(e.enCursoDe(7), false); assert.equal(e.hayEnCurso(), false);
+  const sg = g.sacando(3, 7);
+  assert.equal(g.enCursoDe(3, 7), true); assert.equal(g.enCursoDe(4, 7), false, "solo en ESA guiada"); assert.equal(g.enCursoDe(3, 8), false);
+  sg(); assert.equal(g.enCursoDe(3, 7), false);
+});
+
+test("el centinela no toca a quien la ruta está sacando (general o de una guiada); en la pasada siguiente, sí", async () => {
+  const sala = new SalaFalsa(), exp = new Expulsados(), g = new ExpulsadosGuiada(), c = centinela(sala, exp, g);
+  sala.entra(SALAS.general, identidadOpaca(LK, 7, "movil")); sala.entra(SALA_GUIADA(3), identidadOpaca(LK, 8, "pc"));
+  exp.marca(7, 0); g.marca(3, 8, 0);
+  const s7 = exp.sacando(7), s8 = g.sacando(3, 8);
+  c.t.v = 1000;
+  assert.equal(await c.pasa(), 0, "los dos están en manos de su ruta");
+  assert.equal(dentro(sala, SALAS.general).length, 1); assert.equal(dentro(sala, SALA_GUIADA(3)).length, 1);
+  s7(); s8();
+  assert.equal(await c.pasa(), 2, "soltados, si siguen dentro el centinela los saca");
+});
+
+test("expulsar con el centinela pasando en medio (la auditoría tarda): la ruta cuenta las conexiones de verdad y el centinela no se las quita", async () => {
+  const { expulsa } = await import("../../src/presencia/rutas.ts");
+  const sala = new SalaFalsa(), exp = new Expulsados(), c = centinela(sala, exp);
+  sala.entra(SALAS.general, identidadOpaca(LK, 7, "movil")); sala.entra(SALAS.visita, identidadOpaca(LK, 7, "pc"));
+  let abre: () => void = () => undefined;
+  const puerta = new Promise<void>(r => { abre = r; });
+  let primera = true;
+  const bd = { query: async (sql: string) => {
+    if (/FROM hogares/.test(sql)) return { rowCount: 1, rows: [] };
+    if (/INSERT INTO auditoria/.test(sql) && primera) { primera = false; await puerta; }   // la marca de H-3, lenta (la base con carga)
+    return { rowCount: 1, rows: [] };
+  } };
+  const r = expulsa({ bd: bd as never, lk: LK, moderador: sala, expulsados: exp }, 1, 7, null);
+  await vacia();
+  assert.equal(exp.esta(7), true, "ya marcado: sin tokens nuevos");
+  c.t.v = Date.now();
+  assert.equal(await c.pasa(), 0, "el centinela pasa en medio y no le saca: es cosa de la ruta");
+  abre();
+  assert.deepEqual(await r, { ok: true, estaba_en_sala: true, conexiones: 2 }, "las dos conexiones, contadas por la ruta (antes: 0 si el centinela se adelantaba)");
+  assert.equal(exp.enCursoDe(7), false, "y lo suelta al acabar");
+});
