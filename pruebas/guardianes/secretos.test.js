@@ -19,10 +19,14 @@ const SECRETOS = [
   ["clave de LiveKit en una asignación", new RegExp("LIVEKIT_API_(?:KEY|SECRET)\\s*[:=]\\s*[\"']?[A-Za-z0-9_+/-]{16,}")],
   ["par clave:secreto de LiveKit", new RegExp("\\bAPI" + "[A-Za-z0-9]{10,}\\s*:\\s*[A-Za-z0-9+/]{30,}")],
   ["clave de API de Anthropic", new RegExp("sk-" + "ant-[A-Za-z0-9_-]{20,}")],
+  // L9-08: los nombres del repo son españoles (GEMELO_SESION_SECRETO, GEMELO_*_CLAVE): «secreto», «clave» o «contraseña» con un valor de 16 o más
+  // caracteres con alguna cifra (un nombre de fichero o una expresión no casan: llevan punto o paréntesis detrás)
+  ["asignación de secreto (en español)", new RegExp("(?:^|[^A-Za-z])(?:secret" + "o|clave|contrase[ñn]a)\\s*[:=]\\s*[\"']?(?=[A-Za-z0-9+/_-]*\\d)[A-Za-z0-9+/_-]{16,}(?![A-Za-z0-9+/_.-])", "i")],
+  ["cabecera Bearer con token", new RegExp("\\bBear" + "er\\s+(?=[A-Za-z0-9._~+/-]*\\d)[A-Za-z0-9._~+/-]{20,}=*")],
 ];
 const EXT_DATOS = /\.(laz|las|tif|tiff|npy|npz|bin|gpkg|shp|dbf|kml|kmz|xlsx|xls|csv|sqlite|db|pem|p12|jks|keystore)$/i;
 const NOMBRES_PRIVADOS = /(^|\/)(serviceAccount[^/]*|\.env[^/]*|credentials[^/]*|id_rsa[^/]*)$/i;
-const ARTEFACTO = /claude\.ai\/(?:code\/|public\/)?artifacts?\/[A-Za-z0-9_-]{8,}/;      // enlaces a artefactos privados o publicados (public/artifacts/…)
+const ARTEFACTO = /claude\.ai\/(?:(?:code\/|public\/)?artifacts?|chat|share)\/[A-Za-z0-9_-]{8,}/;      // enlaces a artefactos privados o publicados (public/artifacts/…) y a conversaciones (chat/…, share/…; L9-08)
 const ID_ARTEFACTO = /\b(?:artefacto|artifact)\b[^\n]{0,40}`[A-Za-z0-9]{20,24}`/i;        // «artefacto `14sj…`»
 
 test("sin secretos en los ficheros versionados", () => {
@@ -92,6 +96,20 @@ test("los patrones nuevos de secretos y de artefactos publicados reconocen lo qu
   marca("clave de API de Anthropic", anth);
   deja("clave de API de Anthropic", "sk-ant-… (ejemplo sin clave) y sk-ant-api");
   assert.match(art, ARTEFACTO, "el enlace de public/artifacts se marca");
+  assert.match("https://claude.ai/" + "chat/" + "0f3c9a2e-1b2c", ARTEFACTO, "un enlace a una conversación se marca");
+  assert.doesNotMatch("claude.ai/chat (sin id)", ARTEFACTO);
+  // L9-08: secreto, clave o contraseña en español, y Bearer (valores inventados)
+  const sec = "Ab3dE5fG7hJ9kL1m" + "Np2Q";
+  marca("asignación de secreto (en español)", "GEMELO_SESION_" + "SECRETO=" + sec);
+  marca("asignación de secreto (en español)", "clave" + ": \"" + sec + "\"");
+  marca("asignación de secreto (en español)", "contraseña = '" + sec + "'");
+  deja("asignación de secreto (en español)", "clave: \"contratos/livekit-roles.json\"");
+  deja("asignación de secreto (en español)", "secreto: \"c\".repeat(16)");
+  deja("asignación de secreto (en español)", "GEMELO_SESION_SECRETO_FICHERO=/run/secrets/sesion");
+  deja("asignación de secreto (en español)", "clave: AbrirLaPuertaDelCortijo");
+  marca("cabecera Bearer con token", "Authorization: Bear" + "er " + sec + "xY7z");
+  deja("cabecera Bearer con token", "Authorization: Bearer <token>");
+  deja("cabecera Bearer con token", "Bearer ${TOKEN}");
   assert.doesNotMatch("claude.ai/public/artifacts/ (sin id) y la salida artefacto de claude.ai se retiró", ARTEFACTO);
 });
 
@@ -109,13 +127,19 @@ test("sin ids internos de OlivarTrack en lo versionado", () => {
 const EXPLOTACION = [
   ["referencia de polígono y parcela", new RegExp("pol(?:[ií]gono|\\.)[-_\\s]*(?!9\\D)\\d+[-_\\s,.]*parc(?:ela|\\.)?[-_\\s]*\\d+", "i")],
   ["coordenada UTM norte de la zona de las fincas", new RegExp("\\b417" + "[5-9]\\d{3}(?:\\.\\d+)?\\b")],
+  // L9-08 / L9-02: la franja norte de la zona de las dos fincas (N entre los km 4.165 y 4.179: un rango, no un valor) con precisión de metro, también escrita
+  // con puntos o espacios de millares; un múltiplo de 1.000 m (la comarca) no se marca. Los sintéticos van del km 4.180 en adelante
+  ["coordenada UTM norte de la zona, con precisión de metro", new RegExp("\\b41" + "(?:6[5-9]|7\\d)(?!000\\b)\\d{3}(?:\\.\\d+)?\\b")],
+  ["coordenada UTM norte de la zona, con separadores de millares", new RegExp("\\b4[.\\s]1" + "(?:6[5-9]|7\\d)[.\\s](?!000\\b)\\d{3}(?:,\\d+)?\\b")],
   ["latitud y longitud con más precisión que la comarca", new RegExp("\\b3[78]\\.\\d{2,}\\s*[,;]\\s*(?:LON\\s*=\\s*)?[-−]\\s?[34]\\.\\d{2,}")],
   ["latitud asignada con más precisión que la comarca", new RegExp("\\b(?:LAT|lat|fi)\\s*=\\s*3[78]\\.\\d{2,}")],
 ];
 
 test("los patrones de datos de la explotación reconocen lo que deben y no lo sintético", () => {
-  const debe = ["pol" + "ígono-12-parcela-345", "Pol" + ". 12 Parc. 345", "[40" + "0000, 41" + "77123]", "37" + ".731, -4.006", "LAT = 37" + ".73, LON = -4.006", "fi = 37" + ".73 * Math.PI"];
-  const no = ["loma-(polígono-9-parcela-8)", "centro_utm: [500000, 4100000]", "const CX = 430000, CY = 4180000;", "LAT = 37.7, LON = -4.0", "poligono de la parcela", "4100150"];
+  const debe = ["pol" + "ígono-12-parcela-345", "Pol" + ". 12 Parc. 345", "[40" + "0000, 41" + "77123]", "37" + ".731, -4.006", "LAT = 37" + ".73, LON = -4.006", "fi = 37" + ".73 * Math.PI",
+    "N = 4." + "172.345", "centro [41" + "68321.5]", "4 1" + "71 234"];   // L9-08: la zona en rango, con y sin separadores (valores inventados)
+  const no = ["loma-(polígono-9-parcela-8)", "centro_utm: [500000, 4100000]", "const CX = 430000, CY = 4180000;", "LAT = 37.7, LON = -4.0", "poligono de la parcela", "4100150",
+    "4180020.25", "4.180.096", "N ≈ 4.178.000 (la comarca)", "4194304", "41" + "70000"];
   for (const s of debe) assert.ok(EXPLOTACION.some(([, re]) => re.test(s)), "debería marcarse: " + s);
   for (const s of no) assert.ok(!EXPLOTACION.some(([, re]) => re.test(s)), "no debería marcarse: " + s);
 });

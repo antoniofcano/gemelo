@@ -13,12 +13,16 @@ Versión del contrato de datos: **v = 2** (campo `v` del índice).
 | Catálogo de olivos-tipo (entrada del constructor) | [`contratos/olivos-tipo.schema.json`](../../contratos/olivos-tipo.schema.json) + [`olivos-tipo.md`](../../contratos/olivos-tipo.md) | `olivos.test.js` (ajv, gltf-validator, triángulos por nivel) |
 | Impostor de olivo, formato v1 (ADR-0019 §2: 8 × 8 vistas hemi-octaédricas, atlas WebP de color 2.048² y normales 1.024², fila `impostores[]` del manifiesto) | [`contratos/olivo-impostor.md`](../../contratos/olivo-impostor.md) | `impostor.test.js` (disposición, manifiesto, incremental; en Chrome, una variante del fixture) |
 | Catálogo de avatares VRM (`/avatares/catalogo.json`: huella, licencia, topes; v2 desde AV4: cuerpos con sus piezas, paletas y receta, [ADR-0025](../adr/0025-avatares-por-piezas-contrato-v2.md)) | [`contratos/avatares.schema.json`](../../contratos/avatares.schema.json) + [`avatares.md`](../../contratos/avatares.md) (ejemplos v1 [`avatares-ejemplo.json`](../../contratos/avatares-ejemplo.json) y v2 [`avatares-v2-ejemplo.json`](../../contratos/avatares-v2-ejemplo.json)) | `avatares.test.js` (ajv, tubería sobre VRM sintético, licencias), `avatares_piezas.test.js` (v2, receta, paletas, tinte) y `dev.test.js` (Caddy) |
-| Olivo generado (constructor «olivo-2»: entrada, nombres de tipo, semilla guardada, receta, huellas, `copas_param`) | [`contratos/olivo-generado.md`](../../contratos/olivo-generado.md) + [`olivo-generado.schema.json`](../../contratos/olivo-generado.schema.json) | `olivo.test.js` (huellas del oráculo, niveles, Chrome), `contratos.test.js` |
+| Olivo generado (constructor «olivo-2»: entrada, nombres de tipo, semilla guardada, receta, huellas, `copas_param`) | [`contratos/olivo-generado.md`](../../contratos/olivo-generado.md) + [`olivo-generado.schema.json`](../../contratos/olivo-generado.schema.json) | `olivo.test.js` (huellas del oráculo, niveles, Chrome), `contratos.test.js` (ajv del esquema sobre la entrada de cada caso de las huellas y el `copas_param` del fixture, sus rechazos, y que la fila de `copas_param` sea la misma que la de `indice.schema.json`; L4-08) |
 | Receta de olivo horneada, formato v1 (ADR-0018: objeto binario cuantizado por huella, `.br`, pérdidas máximas, manifiesto binario por tesela) | [`contratos/olivo-horneado.md`](../../contratos/olivo-horneado.md) | `horneado.test.js` (ida y vuelta con receta sintética y con `olivo-2` real, huella fijada, errores) |
 | Manifiesto del hornero por finca (variantes, épocas horneadas, bandera `propios`) | [`contratos/hornero-manifiesto.schema.json`](../../contratos/hornero-manifiesto.schema.json) + ejemplo `pruebas/olivo/horneado/manifiesto-ejemplo.json` | `horneado.test.js` (ajv, rechaza lo que debe, coherencia) |
 | Calendario de épocas del olivo por fecha (decisión 64; valores de partida, a ajustar por Antonio) | [`contratos/epocas-calendario.json`](../../contratos/epocas-calendario.json) + [`epocas-calendario.schema.json`](../../contratos/epocas-calendario.schema.json) | `horneado.test.js` (ajv; 366 días con una sola época) |
 | Aves de GBIF por especie y mes en 10 km (EV-1g, v 1; `biodiversidad.json` junto al índice; deducido, solo CC0, CC BY y CC BY-SA) | [`contratos/biodiversidad.schema.json`](../../contratos/biodiversidad.schema.json) + ejemplo sintético `contratos/biodiversidad-ejemplo.json` (§1.5) | `aves_mes.test.js` (ajv del ejemplo y de los rechazos; ficha del motor; agregación y filtro de licencias del exportador con una API falsa) |
 | Pasos del arranque (`apps/web/src/arranque.ts`; A3-8c, antes los módulos de `apps/web/motor/` con su cabecera «Expone / Consume») | qué nombre de un paso usa otro paso: la derivación de `pruebas/guardianes/_pasos.js` y su foto `pruebas/guardianes/referencias/pasos_nombres.json`; entre módulos de `src/`, sus importaciones | `arranque.test.js`, `contratos.test.js` y `tipos_web.test.js` (dependency-cruiser) |
+| Lo de hoy de OlivarTrack para la historia (`GET /api/ot/hoy`, v1: tareas abiertas, trabajo realizado, atención, Vigía; lista blanca) | [`contratos/ot-hoy.schema.json`](../../contratos/ot-hoy.schema.json) + [`ot-hoy.md`](../../contratos/ot-hoy.md) + ejemplo sintético `contratos/ot-hoy-ejemplo.json` | `apps/api/pruebas/unidad/ot_hoy.test.ts` (ajv, lista blanca); en el motor, `historia.ts` con sus pruebas |
+| Clasificación de un juego casual por alias (`GET /api/juegos/{id}/clasificacion`, C9c, decisión 137; lista blanca, nada por hogar salvo el alias visible) | [`contratos/juegos-clasificacion.schema.json`](../../contratos/juegos-clasificacion.schema.json) | `apps/api/pruebas/unidad/propiedades.test.ts` y `juego_cosecha.test.js` |
+| Catálogo de eventos del Bus del motor (ADR-0023) | [`contratos/eventos.json`](../../contratos/eventos.json) + [`eventos.schema.json`](../../contratos/eventos.schema.json) + [`eventos.md`](../../contratos/eventos.md) | `componentes.test.js` (ajv y cada evento emitido o escuchado contra el código) |
+| Ficha de los olivos de una haza (ejemplo sintético `contratos/olivos-haza-ejemplo.json`) | ver «Vida de las hazas» | |
 | Conectores MCP | [`contratos/mcp.md`](../../contratos/mcp.md) | **nada** (no verificado en vivo) |
 | Api HTTP (F1a) | [`contratos/api.openapi.yaml`](../../contratos/api.openapi.yaml) | `apps/api/pruebas/unidad/app.test.ts` (cada ruta en el contrato y al revés) |
 | Ficha pública de haza | [`contratos/haza.schema.json`](../../contratos/haza.schema.json) (lista blanca, ADR-0014) | pruebas de `apps/api` (ajv); en el motor, `hazas.test.js` (la ficha solo enseña la lista blanca) |
@@ -49,7 +53,7 @@ Convenciones comunes: **x este, y norte**, en metros relativos a `centro_utm` (U
 
 ### 1.1 `indice.json` (va en la página como `D`)
 
-Campos obligatorios: `v, ts, res, srs, orto_px, finca_id, centro_utm, z0, ext, parcelas, copas, marcados, ot, avance, teselas, grueso, mosaico`. Opcionales: `fincas, textos, ndvi, suelo_ndvi, paisaje, zmax, cobertura_nube, base, tileset, copas_id, copas_tipo`.
+Campos obligatorios: `v, ts, res, srs, orto_px, finca_id, centro_utm, z0, ext, parcelas, copas, marcados, ot, avance, teselas, grueso, mosaico`. Opcionales: `fincas, textos, ndvi, suelo_ndvi, paisaje, zmax, cobertura_nube, base, tileset, copas_id, copas_tipo, copas_semilla, copas_param, biodiversidad, titulo_vr, config` (los vigila `contratos.test.js`: esta lista es la del esquema, y cada `D.<campo>` que lee el motor está en él; L4-09, L4-13). El esquema es **cerrado** en la raíz (`additionalProperties: false`): un campo que no está en él no entra en el índice, y `construye()` copia del intermedio solo estos (L4-10).
 
 | Campo | Contenido |
 |---|---|
@@ -59,7 +63,7 @@ Campos obligatorios: `v, ts, res, srs, orto_px, finca_id, centro_utm, z0, ext, p
 | `finca_id` | `hituelo`… (el fixture sintético usa además `cerro`, hasta C2); solo `hituelo` tiene recorrido guiado en la historia |
 | `centro_utm` | `[E, N]` enteros: origen de las coordenadas relativas |
 | `z0` | cota de referencia (m): `dtm` y `grueso` van en cm sobre ella |
-| `ext` | `[xmin, ymax, xmax, ymin]` relativo al centro: la caja de teselas/ventana |
+| `ext` | `[xmin, ymax, xmax, ymin]` relativo al centro: **la caja del NDVI** (y del suelo-NDVI), que no llevan georreferencia propia: el motor la usa para colocar sus rejillas (`x0`, `yN`, `ANCHO`, `ALTO` de `arranque.ts`) y como borde del paseo. Hituelo la toma del `bbox25830` del NDVI; no tiene por qué coincidir con la caja de teselas (esa la dan `teselas{}`, `grueso` y `mosaico`). Un exportador sin NDVI pone la caja de lo que exporta (L4-07) |
 | `parcelas[]` | `id, nombre, ha, linde[[x,y]…], centro[x,y], desfase ([dx, dy] si se midió en la parcela; null si no: Hituelo no lo mide por parcela), suelo (perfiles SoilGrids o null), finca (índice en fincas), decl (olivos declarados), pasto` |
 | `fincas[]` | `nombre, parcelas[índices], ha, olivos` (Hituelo; el fixture «cerro» no lo lleva) |
 | `copas[]` | **registro de árboles**: `[x, y, h, r8[8], parcela+1]`; `parcela+1 = 0` = fuera de toda parcela. Ver nota abajo |
@@ -68,14 +72,19 @@ Campos obligatorios: `v, ts, res, srs, orto_px, finca_id, centro_utm, z0, ext, p
 | `marcados[]` | `[x, y, índice en copas o -1, índice de parcela]`: olivos marcados en OlivarTrack |
 | `ndvi` | `w, h, fechas[], media[]` y los datos **o** `u8` (Hituelo: 0 = sin dato; 1..254 → −0,2..1,0 con `(u−1)/253·1,2−0,2`) **o** `b64` (Int16 en milésimas, −32768 = sin dato; variante antigua, la del fixture «cerro») |
 | `suelo_ndvi` | `w, h, a[], b[], f, fechas[]`: NDVI del suelo = NDVI − b·f/1000 por fecha (`f`: Int16 por celda) |
-| `ot` | instantánea de OlivarTrack: `fuente ("instantanea"\|"vivo"), fecha_consulta, pases_finca, entregas_finca, analiticas_finca, parcelas{id:{tareas[], fenologia[]}}` |
+| `ot` | instantánea de OlivarTrack: `fuente ("instantanea"\|"vivo"), fecha_consulta, pases_finca, entregas_finca, analiticas_finca, parcelas{id:{tareas[], fenologia[]}}`; tarea `tipo, titulo, fecha, estado, avance, fuente, andados, objetivo`; fenología `fecha, bbch`. **Lista blanca cerrada** (`additionalProperties: false` en cada nivel): nada por persona; un campo nuevo es un cambio de contrato (L9-09) |
 | `avance` | avance de trabajos por parcela (`{}` si no hay) |
-| `paisaje` | `fuente, centro_utm, z0, edificios[], tendido{linea, postes, derivaciones}, arroyo{ejes, nota}, arboles[]` — **deducido** de la geometría |
+| `paisaje` | `fuente, centro_utm, z0, edificios[], tendido{linea, postes, derivaciones}, arroyo{ejes, nota}, arboles[]` — **deducido** de la geometría. La forma de cada elemento está en el esquema (`$defs` `edificio`, `poste`, `punto3`, `punto_eje`, `arbol`): edificio `x, y, largo, ancho, ang, hAlero, hCumbrera, color[r,g,b]` (+ `zBase`); poste `x, y, zBase, zAlto` (+ `puntos`); árbol `x, y, h, r` (+ `tipo, zBase, enCauce`). El motor pinta en gris el tejado de un edificio sin color válido en vez de romper (L4-05) |
 | `teselas{}` | `"kx_ky": {kx, ky, v[x0,y0,x1,y1], np}`; `v` = rectángulo con dato, en m relativos a `centro_utm`, dentro de la huella de la tesela (`kx·256 − cx` … `+256`); no tiene por qué estar alineado (`construye()` recorta a la ventana con dato; Hituelo escribe la tesela entera). `v` aquí no es la versión del contrato (esa es el `v` de la raíz). `np` = puntos de nube |
 | `grueso` | relieve de 8 m: `x0, yN, res, w, h, b64` (Int16, cm sobre `z0`) |
 | `mosaico` | ortofoto global: `jpg` (data URI), `w, h, x0, yN, res` (Hituelo 2 m/px; `construye()`, 1 m/px) |
 | `textos` | `sin_historia, finca, fincas, parcelas, ha, olivos, desfase_txt, puntos_m2, intro_historia`: lo que `apps/web/herramientas/genera_motor.mjs` cambia en la cabecera de la página (título, entradilla, pie, historia) |
 | `base` | prefijo de `t/` (por defecto `""` = relativo a la página) |
+| `copas_semilla[]` | *(opcional)* columna paralela a `copas`: semilla guardada del generador de olivos (uint32 o null; [olivo-generado.md](../../contratos/olivo-generado.md) §1.2) |
+| `copas_param[]` | *(opcional)* columna paralela a `copas`: fila de 8 medidas del LiDAR o null ([olivo-generado.md](../../contratos/olivo-generado.md) §3; la misma fila que `olivo-generado.schema.json`) |
+| `biodiversidad` | *(opcional)* nombre del fichero de aves de GBIF publicado junto al índice ([`biodiversidad.schema.json`](../../contratos/biodiversidad.schema.json)) |
+| `titulo_vr` | *(opcional)* título del panel de VR y del tablón; sin él, el de la página o el nombre de la finca. Ningún exportador lo escribe hoy |
+| `config` | *(opcional, cerrado)* `{factorR8}`: factor de radio de copa en (0, 2]; `?factorR8=` y la configuración del servidor mandan sobre él. Ningún exportador lo escribe hoy |
 | `tileset` | ruta del `tileset.json` de la escena 3D Tiles ([ADR-0015](../adr/0015-escena-en-3d-tiles.md)), relativa a la página o absoluta del mismo origen (nunca otro host). Es la **única** escena (T8 fase 2, [ADR-0021](../adr/0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md)): sin él, o si falla, el panel dice «Esta finca no tiene escena» y `Mundo` sigue sirviendo a la física y a las fichas. No lo escriben los exportadores: lo pone quien sirve el tileset junto a los datos (`infra/dev`, `tuberia/tiles3d`, las páginas de prueba) ([TILES3D](TILES3D.md#la-escena-sin-vuelta-atrás-t8-fase-2)) |
 
 **Nota — registro de árboles: diseño frente a implementación.** El diseño ([histórico](../historico/DISENO-2026-10.md), §5.5) proponía un registro `{x, y, h, r8, tesela, parcela, olivo, frutal}`. Lo implementado es `copas[]` con `[x, y, h, r8, parcela+1]`: la **tesela** se deduce de la posición y **`olivo`/`frutal` no viajan**: el motor decide en JS `oliv = !(h > 8 || (h > 6.5 && radio medio < 2.2))`. Por eso los frutales sin marcar en Hituelo no se distinguen (pendiente D1). Manda el código.
@@ -101,9 +110,9 @@ Campos obligatorios: `v, ts, res, srs, orto_px, finca_id, centro_utm, z0, ext, p
 
 | Campo | Contenido decodificado | Tamaño |
 |---|---|---|
-| `dtm` | Int16 LE, cm sobre `z0`; 258 × 258 (celdas −1..256: **una celda de margen**) | 133.128 B |
+| `dtm` | Int16 LE, cm sobre `z0` (rango −327,68..327,67 m: un desnivel mayor para la exportación, L4-11); 258 × 258 (celdas −1..256: **una celda de margen**, la de la tesela vecina) | 133.128 B |
 | `chm` | u8, altura de vegetación en **decímetros**; 256 × 256 | 65.536 B |
-| `suelo` | u8 RGB a 2 m; 130 × 130 × 3 (celdas −1..128, con margen) | 50.700 B |
+| `suelo` | u8 RGB a 2 m; 130 × 130 × 3 (celdas −1..128, con margen: la celda de la **tesela vecina**, y el borde propio solo donde no hay vecina; `con_margen` de `hituelo_conv.py`, L4-06) | 50.700 B |
 | `pts` | *(opcional)* nube: Int16 ×3 por punto: x, y en **cm sobre la esquina SO de la tesela** (0..25.600), z en cm sobre `z0`. **Orden barajado con semilla fija**: el prefijo es una submuestra uniforme (`setDrawRange` = LOD) | 6 B × `np` |
 | `np` | número de puntos de `pts` (0 si no hay) | |
 

@@ -2,6 +2,7 @@
 pruebas/guardianes/exportadores.test.js. Deterministas (semilla fija).
 
   python pruebas/exportadores_sinteticos.py ids                 casos de tuberia/ids_copas.py (Python puro); escribe JSON por stdout
+  python pruebas/exportadores_sinteticos.py margen              (numpy y scipy) con_margen() y cm_i16() de hituelo_conv.py sobre 2×2 teselas inventadas (L4-06, L4-11); JSON por stdout
   python pruebas/exportadores_sinteticos.py exporta <carpeta>   (necesita numpy, scipy y pillow) en <carpeta>:
         datos/                 entradas de Hituelo inventadas: 1 tesela (1000_16000), 1 parcela, 13 copas (dos en la misma celda de 1 m) y 11 marcas de OlivarTrack (9 con id del censo, desplazadas ~1,5 m)
         hituelo_a/, hituelo_b/ dos exportaciones de los mismos datos
@@ -114,6 +115,35 @@ def rejillas(salida, censo=True, anterior=None):
     F8.construye(Fd, salida, anterior)
 
 
+def margen():
+    """L4-06 y L4-11: casos de hituelo_conv.con_margen (el margen del color del suelo sale de la vecina) y cm_i16 (Int16 sin desbordar en silencio)"""
+    import numpy as np
+    import hituelo_conv as H
+    # 2×2 teselas, cada una de un color liso distinto y un degradado propio, para que se note de dónde sale cada celda del margen
+    sfs = {}
+    for kx in (0, 1):
+        for ky in (0, 1):
+            a = np.zeros((128, 128, 3), "u1"); a[..., 0] = 40 + 100 * kx + 50 * ky; a[..., 1] = np.arange(128)[:, None]; a[..., 2] = np.arange(128)[None, :]
+            sfs[(kx, ky)] = a
+    m = H.con_margen(sfs, 0, 0)
+    sola = H.con_margen({(5, 5): sfs[(0, 0)]}, 5, 5)
+    R = dict(forma=list(m.shape),
+             interior=bool((m[1:-1, 1:-1] == sfs[(0, 0)]).all()),
+             este=bool((m[1:-1, -1] == sfs[(1, 0)][:, 0]).all()),            # columna este = primera columna de la vecina del este
+             norte=bool((m[-1, 1:-1] == sfs[(0, 1)][0]).all()),             # fila norte = primera fila (la del sur) de la vecina del norte
+             esquina_ne=m[-1, -1].tolist() == sfs[(1, 1)][0, 0].tolist(),
+             oeste_sin_vecina=bool((m[1:-1, 0] == sfs[(0, 0)][:, 0]).all()),  # sin vecina al oeste: el borde propio
+             sur_sin_vecina=bool((m[0, 1:-1] == sfs[(0, 0)][0]).all()),
+             sola_igual_pad=bool((sola == np.pad(sfs[(0, 0)], ((1, 1), (1, 1), (0, 0)), mode="edge")).all()))
+    m11 = H.con_margen(sfs, 1, 1)
+    R["oeste_11"] = bool((m11[1:-1, 0] == sfs[(0, 1)][:, -1]).all()); R["sur_11"] = bool((m11[0, 1:-1] == sfs[(1, 0)][-1]).all()); R["esquina_so_11"] = m11[0, 0].tolist() == sfs[(0, 0)][-1, -1].tolist()
+    R["i16"] = H.cm_i16(np.array([0.4, -1.6, 32767.2]), "x").tolist()
+    for n, v in (("alto", [33000.0]), ("bajo", [-40000.0]), ("nan", [float("nan")])):
+        try: H.cm_i16(np.array(v), "x"); R["i16_" + n] = "sin error"
+        except ValueError as e: R["i16_" + n] = str(e)
+    print(json.dumps(R))
+
+
 def exporta(base):
     for m in ("numpy", "scipy", "PIL"): __import__(m)
     os.environ.pop("GEMELO_INDICE_ANTERIOR", None)                            # la prueba no hereda la de quien la lanza
@@ -150,4 +180,5 @@ def exporta(base):
 if __name__ == "__main__":
     if len(sys.argv) >= 2 and sys.argv[1] == "ids": casos_ids()
     elif len(sys.argv) >= 3 and sys.argv[1] == "exporta": exporta(sys.argv[2])
+    elif len(sys.argv) >= 2 and sys.argv[1] == "margen": margen()
     else: sys.exit(__doc__)

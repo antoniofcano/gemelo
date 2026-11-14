@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { ComponentesPuro } from "../../nucleo/componentes.ts";
 import { creaMateriales } from "../../nucleo/materiales.ts";
 import type { ThreeMin } from "../../nucleo/materiales.ts";
-import { DEF_ARROYO, FS_ARROYO, MATERIAL_ARROYO, VS_ARROYO, creaPaisaje, manifiestoPaisaje } from "./paisaje.ts";
+import { COLOR_TEJADO_DEFECTO, DEF_ARROYO, FS_ARROYO, MATERIAL_ARROYO, VS_ARROYO, colorTejado, creaPaisaje, manifiestoPaisaje } from "./paisaje.ts";
 import type { DatosPaisaje, DepsPaisaje } from "./paisaje.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -70,6 +70,14 @@ describe("paisaje (componente del exterior)", () => {
     expect(api.matTronco.isMeshLambertMaterial).toBe(true); expect(api.matTronco.color.getHex()).toBe(0x5a4636);
   });
 
+  it("L4-05: un edificio sin color (o con un color roto) no tumba el montaje: su tejado sale del gris por defecto", () => {
+    const sinColor: DatosPaisaje = { ...PA, edificios: [{ ...PA.edificios[0]!, color: undefined }, { ...PA.edificios[1]!, color: [1, 2] }] };
+    let r: ReturnType<typeof monta> | null = null;
+    expect(() => { r = monta({}, sinColor); }).not.toThrow();
+    expect(r!.api.resumen().edificios).toBe(2);
+    expect(colorTejado(undefined)).toBe(COLOR_TEJADO_DEFECTO); expect(colorTejado([1, 2])).toBe(COLOR_TEJADO_DEFECTO); expect(colorTejado([1, NaN, 3])).toBe(COLOR_TEJADO_DEFECTO);
+    expect(colorTejado([10, 20, 30])).toEqual([10, 20, 30]);
+  });
   it("se coloca sobre el relieve, sigue la exageración y se recorta (esferas) sin vértices no finitos; renueva el presupuesto de VR", () => {
     const { api, Estado, vr } = monta(), g = api.grupo();
     api.colocaPaisaje();

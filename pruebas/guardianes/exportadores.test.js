@@ -68,6 +68,21 @@ test("ids_copas.py: con censo, la copa emparejada (desfase de ~1,5 m corregido) 
   assert.strictEqual(R.avisos_malos.length, 2, "un id del censo repetido y uno no entero deben avisar y quedar provisionales");
 });
 
+// L4-06: el margen de una celda del color del suelo sale de la tesela vecina (CONTRATOS §1), no de repetir el borde propio; L4-11: dtm y grueso
+// pasan a Int16 sin desbordar en silencio (cm_i16 para la exportación). Sobre 2×2 teselas inventadas (pruebas/exportadores_sinteticos.py margen).
+test("hituelo_conv.py: el margen del suelo sale de la vecina (2×2 teselas sintéticas) y dtm/grueso no desbordan Int16 en silencio", t => {
+  if (SIN_DEPS) return t.skip(SIN_DEPS + ": el margen del suelo NO se ha comprobado");
+  const r = ejecuta(py, ["-P", "-E", SCRIPT, "margen"]);
+  assert.strictEqual(r.status, 0, "exportadores_sinteticos.py margen falló:\n" + r.stdout + r.stderr);
+  const R = JSON.parse(r.stdout);
+  assert.deepStrictEqual(R.forma, [130, 130, 3]);
+  for (const k of ["interior", "este", "norte", "esquina_ne", "oeste_11", "sur_11", "esquina_so_11"]) assert.ok(R[k], "margen de la vecina: falla «" + k + "»");
+  for (const k of ["oeste_sin_vecina", "sur_sin_vecina", "sola_igual_pad"]) assert.ok(R[k], "sin vecina, el borde propio: falla «" + k + "»");
+  assert.deepStrictEqual(R.i16, [0, -2, 32767]);
+  for (const k of ["i16_alto", "i16_bajo"]) assert.match(R[k], /fuera de Int16/, k + ": un desnivel fuera de Int16 debe parar la exportación");
+  assert.match(R.i16_nan, /no finita/);
+});
+
 let BASE = null, FALLO = null;
 test.before(() => {
   if (SIN_DEPS) return;
@@ -94,6 +109,9 @@ test("hituelo_conv.py sobre 1 tesela sintética: columnas del contrato, índice 
   compruebaCenso(I, esperado().hituelo, "hituelo");
   assert.deepStrictEqual(I.marcados.map(m => m[2]), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, -1], "marcados: índice de la copa emparejada (uno a uno)");
   for (const k of Object.keys(I.teselas)) for (const ext of [".json", ".jpg"]) assert.ok(fs.existsSync(path.join(BASE, "hituelo_a", "t", k + ext)), "falta t/" + k + ext);
+  // L4-07: ext es la caja del NDVI (bbox25830 de la entrada) relativa a centro_utm: el motor georreferencia con ella el NDVI y el suelo-NDVI
+  const nd = JSON.parse(fs.readFileSync(path.join(BASE, "datos", "imagen", "ndvi", "ndvi_hituelo.json"), "utf8")).bbox25830, [cx, cy] = I.centro_utm;
+  assert.deepStrictEqual(I.ext, [nd[0] - cx, nd[3] - cy, nd[2] - cx, nd[1] - cy], "ext = [xmin, ymax, xmax, ymin] de la caja del NDVI");
 });
 
 // L4-04: las teselas que escriben los exportadores de verdad (sintéticas, 1 tesela cada una) cumplen tesela.schema.json y sus tamaños, y su v cae en la huella
@@ -131,6 +149,17 @@ test("finca_8_teselas.py construye() (rejillas) sobre 1 tesela sintética: colum
   const pc = porPosicion(C), ph = porPosicion(H);
   for (const [pos, k] of pc) if (k >= PROV && ph.get(pos) >= PROV) assert.strictEqual(ph.get(pos), k, "el id provisional de " + pos + " difiere entre construye() y Hituelo");
   for (const k of Object.keys(C.teselas)) for (const ext of [".json", ".jpg"]) assert.ok(fs.existsSync(path.join(BASE, "rejillas", "t", k + ext)), "construye(): falta t/" + k + ext + " (se sirve con ficheros, como Hituelo; T8 fase 2)");
+});
+
+// L4-10: construye() copia del intermedio solo los campos del contrato (el sintético trae W y H, que no lo son); y ningún exportador escribe un campo
+// fuera de contratos/indice.schema.json
+test("los índices de los exportadores solo llevan campos del contrato (construye() no copia W ni H del intermedio)", t => {
+  if (SIN_DEPS) return t.skip(SIN_DEPS + ": los campos de los índices NO se han comprobado");
+  assert.ifError(FALLO);
+  for (const d of ["hituelo_a", "rejillas", "rejillas_prov", "rejillas_censo"]) {
+    const fuera = Object.keys(indice(d)).filter(k => !(k in ESQ.properties));
+    assert.deepStrictEqual(fuera, [], d + ": campos fuera del contrato del índice");
+  }
 });
 
 // copas_semilla dentro de los exportadores (ADR-0017, decisión 50, tuberia/semillas_copas.py): sin índice anterior, semilla = copas_id; con él (por

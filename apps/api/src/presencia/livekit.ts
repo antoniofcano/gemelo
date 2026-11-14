@@ -285,12 +285,15 @@ export class ModeradorLiveKit implements ModeradorSala, ModeradorVoz {
 }
 
 /**
- * Expulsados recientes: no se les da token nuevo durante TTL_S (si no, la expulsión duraría lo que tarda en recargar).
+ * Expulsados recientes: no se les da token nuevo durante TTL_S (si no, la expulsión duraría lo que tarda en recargar), y mientras dure la marca el
+ * centinela (reingreso.ts) los vuelve a sacar de las salas si entran con un token firmado ANTES de la expulsión (L9-06: LiveKit no revoca tokens).
  * En memoria: no sobrevive a un reinicio de la api (para más, la oficina revoca sus sesiones o lo desactiva).
  */
 export class Expulsados {
   private readonly hasta = new Map<number, number>();
   marca(hogarId: number, ahora = Date.now()): void { this.hasta.set(hogarId, ahora + TTL_S * 1000); }
+  /** los hogares con la marca vigente (el centinela solo llama a LiveKit si hay alguno) */
+  vivos(ahora = Date.now()): number[] { return [...this.hasta.keys()].filter(h => this.esta(h, ahora)); }
   esta(hogarId: number, ahora = Date.now()): boolean {
     const h = this.hasta.get(hogarId);
     if (h === undefined) return false;

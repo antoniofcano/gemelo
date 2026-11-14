@@ -79,7 +79,8 @@ export interface GanchosTiles {
 }
 export interface DepsOlivosTiles {
   /** el índice: de él solo se lee copas_id (el id de cada copa, si el índice lo trae) */
-  D: { copas_id?: ArrayLike<number> | null };
+  /** el índice: copas_id y v (la versión del contrato de datos, que el tileset dice en extras.gemelo.contrato_origen; L4-14) */
+  D: { copas_id?: ArrayLike<number> | null; v?: number };
   /** el censo de árboles (02_mundo: copas), con la regla de olivo ya aplicada */
   copas: readonly CopaTesela[];
   /** la escena 3D Tiles: su estado y dónde engancharse */
@@ -116,6 +117,9 @@ export function creaOlivosTiles(d: DepsOlivosTiles) {
     if (estado !== "esperando") return;
     G = ts && ts.extras && ts.extras.gemelo;
     if (!G || G.contrato_tileset !== 2) return apaga("el tileset no trae el contrato tileset v2");
+    // L4-14: además de la huella, el tileset dice de qué contrato de datos y en qué sistema de referencia salió; si no casan, no se resuelve nada
+    if (G.contrato_origen !== D.v) return apaga("el tileset sale del contrato de datos v" + G.contrato_origen + " y el índice es v" + D.v);
+    if (G.srs !== "EPSG:25830") return apaga("el tileset no está en EPSG:25830 (" + G.srs + ")");
     if (G.id_fuente === "copas_id" && !D.copas_id) return apaga("el tileset identifica por copas_id y el json no lo trae");
     if (G.id_fuente !== "copas_id" && D.copas_id) return apaga("el tileset identifica por índice y el json trae copas_id");
     idsT = IdTiles.ids(copas.length, G.id_fuente === "copas_id" ? D.copas_id : null);

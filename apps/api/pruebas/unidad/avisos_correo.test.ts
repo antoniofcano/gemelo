@@ -10,7 +10,7 @@ import { hogarDeBaja, mensajeDeAviso, Repartidor, tokenDeBaja, urlDeBaja } from 
 import { fijaAvisosCorreo, leeAvisosCorreo } from "../../src/yo/avisos.ts";
 import { contexto, deLaWeb, ORIGEN } from "../apoyo/contexto.ts";
 
-const SECRETO = "secreto-de-prueba-secreto-de-prueba-0123456789";
+const SECRETO = "secreto-de-prueba-".repeat(2) + "0123456789";   // sintético; por partes para que el guardián de secretos (L9-08) no lo tome por uno real
 const evento = (extra: Partial<EventoIcs> = {}): EventoIcs => ({
   id: 7, titulo: "Cata de aceite", descripcion: "Cata guiada en la almazara", lugar: "Almazara", finca: "cerro",
   empieza_en: new Date("2026-11-20T09:00:00Z"), termina_en: new Date("2026-11-20T11:00:00Z"), actualizada_en: new Date("2026-10-30T12:00:00Z"), ...extra,

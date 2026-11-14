@@ -90,6 +90,23 @@ test("los esquemas rechazan lo que deben (arrays posicionales de otra longitud, 
     "copas_tipo menor que −1": I => { I.copas_tipo[0] = -2; },
     "ndvi sin u8 ni b64": I => { delete I.ndvi.u8; delete I.ndvi.b64; },
     "finca_id con mayúsculas": I => { I.finca_id = "Hituelo"; },
+    // L4-05: los subcampos del paisaje que lee el motor tienen forma
+    "edificio sin color": I => { delete I.paisaje.edificios[0].color; },
+    "color de tejado con 2 componentes": I => I.paisaje.edificios[0].color.pop(),
+    "color de tejado fuera de 0..255": I => { I.paisaje.edificios[0].color[0] = 300; },
+    "poste sin zAlto": I => { delete I.paisaje.tendido.postes[0].zAlto; },
+    "punto del tendido con 2 coordenadas": I => I.paisaje.tendido.linea[0].pop(),
+    "árbol sin radio": I => { delete I.paisaje.arboles[0].r; },
+    "eje de cauce con un punto de 1 coordenada": I => { I.paisaje.arroyo.ejes[0][0] = [0]; },
+    // L4-09: titulo_vr y config tienen contrato (config cerrado)
+    "config con otra forma (la de /api/config)": I => { I.config = { v: 1 }; },
+    "config.factorR8 fuera de (0, 2]": I => { I.config = { factorR8: 3 }; },
+    "titulo_vr vacío": I => { I.titulo_vr = ""; },
+    // L9-09: ot es una lista blanca cerrada; nada por persona
+    "tarea de OT con asignados": I => { Object.values(I.ot.parcelas)[0].tareas.push({ tipo: "poda", titulo: "x", asignados: ["PERSONA SINTETICA"] }); },
+    "fenología de OT con un campo de más": I => { Object.values(I.ot.parcelas)[0].fenologia.push({ fecha: "2026-01-01", bbch: 61, quien: "PERSONA SINTETICA" }); },
+    "parcela de OT con un campo de más": I => { Object.values(I.ot.parcelas)[0].cuadrilla = []; },
+    "ot con un campo de más": I => { I.ot.personas = []; },
   };
   for (const [n, f] of Object.entries(casos)) assert.notDeepStrictEqual(roto(f), [], "el esquema del índice debería rechazar: " + n);
   const t = jsonFx("hituelo", "t", k0 + ".json");
@@ -236,6 +253,74 @@ test("los ganchos window.__* de depuración existen donde dice el contrato", () 
 
 test("los alias heredados suelo, copaAlta, colorSuelo y orto siguen apuntando a Mundo", () => {
   assert.match(pasoArranque("02_mundo.js"), /var suelo = Mundo\.suelo, copaAlta = Mundo\.copaAlta, colorSuelo = Mundo\.colorSuelo, orto = Mundo\.orto;/);
+});
+
+// L4-08: contratos/olivo-generado.schema.json se compila y valida datos de verdad: la entrada de cada caso de las huellas del oráculo
+// (pruebas/olivo/huellas-olivo-2.json) y la columna copas_param del fixture; y su fila de copas_param es la MISMA que la de indice.schema.json
+// (las dos copias del contrato no pueden divergir sin que esto falle).
+const ESQ_OLIVO = json("contratos/olivo-generado.schema.json");
+const sinComentarios = o => JSON.parse(JSON.stringify(o, (k, v) => k === "$comment" ? undefined : v));
+test("olivo-generado.schema.json compila y valida la entrada de los casos de las huellas y el copas_param del fixture", () => {
+  const V = ajv.compile(ESQ_OLIVO);
+  const casos = json("pruebas/olivo/huellas-olivo-2.json").casos;
+  assert.ok(casos.length > 0, "las huellas no traen casos");
+  for (const c of casos) assert.deepStrictEqual(valida(V, { entrada: { tipo: c.tipo, epoca: c.epoca, semilla: c.semilla } }), [], "entrada del caso " + JSON.stringify([c.tipo, c.epoca, c.semilla]));
+  const I = jsonFx("hituelo", "indice.json");
+  assert.ok(Array.isArray(I.copas_param) && I.copas_param.length > 0, "el fixture de hituelo debe traer copas_param");
+  assert.deepStrictEqual(valida(V, { copas_param: I.copas_param }), [], "copas_param del fixture contra olivo-generado.schema.json");
+  const malos = {
+    "época desconocida": { entrada: { epoca: "otoño", semilla: 1 } },
+    "semilla negativa": { entrada: { epoca: "flor", semilla: -1 } },
+    "semilla de más de 32 bits": { entrada: { epoca: "flor", semilla: 2 ** 32 } },
+    "campo de más en la entrada": { entrada: { epoca: "flor", semilla: 1, otra: 1 } },
+    "fila de copas_param con 9 campos": { copas_param: [[1, 1, 0, 0, 0.5, 0.2, 0.1, 0, 9]] },
+    "rumbo de más de 360": { copas_param: [[1, 1, 0, 400, 0.5, 0.2, 0.1, 0]] },
+  };
+  for (const [n, d] of Object.entries(malos)) assert.notDeepStrictEqual(valida(V, d), [], "olivo-generado.schema.json debería rechazar: " + n);
+});
+test("la fila de copas_param es la misma en olivo-generado.schema.json y en indice.schema.json", () => {
+  assert.deepStrictEqual(sinComentarios(ESQ_OLIVO.$defs.copas_param_fila), sinComentarios(ESQ_INDICE.properties.copas_param.items),
+    "las dos copias de la fila de copas_param divergen: cámbialas a la vez (contratos/olivo-generado.md §3)");
+});
+
+// L4-09 / L9-09: lo que el esquema admite de verdad (para que los rechazos de arriba no pasen por un esquema que lo rechaza todo)
+test("el índice admite titulo_vr, config.factorR8 y tareas y fenología de OT con la lista blanca de hituelo_conv.py", () => {
+  const I = jsonFx("hituelo", "indice.json"), p = Object.values(I.ot.parcelas)[0];
+  I.titulo_vr = "Finca sintética"; I.config = { factorR8: 0.7 };
+  p.tareas.push({ tipo: "poda", titulo: "Poda sintética", fecha: "2026-01-02", estado: "en_curso", avance: 0.5, fuente: "olivos", andados: 10, objetivo: 20 }, { tipo: "riego", titulo: "x", fecha: null, estado: "completado", avance: null, fuente: null, andados: null, objetivo: null });
+  p.fenologia.push({ fecha: "2026-04-01", bbch: 61 });
+  assert.deepStrictEqual(valida(V_INDICE, I), []);
+});
+
+// L4-09: cada campo del índice que lee el motor (D.<campo> en apps/web/src, fuera de las pruebas) está en contratos/indice.schema.json.
+// Un campo nuevo que el motor lea sin contrato (como titulo_vr o config antes) hace caer esto.
+test("cada D.<campo> del índice que lee el motor está en indice.schema.json", () => {
+  const ficheros = [], recorre = d => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const f = path.join(d, e.name); if (e.isDirectory()) recorre(f); else if (/\.ts$/.test(e.name) && !/\.test\.ts$/.test(e.name) && !/[\\/]datos[\\/]contratos[\\/]/.test(f)) ficheros.push(f); } };
+  recorre(path.join(RAIZ, "apps", "web", "src"));
+  const leidos = new Set();
+  for (const f of ficheros) for (const m of fs.readFileSync(f, "utf8").matchAll(/(?<![A-Za-z0-9_$.])D\.([a-z][a-z0-9_]*)(?![A-Za-z0-9_$])/g)) leidos.add(m[1]);
+  assert.ok(leidos.has("ext") && leidos.has("paisaje"), "la búsqueda no encuentra lo que debe (ext, paisaje)");
+  const fuera = [...leidos].filter(k => !(k in ESQ_INDICE.properties)).sort();
+  assert.deepStrictEqual(fuera, [], "el motor lee del índice campos que el contrato no fija: añádelos a contratos/indice.schema.json y a CONTRATOS §1.1");
+});
+
+// L4-13: CONTRATOS §1.1 enumera los mismos campos obligatorios y opcionales que el esquema, y nombra cada fichero de contratos/
+test("CONTRATOS §1.1 lista los obligatorios y opcionales del esquema del índice, y nombra cada fichero de contratos/", () => {
+  const doc = lee("doc/sistema/CONTRATOS.md"), lista = re => { const m = re.exec(doc); assert.ok(m, "no encuentro " + re); return m[1].split(",").map(s => s.trim()).sort(); };
+  const req = ESQ_INDICE.required.slice().sort(), opc = Object.keys(ESQ_INDICE.properties).filter(k => !req.includes(k)).sort();
+  assert.deepStrictEqual(lista(/Campos obligatorios: `([^`]+)`/), req, "obligatorios de CONTRATOS §1.1 frente a indice.schema.json");
+  assert.deepStrictEqual(lista(/Opcionales: `([^`]+)`/), opc, "opcionales de CONTRATOS §1.1 frente a indice.schema.json");
+  const sin = fs.readdirSync(path.join(RAIZ, "contratos")).filter(f => !doc.includes(f));
+  assert.deepStrictEqual(sin, [], "ficheros de contratos/ que CONTRATOS.md no nombra");
+});
+
+// L4-07: el motor georreferencia el NDVI y el suelo-NDVI con ext (arranque.ts: x0, yN, ANCHO, ALTO), y Hituelo lo toma de la caja del NDVI;
+// CONTRATOS lo dice así (antes decía «la caja de teselas/ventana»). La comprobación del exportador está en exportadores.test.js.
+test("CONTRATOS dice que ext es la caja del NDVI (lo que consume el motor), no la de teselas", () => {
+  const fila = lee("doc/sistema/CONTRATOS.md").split("\n").find(l => l.startsWith("| `ext` |")) || "";
+  assert.match(fila, /caja del NDVI/, "la fila de ext en CONTRATOS §1.1");
+  assert.doesNotMatch(fila, /caja de teselas\/ventana/);
+  assert.match(lee("apps/web/src/arranque.ts"), /x0 = D\.ext\[0\], yN = D\.ext\[1\], ANCHO = D\.ext\[2\] - D\.ext\[0\]/, "arranque.ts deja de colocar las rejillas con ext: revisa CONTRATOS");
 });
 
 test("la documentación nombra cada interfaz del contrato", () => {

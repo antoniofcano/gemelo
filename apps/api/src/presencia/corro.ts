@@ -4,14 +4,15 @@
 //    audio, `corro-<id>` (id opaco al azar), cuyo token firma la api SOLO a sus miembros (corro_rutas.ts): quién oye a quién lo impone el servidor.
 //  · Vive EN MEMORIA de esta api (como la palabra de las guiadas): no se guarda quién habló con quién (es el grafo social que K4 quiere evitar); lo que queda es
 //    la auditoría corro.* (quién, con quién, cuándo; nunca audio), con el plazo de la voz (corteAuditoriaVoz). Tras un reinicio los corros se pierden: sus salas
-//    quedan vacías en LiveKit o con gente que ya no consigue token nuevo (el token dura TTL_S) [SUPUESTO aceptable con cuentas de prueba].
+//    quedan vacías en LiveKit o con gente que ya no consigue token nuevo (el token dura TTL_S) [SUPUESTO aceptable con cuentas de prueba]. Mientras la api sigue viva,
+//    el barrido saca de la sala de un corro a quien no es miembro y de la de un corro deshecho a cualquiera (L9-06: LiveKit no revoca un token ya firmado).
 //  · La cercanía (invitar a < 8 m, dejar de oír a > 20 m, salir a > 40 m durante 60 s) la mide el CLIENTE: la api no ve las poses (decisión 40). El servidor sí
 //    saca a quien pasa AUSENTE_MS sin ninguna conexión en la sala de su corro (desconectado, cerró la pestaña) con un barrido periódico.
 //  · Límites [PROPUESTA del ADR-0032, provisionales]: 5 invitaciones cada 10 min por hogar; dos «Ahora no» seguidos de la misma persona → 24 h sin poder invitarla.
 //  · Las comprobaciones de la base (interruptor, ajuste, consentimiento, suspensión, bloqueos) se hacen DENTRO de la cola, en el momento de invitar y de aceptar.
 import { randomBytes } from "node:crypto";
 import type { ModeradorVoz } from "./livekit.ts";
-import { esDelHogar, PATRON_ID_CORRO, SALA_CORRO } from "./livekit.ts";
+import { esDelHogar, PATRON_ID_CORRO, SALA_CORRO, TTL_S } from "./livekit.ts";
 import type { Auditor, Reloj, Resultado } from "./voz.ts";
 import { RELOJ_REAL } from "./voz.ts";
 
@@ -25,6 +26,8 @@ export const INVITA_MAX = 5, INVITA_VENTANA_MS = 10 * 60_000;
 export const AHORA_NO_SEGUIDOS = 2, VETO_MS = 24 * 3600_000;
 /** Tope de invitaciones pendientes que puede tener un hogar a la vez (más allá, «no disponible»). [SUPUESTO del agente] */
 export const RECIBIDAS_MAX = 10;
+/** La identidad opaca de una conexión (livekit.ts, identidadOpaca): h_<22>_<8> */
+const PATRON_IDENTIDAD = /^h_[A-Za-z0-9_-]{22}_[A-Za-z0-9_-]{8}$/;
 /** Quien pasa 60 s sin ninguna conexión en la sala de su corro sale de él (ADR-0032 b: «se desconecta»); el barrido mira cada 20 s. */
 export const AUSENTE_MS = 60_000, BARRIDO_MS = 20_000;
 
@@ -75,6 +78,8 @@ export class Corros {
   private readonly invitaciones = new Map<string, Invitacion>();
   private readonly enviadas = new Map<number, number[]>();                          // instantes de las invitaciones de cada hogar (ventana de 10 min)
   private readonly rechazos = new Map<string, { seguidos: number; vetoHasta: number }>();   // clave «de>a»
+  /** L9-06: las salas de los corros deshechos y hasta cuándo puede quedar vivo un token suyo: si alguien la vuelve a crear con él (auto_create de LiveKit), el barrido le saca */
+  private readonly deshechas = new Map<string, number>();
   private cola: Promise<unknown> = Promise.resolve();
   private readonly d: Required<Omit<DepsCorros, "avisa">> & Pick<DepsCorros, "avisa">;
 
@@ -249,7 +254,7 @@ export class Corros {
   private async deshaz(c: Corro, motivo: "menos_de_dos" | "interruptor", actor: number | null): Promise<void> {
     const quedaban = [...c.miembros.keys()];
     for (const h of quedaban) this.porHogar.delete(h);
-    c.miembros.clear(); this.corros.delete(c.id);
+    c.miembros.clear(); this.corros.delete(c.id); this.deshechas.set(SALA_CORRO(c.id), this.ahora() + TTL_S * 1000);
     await this.d.audita(actor, "corro.deshecho", { corro: c.id, motivo, quedaban: quedaban.join(",") });
     try { await this.d.sala.borraSala(SALA_CORRO(c.id)); }
     catch (e) { this.d.log.warn({ err: (e as Error).message, corro: c.id }, "corros: no se pudo borrar la sala del corro"); }
@@ -258,15 +263,33 @@ export class Corros {
 
   /**
    * El barrido (cada BARRIDO_MS, lo arranca corro_rutas.ts): mira quién tiene alguna conexión en la sala de su corro; quien pasa AUSENTE_MS sin ninguna (contando
-   * desde que entró) sale con motivo «desconectado». Si LiveKit no responde, no saca a nadie (no se sabe). Devuelve cuántos salieron.
+   * desde que entró) sale con motivo «desconectado». Si LiveKit no responde, no saca a nadie (no se sabe). Saca además de la sala a quien está sin ser miembro
+   * (L9-06: un token anterior a su salida). Devuelve cuántos salieron (miembros desconectados más intrusos sacados).
    */
   barre(): Promise<number> {
     return this.enOrden(async () => {
       const ahora = this.ahora(); this.limpia(ahora);
       let n = 0;
+      // L9-06: en la sala de un corro deshecho no debe haber nadie: quien esté entró con un token anterior (y quizá la volvió a crear); fuera
+      for (const [s, hasta] of [...this.deshechas]) {
+        if (hasta <= ahora) { this.deshechas.delete(s); continue; }
+        let quedan: string[];
+        try { quedan = (await this.d.sala.presentes(s)).map(p => p.identidad).filter(i => PATRON_IDENTIDAD.test(i)); } catch { continue; }
+        for (const i of quedan) {
+          try { if (await this.d.sala.expulsaHogar(s, i.slice(0, i.length - 9)) > 0) { n++; this.d.log.warn({ sala: s }, "corros: alguien volvió a la sala de un corro deshecho; se le ha sacado"); } }
+          catch (e) { this.d.log.warn({ err: (e as Error).message, sala: s }, "corros: no se pudo sacar de la sala de un corro deshecho"); }
+        }
+      }
       for (const c of [...this.corros.values()]) {
         let dentro: string[];
         try { dentro = (await this.d.sala.presentes(SALA_CORRO(c.id))).map(p => p.identidad); } catch { continue; }
+        // L9-06: quien está en la sala sin ser miembro (le sacaron del corro y volvió con su token anterior, que LiveKit no revoca) sale otra vez
+        const prefijos = [...c.miembros.keys()].map(h => this.d.prefijo(h));
+        for (const i of dentro) {
+          if (prefijos.some(p => esDelHogar(i, p)) || !PATRON_IDENTIDAD.test(i)) continue;
+          try { if (await this.d.sala.expulsaHogar(SALA_CORRO(c.id), i.slice(0, i.length - 9)) > 0) { n++; this.d.log.warn({ corro: c.id }, "corros: alguien que no es del corro estaba en su sala; se le ha sacado"); } }
+          catch (e) { this.d.log.warn({ err: (e as Error).message, corro: c.id }, "corros: no se pudo sacar de la sala a quien no es del corro"); }
+        }
         for (const m of [...c.miembros.values()]) {
           if (!this.corros.has(c.id)) break;
           const pre = this.d.prefijo(m.hogar);
@@ -279,7 +302,7 @@ export class Corros {
   }
 
   /** Al apagar la api: se olvida todo (no toca LiveKit). */
-  cierra(): void { this.corros.clear(); this.porHogar.clear(); this.invitaciones.clear(); this.enviadas.clear(); this.rechazos.clear(); }
+  cierra(): void { this.deshechas.clear(); this.corros.clear(); this.porHogar.clear(); this.invitaciones.clear(); this.enviadas.clear(); this.rechazos.clear(); }
 }
 
 /** ¿Es un id de corro o de invitación con la forma que da la api? (12 caracteres base64url) */
