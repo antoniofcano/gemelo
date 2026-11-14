@@ -356,7 +356,7 @@ describe("WorldManager con mundos falsos", () => {
 
   it("el gestor no recibe ni toca renderer, scene ni renderer.xr: sus dependencias son el fundido, la Cola y el reloj", () => {
     const b = banco();
-    expect(Object.keys(b.gm).sort()).toEqual(["actual", "actualiza", "ambiente", "antesDelRender", "arranca", "cambia", "dentro", "estado", "fichaDe", "obstaculo", "precarga", "precargado", "reaplicaAmbiente", "registra", "retorno", "suelo", "suelta"]);
+    expect(Object.keys(b.gm).sort()).toEqual(["actual", "actualiza", "ambiente", "antesDelRender", "arranca", "cambia", "dentro", "estado", "fichaDe", "obstaculo", "precarga", "precargado", "reaplicaAmbiente", "registra", "retorno", "suelo", "sueloListo", "suelta"]);
   });
 });
 

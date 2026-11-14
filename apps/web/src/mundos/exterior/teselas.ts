@@ -143,6 +143,11 @@ export function creaMundo(deps: DepsMundo) {
     const fx = (ux - kx * TS) / RES - 0.5, fy = (uy - ky * TS) / RES - 0.5, i = Math.floor(fx), j = Math.floor(fy), tx = fx - i, ty = fy - j, o = (j + 1) * N2 + i + 1, d = t.dtm;
     return ((d[o] as number) * (1 - tx) + (d[o + 1] as number) * tx) * (1 - ty) + ((d[o + N2] as number) * (1 - tx) + (d[o + N2 + 1] as number) * tx) * ty;
   }
+  // L7-12: ¿tiene ya (x, y) el relieve fino? Fuera de las teselas del índice solo hay grueso, que no va a mejorar: listo
+  function sueloListo(x: number, y: number): boolean {
+    const i0 = Math.floor((x + cx) / TS) - kx0, j0 = Math.floor((y + cy) / TS) - ky0, t = i0 >= 0 && j0 >= 0 && i0 < NKX && j0 < NKY ? G[j0 * NKX + i0] : null;
+    return !t || !!t.dtm;
+  }
   function copaAlta(x: number, y: number): number { // altura de vegetación en ese punto (a 0,1 m)
     const t = tesela(x, y); if (!t || !t.chm || x < (t.v[0] as number) || x >= (t.v[2] as number) || y < (t.v[1] as number) || y >= (t.v[3] as number)) return 0;
     const ix = Math.floor((x - t.ox) / RES), iy = Math.floor((y - t.oy) / RES); return (t.chm[iy * N + ix] as number) / 10;
@@ -161,8 +166,10 @@ export function creaMundo(deps: DepsMundo) {
     const g = c.getContext("2d", { willReadFrequently: true }) as Contexto2DMin; g.drawImage(img, 0, 0);
     return { cv: c, px: (g.getImageData as NonNullable<Contexto2DMin["getImageData"]>)(0, 0, c.width, c.height).data };
   }
+  // L2-07: el lienzo de la decodificación no se guarda (antes, t.ortCv: con willReadFrequently su memoria va en la CPU, W×H×4, el doble de lo que contaba ortoEstado);
+  // se vacía en el acto (ancho y alto 0 sueltan su almacén) y el minimapa pinta con la imagen (t.ortImg), que ya estaba. ortCv se queda en el tipo, siempre null
   function decodificaOrto(t: Tesela): Uint8ClampedArray {
-    const r = pixeles(t.ortImg as ImagenMin); t.ortCv = r.cv; t.ortPix = r.px; t.ortW = r.cv.width; t.ortH = r.cv.height; t.uso = ahoraMs(); nDec++;
+    const r = pixeles(t.ortImg as ImagenMin); t.ortPix = r.px; t.ortW = r.cv.width; t.ortH = r.cv.height; t.ortCv = null; r.cv.width = 0; r.cv.height = 0; t.uso = ahoraMs(); nDec++;
     desalojaOrto(); return t.ortPix;
   }
   // M4: tope de ortofotos decodificadas a la vez (cada una ~2,4 MB de píxeles). Pasado el tope se suelta la MENOS USADA recientemente (t.uso = el último muestreo), salvo
@@ -345,7 +352,7 @@ export function creaMundo(deps: DepsMundo) {
     monta: function () { if (liberado) arranca(function () {}); return { estado: estadoTeselas }; },
     libera: function () { libera(); }
   };
-  return { TS: TS, N: N, N2: N2, NS: NS, NS2: NS2, SRS: SRS, cx: cx, cy: cy, lista: lista, tesela: tesela, suelo: suelo, copaAlta: copaAlta, colorSuelo: colorSuelo, orto: orto, ortoGrueso: ortoGrueso, pintaOrto: pintaOrto, arranca: arranca, actualiza: actualiza, alCargar: alCargar, dist: dist, liberaOrtoPix: liberaOrtoPix,
+  return { TS: TS, N: N, N2: N2, NS: NS, NS2: NS2, SRS: SRS, cx: cx, cy: cy, lista: lista, tesela: tesela, suelo: suelo, sueloListo: sueloListo, copaAlta: copaAlta, colorSuelo: colorSuelo, orto: orto, ortoGrueso: ortoGrueso, pintaOrto: pintaOrto, arranca: arranca, actualiza: actualiza, alCargar: alCargar, dist: dist, liberaOrtoPix: liberaOrtoPix,
     cargaTesela: cargaTesela, aseguraOrto: aseguraOrto, liberaOrtoLejos: liberaOrtoLejos, decodificaOrto: decodificaOrto, ortoEstado: ortoEstado, grueso: grueso, mosaico: mos,
     sueltaTesela: sueltaTesela, sueltaLejos: sueltaLejos, alSoltar: alSoltar, libera: libera, estadoTeselas: estadoTeselas, componente: componente };
 }

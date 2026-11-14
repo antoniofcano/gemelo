@@ -63,7 +63,11 @@ export function creaMarcadoresLidar(d: DepsMarcadoresLidar, n: ContextoComponent
       const gz = suelo(m.x, m.y); tmpMarc.position.set(m.x, (gz + 0.35) * Estado.exag, -m.y); tmpMarc.updateMatrix(); mMarc.setMatrixAt(i, tmpMarc.matrix);
       if ((m.par as number) >= 0) { const c = copas[m.par as number] as PuntoLidar, g2 = suelo(c.x, c.y); seg.push(m.x, (gz + 0.5) * Estado.exag, -m.y, c.x, (g2 + 0.5) * Estado.exag, -c.y); }
     }); mMarc.instanceMatrix.needsUpdate = true;
-    desfGeo.setAttribute("position", new THREE.Float32BufferAttribute(seg, 3));
+    // L2-10: el atributo se reescribe en su sitio; solo si cambia el número de parejas se pone otro, y antes se libera la geometría (three no borra el búfer de un atributo
+    // sustituido hasta liberar la geometría: se quedaba esperando al GC en cada cambio de exageración o de modo y en cada entrada en VR)
+    const pa = desfGeo.getAttribute("position");
+    if (pa && pa.array.length === seg.length) { pa.array.set(seg); pa.needsUpdate = true; }
+    else { if (pa) desfGeo.dispose(); desfGeo.setAttribute("position", new THREE.Float32BufferAttribute(seg, 3)); }
     // la esfera de recorte se calcula tras escribir las posiciones (three la calcula una sola vez, con lo que hubiera en el primer fotograma, y la exageración las mueve en y); con un vértice no finito, sin recorte
     if (seg.every(isFinite)) desfGeo.computeBoundingSphere(); else desfGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), Infinity);
     if (vrPres) { vrPres.renueva("marcasOT"); vrPres.renueva("copasLidar"); }   // Q0c-a (las pruebas sacan coloca() suelta)

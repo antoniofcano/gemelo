@@ -20,6 +20,10 @@ function olivosEn9Celdas() {
   return copas;
 }
 
+/** un olivo solo, lejos del foco del nivel 0 (el objetivo de la órbita está en (96, 96)): lo que se mira es su distancia a la cámara */
+const OL = 4000;
+function unOlivoLejos() { return { i: 0, id: -1, tipo: -1, x: OL, y: OL, h: 4, perfil: [2, 2, 2, 2, 2, 2, 2, 2], oliv: 1 }; }
+
 function monta(opc: { busqueda?: string; triFot?: { v: number }; copas?: ReturnType<typeof olivosEn9Celdas>; deps?: Partial<DepsArboles> } = {}) {
   const gArboles = new THREE.Group(); gArboles.visible = true;
   const copas = opc.copas ?? olivosEn9Celdas(), cola = { cancelados: [] as string[], puestos: [] as string[] }, geoCelda: { dispose(): void }[] = [], disp = { n: 0 };
@@ -36,7 +40,7 @@ function monta(opc: { busqueda?: string; triFot?: { v: number }; copas?: ReturnT
     CargaPuro: { base: () => 5 }, XrPerillas: {}, VrControlPuro: {}, InfoDibujo: { triangulos: () => (opc.triFot ? opc.triFot.v : 0) }, Estaticos: { congela() {} },
     TopeTilesPuro: { DEF: { MUESTRA: 0.25 } }, TopeOlivos: { activo: () => false, apaga() {}, factor: () => 1, presupuesto: () => Infinity, paso: () => false, resumen: () => ({}) },
     OlivosTiles: { dibuja: () => false, triangulos: () => 0, cerca() {}, resumen: () => ({ estado: "sin", dibujadas: 0 }) },
-    Catalogo: { SIN: -1, variantes: (_t: number, n: number) => (n === 1 ? 4 : 2), alCambiar() {}, tipos: () => [], info: () => ({}),
+    Catalogo: { SIN: -1, variantes: (_t: number, n: number) => (n === 1 ? 4 : 2), alCambiar() {}, tipos: () => [], info: () => ({}), triangulos: (_t: number, n: number, v: number) => (n === 2 ? 35 : 150 + (v % 2) * 10),   // los del catálogo de verdad
       geometria: () => [{ geo: new THREE.BoxGeometry(1, 1, 1), mat: new THREE.MeshBasicMaterial(), pieza: "copa" }, { geo: new THREE.BoxGeometry(1, 1, 1), mat: new THREE.MeshBasicMaterial(), pieza: "tronco" }] },
     Escalera: { dibuja: () => false, FR_ESPERA: 1, TRI_MOVIL: 270000 }, Lejanos: { hayCapa: () => false, paso: () => false, reparte() {}, resumen: () => null, pendientes: () => 0, inicia() {}, triangulos: () => 0, capaCompleta: () => false },
     Generados: { actualiza: () => ({ radio: 0, tri: 0, tiene: () => false, fase: () => 0 }), escalera: () => false, modoGen: () => "", estado: () => "", pendientes: () => 0, gastado: () => 0, paso: () => false },
@@ -80,6 +84,37 @@ describe("olivos del motor, tres niveles (componente del exterior)", () => {
     expect(api.resumen().esc).toBe(1);   // antes se quedaba en 1,6
     pasos(api, 40, 0.005); expect(api.resumen().esc).toBe(1);   // y sigue pasado el techo: no sube
     triFot.v = 1_000_000; pasos(api, 10, 0.005); expect(api.resumen().esc).toBeGreaterThan(1);   // bajado el techo, vuelve a poder subir
+  });
+
+  it("L5-07: histéresis en U1 (460 m) y U2 (1600 m): en la franja de 8 % por fuera, el olivo sigue en el nivel en que estaba, sin parpadear", () => {
+    const { api, deps } = monta({ busqueda: "?arbsc=1", copas: [unOlivoLejos()] });
+    const cam = deps.camera.position, a = (D: number) => { cam.set(OL - D, 0, -OL); pasos(api, 2); const r = api.resumen(); return r.nivel1 ? 1 : r.nivel2 ? 2 : 0; };
+    expect(a(450)).toBe(1);
+    expect(a(480)).toBe(1);   // entre 460 y 496,8: sigue en el nivel 1 (antes saltaba al 2)
+    expect(a(510)).toBe(2);
+    expect(a(480)).toBe(2);   // de vuelta en la franja: sigue en el 2
+    expect(a(450)).toBe(1);
+    expect(a(1000)).toBe(2); expect(a(1650)).toBe(2);   // entre 1600 y 1728: sigue dibujado
+    expect(a(1750)).toBe(0); expect(a(1650)).toBe(0);   // fuera, y en la franja de vuelta sigue fuera
+    expect(a(1550)).toBe(2);
+  });
+
+  it("L5-08: triEst cuenta el nivel 2 con los triángulos de su forma (35, no 30) y las manchas de sombra (2 por olivo)", () => {
+    const { api, deps } = monta({ busqueda: "?arbsc=1", copas: [unOlivoLejos()] });
+    deps.camera.position.set(OL - 1000, 0, -OL); pasos(api, 2);
+    expect(api.resumen().nivel2).toBe(1); expect(api.resumen().triEst).toBe(35 + 2);
+    deps.camera.position.set(OL - 300, 0, -OL); pasos(api, 2);
+    expect(api.resumen().nivel1).toBe(1); expect(api.resumen().triEst).toBe(170 + 2);   // L1: la cota de siempre (170) está por encima de la forma (150-160)
+  });
+
+  it("L1-11: con la cámara quieta y nada cambiado, la repetición por tiempo no vuelve a subir los búferes de los niveles 1 y 2", () => {
+    const { api, deps, gArboles } = monta({ busqueda: "?arbsc=1", copas: [unOlivoLejos()] });
+    deps.camera.position.set(OL - 300, 0, -OL); pasos(api, 2);
+    const malla = gArboles.children.find((o: { isInstancedMesh?: boolean; count?: number }) => o.isInstancedMesh && o.count === 1), v0 = malla.instanceMatrix.version, s0 = api.resumen().subidas;
+    for (let i = 0; i < 5; i++) api.actualiza(1.6, false);   // cada 1,5 s en órbita se reparte otra vez: el mismo reparto
+    expect(malla.instanceMatrix.version).toBe(v0); expect(api.resumen().subidas).toBe(s0);
+    deps.camera.position.x += 20; api.actualiza(0.3, false);   // se mueve: se sube (aunque el reparto sea el mismo)
+    expect(malla.instanceMatrix.version).toBeGreaterThan(v0); expect(api.resumen().subidas).toBe(s0 + 1);
   });
 
   it("libera() cancela los trabajos de la Cola, quita las celdas y las mallas y suelta geometrías y búferes de instancias, una sola vez", () => {

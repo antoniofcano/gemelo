@@ -73,6 +73,8 @@ export interface MundoBase<C extends ContextoBase = ContextoBase> {
   libera(): void;
   /** cota del suelo en su marco (m, sin exagerar) */
   suelo(x: number, y: number): number;
+  /** L7-12, opcional: ¿ya es definitiva la cota de (x, y)? El exterior dice que no mientras la tesela no trae su relieve fino (suelo() cae al grueso). Sin él, sí */
+  sueloListo?(x: number, y: number): boolean;
   /** ¿se puede estar aquí? */
   dentro(x: number, y: number): boolean;
   /** el punto corregido si choca, o null */
@@ -419,6 +421,7 @@ export function creaWorldManager<C extends ContextoBase = ContextoBase, W extend
     fichaDe(id: IdMundo): FichaEstado { const f = fichas.get(id); return f ? f.estado : "sin_registrar"; },
     // delegados de la locomoción (12_paseo, 12b, 12c, 29_vr, 16_vida; MU2-4): los del mundo activo; sin mundo, nadie puede estar en ningún sitio
     suelo(x: number, y: number): number { return actual && actual.mundo ? actual.mundo.suelo(x, y) : 0; },
+    sueloListo(x: number, y: number): boolean { const w = actual && actual.mundo; return !w || !w.sueloListo || w.sueloListo(x, y); },
     dentro(x: number, y: number): boolean { return actual && actual.mundo ? actual.mundo.dentro(x, y) : false; },
     obstaculo(x: number, y: number, radio: number): Pose2 | null { return actual && actual.mundo ? actual.mundo.obstaculo(x, y, radio) : null; },
   };

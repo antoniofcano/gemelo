@@ -33,7 +33,11 @@ export interface RenderizadorMinimo {
   init?: () => unknown;
   compileAsync?: (obj: unknown, camara: unknown, escena?: unknown) => Promise<unknown>;
   compile?: (obj: unknown, camara: unknown, escena?: unknown) => unknown;
+  /** el destino activo: three lo lee al compilar (super-three decide por él si el programa es de multiview, L7-04) */
+  getRenderTarget?: () => unknown;
 }
+/** L7-04: cómo acabó una compilación (Render.compila) */
+export interface ResultadoCompila { via: "compileAsync" | "compile" | ""; ok: boolean | null; destinoXr: boolean }
 
 const TIPOS: readonly string[] = ["clasico", "nuevo"], BUILDS: readonly string[] = ["pantalla", "vr"];
 const TONOS: Readonly<Record<ClaveTono, string>> = { neutro: "NoToneMapping", agx: "AgXToneMapping", aces: "ACESFilmicToneMapping", neutral: "NeutralToneMapping" };
@@ -139,6 +143,18 @@ export interface EnlaceRender {
   camara?: unknown;
   /** la cámara XR si hay sesión (L7-04: precompilar con la variante multiview), o null */
   camaraXr?: () => unknown;
+  /** L7-04: el destino de la sesión XR (renderer.xr.getRenderTarget(): en la build del Quest, el WebGLMultiviewRenderTarget), o null sin sesión.
+   *  Fuera del fotograma XR el destino activo es el lienzo (null) y la compilación saldría sin multiview: se presta mientras dura la parte síncrona */
+  destinoXr?: () => unknown;
+}
+
+/** L7-04: corre fn con rd.getRenderTarget() devolviendo `destino` (sin setRenderTarget, que fuera del fotograma XR reservaría un framebuffer propio) y lo deja como estaba.
+ *  three (y super-three) lee el destino en getParameters al compilar: el número de vistas del multiview, el espacio de color y el tono de salida */
+function conDestino<R>(rd: RenderizadorMinimo, destino: unknown, fn: () => R): R {
+  if (!destino || typeof rd.getRenderTarget !== "function") return fn();
+  const propio = Object.prototype.hasOwnProperty.call(rd, "getRenderTarget"), antes = rd.getRenderTarget;
+  rd.getRenderTarget = function () { return destino; };
+  try { return fn(); } finally { if (propio) rd.getRenderTarget = antes; else delete rd.getRenderTarget; }
 }
 
 /** el ajuste guardado: «gemelo.ajustes.<clave>» (JSON) o undefined (sin almacén, sin clave o con basura) */
@@ -163,16 +179,22 @@ export function creaRender(deps: DepsRender) {
     enlaza: function (en: EnlaceRender): void { enlace = en; },
     info: function (o?: Partial<InfoDibujoLeida>): InfoDibujoLeida { return lee(enlace && enlace.rd && enlace.rd.info, o); },
     memoria: function (): MemoriaRender { return memoria(enlace && enlace.rd && enlace.rd.info); },
-    /** compileAsync con la cámara XR si hay sesión; sin compileAsync, compile; si falla, sigue sin romper */
-    compila: function (obj: unknown): Promise<void> {
+    /** compileAsync con la cámara XR y el destino XR si hay sesión (L7-04: con multiview, la variante que usará el fotograma); sin compileAsync, compile;
+     *  si falla, sigue sin romper. Resuelve con { via, ok, destinoXr } (ok null sin renderizador) */
+    compila: function (obj: unknown): Promise<ResultadoCompila> {
       const en = enlace;
-      if (!en || !en.rd) return Promise.resolve();
-      const rd = en.rd, xr = en.camaraXr ? en.camaraXr() : null, cam = xr || en.camara;
+      if (!en || !en.rd) return Promise.resolve({ via: "", ok: null, destinoXr: false });
+      const rd = en.rd, xr = en.camaraXr ? en.camaraXr() : null, cam = xr || en.camara, dest = en.destinoXr ? en.destinoXr() : null;
+      const r: ResultadoCompila = { via: "", ok: null, destinoXr: !!dest && typeof rd.getRenderTarget === "function" };
       try {
-        if (typeof rd.compileAsync === "function") return Promise.resolve(rd.compileAsync(obj, cam, en.escena)).then(function () {}, function () {});
-        if (typeof rd.compile === "function") rd.compile(obj, cam, en.escena);
-      } catch (err) { /* sin compilar: el primer fotograma compila, como siempre */ }
-      return Promise.resolve();
+        if (typeof rd.compileAsync === "function") {
+          r.via = "compileAsync";
+          const ca = rd.compileAsync;   // la parte síncrona de compileAsync es compile(): el destino prestado solo hace falta mientras dura
+          return Promise.resolve(conDestino(rd, dest, function () { return ca.call(rd, obj, cam, en.escena); })).then(function () { r.ok = true; return r; }, function () { r.ok = false; return r; });
+        }
+        if (typeof rd.compile === "function") { r.via = "compile"; const co = rd.compile; conDestino(rd, dest, function () { return co.call(rd, obj, cam, en.escena); }); r.ok = true; }
+      } catch (err) { r.ok = false; /* sin compilar: el primer fotograma compila, como siempre */ }
+      return Promise.resolve(r);
     }
   };
 }

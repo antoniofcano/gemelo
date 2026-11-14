@@ -61,6 +61,14 @@ describe("Configuración", () => {
     A.libera();
     expect(m.escuchas()).toBe(0); expect(host.children.length).toBe(0); expect(host.getAttribute("data-ajustes")).toBe(null); expect(A.lee("vr.giro")).toBe("30");
   });
+  it("L1-10: lee() va en caché; si otra pestaña cambia un ajuste (evento «storage» de la ventana), se vuelve a leer", () => {
+    const { A, m } = monta();
+    expect(A.lee("vr.giro")).toBe("30");
+    m.ventana.localStorage.setItem("gemelo.ajustes.vr.giro", JSON.stringify("45"));
+    expect(A.lee("vr.giro")).toBe("30");   // la caché
+    (m.ventana._escuchas.storage as ((e: unknown) => void)[]).forEach((f) => f({ key: "gemelo.ajustes.vr.giro" }));
+    expect(A.lee("vr.giro")).toBe("45");
+  });
   it("el componente es de todos los mundos y solo de ciclo de vida", () => {
     const c = manifiestoAjustes(monta().A);
     expect(c.id).toBe(ID_CONFIGURACION); expect(c.mundos).toBe("todos"); expect(c.fases).toEqual({});

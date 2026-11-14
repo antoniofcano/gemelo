@@ -80,21 +80,30 @@ test("cambio de nivel por la Cola: el nivel lógico cambia ya y lo demás en pas
   assert.match(VR, /VRX\.nivel = n; Cola\.cancela\("vnivel"\);/);
 });
 
-test("precompilación: una vez al entrar en VR, con compileAsync (compile si no está) y sin romper si falla", async () => {
+test("precompilación: una vez al entrar en VR, por Render.compila (L7-04: cámara XR y destino de la sesión), con compileAsync (compile si no está) y sin romper si falla", async () => {
   const src = trozo(VR, "function vrPrecompila", "  function vrFin");
-  function monta(renderer) { const VRX = { compila: null }, scene = {}, camera = {}; const f = new Function("VRX", "renderer", "scene", "camera", "performance", "\"use strict\";\n" + src + "\nreturn vrPrecompila;")(VRX, renderer, scene, camera, { now: () => 1 }); return { f, VRX, scene, camera }; }
-  // compileAsync: una llamada con (scene, camera)
+  const mv = { isWebGLMultiviewRenderTarget: true, numViews: 2 }, camXr = { xr: true };
+  // el Render de verdad (nucleo/render.ts), enlazado a un renderizador de mentira con sesión XR: getRenderTarget fuera del fotograma XR es el lienzo (null)
+  function monta(renderer) {
+    const VRX = { compila: null }, scene = {}, camera = {}, Render = Nucleo.creaRender({});
+    if (renderer.getRenderTarget === undefined) renderer.getRenderTarget = () => null;
+    Render.enlaza({ rd: renderer, escena: scene, camara: camera, camaraXr: () => camXr, destinoXr: () => mv });
+    const f = new Function("VRX", "Render", "scene", "performance", "\"use strict\";\n" + src + "\nreturn vrPrecompila;")(VRX, Render, scene, { now: () => 1 });
+    return { f, VRX, scene, camera };
+  }
+  const tic = () => new Promise(r => setImmediate(r));
+  // compileAsync: una llamada con (scene, cámara XR) y el destino XR activo mientras compila
   const llamadas = []; let ok;
-  const A = monta({ compileAsync: (s, c) => { llamadas.push([s, c]); return new Promise(r => { ok = r; }); }, compile() { throw new Error("no debe usarse"); } });
-  A.f(); assert.strictEqual(llamadas.length, 1); assert.strictEqual(llamadas[0][0], A.scene); assert.strictEqual(llamadas[0][1], A.camera);
-  assert.strictEqual(A.VRX.compila.via, "compileAsync"); assert.strictEqual(A.VRX.compila.ok, null, "aún pendiente"); ok(); await Promise.resolve(); await Promise.resolve();
-  assert.strictEqual(A.VRX.compila.ok, true);
+  const A = monta({ compileAsync(s, c) { llamadas.push([s, c, this.getRenderTarget()]); return new Promise(r => { ok = r; }); }, compile() { throw new Error("no debe usarse"); } });
+  A.f(); assert.strictEqual(llamadas.length, 1); assert.strictEqual(llamadas[0][0], A.scene); assert.strictEqual(llamadas[0][1], camXr); assert.strictEqual(llamadas[0][2], mv, "L7-04: con el destino XR (multiview), no con el lienzo");
+  assert.strictEqual(A.VRX.compila.ok, null, "aún pendiente"); ok(); await tic();
+  assert.deepStrictEqual([A.VRX.compila.via, A.VRX.compila.ok, A.VRX.compila.mv], ["compileAsync", true, true]);
   // sin compileAsync: compile síncrono
-  let n = 0; const B = monta({ compile: () => { n++; } }); B.f(); assert.strictEqual(n, 1); assert.deepStrictEqual([B.VRX.compila.via, B.VRX.compila.ok], ["compile", true]);
+  let n = 0; const B = monta({ compile: () => { n++; } }); B.f(); assert.strictEqual(n, 1); await tic(); assert.deepStrictEqual([B.VRX.compila.via, B.VRX.compila.ok], ["compile", true]);
   // si falla (lanza o rechaza) no rompe nada
-  const Cc = monta({ compileAsync: () => { throw new Error("sin contexto"); } }); assert.doesNotThrow(() => Cc.f()); assert.strictEqual(Cc.VRX.compila.ok, false);
-  const D = monta({ compileAsync: () => Promise.reject(new Error("x")) }); D.f(); await new Promise(r => setImmediate(r)); assert.strictEqual(D.VRX.compila.ok, false);
-  const E = monta({}); assert.doesNotThrow(() => E.f()); assert.strictEqual(E.VRX.compila.ok, null, "ni compileAsync ni compile: no hace nada");
+  const Cc = monta({ compileAsync: () => { throw new Error("sin contexto"); } }); assert.doesNotThrow(() => Cc.f()); await tic(); assert.strictEqual(Cc.VRX.compila.ok, false);
+  const D = monta({ compileAsync: () => Promise.reject(new Error("x")) }); D.f(); await tic(); assert.strictEqual(D.VRX.compila.ok, false);
+  const E = monta({}); assert.doesNotThrow(() => E.f()); await tic(); assert.strictEqual(E.VRX.compila.ok, null, "ni compileAsync ni compile: no hace nada");
   // cableado: UNA llamada, al final de entraVR (con el rig, el panel y la sesión puestos); salir no precompila
   assert.strictEqual((VR.match(/vrPrecompila\(\);/g) || []).length, 1, "una sola llamada en 29_vr");
   assert.match(VR, /vrEstado\("sesión VR en marcha"\); vrPrecompila\(\); Bus\.emite\("vr:entra"\)/);

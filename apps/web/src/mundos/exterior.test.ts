@@ -43,6 +43,10 @@ describe("creaExterior", () => {
     antes(0.016, 1); expect(reg).toEqual(["Escena3D"]);
     e.congela(); antes(0.016, 1); expect(reg).toEqual(["Escena3D"]);
   });
+  it("L7-12: sueloListo es el que se le da; sin él, siempre listo", () => {
+    expect(creaExterior({ pasos: [], recorre: recorreSimple, sueloListo: (x) => x > 0 }).sueloListo!(-1, 0)).toBe(false);
+    expect(creaExterior({ pasos: [], recorre: recorreSimple }).sueloListo!(-1, 0)).toBe(true);
+  });
   it("suelo es el que se le da (en metros); sin él, 0. Sin caja ni copas, dentro y obstaculo no restringen", () => {
     expect(creaExterior({ pasos: [], recorre: recorreSimple, suelo: (x, y) => x + 2 * y }).suelo(3, 4)).toBe(11);
     const e = creaExterior({ pasos: [], recorre: recorreSimple });
@@ -104,10 +108,11 @@ describe("dentro y obstaculo del exterior (MU2-4)", () => {
   });
   it("el gestor delega en el exterior activo: gm.dentro y gm.obstaculo son los suyos (antes de arrancar: falso y null)", async () => {
     const gm = creaWorldManager({ fundido: fundidoFalso(), cola: creaCola({ ahora: () => 0 }), temporizador: (f, ms) => { const h = setTimeout(f, ms); return () => clearTimeout(h); } });
-    gm.registra(() => Promise.resolve(creaExterior({ pasos: [], recorre: recorreSimple, ext: EXT, copas: COPAS, suelo: () => 412 })), "exterior");
-    expect(gm.dentro(0, 0)).toBe(false); expect(gm.obstaculo(150, 0, 0.55)).toBeNull(); expect(gm.suelo(0, 0)).toBe(0);
+    gm.registra(() => Promise.resolve(creaExterior({ pasos: [], recorre: recorreSimple, ext: EXT, copas: COPAS, suelo: () => 412, sueloListo: (x) => x < 50 })), "exterior");
+    expect(gm.dentro(0, 0)).toBe(false); expect(gm.obstaculo(150, 0, 0.55)).toBeNull(); expect(gm.suelo(0, 0)).toBe(0); expect(gm.sueloListo(80, 0)).toBe(true);
     await gm.arranca("exterior");
     expect(gm.dentro(0, 0)).toBe(true); expect(gm.dentro(99, 0)).toBe(false); expect(gm.suelo(0, 0)).toBe(412);
+    expect(gm.sueloListo(0, 0)).toBe(true); expect(gm.sueloListo(80, 0)).toBe(false);   // L7-12: el del exterior activo
     expect(gm.obstaculo(150, 0, 0.55)).toEqual({ x: 97, y: 0, ang: 0 });
   });
 });

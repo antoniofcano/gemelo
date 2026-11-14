@@ -79,3 +79,21 @@ test("superficie en hectáreas o metros cuadrados", () => {
 test("el trozo puro no toca el DOM", () => {
   assert.ok(!/\bwindow\.|\bdocument\./.test(trozo()));
 });
+
+test("L1-10: lee() con caché: lo que se lee cada fotograma no toca el almacén; pon, restablece, un cambio del esquema y olvida() la vacían", () => {
+  const al = almacen({ "gemelo.ajustes.graficos.ahorro": "true" }); let n = 0; const get = al.getItem; al.getItem = k => { n++; return get(k); };
+  const a = P.crea(al, "");
+  for (let i = 0; i < 100; i++) { a.lee("graficos.ahorro"); a.lee("vista.altura"); a.lee("avanzado.contador"); }
+  assert.strictEqual(a.lee("graficos.ahorro"), true); assert.strictEqual(n, 3, "una lectura del almacén por clave, no una por fotograma");
+  a.pon("vista.altura", "sentado"); assert.strictEqual(a.lee("vista.altura"), "sentado");
+  a.restablece(); assert.strictEqual(a.lee("graficos.ahorro"), false); assert.strictEqual(a.lee("vista.altura"), "pie");
+  al.d["gemelo.ajustes.graficos.ahorro"] = "true"; assert.strictEqual(a.lee("graficos.ahorro"), false, "otra pestaña: hasta olvida(), la caché");
+  a.olvida(); assert.strictEqual(a.lee("graficos.ahorro"), true);
+  // un componente que añade y quita sus ajustes (fusiona/retira): la caché no se queda con la clave vieja
+  assert.deepStrictEqual(P.fusiona("cachep", { uno: { tipo: "bool", def: true } }), []); assert.strictEqual(a.lee("cachep.uno"), true);
+  P.retira("cachep"); assert.strictEqual(a.lee("cachep.uno"), undefined);
+  assert.deepStrictEqual(P.fusiona("cachep", { uno: { tipo: "bool", def: false } }), []); assert.strictEqual(a.lee("cachep.uno"), false);
+  P.retira("cachep");
+  // ?debug manda, también con caché
+  const b = P.crea(almacen({}), "?debug"); assert.strictEqual(b.lee("avanzado.contador"), true); b.pon("avanzado.contador", false); assert.strictEqual(b.lee("avanzado.contador"), true);
+});

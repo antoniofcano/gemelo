@@ -8,6 +8,8 @@ export interface DepsVr {
   suelo(x: number, y: number): number; copas(): T[];
   Cola: T; ComponentesPuro: T; Bus: T; Config: T; LaminasPuro: T; Laminas: T; EntidadesPuro: T; Entidades: T; Usables: T;
   XrPerillas: T; VrControlPuro: T; VrPresupuesto: T; InfoDibujo: T; Materiales: T; UN: T; Arboles: T;
+  /** nucleo/render.ts (creaRender, enlazado en 03_escena): Render.compila precompila con la cámara y el destino XR (L7-04) */
+  Render: { compila(obj: T): Promise<{ via: string; ok: boolean | null; destinoXr: boolean }> };
   Escena3D: T; pon(m: string): void; NDV(): T; ndviIdx(): number; parcelas(): T[]; fincas(): T[]; meta: T; pasoHoraMundo(d: number): void; horaMundoTexto(): string;
   /** 12_paseo: lo que cambia (paseando, primera, persona, teclas) por función; pp es un objeto que vive toda la sesión */
   paseando(): boolean; primera(): boolean; ponPrimera(v: boolean): void; persona(): T; teclas(): T; pp: T;

@@ -13,6 +13,7 @@ import type { DepsVr } from "./vr-tipos.ts";
 import { creaMateriales } from "../../nucleo/materiales.ts";
 import type { ThreeMin } from "../../nucleo/materiales.ts";
 import { VrControlPuro } from "../../nucleo/presupuesto.ts";
+import { creaRender } from "../../nucleo/render.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type A = any;
@@ -31,7 +32,7 @@ function lienzo() {
   const cx: A = new Proxy({}, { get: (o: A, k: string) => k in o ? o[k] : k === "measureText" ? () => ({ width: 10 }) : () => undefined, set: (o: A, k: string, v: A) => { o[k] = v; return true; } });
   return { width: 0, height: 0, getContext: () => cx };
 }
-function monta(opc?: { busqueda?: string }) {
+function monta(opc?: { busqueda?: string; parcelas?: A[] }) {
   const { T, vivos } = threeContado();
   const ctl = [new T.Group(), new T.Group()], grip = [new T.Group(), new T.Group()];
   const bus: Record<string, ((x?: A) => void)[]> = {};
@@ -45,7 +46,10 @@ function monta(opc?: { busqueda?: string }) {
   });
   let bucle: A = null;
   const renderer: A = { xr: { enabled: false, isPresenting: false, getController: (i: number) => ctl[i], getControllerGrip: (i: number) => grip[i], setReferenceSpaceType() { /* doble */ },
-    setFramebufferScaleFactor() { /* doble */ }, setSession: () => Promise.resolve(), getReferenceSpace: () => ({}) }, setAnimationLoop: (f: A) => { bucle = f; }, compileAsync: () => Promise.resolve() };
+    setFramebufferScaleFactor() { /* doble */ }, setSession: () => Promise.resolve(), getReferenceSpace: () => ({}) }, setAnimationLoop: (f: A) => { bucle = f; },
+    getRenderTarget: () => null, compilados: [] as A[], compileAsync(this: A, o: A, c: A) { this.compilados.push({ o, c, destino: this.getRenderTarget() }); return Promise.resolve(); } };
+  const mv = { isWebGLMultiviewRenderTarget: true, numViews: 2 }, camXr = { xr: true };
+  const Render = creaRender({}); Render.enlaza({ rd: renderer, escena: null, camara: null, camaraXr: () => (renderer.xr.enabled ? camXr : null), destinoXr: () => (renderer.xr.enabled ? mv : null) });
   const scene = new T.Scene(), camera = new T.PerspectiveCamera();
   const botones: Record<string, A> = {};
   const elemento = (tag: string) => {
@@ -70,8 +74,8 @@ function monta(opc?: { busqueda?: string }) {
       js: () => 8, jsSube: () => 6, estable: () => 10, gente: () => 0, linea: () => "", mv: null, aa: "" },
     VrControlPuro: VrControlPuro, VrPresupuesto: { ponEscalon() { /* doble */ }, mueve() { /* doble */ }, suelo: () => 0, escalonPorPasos: function* () { /* nada */ } },
     InfoDibujo: { fotograma: () => ({}) }, Materiales: creaMateriales({ THREE: T as unknown as ThreeMin, busqueda: "" }), UN: { uBumpK: { value: 1 } },
-    Arboles: { perfil() { /* doble */ }, resumen: () => ({}) }, Escena3D: { perfil() { /* doble */ }, resumen: () => ({ estado: "listo" }) }, pon: (m: string) => { d.Estado.modo = m; },
-    NDV: () => null, ndviIdx: () => 0, parcelas: () => [{ nombre: "Sintética", centro: [10, 20], finca: 0 }], fincas: () => [], meta: { ms: 0 }, pasoHoraMundo() { /* doble */ }, horaMundoTexto: () => "12:00",
+    Arboles: { perfil() { /* doble */ }, resumen: () => ({}) }, Render, Escena3D: { perfil() { /* doble */ }, resumen: () => ({ estado: "listo" }) }, pon: (m: string) => { d.Estado.modo = m; },
+    NDV: () => null, ndviIdx: () => 0, parcelas: () => (opc && opc.parcelas) || [{ nombre: "Sintética", centro: [10, 20], finca: 0 }], fincas: () => [], meta: { ms: 0 }, pasoHoraMundo() { /* doble */ }, horaMundoTexto: () => "12:00",
     paseando: () => estado.paseando, primera: () => estado.primera, ponPrimera: (v: boolean) => { estado.primera = v; }, persona: () => persona, teclas: () => estado.teclas, pp: { x: 0, y: 0, ang: 0, paso: 0 },
     entraPaseo: () => { estado.paseando = true; }, salePaseo: () => { estado.paseando = false; }, actualizaPaseo() { /* doble */ },
     Llegada: { borra() { /* doble */ }, apunta: () => null, punto: () => null, alAnillo() { /* doble */ } }, pendFactor: () => 1, TR: { act: false }, Ajustes: () => null,
@@ -79,7 +83,7 @@ function monta(opc?: { busqueda?: string }) {
     busqueda: (opc && opc.busqueda) || "", navegador, documento, ventana
   };
   const vr = creaVr(d);
-  return { vr, d, T, vivos, ctl, grip, bus, sesiones, scene, camera, botones, ventana, navegador, renderer, quitados, bucle: () => bucle };
+  return { vr, d, T, vivos, ctl, grip, bus, sesiones, scene, camera, botones, ventana, navegador, renderer, quitados, mv, camXr, bucle: () => bucle };
 }
 const espera = () => new Promise(r => setTimeout(r, 0));
 const escuchas = (o: A) => Object.values(o._listeners || {}).reduce((s: number, l: A) => s + l.length, 0);
@@ -123,6 +127,30 @@ describe("VR: el teletransporte", () => {
     o.c.position.set(95, 1.5, 0); o.c.rotation.set(0, -Math.PI / 2, 0); o.c.rotateX(0.2);   // hacia el este, desde el borde: cae fuera
     expect(m.vr.partes.tele.vrArco(o)).toBeNull();
   });
+  it("L7-12: un salto a una tesela sin relieve fino se queda a negro hasta que llega; entonces asienta la altura a oscuras y abre (tope 2 s)", async () => {
+    const m = monta(); await espera();
+    const gm = m.d.gm(); let listo = false; gm.suelo = () => (listo ? 30 : 10); gm.sueloListo = () => listo;
+    await m.vr.entraVR(); m.camera.position.set(0, 1.6, 0);
+    const TT = m.vr.partes.tele, fun = TT.fundido, vel = m.ventana.__vrVuelo;
+    expect(TT.vrSalta(50, 0, () => { m.vr.partes.rig.vrIrA(50, 0); })).toBe(true);
+    for (let i = 0; i < 30; i++) { TT.vrFundidoPaso(1 / 60); await espera(); }
+    expect(fun.fase).toBe("negro"); expect(vel().esperaSuelo).toBe(true);   // a negro y esperando
+    expect(m.vr.VRX.rig.y).toBeCloseTo(10);   // la del grueso, a oscuras
+    listo = true; TT.vrFundidoPaso(1 / 60);
+    expect(m.vr.VRX.rig.y).toBeCloseTo(30); expect(fun.fase).toBe("abriendo"); expect(m.vr.VRX.esperaSuelo).toBeNull();
+    for (let i = 0; i < 30; i++) TT.vrFundidoPaso(1 / 60);
+    expect(fun.fase).toBe("abierto");
+    // si el relieve fino no llega, a los 2 s se abre con el grueso
+    listo = false; TT.vrSalta(-50, 0, () => { m.vr.partes.rig.vrIrA(-50, 0); });
+    for (let i = 0; i < 60; i++) TT.vrFundidoPaso(1 / 60);
+    expect(fun.fase).toBe("negro");
+    for (let i = 0; i < 120; i++) TT.vrFundidoPaso(1 / 60);
+    expect(fun.fase).not.toBe("negro"); expect(m.vr.VRX.rig.y).toBeCloseTo(10);
+    // y con el suelo ya cargado, el fundido no espera (0,15 + 0,15 s)
+    listo = true; for (let i = 0; i < 30; i++) TT.vrFundidoPaso(1 / 60);
+    TT.vrSalta(50, 0, () => { m.vr.partes.rig.vrIrA(50, 0); }); for (let i = 0; i < 20; i++) TT.vrFundidoPaso(1 / 60);
+    expect(fun.fase).toBe("abierto");
+  });
   it("un salto corto (≤ 5 m) es inmediato; uno largo va por el fundido a negro y se hace a oscuras", async () => {
     const m = monta(); await espera();
     m.camera.position.set(0, 1.6, 0);
@@ -152,6 +180,29 @@ describe("VR: el panel", () => {
     expect(m.vr.VRX.botones.find((b: A) => b.id === "sal").y).toBe(984);
     m.vr.VRX.pestana = "comodidad"; m.vr.partes.panel.vrPintaPanel();
     expect(m.vr.VRX.botones.map((b: A) => b.id)).toEqual(expect.arrayContaining(["vig", "giro", "e-", "e+"]));
+  });
+});
+
+describe("VR: L7-04, la precompilación al entrar", () => {
+  it("compila la escena con la cámara XR y el destino de la sesión (el multiview), no con el lienzo; __vrDebug lo cuenta", async () => {
+    const m = monta(); await espera();
+    await m.vr.entraVR(); await espera();
+    const c = (m.renderer as A).compilados;
+    expect(c.length).toBe(1);
+    expect(c[0].o).toBe(m.scene); expect(c[0].c).toBe(m.camXr); expect(c[0].destino).toBe(m.mv);
+    expect(m.renderer.getRenderTarget()).toBeNull();   // el destino prestado se devuelve
+    expect(m.vr.VRX.compila).toMatchObject({ via: "compileAsync", ok: true, mv: true });
+  });
+});
+
+describe("VR: L7-13, un mundo sin parcelas", () => {
+  it("entrar, pintar la pestaña «Ir a» y pulsar ◀/▶ no rompe: la parcela se pinta «–» y no hay salto", async () => {
+    const m = monta({ parcelas: [] }); await espera();
+    await m.vr.entraVR(); expect(m.vr.VRX.on).toBe(true);
+    m.vr.VRX.pestana = "ira"; expect(() => m.vr.partes.panel.vrPintaPanel()).not.toThrow();
+    const rig0 = JSON.stringify(m.vr.VRX.rig);
+    expect(() => { m.vr.partes.panel.vrParcela(1); m.vr.partes.panel.vrParcela(-1); }).not.toThrow();
+    expect(m.vr.VRX.parcSel).toBe(0); expect(JSON.stringify(m.vr.VRX.rig)).toBe(rig0);
   });
 });
 

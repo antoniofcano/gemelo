@@ -30,6 +30,8 @@ export interface DepsExterior {
   recorre(pasos: readonly PasoBucle[], dt: number, t: number): void;
   /** cota del suelo en metros, sin exagerar (02_mundo: suelo). Quien la exagera (Estado.exag) es quien la usa, como siempre */
   suelo?(x: number, y: number): number;
+  /** L7-12: ¿ya está el relieve fino en (x, y)? (02_mundo: sueloListo). Sin él, siempre listo */
+  sueloListo?(x: number, y: number): boolean;
   /** D.ext = [x0, yNorte, x1, ySur]: la caja de la finca. Sin ella, dentro() es siempre verdadero y obstaculo() no recorta al borde */
   ext?: Ext;
   /** el censo de árboles (02_mundo: copas); solo los olivos (oliv) son troncos que no se atraviesan. Sin él, ningún tronco */
@@ -171,6 +173,7 @@ export function creaExterior(deps: DepsExterior): MundoBase {
     },
     libera(): void { /* TODO MU5 (decisión 218): dispose de lo que hoy no se suelta (15_tiempo, 16_vida, 18_paisaje, 19_balizas, 21_suelo), soltar teselas y los aparcados de su Cola. Ahora no hace nada y no lanza: el gestor puede llamarlo */ },
     suelo(x: number, y: number): number { return deps.suelo ? deps.suelo(x, y) : 0; },
+    sueloListo(x: number, y: number): boolean { return deps.sueloListo ? deps.sueloListo(x, y) : true; },
     // ¿se puede estar en (x, y)? La caja D.ext con 3 m de margen (la de LlegadaPuro.rayoSuelo, IrAPuro.planifica y el teletransporte a pie de 29_vr)
     dentro(x: number, y: number): boolean { return dentroDeCaja(ext, x, y); },
     // el punto fuera de los troncos (a `radio` m) y dentro de la caja, o null si (x, y) ya estaba bien. El borde de la finca es un obstáculo más:

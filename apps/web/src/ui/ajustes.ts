@@ -44,18 +44,28 @@ export var AjustesPuro: T = (function () {
       return typeof v === "string" && e.ops.indexOf(v) >= 0 ? v : e.def;
     }
     function esValido(clave?: T, v?: T) { var e: T = ESQUEMA[clave]; if (!e) return false; return valida(clave, v) === v || (e.tipo === "num" && typeof v === "number" && isFinite(v)); }
+    // L1-10: la generación del esquema (fusiona y retira la suben): la caché de lee() de cada almacén se vacía al cambiar
+    var genEsq = 0;
     // el almacén: algo con getItem/setItem/removeItem (localStorage). Si falla (modo privado, bloqueado), se cae a la memoria de la visita
+    // L1-10: lee() guarda en caché lo que devuelve (hay quien lee cada fotograma: graficos.ahorro, avanzado.contador, vista.altura); la vacían pon (wr/rm), restablece,
+    // un cambio del esquema y olvida() (otra pestaña cambió el almacén: el evento «storage» de la ventana)
     function crea(almacen?: T, busqueda?: T) {
-      var mem: T = {}, oyentes: T = [];
+      var mem: T = {}, oyentes: T = [], cache: T = {}, genCache = genEsq;
       function rd(clave?: T) {
         try { if (almacen) { var s: T = almacen.getItem(PREFIJO + clave); if (s != null) return JSON.parse(s); } } catch (e: T) {}
         return Object.prototype.hasOwnProperty.call(mem, clave) ? mem[clave] : undefined;
       }
-      function wr(clave?: T, v?: T) { mem[clave] = v; try { if (almacen) almacen.setItem(PREFIJO + clave, JSON.stringify(v)); } catch (e: T) {} }
-      function rm(clave?: T) { delete mem[clave]; try { if (almacen) almacen.removeItem(PREFIJO + clave); } catch (e: T) {} }
+      function wr(clave?: T, v?: T) { delete cache[clave]; mem[clave] = v; try { if (almacen) almacen.setItem(PREFIJO + clave, JSON.stringify(v)); } catch (e: T) {} }
+      function rm(clave?: T) { delete cache[clave]; delete mem[clave]; try { if (almacen) almacen.removeItem(PREFIJO + clave); } catch (e: T) {} }
       function forzado(clave?: T) { return URL_MANDA[clave] && URL_MANDA[clave].test(busqueda || "") ? true : undefined; }
       function guardado(clave?: T) { var v: T = rd(clave); return v === undefined ? ESQUEMA[clave] && ESQUEMA[clave].def : valida(clave, v); }
-      function lee(clave?: T) { if (!ESQUEMA[clave]) return undefined; var f: T = forzado(clave); return f !== undefined ? f : guardado(clave); }
+      function lee(clave?: T) {
+        if (!ESQUEMA[clave]) return undefined;
+        if (genCache !== genEsq) { cache = {}; genCache = genEsq; }
+        if (Object.prototype.hasOwnProperty.call(cache, clave)) return cache[clave];
+        var f: T = forzado(clave); return (cache[clave] = f !== undefined ? f : guardado(clave));
+      }
+      function olvida() { cache = {}; }
       function avisa(clave?: T, v?: T, antes?: T) { oyentes.slice().forEach(function (fn?: T) { try { fn(clave, v, antes); } catch (e: T) {} }); }
       function pon(clave?: T, v?: T) {
         if (!ESQUEMA[clave]) return false;
@@ -67,7 +77,7 @@ export var AjustesPuro: T = (function () {
       }
       function restablece() { Object.keys(ESQUEMA).forEach(function (k?: T) { var antes: T = lee(k); rm(k); if (lee(k) !== antes) avisa(k, lee(k), antes); }); }
       function alCambiar(fn?: T) { if (typeof fn === "function") oyentes.push(fn); return function () { var i: T = oyentes.indexOf(fn); if (i >= 0) oyentes.splice(i, 1); }; }
-      return { lee: lee, pon: pon, alCambiar: alCambiar, restablece: restablece, defecto: function (c?: T) { return ESQUEMA[c] && ESQUEMA[c].def; }, forzado: forzado, claves: function () { return Object.keys(ESQUEMA); } };
+      return { lee: lee, pon: pon, alCambiar: alCambiar, restablece: restablece, olvida: olvida, defecto: function (c?: T) { return ESQUEMA[c] && ESQUEMA[c].def; }, forzado: forzado, claves: function () { return Object.keys(ESQUEMA); } };
     }
     // superficie en hectáreas o metros cuadrados (decisión de Configuración → Vista); fmt: formateador (n, decimales) → texto
     function superficie(ha?: T, unidades?: T, fmt?: T) { return unidades === "m2" ? fmt(Math.round(ha * 10000), 0) + " m²" : fmt(ha, 1) + " ha"; }
@@ -87,10 +97,10 @@ export var AjustesPuro: T = (function () {
         nuevas[c] = x.tipo === "bool" ? bool(x.def) : x.tipo === "num" ? num(x.def, x.min, x.max, x.paso || 1) : opc(x.def, x.ops.slice());
       });
       if (!Object.keys(nuevas).length && !e.length) e.push("esquema vacío");
-      if (!e.length) Object.keys(nuevas).forEach(function (c?: T) { ESQUEMA[c] = nuevas[c]; });
+      if (!e.length) { Object.keys(nuevas).forEach(function (c?: T) { ESQUEMA[c] = nuevas[c]; }); genEsq++; }
       return e;
     }
-    function retira(prefijo?: T) { Object.keys(ESQUEMA).forEach(function (k?: T) { if (k.indexOf(prefijo + ".") === 0) delete ESQUEMA[k]; }); }
+    function retira(prefijo?: T) { Object.keys(ESQUEMA).forEach(function (k?: T) { if (k.indexOf(prefijo + ".") === 0) delete ESQUEMA[k]; }); genEsq++; }
     return { PREFIJO: PREFIJO, ESQUEMA: ESQUEMA, valida: valida, crea: crea, superficie: superficie, fusiona: fusiona, retira: retira };
   })();
   // [puro:fin]
@@ -113,6 +123,7 @@ export function creaAjustes(dp: DepsAjustes) {
     // calidad de los olivos: null = automática (la escala adaptativa de 07b manda); si no, la escala que se fija. 07b la lee con Ajustes.escalaArboles() (ver el informe de U4)
     api.escalaArboles = function () { var c: T = api.lee("graficos.calidad"); return c === "auto" ? null : ({ "0": 0.7, "1": 1, "2": 1.6 } as T)[c]; };
     api.esquema = E;
+    escucha(window, "storage", function (ev?: T) { if (!ev || ev.key == null || String(ev.key).indexOf(AjustesPuro.PREFIJO) === 0) api.olvida(); });   // L1-10: otra pestaña cambió un ajuste
 
     // ----- aplicar: lo que no tiene otro dueño
     // las reglas de Configuración (data-* de <html> y la clase .ajustes) viven en plantilla.css: un <style> creado aquí lo rechaza la CSP (style-src 'self'; V12)
