@@ -443,9 +443,14 @@ test("motor: «Denunciar» manda el motivo a la personalización (no al olivo); 
   buscaBoton(w.body, "Enviar denuncia").dispara("click"); await w.listo();
   const d = w.reg.fetch.find(f => /denuncias$/.test(f[1])); assert.strictEqual(d[1], "/api/personalizaciones/22/denuncias"); assert.deepStrictEqual(JSON.parse(d[2]), { motivo: "menores" });
   w.reg.fetch.length = 0;
+  // L6-08: en VR la primera pulsación solo pide confirmar (sin enviar nada); la segunda envía, y el resultado sale en la propia ficha (y por el Bus)
   assert.strictEqual(w.Entidades.ficha("olivo:hituelo:200", "vr").acciones[0].fn(), true); await w.listo();
+  assert.ok(!w.reg.fetch.some(f => /denuncias$/.test(f[1])), "sin confirmar, no se envía");
+  const armada = w.Entidades.ficha("olivo:hituelo:200", "vr"); assert.deepStrictEqual(armada.acciones.map(a => a.txt), ["Confirmar denuncia"]); assert.ok(armada.filas.some(q => q.k === "Denuncia" && /Confirmar denuncia/.test(q.v)));
+  assert.strictEqual(armada.acciones[0].fn(), true); await w.listo();
   assert.deepStrictEqual(JSON.parse(w.reg.fetch.find(f => /denuncias$/.test(f[1]))[2]), { motivo: "otro" });
   assert.deepStrictEqual(w.reg.eventos.pop(), ["personalizacion:resultado", { texto: "Denuncia enviada: la oficina lo mirará." }]);
+  const tras = w.Entidades.ficha("olivo:hituelo:200", "vr"); assert.ok(tras.filas.some(q => q.k === "Denuncia" && /enviada/.test(q.v)), "la respuesta, en la ficha de VR"); assert.deepStrictEqual(tras.acciones.map(a => a.txt), ["Denunciar"]);
   m.libera();
 });
 

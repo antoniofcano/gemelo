@@ -64,7 +64,9 @@ test("en Chrome: las siete pestañas, cada ajuste cambia sin errores, se guarda 
   assert.strictEqual(e.calidad, "2"); assert.strictEqual(e.exag, "2"); assert.strictEqual(e.corr, "0.75");
   assert.strictEqual(e.btnSonido, false, "el 🔊 duplicado ya no está (decisión 89)");
   assert.ok(e.guardado >= 15, "los ajustes se guardan en localStorage: " + e.guardado);
-  // restablecer: todo vuelve a su valor
+  // restablecer: todo vuelve a su valor (L6-19: con una segunda pulsación; la primera no borra nada)
+  await p.evaluate(() => document.getElementById("ajReinicia").click()); await p.waitForTimeout(200);
+  assert.strictEqual(await p.evaluate(() => document.documentElement.getAttribute("data-brujula")), "no", "una sola pulsación no restablece");
   await p.evaluate(() => document.getElementById("ajReinicia").click()); await p.waitForTimeout(300);
   const r = await p.evaluate(() => ({ b: document.documentElement.getAttribute("data-brujula"), q: Object.keys(localStorage).filter(k => k.indexOf("gemelo.ajustes.") === 0).length, calidad: document.getElementById("calidad").value, exag: document.getElementById("exag").value }));
   assert.deepStrictEqual(r, { b: "si", q: 0, calidad: "1", exag: "1" });
@@ -81,4 +83,36 @@ test("en Chrome: las siete pestañas, cada ajuste cambia sin errores, se guarda 
   assert.deepStrictEqual(c, { marcada: true, bloqueada: true }); assert.deepStrictEqual(d.errores, []);
   await d.p.close();
   void IDS;
+});
+
+// L6-01, L6-02, L6-03 (CSS) y L6-18, con los estilos calculados de verdad (lo que los guardianes de Node solo leen en el CSS). Escrita para el banco: no se ha ejecutado al escribirla.
+test("en Chrome: el texto al 200 % crece en el HUD, el menú y las ventanas; el alto contraste distingue lo pulsado; «Normal» manda sobre reducir movimiento; la ficha táctil bajo «lo tuyo»", { timeout: 240000 }, async t => {
+  if (SALTO) return t.skip(SALTO);
+  const { p, errores } = await abre("");
+  const tam = () => p.evaluate(() => ({ hud: parseFloat(getComputedStyle(document.getElementById("hud")).fontSize), menu: parseFloat(getComputedStyle(document.getElementById("menu")).fontSize),
+    ventana: parseFloat(getComputedStyle(document.getElementById("ventanaAyuda")).fontSize), ayuda: parseFloat(getComputedStyle(document.getElementById("ayuda")).fontSize) }));
+  const antes = await tam();
+  await p.evaluate(() => { const r = document.querySelector("#menuAjustes input[data-aj='acc.texto']"); r.value = "200"; r.dispatchEvent(new Event("input", { bubbles: true })); });
+  await p.waitForTimeout(200);
+  const despues = await tam();
+  for (const k of Object.keys(antes)) assert.ok(Math.abs(despues[k] - 2 * antes[k]) < 0.6, "L6-01: " + k + " de " + antes[k] + " px a " + despues[k] + " px (el doble)");
+  // L6-02: con alto contraste, el modo pulsado (Nube) y el que no (Gemelo) no se pintan igual
+  await p.evaluate(() => { const c = document.querySelector("#menuAjustes input[data-aj='acc.contraste']"); if (!c.checked) c.click(); document.getElementById("ventanaCapas").hidden = false; });
+  await p.waitForTimeout(150);
+  const cc = await p.evaluate(() => ["mNube", "mGem"].map(id => { const s = getComputedStyle(document.getElementById(id)); return s.backgroundColor + "|" + s.color; }));
+  assert.notStrictEqual(cc[0], cc[1], "L6-02: pulsado y sin pulsar, distintos con alto contraste: " + cc.join(" vs "));
+  // L6-03: el sistema pide reducir el movimiento, pero «Normal» manda: las transiciones del HUD siguen
+  await p.emulateMedia({ reducedMotion: "reduce" });
+  await p.evaluate(() => document.querySelector("#menuAjustes input[name='aj-acc.movimiento'][value='normal']").click()); await p.waitForTimeout(150);
+  const dur = await p.evaluate(() => getComputedStyle(document.querySelector(".norte span")).transitionDuration);
+  assert.notStrictEqual(dur, "0s", "L6-03: con «Normal», la media query no apaga las transiciones (" + dur + ")");
+  await p.evaluate(() => document.querySelector("#menuAjustes input[name='aj-acc.movimiento'][value='reducido']").click()); await p.waitForTimeout(150);
+  assert.match(await p.evaluate(() => getComputedStyle(document.querySelector(".norte span")).transitionDuration), /^(0s|1e-05s|0\.00001s)$/, "L6-03: «Reducido» las apaga");
+  // L6-18: en táctil la ficha cae por debajo de «lo tuyo»
+  await p.evaluate(() => { const r = document.querySelector("#menuAjustes input[data-aj='acc.texto']"); r.value = "100"; r.dispatchEvent(new Event("input", { bubbles: true })); });   // al 100 %: al 200 % la fila de «lo tuyo» puede crecer (sin medir)
+  await p.evaluate(() => { document.documentElement.setAttribute("data-tactil", "si"); document.getElementById("ficha").hidden = false; });
+  const r = await p.evaluate(() => ({ ficha: document.getElementById("ficha").getBoundingClientRect().top, personal: document.getElementById("hudPersonal").getBoundingClientRect().bottom }));
+  assert.ok(r.ficha >= r.personal - 1, "L6-18: la ficha (" + r.ficha + ") bajo «lo tuyo» (" + r.personal + ")");
+  assert.deepStrictEqual(errores, []);
+  await p.close();
 });

@@ -60,6 +60,15 @@ describe("historia: ciclo de vida", () => {
     for (let i = 0; i < H.estado().escenas; i++) { el(m, "hPuntos").children[i].click(); expect(el(m, "hTexto").innerHTML).not.toMatch(/<img/); }
     H.libera();
   });
+  it("L6-10: ← → mueven el recorrido con el foco en un botón (donde lo deja «Siguiente»), pero no en un campo, un deslizador ni unas pestañas", () => {
+    const { H, m } = monta(), v = m.ventana, tecla = (code: string, target: unknown) => { const e = { type: "keydown", code, target, preventDefault() { /* doble */ } }; v.dispatchEvent(e); };
+    el(m, "hIni").click(); expect(H.estado().escena).toBe(0);
+    tecla("ArrowRight", el(m, "hSig")); expect(H.estado().escena).toBe(1);
+    tecla("ArrowLeft", el(m, "hAnt")); expect(H.estado().escena).toBe(0);
+    const campo = m.el("input"), pest = m.el("button"); pest.setAttribute("role", "tab");
+    tecla("ArrowRight", campo); tecla("ArrowRight", pest); expect(H.estado().escena).toBe(0);
+    H.libera();
+  });
   it("otra finca no tiene recorrido: el botón se apaga, no hay puntos ni escuchas de escena", () => {
     const { H, m } = monta({ hituelo: false });
     expect(H.estado().escenas).toBe(0); expect(el(m, "hIni").disabled).toBe(true); H.libera();

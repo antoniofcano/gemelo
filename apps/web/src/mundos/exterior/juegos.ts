@@ -127,7 +127,7 @@ export function JuegosMotor(dp: DepsJuegos, n: T) {
   var almacen: T = null; try { almacen = window.localStorage; } catch (e: T) { almacen = null; }
 
   function el(tag?: T, css?: T, txt?: T) { var x: T = document.createElement(tag); if (css) x.style.cssText = css; if (txt != null) x.textContent = txt; return x; }
-  var BOTON = "min-height:48px;min-width:48px;padding:0 16px;border-radius:12px;border:2px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.14);color:#fff;font:600 17px system-ui,sans-serif;cursor:pointer";
+  var BOTON = "min-height:48px;min-width:48px;padding:0 16px;border-radius:12px;border:2px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.14);color:#fff;font:600 1.0625rem system-ui,sans-serif;cursor:pointer";
   function recordDe(id?: T) { var r: T = records[id] || {}; return { familia: r.familia || null, aparato: JP.leeLocal(almacen, id) }; }
   function textoRecord(id?: T) {
     var r: T = recordDe(id);
@@ -151,9 +151,9 @@ export function JuegosMotor(dp: DepsJuegos, n: T) {
   // el puesto y las primeras filas dentro de `cont` (textContent siempre: el alias lo escribe quien juega)
   function pintaTabla(cont?: T, c?: T) {
     cont.textContent = "";
-    cont.appendChild(el("p", "margin:0 0 4px;font-size:16px;font-weight:700", JP.textoPuesto(c)));
-    if (!c.puestos.length) { cont.appendChild(el("p", "margin:0;font-size:14px;opacity:.8", "Todavía nadie ha puntuado.")); return; }
-    var t: T = el("ol", "margin:0;padding:0;list-style:none;font-size:15px;text-align:left");
+    cont.appendChild(el("p", "margin:0 0 4px;font-size:1rem;font-weight:700", JP.textoPuesto(c)));
+    if (!c.puestos.length) { cont.appendChild(el("p", "margin:0;font-size:.875rem;opacity:.8", "Todavía nadie ha puntuado.")); return; }
+    var t: T = el("ol", "margin:0;padding:0;list-style:none;font-size:.9375rem;text-align:left");
     c.puestos.forEach(function (f?: T) {
       var li: T = el("li", "display:flex;gap:8px;padding:2px 0" + (f.es_mia ? ";font-weight:700;color:#ffe9a8" : ""));
       li.appendChild(el("span", "flex:0 0 2.2em;opacity:.85", f.puesto + ".º")); li.appendChild(el("span", "flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap", JP.nombrePuesto(f)));
@@ -161,7 +161,7 @@ export function JuegosMotor(dp: DepsJuegos, n: T) {
     });
     cont.appendChild(t);
     if (c.mia && c.mia.puesto > c.puestos.length && !c.puestos.some(function (f?: T) { return f.es_mia; })) {
-      var m: T = el("div", "display:flex;gap:8px;padding:4px 0 0;font-weight:700;color:#ffe9a8;font-size:15px;text-align:left");
+      var m: T = el("div", "display:flex;gap:8px;padding:4px 0 0;font-weight:700;color:#ffe9a8;font-size:.9375rem;text-align:left");
       m.appendChild(el("span", "flex:0 0 2.2em", c.mia.puesto + ".º")); m.appendChild(el("span", "flex:1 1 auto", JP.nombrePuesto(c.mia))); m.appendChild(el("span", "flex:0 0 auto", JP.fmtPuntos(c.mia.puntos)));
       cont.appendChild(m);
     }
@@ -186,15 +186,15 @@ export function JuegosMotor(dp: DepsJuegos, n: T) {
     if (!orden.length) { cuerpo.appendChild(el("p", "margin:8px 0", "No hay juegos encendidos.")); return; }
     orden.forEach(function (id?: T) {
       var d: T = juegos[id], t: T = el("div", "padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.15)");
-      t.appendChild(el("h3", "margin:0 0 4px;font-size:18px", d.titulo));
-      if (d.descripcion) t.appendChild(el("p", "margin:0 0 6px;font-size:16px;line-height:1.35", d.descripcion));
-      var rec: T = el("p", "margin:0 0 8px;font-size:15px;opacity:.85", textoRecord(id)); rec.setAttribute("data-record", id); t.appendChild(rec);
+      t.appendChild(el("h3", "margin:0 0 4px;font-size:1.125rem", d.titulo));
+      if (d.descripcion) t.appendChild(el("p", "margin:0 0 6px;font-size:1rem;line-height:1.35", d.descripcion));
+      var rec: T = el("p", "margin:0 0 8px;font-size:.9375rem;opacity:.85", textoRecord(id)); rec.setAttribute("data-record", id); t.appendChild(rec);
       var b: T = el("button", BOTON, "Jugar"); b.type = "button"; b.setAttribute("data-juega", id); b.addEventListener("click", function () { abre(id); });
       t.appendChild(b);
-      if (clasif[id]) { var cl: T = el("div", "margin:10px 0 0;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,0.08)"); cl.setAttribute("data-clasificacion", id); cl.appendChild(el("h4", "margin:0 0 4px;font-size:15px;opacity:.85", "Clasificación")); var ct: T = el("div"); pintaTabla(ct, clasif[id]); cl.appendChild(ct); t.appendChild(cl); }
+      if (clasif[id]) { var cl: T = el("div", "margin:10px 0 0;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,0.08)"); cl.setAttribute("data-clasificacion", id); cl.appendChild(el("h4", "margin:0 0 4px;font-size:.9375rem;opacity:.85", "Clasificación")); var ct: T = el("div"); pintaTabla(ct, clasif[id]); cl.appendChild(ct); t.appendChild(cl); }
       cuerpo.appendChild(t);
     });
-    cuerpo.appendChild(el("p", "margin:10px 0 0;font-size:14px;opacity:.75", "El mundo se queda en pausa mientras juegas. Sin compras ni anuncios. " +
+    cuerpo.appendChild(el("p", "margin:10px 0 0;font-size:.875rem;opacity:.75", "El mundo se queda en pausa mientras juegas. Sin compras ni anuncios. " +
       (prefijo ? "El récord es el de tu familia. En la clasificación, las otras familias salen con su alias si lo hicieron visible, y si no, como «Una familia»." : "El récord se guarda en este aparato.")));
   }
 
@@ -232,19 +232,19 @@ export function JuegosMotor(dp: DepsJuegos, n: T) {
     if (abierto || !juegos[id]) return false;
     if (dp.Ventanas.abierta()) dp.Ventanas.cierra();
     var d: T = juegos[id], previo: T = document.activeElement;
-    var capa: T = el("div", "position:fixed;inset:0;z-index:1000;display:flex;flex-direction:column;background:rgba(14,20,15,0.96);color:#fff;font:16px system-ui,sans-serif;" +
+    var capa: T = el("div", "position:fixed;inset:0;z-index:1000;display:flex;flex-direction:column;background:rgba(14,20,15,0.96);color:#fff;font:1rem system-ui,sans-serif;" +
       "padding:max(8px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));box-sizing:border-box");
     capa.id = "juegoCapa"; capa.setAttribute("role", "dialog"); capa.setAttribute("aria-modal", "true"); capa.setAttribute("aria-label", d.titulo); capa.tabIndex = -1;
     var barra: T = el("div", "display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:52px");
-    var titulo: T = el("h2", "margin:0;font-size:20px;flex:0 0 auto", d.titulo), puntos: T = el("span", "font-size:19px;font-weight:700;flex:0 0 auto"), record: T = el("span", "font-size:15px;opacity:.85;flex:1 1 auto");
+    var titulo: T = el("h2", "margin:0;font-size:1.25rem;flex:0 0 auto", d.titulo), puntos: T = el("span", "font-size:1.1875rem;font-weight:700;flex:0 0 auto"), record: T = el("span", "font-size:.9375rem;opacity:.85;flex:1 1 auto");
     puntos.setAttribute("data-puntos", ""); puntos.setAttribute("aria-live", "off");
-    var bPausa: T = el("button", BOTON, "Pausa"), bCerrar: T = el("button", BOTON + ";font-size:24px;padding:0 14px", "×");
+    var bPausa: T = el("button", BOTON, "Pausa"), bCerrar: T = el("button", BOTON + ";font-size:1.5rem;padding:0 14px", "×");
     bPausa.type = "button"; bCerrar.type = "button"; bCerrar.setAttribute("aria-label", "Salir del juego y volver al olivar (Esc)"); bCerrar.title = "Volver al olivar · Esc";
     [titulo, puntos, record, bPausa, bCerrar].forEach(function (x?: T) { barra.appendChild(x); });
     var area: T = el("div", "flex:1 1 auto;min-height:0;position:relative;display:flex;align-items:center;justify-content:center");
     var tela: T = el("canvas", "display:block;max-width:100%;max-height:100%"); tela.setAttribute("role", "img"); area.appendChild(tela);
     var mandos: T = el("div", "display:flex;gap:8px;justify-content:center;padding-top:8px;flex:0 0 auto");
-    var ayuda: T = d.ayuda ? el("p", "margin:6px 0 0;font-size:14px;opacity:.75;text-align:center", d.ayuda) : null;
+    var ayuda: T = d.ayuda ? el("p", "margin:6px 0 0;font-size:.875rem;opacity:.75;text-align:center", d.ayuda) : null;
     var fin: T = el("div", "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(10,14,10,0.82)"); fin.hidden = true;
     fin.setAttribute("role", "alertdialog"); fin.setAttribute("aria-live", "polite");
     area.appendChild(fin);
@@ -378,10 +378,10 @@ export function JuegosMotor(dp: DepsJuegos, n: T) {
     var a: T = abierto, res: T = a.partida.resultado(); a.guardado = true;
     a.fin.textContent = "";
     var c: T = el("div", "max-width:360px;margin:12px;padding:20px;border-radius:16px;background:#22301f;border:2px solid rgba(255,255,255,0.35);text-align:center");
-    c.appendChild(el("h3", "margin:0 0 10px;font-size:24px", "Se acabó la partida"));
-    c.appendChild(el("p", "margin:0 0 6px;font-size:22px;font-weight:700", JP.fmtPuntos(res.puntos) + " puntos"));
-    c.appendChild(el("p", "margin:0 0 12px;font-size:16px;opacity:.85", "en " + JP.fmtDuracion(res.duracion_s)));
-    var linea: T = el("p", "margin:0 0 16px;font-size:17px", "Guardando…"); c.appendChild(linea);
+    c.appendChild(el("h3", "margin:0 0 10px;font-size:1.5rem", "Se acabó la partida"));
+    c.appendChild(el("p", "margin:0 0 6px;font-size:1.375rem;font-weight:700", JP.fmtPuntos(res.puntos) + " puntos"));
+    c.appendChild(el("p", "margin:0 0 12px;font-size:1rem;opacity:.85", "en " + JP.fmtDuracion(res.duracion_s)));
+    var linea: T = el("p", "margin:0 0 16px;font-size:1.0625rem", "Guardando…"); c.appendChild(linea);
     var puesto: T = el("div", "margin:0 0 14px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,0.08)"); puesto.setAttribute("data-clasificacion", a.id); puesto.hidden = true; c.appendChild(puesto);
     var otra: T = el("button", BOTON + ";margin:4px", "Otra partida"), volver: T = el("button", BOTON + ";margin:4px", "Volver al olivar");
     otra.type = "button"; volver.type = "button"; otra.addEventListener("click", function () { if (abierto === a) nuevaPartida(); }); volver.addEventListener("click", function () { cierra(); });

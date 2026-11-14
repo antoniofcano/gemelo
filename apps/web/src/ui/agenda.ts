@@ -153,7 +153,7 @@ export function AgendaMotor(dp: DepsAgenda, n: T) {
   var datos: T = null, avisos: T = null, estado = "sin-pedir", cuerpo: T = null, nota = "", pidiendo: T = null, hechas = 0, enVuelo = false, entrando = false, dentro: T = null, elegidas: T = {}, pintado = "";   // elegidas: las personas escogidas por evento (sobreviven a un repintado); pintado: la firma de lo que depende del reloj
 
   function el(tag?: T, css?: T, txt?: T) { var x: T = document.createElement(tag); if (css) x.style.cssText = css; if (txt != null) x.textContent = txt; return x; }
-  var BOTON = "min-height:44px;min-width:44px;padding:0 14px;border-radius:10px;border:1px solid currentColor;background:rgba(255,255,255,0.12);color:inherit;font:600 15px system-ui,sans-serif;cursor:pointer";
+  var BOTON = "min-height:44px;min-width:44px;padding:0 14px;border-radius:10px;border:1px solid currentColor;background:rgba(255,255,255,0.12);color:inherit;font:600 .9375rem system-ui,sans-serif;cursor:pointer";
   function parse(r?: T) { return r.json().then(function (j?: T) { return j; }, function () { return null; }); }
 
   // pide la agenda (si ya hay una petición en vuelo, reusa esa); sin sesión, sin red o con una respuesta rara, estado «error»/«sin-sesion» y no se rompe nada
@@ -195,11 +195,11 @@ export function AgendaMotor(dp: DepsAgenda, n: T) {
   function bloqueAviso(a?: T, conEvento?: T) {
     var d: T = el("div", "margin:6px 0 0;padding:6px 8px;border-radius:8px;background:rgba(255,233,168,0.10)");
     d.setAttribute("data-aviso", String(a.id));
-    var c: T = el("p", "margin:0;font-size:15px;font-weight:700");
+    var c: T = el("p", "margin:0;font-size:.9375rem;font-weight:700");
     if (!a.leido) { var pt: T = el("span", "color:#ffe9a8", "● "); pt.setAttribute("data-sin-leer", ""); pt.setAttribute("aria-label", "sin leer"); c.appendChild(pt); }
     c.appendChild(el("span", null, a.titulo)); d.appendChild(c);
-    d.appendChild(el("p", "margin:2px 0 0;font-size:13px;opacity:.75", AP.cuando(a.fecha) + (conEvento && a.evento ? " · " + a.evento : "")));
-    if (a.texto) d.appendChild(el("p", "margin:2px 0 0;font-size:14px;line-height:1.35;opacity:.9", a.texto));
+    d.appendChild(el("p", "margin:2px 0 0;font-size:.8125rem;opacity:.75", AP.cuando(a.fecha) + (conEvento && a.evento ? " · " + a.evento : "")));
+    if (a.texto) d.appendChild(el("p", "margin:2px 0 0;font-size:.875rem;line-height:1.35;opacity:.9", a.texto));
     if (!a.leido) { var b: T = el("button", BOTON + ";margin-top:6px", "Marcar como leído"); b.type = "button"; b.setAttribute("data-leido", String(a.id)); b.addEventListener("click", function () { leido(a); }); d.appendChild(b); }
     return d;
   }
@@ -246,20 +246,20 @@ export function AgendaMotor(dp: DepsAgenda, n: T) {
   function tarjeta(e?: T, puede?: T) {
     var t: T = el("div", "padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.15)"), o: T = AP.ofrece(e, puede);
     t.setAttribute("data-evento", String(e.id));
-    t.appendChild(el("h3", "margin:0 0 2px;font-size:17px", e.titulo));
-    t.appendChild(el("p", "margin:0;font-size:15px;opacity:.9", AP.cuando(e.empieza) + " · " + AP.textoTipo(e)));
-    if (e.lugar || e.haza) t.appendChild(el("p", "margin:2px 0 0;font-size:14px;opacity:.8", (e.lugar || "") + (e.lugar && e.haza ? " · " : "") + (e.haza ? "haza " + e.haza : "")));
-    if (e.descripcion) t.appendChild(el("p", "margin:4px 0 0;font-size:14px;line-height:1.35;opacity:.85", e.descripcion));
-    var pl: T = el("p", "margin:4px 0 0;font-size:15px;font-weight:600", AP.textoPlazas(e) + (e.abierta ? "" : " · inscripción cerrada")); pl.setAttribute("data-plazas", ""); t.appendChild(pl);
-    if (e.mia) { var m: T = el("p", "margin:2px 0 0;font-size:15px;font-weight:700;color:#ffe9a8", AP.textoMia(e.mia)); m.setAttribute("data-mia", ""); t.appendChild(m); }
+    t.appendChild(el("h3", "margin:0 0 2px;font-size:1.0625rem", e.titulo));
+    t.appendChild(el("p", "margin:0;font-size:.9375rem;opacity:.9", AP.cuando(e.empieza) + " · " + AP.textoTipo(e)));
+    if (e.lugar || e.haza) t.appendChild(el("p", "margin:2px 0 0;font-size:.875rem;opacity:.8", (e.lugar || "") + (e.lugar && e.haza ? " · " : "") + (e.haza ? "haza " + e.haza : "")));
+    if (e.descripcion) t.appendChild(el("p", "margin:4px 0 0;font-size:.875rem;line-height:1.35;opacity:.85", e.descripcion));
+    var pl: T = el("p", "margin:4px 0 0;font-size:.9375rem;font-weight:600", AP.textoPlazas(e) + (e.abierta ? "" : " · inscripción cerrada")); pl.setAttribute("data-plazas", ""); t.appendChild(pl);
+    if (e.mia) { var m: T = el("p", "margin:2px 0 0;font-size:.9375rem;font-weight:700;color:#ffe9a8", AP.textoMia(e.mia)); m.setAttribute("data-mia", ""); t.appendChild(m); }
     var misAvisos: T = AP.avisosDe(avisos && avisos.avisos, e.id);
     if (misAvisos.length) {
-      var cab: T = el("p", "margin:8px 0 0;font-size:14px;font-weight:700", "Avisos de la oficina"); cab.setAttribute("data-avisos", String(e.id)); t.appendChild(cab);
+      var cab: T = el("p", "margin:8px 0 0;font-size:.875rem;font-weight:700", "Avisos de la oficina"); cab.setAttribute("data-avisos", String(e.id)); t.appendChild(cab);
       misAvisos.forEach(function (a?: T) { t.appendChild(bloqueAviso(a, false)); });
     }
     if (o.apuntar) {
       var fila: T = el("div", "display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px");
-      var etq: T = el("label", "font-size:15px", "Personas"), sel: T = el("select", "min-height:44px;font:inherit;padding:0 8px;border-radius:8px"), b: T = el("button", BOTON, e.libres === 0 ? "Ponernos en la lista de espera" : "Apuntarnos");
+      var etq: T = el("label", "font-size:.9375rem", "Personas"), sel: T = el("select", "min-height:44px;font:inherit;padding:0 8px;border-radius:8px"), b: T = el("button", BOTON, e.libres === 0 ? "Ponernos en la lista de espera" : "Apuntarnos");
       sel.id = "agenda-personas-" + e.id; etq.htmlFor = sel.id;
       for (var i = 1; i <= AP.MAX_PERSONAS; i++) { var op: T = el("option", null, String(i)); op.value = String(i); sel.appendChild(op); }
       sel.value = elegidas[e.id] || "2"; sel.addEventListener("change", function () { elegidas[e.id] = sel.value; }); b.type = "button"; b.setAttribute("data-apunta", String(e.id));
@@ -267,7 +267,7 @@ export function AgendaMotor(dp: DepsAgenda, n: T) {
       fila.appendChild(etq); fila.appendChild(sel); fila.appendChild(b); t.appendChild(fila);
     }
     if (AP.puedeEntrar(e, Date.now())) {
-      if (enLaVisita(e.id)) { var ya: T = el("p", "margin:8px 0 0;font-size:15px;font-weight:700;color:#ffe9a8", "Estáis en la visita"); ya.setAttribute("data-en-visita", ""); t.appendChild(ya); }
+      if (enLaVisita(e.id)) { var ya: T = el("p", "margin:8px 0 0;font-size:.9375rem;font-weight:700;color:#ffe9a8", "Estáis en la visita"); ya.setAttribute("data-en-visita", ""); t.appendChild(ya); }
       else if (viaje()) {
         var be: T = el("button", BOTON + ";margin-top:8px", "Entrar en la visita"); be.type = "button"; be.setAttribute("data-entra", String(e.id)); if (entrando) be.disabled = true;
         be.addEventListener("click", function () { entra(e); }); t.appendChild(be);
@@ -292,11 +292,11 @@ export function AgendaMotor(dp: DepsAgenda, n: T) {
     var sueltos: T = AP.avisosSueltos(avisos && avisos.avisos, l, 5);
     if (sueltos.length) {   // avisos de eventos que ya no están en la lista (p. ej. uno cancelado)
       var cs: T = el("div", "padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.15)"); cs.setAttribute("data-avisos-otros", "");
-      cs.appendChild(el("h3", "margin:0 0 2px;font-size:17px", "Otros avisos")); sueltos.forEach(function (a?: T) { cs.appendChild(bloqueAviso(a, true)); }); cuerpo.appendChild(cs);
+      cs.appendChild(el("h3", "margin:0 0 2px;font-size:1.0625rem", "Otros avisos")); sueltos.forEach(function (a?: T) { cs.appendChild(bloqueAviso(a, true)); }); cuerpo.appendChild(cs);
     }
-    if (nota) { var a: T = el("p", "margin:10px 0 0;font-size:15px;font-weight:600", nota); a.setAttribute("role", "status"); a.setAttribute("aria-live", "polite"); a.setAttribute("data-nota", ""); cuerpo.appendChild(a); }
-    if (!datos.puede) cuerpo.appendChild(el("p", "margin:10px 0 0;font-size:14px;opacity:.8", AP.TEXTO_VR + ": solo la titular, con su enlace, apunta a la familia."));
-    else cuerpo.appendChild(el("p", "margin:10px 0 0;font-size:14px;opacity:.75", "Podéis cambiar el número de personas borrándoos y volviendo a apuntaros. Si no cabéis, quedáis en la lista de espera."));
+    if (nota) { var a: T = el("p", "margin:10px 0 0;font-size:.9375rem;font-weight:600", nota); a.setAttribute("role", "status"); a.setAttribute("aria-live", "polite"); a.setAttribute("data-nota", ""); cuerpo.appendChild(a); }
+    if (!datos.puede) cuerpo.appendChild(el("p", "margin:10px 0 0;font-size:.875rem;opacity:.8", AP.TEXTO_VR + ": solo la titular, con su enlace, apunta a la familia."));
+    else cuerpo.appendChild(el("p", "margin:10px 0 0;font-size:.875rem;opacity:.75", "Podéis cambiar el número de personas borrándoos y volviendo a apuntaros. Si no cabéis, quedáis en la lista de espera."));
   }
 
   // --- la fila «Agenda» del panel VR (pestaña Info): los próximos y dónde apuntarse; nada que pulsar

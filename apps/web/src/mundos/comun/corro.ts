@@ -62,12 +62,12 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
   var hablan: any = Object.create(null), callados: any = Object.create(null), lejos: any = { lejos: false, t: 0 }, aereaT: any = 0, saliendo: any = false, entrando: any = false, tVoz: any = 0, cercaClave: any = "";
   var quitaAj: any = null, sinc: any = false, quitaFilas: any = [], quitaAcc: any = null, quitaTipo: any = null, quitaTema: any = null, caja: any = null, invEl: any = null, dlg: any = null, dlgFoco: any = null, LAM: any = "corro-lamina", lam: any = null, tLamMsg: any = 0;
   var ignoradas: any = Object.create(null);   // invitaciones a las que ya se dijo «Ahora no» (hasta que la api deje de listarlas)
-  var est: any = { estados: 0, invitaciones: 0, aceptadas: 0, rechazadas: 0, salidas: 0, bloqueos: 0, avisos: 0, activaciones: 0, apagados: 0, entradasVoz: 0, errores: 0 };
+  var est: any = { estados: 0, invitaciones: 0, aceptadas: 0, rechazadas: 0, salidas: 0, bloqueos: 0, desbloqueos: 0, avisos: 0, activaciones: 0, apagados: 0, entradasVoz: 0, errores: 0 };
   var g3: any = null;   // lo de la GPU (halos e iconos), solo al hacer falta
   function el(tag?: any, props?: any, hijos?: any) { var e: any = document.createElement(tag); if (props) Object.keys(props).forEach(function (k?: any) { if (k === "style") e.style.cssText = props[k]; else if (k in e) e[k] = props[k]; else e.setAttribute(k, props[k]); }); (hijos || []).forEach(function (h?: any) { e.appendChild(typeof h === "string" ? document.createTextNode(h) : h); }); return e; }
   function vr() { return !!(typeof dp.VRX !== "undefined" && dp.VRX && dp.VRX.on); }
   function px() { return dp.Aparato.clase() === "quest" ? 56 : 44; }
-  var CSS_BTN: any = "font:600 15px/1.2 system-ui,sans-serif;color:#fff;border-radius:999px;padding:8px 16px;cursor:pointer;background:rgba(64,240,255,0.16);border:1px solid rgba(64,240,255,0.7);margin:2px 4px";
+  var CSS_BTN: any = "font:600 .9375rem/1.2 system-ui,sans-serif;color:#fff;border-radius:999px;padding:8px 16px;cursor:pointer;background:rgba(64,240,255,0.16);border:1px solid rgba(64,240,255,0.7);margin:2px 4px";
   var CSS_BTN2: any = CSS_BTN + ";background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.5)";
 
   // ---- la api (mismo origen; todo con la sesión). { status, j }; status 0 si no hubo respuesta
@@ -188,7 +188,9 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
           nota: "Al marcarla verás antes qué va a pasar y qué no; solo se activa si lo aceptas. Invitas desde su avatar o desde Gente, a menos de 8 m; nadie te oye sin aceptar tu invitación." },
         { boton: "Retirar mi permiso de voz por cercanía", id: "ajCercaniaRetira", alClic: function () { retira(); },
           activo: function () { return E.consentimiento === "si"; }, texto: function () { return E.consentimiento === "si" ? "Retirar mi permiso de voz por cercanía" : "Permiso de voz por cercanía: no dado"; },
-          nota: "Retirarlo apaga la voz por cercanía y te saca al momento de cualquier corro. Se te vuelve a pedir si la activas otra vez." }] },
+          nota: "Retirarlo apaga la voz por cercanía y te saca al momento de cualquier corro. Se te vuelve a pedir si la activas otra vez." },
+        { boton: "Personas bloqueadas…", id: "ajCorroBloqueos", alClic: function () { abreBloqueos(); },
+          nota: "Las personas cuya voz has bloqueado: desbloquéalas cuando quieras. No se les dice." }] },
       alAjuste) || null;
     sinc = false;
   }
@@ -208,11 +210,11 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
   function abreDialogo(id?: any, titulo?: any, cuerpo?: any, bNo?: any, bSi?: any, alNo?: any, alSi?: any) {
     cierraDialogo();
     try { dlgFoco = document.activeElement || null; } catch (e: any) { dlgFoco = null; }
-    var h: any = px(), tit: any = el("h2", { id: id + "T", style: "margin:0 0 8px;font:700 18px/1.3 system-ui,sans-serif" }, [titulo]);
+    var h: any = px(), tit: any = el("h2", { id: id + "T", style: "margin:0 0 8px;font:700 1.125rem/1.3 system-ui,sans-serif" }, [titulo]);
     var err: any = el("p", { id: id + "Error", role: "alert", hidden: true, style: "margin:0 0 8px;color:#ffb4b4;font-weight:600" });
     var no: any = el("button", { id: id + "No", type: "button", style: CSS_BTN2 + ";min-height:" + h + "px;min-width:" + h + "px" }, [bNo]);
     var si: any = el("button", { id: id + "Si", type: "button", style: CSS_BTN + ";min-height:" + h + "px;min-width:" + h + "px" }, [bSi]);
-    var caja2: any = el("div", { style: "background:#101418;color:#fff;border:1px solid rgba(64,240,255,0.6);border-radius:16px;padding:16px 18px;max-width:min(520px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;box-sizing:border-box;font:15px/1.45 system-ui,sans-serif;text-align:left" },
+    var caja2: any = el("div", { style: "background:#101418;color:#fff;border:1px solid rgba(64,240,255,0.6);border-radius:16px;padding:16px 18px;max-width:min(520px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;box-sizing:border-box;font:.9375rem/1.45 system-ui,sans-serif;text-align:left" },
       [tit].concat(cuerpo, [err, el("div", { style: "display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end" }, [no, si])]));
     var raiz: any = el("div", { id: id, role: "dialog", "aria-modal": "true", "aria-labelledby": id + "T", tabindex: "-1", style: "position:absolute;left:0;top:0;right:0;bottom:0;z-index:62;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6)" }, [caja2]);
     dlg = { raiz: raiz, err: err, si: si, no: no, ocupado: false };
@@ -260,9 +262,9 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
     var ul: any = function (l?: any) { return el("ul", { style: "margin:0 0 8px;padding-left:20px" }, l.map(function (t?: any) { return el("li", { style: "margin:4px 0" }, [t]); })); };
     var casilla: any = el("input", { id: "corroAvisoDecl", type: "checkbox", style: "width:" + Math.round(h * 0.5) + "px;height:" + Math.round(h * 0.5) + "px;margin:0 10px 0 0;flex:none" });
     var decl: any = el("label", { style: "display:flex;align-items:center;min-height:" + h + "px;margin:6px 0;font-weight:600;cursor:pointer" }, [casilla, A.declaracion]);
-    var cuerpo: any = [el("h3", { style: "margin:8px 0 2px;font-size:15px" }, [A.tPasa]), ul(A.pasa), el("h3", { style: "margin:8px 0 2px;font-size:15px" }, [A.tNoPasa]), ul(A.noPasa), decl,
+    var cuerpo: any = [el("h3", { style: "margin:8px 0 2px;font-size:.9375rem" }, [A.tPasa]), ul(A.pasa), el("h3", { style: "margin:8px 0 2px;font-size:.9375rem" }, [A.tNoPasa]), ul(A.noPasa), decl,
       el("a", { id: "corroAvisoEnlace", href: A.enlace.href, target: "_blank", rel: "noopener noreferrer", style: "color:#7fe9ff;display:inline-block;min-height:" + h + "px;line-height:" + h + "px" }, [A.enlace.texto]),
-      el("p", { style: "margin:4px 0 10px;font-size:12px;opacity:0.75" }, [A.nota])];
+      el("p", { style: "margin:4px 0 10px;font-size:.75rem;opacity:0.75" }, [A.nota])];
     var d: any = abreDialogo("corroAviso", A.titulo, cuerpo, A.ahoraNo, A.activar, rechazaAviso, aceptaAviso);
     d.si._bloqueado = true; d.si.disabled = true;   // «Activar», deshabilitado hasta marcar la declaración
     casilla.addEventListener("change", function () { if (!avisoP) return; avisoP.decl = !!casilla.checked; d.si._bloqueado = !avisoP.decl; d.si.disabled = !avisoP.decl || avisoP.ocupado; });
@@ -280,11 +282,11 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
       r.addEventListener("change", function () { if (!avisarP) return; avisarP.motivo = m[0]; if (dlg) { dlg.si._bloqueado = false; dlg.si.disabled = avisarP.ocupado; } });
       grupo.appendChild(el("label", { style: "display:flex;align-items:center;min-height:" + h + "px;cursor:pointer" }, [r, m[1]]));
     });
-    var cuenta: any = el("span", { style: "font-size:12px;opacity:0.75" }, ["0/" + C.TEXTO_MAX]);
+    var cuenta: any = el("span", { style: "font-size:.75rem;opacity:0.75" }, ["0/" + C.TEXTO_MAX]);
     var area: any = el("textarea", { id: "corroAvisoTexto", maxLength: C.TEXTO_MAX, rows: 3, "aria-label": "Qué ha pasado (opcional, como mucho " + C.TEXTO_MAX + " caracteres)", style: "width:100%;box-sizing:border-box;font:inherit;border-radius:8px;border:1px solid rgba(255,255,255,0.3);background:rgba(0,0,0,0.3);color:inherit;padding:6px" });
     area.addEventListener("input", function () { if (!avisarP) return; avisarP.texto = String(area.value || "").slice(0, C.TEXTO_MAX); cuenta.textContent = avisarP.texto.length + "/" + C.TEXTO_MAX; });
     var cuerpo: any = [grupo, el("label", { style: "display:block;margin:0 0 2px" }, ["Qué ha pasado (opcional)"]), area, cuenta,
-      el("p", { style: "margin:6px 0 10px;font-size:13px;opacity:0.85" }, ["No se envía audio: llega a la oficina quién avisa, cuándo, en qué corro y el motivo. Al avisar sales del corro."])];
+      el("p", { style: "margin:6px 0 10px;font-size:.8125rem;opacity:0.85" }, ["No se envía audio: llega a la oficina quién avisa, cuándo, en qué corro y el motivo. Al avisar sales del corro."])];
     var d: any = abreDialogo("corroAvisar", "Avisar a la oficina sobre " + alias, cuerpo, "Cancelar", "Enviar aviso", cierraAvisar, enviaAvisar);
     d.si._bloqueado = true; d.si.disabled = true;   // hasta elegir un motivo
   }
@@ -325,8 +327,58 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
   function retiraInv(id?: any) { return llama("DELETE", C.URL.invitaciones + "/" + id).then(function () { pideYa = true; refresca(); }); }
   function bloquea(identidad?: any, alias?: any) {
     return llama("POST", C.URL.bloqueos, { identidad: identidad }).then(function (r?: any) {
-      if (r.status === 201) { est.bloqueos++; dice("Has bloqueado la voz de " + alias + ": no podrá invitarte ni entrar en tu corro. No se le dice."); pideYa = true; return true; }
+      if (r.status === 201) { est.bloqueos++; dice("Has bloqueado la voz de " + alias + ": no podrá invitarte ni entrar en tu corro. No se le dice. Lo deshaces en Configuración → Voz → Personas bloqueadas."); pideYa = true; return true; }
       dice(C.textoError(r.j, "No se pudo bloquear.")); return false;
+    });
+  }
+  // L6-07 (decisión 239): «Bloquear» pide confirmación (el foco empieza en «Cancelar»; en VR, una lámina con las dos zonas) y se deshace desde Configuración → Voz →
+  // «Personas bloqueadas» (GET y DELETE /api/presencia/corros/bloqueos). Bloquear es una protección personal: quien bloquea puede deshacerlo; avisar a la oficina sigue igual
+  var TXT_BLOQ: any = "No podrá invitarte ni entrar en tu corro. No se le dice. Puedes deshacerlo en Configuración → Voz → Personas bloqueadas.";
+  var bloqP: any = null;
+  function confirmaBloqueo(identidad?: any, alias?: any) {
+    if (bloqP) return;
+    bloqP = { identidad: identidad, alias: alias, ocupado: false };
+    if (vr()) { lamBloquear(); return; }
+    abreDialogo("corroBloquear", "¿Bloquear la voz de " + alias + "?", [el("p", { style: "margin:0 0 10px" }, [TXT_BLOQ])], "Cancelar", "Bloquear", cierraBloqueo, confirmaYa);
+  }
+  function cierraBloqueo() { bloqP = null; cierraLamina("bloquear"); cierraDialogo(); }
+  function confirmaYa() {
+    var b: any = bloqP; if (!b || b.ocupado) return;
+    b.ocupado = true; ocupaDialogo(true, "Bloqueando…"); repintaLamina();
+    bloquea(b.identidad, b.alias).then(function (ok?: any) {
+      if (bloqP !== b) return;
+      if (ok) { cierraBloqueo(); return; }
+      b.ocupado = false; ocupaDialogo(false, "Bloquear"); errorDialogo("No se pudo bloquear. Inténtalo otra vez."); repintaLamina();
+    });
+  }
+  // «Personas bloqueadas» (Configuración → Voz): la lista de la api, cada una con «Desbloquear». En pantalla (en las gafas, la Configuración no está)
+  var bloqueados: any = null;
+  function abreBloqueos() {
+    if (vr()) { dice("La lista de personas bloqueadas está en Configuración → Voz, en la pantalla."); return Promise.resolve(false); }
+    var lista: any = el("ul", { id: "corroBloqueadosLista", style: "list-style:none;margin:0 0 8px;padding:0" }), estado: any = el("p", { id: "corroBloqueadosEstado", role: "status", style: "margin:0 0 8px" }, ["Leyendo…"]);
+    var d: any = abreDialogo("corroBloqueados", "Personas bloqueadas", [estado, lista, el("p", { style: "margin:0 0 10px;font-size:.8125rem;opacity:0.85" }, ["Desbloquear no se le dice a nadie: solo vuelve a poder invitarte."])], "Cerrar", "Cerrar", cierraDialogo, cierraDialogo);
+    d.no.hidden = true; try { d.si.focus(); } catch (e: any) {}
+    bloqueados = { lista: lista, estado: estado };
+    return llama("GET", C.URL.bloqueos).then(function (r?: any) {
+      if (!bloqueados || bloqueados.lista !== lista) return false;
+      var l: any = r.status === 200 && r.j && Array.isArray(r.j.bloqueos) ? r.j.bloqueos.filter(function (b?: any) { return b && typeof b.prefijo === "string"; }) : null;
+      if (!l) { estado.textContent = C.textoError(r.j, "No se pudo leer la lista. Inténtalo otra vez."); return false; }
+      estado.textContent = l.length ? "Has bloqueado la voz de " + l.length + (l.length === 1 ? " persona." : " personas.") : "No has bloqueado a nadie.";
+      l.forEach(function (b?: any) {
+        var alias: any = typeof b.alias === "string" && b.alias ? b.alias : "Visitante", h: any = px();
+        var boton: any = el("button", { type: "button", style: CSS_BTN2 + ";min-height:" + h + "px;min-width:" + h + "px" }, ["Desbloquear"]);
+        boton.setAttribute("aria-label", "Desbloquear la voz de " + alias);
+        var li: any = el("li", { style: "display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0" }, [el("span", {}, [alias]), boton]);
+        boton.addEventListener("click", function () { if (boton.disabled) return; boton.disabled = true; desbloquea(b.prefijo, alias).then(function (ok?: any) { if (ok) { if (li.parentNode) li.parentNode.removeChild(li); if (!lista.children.length) estado.textContent = "No has bloqueado a nadie."; try { d.si.focus(); } catch (e: any) {} } else boton.disabled = false; }); });
+        lista.appendChild(li);
+      });
+      return true;
+    });
+  }
+  function desbloquea(prefijo?: any, alias?: any) {
+    return llama("DELETE", C.URL.bloqueos + "/" + encodeURIComponent(prefijo)).then(function (r?: any) {
+      if (r.status === 204 || r.status === 200) { est.desbloqueos++; dice("Has desbloqueado la voz de " + (alias || "esa persona") + "."); pideYa = true; return true; }
+      dice(C.textoError(r.j, "No se pudo desbloquear. Inténtalo otra vez.")); return false;
     });
   }
   function silencia(clave?: any, si?: any) { if (si) callados[clave] = true; else delete callados[clave]; if (Vz && Vz.silencia) Vz.silencia(clave, !!si); repintaTodo(); if (P && P.repintaGente) P.repintaGente(); }
@@ -338,7 +390,7 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
     var l: any = [], alias: any = o && o.alias ? o.alias : "Visitante", mio: any = C.miembroDe(E, identidad), corto: any = o && o.modo === "vr";
     if (!C.puedeInvitar(E, identidad, o ? o.distancia : null, yoPrefijo())) l.push({ id: "invitar", txt: corto ? "Invitar a hablar" : "Invitar a hablar a " + alias, fn: function () { invita(identidad, alias); } });
     if (mio) { var cal: any = callado(identidad); l.push({ id: "silenciar", txt: cal ? "Volver a oír" : "Silenciar", fn: function () { silencia(C.prefijoDe(identidad), !cal); } }); }
-    l.push({ id: "bloquear", txt: "Bloquear su voz", fn: function () { bloquea(identidad, alias); } });
+    l.push({ id: "bloquear", txt: "Bloquear su voz", fn: function () { confirmaBloqueo(identidad, alias); } });   // L6-07: con confirmación
     l.push({ id: "avisar", txt: "Avisar a la oficina", fn: function () { abreAvisar(identidad, alias); } });
     return l;
   }
@@ -352,9 +404,9 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
     var h: any = px(), no: any = el("button", { id: "corroInvNo", type: "button", style: CSS_BTN2 + ";min-height:" + h + "px;min-width:" + h + "px" }, ["Ahora no"]);
     var si: any = el("button", { id: "corroInvSi", type: "button", style: CSS_BTN + ";min-height:" + h + "px;min-width:" + h + "px" }, ["Aceptar"]);
     invEl = el("div", { id: "corroInvitacion", role: "alertdialog", "aria-modal": "false", "aria-labelledby": "corroInvT", "aria-describedby": "corroInvD",
-      style: "position:absolute;left:50%;top:120px;transform:translateX(-50%);z-index:61;width:max-content;max-width:min(420px,calc(100% - 24px));padding:12px 14px;border-radius:16px;background:rgba(16,20,24,0.95);border:1px solid rgba(64,240,255,0.6);color:#fff;font:15px/1.4 system-ui,sans-serif;box-sizing:border-box" },
+      style: "position:absolute;left:50%;top:120px;transform:translateX(-50%);z-index:61;width:max-content;max-width:min(420px,calc(100% - 24px));padding:12px 14px;border-radius:16px;background:rgba(16,20,24,0.95);border:1px solid rgba(64,240,255,0.6);color:#fff;font:.9375rem/1.4 system-ui,sans-serif;box-sizing:border-box" },
       [el("p", { id: "corroInvT", style: "margin:0 0 4px;font-weight:700" }, [i.quien.alias + " te invita a hablar en corro."]),
-        el("p", { id: "corroInvD", style: "margin:0 0 8px;font-size:13px;opacity:0.9" }, ["Solo os oiréis si aceptas. Puedes salir cuando quieras. Nada se graba."]),
+        el("p", { id: "corroInvD", style: "margin:0 0 8px;font-size:.8125rem;opacity:0.9" }, ["Solo os oiréis si aceptas. Puedes salir cuando quieras. Nada se graba."]),
         el("div", { style: "display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end" }, [no, si])]);
     invEl._id = i.id;
     no.addEventListener("click", function () { rechazaInv(i); });
@@ -364,46 +416,67 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
     try { no.focus(); } catch (e: any) {}   // el foco en «Ahora no» (como el aviso de F3j): aceptar es una decisión expresa
   }
   var claveCaja: any = "";
+  // L6-05: la caja vive en su sitio reservado del HUD (#hudVoz, bajo «lo tuyo» en la columna del estado: no tapa el tiempo ni «lo tuyo», y Movibles ya aparta
+  // el chat y el mapa de esa columna); sin él (otra página, las pruebas), flota como antes
+  function ranura() { try { return document.getElementById ? document.getElementById("hudVoz") : null; } catch (e: any) { return null; } }
+  // L6-06: cada fila (y cada invitación enviada) se crea una vez y se pone al día en su sitio: los botones no se destruyen cuando alguien empieza o deja de hablar,
+  // así no se pierde el foco ni un toque a medias; solo cuando entra o sale alguien se reordena, y el foco vuelve al botón que lo tenía
+  var filasCaja: any = Object.create(null), filasEnv: any = Object.create(null);
+  var CSS_MINI: any = "font:inherit;color:inherit;background:none;border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:1px 10px;margin-left:6px;cursor:pointer;min-height:";
+  function mini(txt?: any) { var h: any = px(); return el("button", { type: "button", style: CSS_MINI + h + "px;min-width:" + h + "px" }, [txt]); }
+  function filaCaja(f?: any) {
+    var r: any = filasCaja[f.prefijo];
+    if (!r) {
+      r = filasCaja[f.prefijo] = { f: f, span: el("span", {}, []) }; r.li = el("li", { style: "margin:3px 0" }, [r.span]);
+      if (!f.yo) {
+        r.sil = mini("Silenciar"); r.sil.title = "Solo en este aparato; nadie se entera"; r.sil.addEventListener("click", function () { silencia(r.f.prefijo, !r.f.callado); });
+        r.blo = mini("Bloquear"); r.blo.addEventListener("click", function () { var ids: any = identidadesDe(r.f.prefijo); if (ids.length) confirmaBloqueo(ids[0], r.f.alias); });   // bloquear y avisar piden su identidad en la sala libre: la de su avatar, si se le ve
+        r.avi = mini("Avisar"); r.avi.addEventListener("click", function () { var ids: any = identidadesDe(r.f.prefijo); if (ids.length) abreAvisar(ids[0], r.f.alias); });
+        [r.sil, r.blo, r.avi].forEach(function (b?: any) { r.li.appendChild(b); });
+      }
+    }
+    r.f = f;
+    var t: any = (f.habla ? "🔊 " : "") + f.alias + (f.habla ? " · habla" : "") + (f.callado ? " · silenciado por ti" : ""); if (r.span.textContent !== t) r.span.textContent = t;
+    if (r.sil) {
+      var ts: any = f.callado ? "Volver a oír" : "Silenciar"; if (r.sil.textContent !== ts) r.sil.textContent = ts; r.sil.setAttribute("aria-pressed", f.callado ? "true" : "false");
+      var hay: any = identidadesDe(f.prefijo).length > 0; r.blo.hidden = !hay; r.avi.hidden = !hay;
+    }
+    return r.li;
+  }
+  function filaEnviada(i?: any) {
+    var r: any = filasEnv[i.id];
+    if (!r) { r = filasEnv[i.id] = { b: mini("Retirar") }; r.b.addEventListener("click", function () { retiraInv(i.id); }); r.li = el("li", { style: "margin:3px 0;opacity:0.85" }, [el("span", {}, ["Esperando a " + i.alias + "…"]), r.b]); }
+    return r.li;
+  }
+  function ordena(lista?: any, nodos?: any, mapa?: any, vivos?: any) {   // deja en la lista justo esos nodos, en ese orden, tocando lo mínimo
+    Object.keys(mapa).forEach(function (k?: any) { if (!vivos[k]) delete mapa[k]; });
+    var igual: any = lista.children.length === nodos.length && nodos.every(function (n?: any, i?: any) { return lista.children[i] === n; });
+    if (igual) return;
+    var foco: any = null; try { foco = document.activeElement; } catch (e: any) { foco = null; }
+    while (lista.firstChild) lista.removeChild(lista.firstChild);
+    nodos.forEach(function (n?: any) { lista.appendChild(n); });
+    if (foco && foco.focus && nodos.some(function (n?: any) { return n === foco || (n.contains && n.contains(foco)); })) { try { foco.focus(); } catch (e: any) {} }
+  }
   function pintaCaja() {
     var w: any = C.vista(E, hablanPorPrefijo(), callados);
     if (!w.visible || vr()) { if (caja) caja.hidden = true; claveCaja = ""; return; }
     var k: any = JSON.stringify(w); if (caja && !caja.hidden && k === claveCaja) return; claveCaja = k;
     if (!caja) {
-      caja = el("section", { id: "corroCaja", "aria-label": "Tu corro con voz", style: "position:absolute;left:12px;top:56px;z-index:31;width:min(300px,calc(100% - 24px));max-height:46%;overflow:auto;padding:8px 10px;border-radius:12px;background:rgba(16,20,24,0.9);color:#fff;font:14px/1.4 system-ui,sans-serif;box-sizing:border-box" });
-      caja._t = el("h3", { style: "margin:0 0 4px;font-size:14px" }); caja._l = el("ul", { style: "list-style:none;margin:0;padding:0" });
+      var sitio: any = ranura();
+      caja = el("section", { id: "corroCaja", "aria-label": "Tu corro con voz", style: (sitio ? "position:relative;width:100%;max-height:40vh;" : "position:absolute;left:12px;top:56px;z-index:31;width:min(300px,calc(100% - 24px));max-height:46%;") + "overflow:auto;padding:8px 10px;border-radius:12px;background:rgba(16,20,24,0.9);color:#fff;font:.875rem/1.4 system-ui,sans-serif;box-sizing:border-box" });
+      caja._t = el("h3", { style: "margin:0 0 4px;font-size:.875rem" }); caja._l = el("ul", { style: "list-style:none;margin:0;padding:0" });
       caja._h = el("p", { id: "corroHablan", role: "status", "aria-live": "polite", "aria-atomic": "true", style: "margin:4px 0;font-weight:600;color:#ffd58a" });
       caja._e = el("ul", { style: "list-style:none;margin:4px 0 0;padding:0" });
       caja._s = el("button", { id: "corroSalir", type: "button", style: CSS_BTN + ";min-height:" + px() + "px;background:rgba(229,72,77,0.18);border-color:rgba(229,72,77,0.8)" }, ["Salir del corro"]);
       caja._s.addEventListener("click", function () { sale("salir"); });
-      caja._n = el("p", { style: "margin:4px 0 0;font-size:11px;opacity:0.75" }, ["Solo os oís quienes estáis en esta lista. Nada se graba."]);
+      caja._n = el("p", { style: "margin:4px 0 0;font-size:.6875rem;opacity:0.75" }, ["Solo os oís quienes estáis en esta lista. Nada se graba."]);
       [caja._t, caja._l, caja._h, caja._e, caja._s, caja._n].forEach(function (x?: any) { caja.appendChild(x); });
-      (visor || document.body).appendChild(caja);
+      (sitio || visor || document.body).appendChild(caja);
     }
     caja.hidden = false; caja._t.textContent = w.titulo; caja._h.textContent = w.hablan; caja._s.hidden = !E.corro; caja._n.hidden = !E.corro;
-    while (caja._l.firstChild) caja._l.removeChild(caja._l.firstChild);
-    w.filas.forEach(function (f?: any) {
-      var hijos: any = [el("span", {}, [(f.habla ? "🔊 " : "") + f.alias + (f.habla ? " · habla" : "") + (f.callado ? " · silenciado por ti" : "")])];
-      if (!f.yo) {
-        var b: any = el("button", { type: "button", style: "font:inherit;color:inherit;background:none;border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:1px 6px;margin-left:6px;cursor:pointer;min-height:32px", "aria-pressed": f.callado ? "true" : "false", title: "Solo en este aparato; nadie se entera" }, [f.callado ? "Volver a oír" : "Silenciar"]);
-        b.addEventListener("click", function () { silencia(f.prefijo, !f.callado); });
-        hijos.push(b);
-        var ids: any = identidadesDe(f.prefijo);   // bloquear y avisar piden su identidad en la sala libre: la de su avatar, si se le ve
-        if (ids.length) {
-          var bb: any = el("button", { type: "button", style: "font:inherit;color:inherit;background:none;border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:1px 6px;margin-left:6px;cursor:pointer;min-height:32px" }, ["Bloquear"]);
-          bb.addEventListener("click", function () { bloquea(ids[0], f.alias); });
-          var ba: any = el("button", { type: "button", style: "font:inherit;color:inherit;background:none;border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:1px 6px;margin-left:6px;cursor:pointer;min-height:32px" }, ["Avisar"]);
-          ba.addEventListener("click", function () { abreAvisar(ids[0], f.alias); });
-          hijos.push(bb, ba);
-        }
-      }
-      caja._l.appendChild(el("li", { style: "margin:3px 0" }, hijos));
-    });
-    while (caja._e.firstChild) caja._e.removeChild(caja._e.firstChild);
-    w.enviadas.forEach(function (i?: any) {
-      var r: any = el("button", { type: "button", style: "font:inherit;color:inherit;background:none;border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:1px 6px;margin-left:6px;cursor:pointer;min-height:32px" }, ["Retirar"]);
-      r.addEventListener("click", function () { retiraInv(i.id); });
-      caja._e.appendChild(el("li", { style: "margin:3px 0;opacity:0.85" }, [el("span", {}, ["Esperando a " + i.alias + "…"]), r]));
-    });
+    var vf: any = {}, ve: any = {};
+    ordena(caja._l, w.filas.map(function (f?: any) { vf[f.prefijo] = 1; return filaCaja(f); }), filasCaja, vf);
+    ordena(caja._e, w.enviadas.map(function (i?: any) { ve[i.id] = 1; return filaEnviada(i); }), filasEnv, ve);
   }
   function hablanPorPrefijo() { var o: any = {}; Object.keys(hablan).forEach(function (id?: any) { var p: any = C.prefijoDe(id); if (p) o[p] = true; }); return o; }
   function repintaTodo() { if (!vivo) return; pintaInvitacion(); pintaCaja(); if (typeof dp.PanelVR !== "undefined" && dp.PanelVR && dp.PanelVR.repinta) dp.PanelVR.repinta(); }
@@ -474,6 +547,16 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
         boton(cx, zona, { x: 28, y: h - 108, w: w / 2 - 40, h: 88, fn: cierraAvisar }, "Cancelar", false, a.ocupado);
         boton(cx, zona, { x: w / 2 + 12, y: h - 108, w: w / 2 - 40, h: 88, fn: enviaAvisar }, a.ocupado ? "Enviando…" : "Enviar aviso", true, !a.motivo || a.ocupado);
       } }, function () { avisarP = null; });
+  }
+  function lamBloquear() {
+    abreLamina("bloquear", { ancho: 0.9, alto: 0.48, w: 720, h: 384, firma: function () { return JSON.stringify(bloqP ? [bloqP.alias, bloqP.ocupado] : 0); },
+      pinta: function (cx?: any, w?: any, h?: any, zona?: any) {
+        fondo(cx, w, h); var b: any = bloqP; if (!b) return;
+        var y: any = texto(cx, "¿Bloquear la voz de " + b.alias + "?", 28, 22, w - 56, "700 32px system-ui, sans-serif", "#ffffff", 38);
+        texto(cx, "No podrá invitarte ni entrar en tu corro. No se le dice. Se deshace en Configuración, en la pantalla.", 28, y + 4, w - 56, "24px system-ui, sans-serif", "rgba(255,255,255,0.85)", 30);
+        boton(cx, zona, { x: 28, y: h - 112, w: w / 2 - 40, h: 88, fn: cierraBloqueo }, "Cancelar", false, b.ocupado);
+        boton(cx, zona, { x: w / 2 + 12, y: h - 112, w: w / 2 - 40, h: 88, fn: confirmaYa }, b.ocupado ? "Bloqueando…" : "Bloquear", true, b.ocupado);
+      } }, function () { bloqP = null; });
   }
   function lamMensaje(t?: any) {
     if (lam && lam.tipo !== "mensaje") return;   // no tapa un aviso ni una invitación
@@ -593,15 +676,15 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
     var w: any = C.vista(E, hablanPorPrefijo(), callados);
     return { activo: hayApi && !sinApi, disponible: E.disponible, activa: E.activa, consentimiento: E.consentimiento, puedo: E.puedo, suspendida: E.suspendida,
       corro: E.corro ? E.corro.sala : "", miembros: w.filas.map(function (f?: any) { return f.alias; }), hablan: w.hablan, recibidas: E.recibidas.length, enviadas: E.enviadas.length,
-      invitacion: !!invitacion(), aviso: !!avisoP, avisar: !!avisarP, lamina: lam ? lam.tipo : "", iconos: iconos.length, publicos: publicos.length, vistos: P && P.puntos ? P.puntos().length : 0, lejos: lejos.lejos, tLejos: Math.round(lejos.t * 10) / 10,
+      invitacion: !!invitacion(), aviso: !!avisoP, avisar: !!avisarP, bloquear: !!bloqP, lamina: lam ? lam.tipo : "", iconos: iconos.length, publicos: publicos.length, vistos: P && P.puntos ? P.puntos().length : 0, lejos: lejos.lejos, tLejos: Math.round(lejos.t * 10) / 10,
       tAerea: Math.round(aereaT * 10) / 10, pestana: !!quitaAj, callados: Object.keys(callados), medidas: Object.assign({}, est) };
   }
   function libera() {
     vivo = false;
     if (avisoP) { var a: any = avisoP; a.res(false); }
-    cierraAvisar(); cierraDialogo(); cierraLamina();
+    cierraAvisar(); bloqP = null; bloqueados = null; cierraDialogo(); cierraLamina();
     if (invEl && invEl.parentNode) invEl.parentNode.removeChild(invEl); invEl = null;
-    if (caja && caja.parentNode) caja.parentNode.removeChild(caja); caja = null;
+    if (caja && caja.parentNode) caja.parentNode.removeChild(caja); caja = null; filasCaja = Object.create(null); filasEnv = Object.create(null);
     quitaFilas.splice(0).forEach(function (q?: any) { try { q(); } catch (e: any) {} });
     [quitaAcc, quitaTipo, quitaTema].forEach(function (q?: any) { if (q) try { q(); } catch (e: any) {} }); quitaAcc = quitaTipo = quitaTema = null;
     quitaAjustes(); libera3D(); materiales.libera();   // A3-6b: y lo que la fábrica tenga de este dueño
@@ -623,7 +706,10 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
     if (accion === "apaga") return apaga();
     if (accion === "retira") return retira();
     if (accion === "silencia") { silencia(arg && arg.clave, !!(arg && arg.si)); return estado(); }
-    if (accion === "bloquea") return bloquea(arg, "Visitante");
+    if (accion === "bloquea") return bloquea(arg, "Visitante");   // el bloqueo ya confirmado (la api)
+    if (accion === "confirmaBloqueo") { confirmaBloqueo(arg, "Visitante"); return estado(); }
+    if (accion === "bloqueos") return abreBloqueos();
+    if (accion === "desbloquea") return desbloquea(arg, "Visitante");
     if (accion === "avisar") { abreAvisar(arg, "Visitante"); return estado(); }
     if (accion === "acciones") return acciones(arg && arg.identidad, arg || {}).map(function (x?: any) { return x.id; });
     if (accion === "mundo") { mundo(); return { halos: g3 ? g3.halos.count : 0, iconos: g3 ? g3.icos.count : 0, montado: !!g3 }; }

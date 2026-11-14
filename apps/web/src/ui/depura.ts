@@ -42,7 +42,7 @@ export function creaDepura(dp: DepsDepura) {
     if (dep.el) dep.el.hidden = false;
     var js: T = performance.now() - tIni; dep.n++; dep.js += js; if (js > dep.mx) dep.mx = js;
     var ahora: T = performance.now(); if (ahora - dep.t0 < 500) return;
-    if (!dep.el) { dep.el = document.createElement("div"); dep.el.style.cssText = "position:absolute;left:8px;bottom:8px;z-index:30;font:11px/1.35 ui-monospace,Menlo,monospace;background:rgba(0,0,0,.7);color:#a8f0b0;padding:4px 7px;border-radius:5px;pointer-events:none;white-space:pre"; dp.visor.appendChild(dep.el); }
+    if (!dep.el) { dep.el = document.createElement("div"); dep.el.style.cssText = "position:absolute;left:8px;bottom:8px;z-index:30;font:.6875rem/1.35 ui-monospace,Menlo,monospace;background:rgba(0,0,0,.7);color:#a8f0b0;padding:4px 7px;border-radius:5px;pointer-events:none;white-space:pre"; dp.visor.appendChild(dep.el); }
     var ext: T = { lineas: [] }; dp.Bus.emite("depura:lineas", ext);   // las líneas de los componentes (la presencia compartida, si está activa)
     var i: T = dp.InfoDibujo.lee(dp.renderer, dep.dib), a: T = dp.Arboles.resumen(), cargadas: T = dp.Mundo.lista.filter(function (t?: T) { return t.estado === 2; }).length, mem: T = window.performance && performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) + " MB" : "n/d";
     dep.el.textContent = (dep.n * 1000 / (ahora - dep.t0)).toFixed(0) + " fps · JS " + (dep.js / dep.n).toFixed(1) + " ms (pico " + dep.mx.toFixed(0) + ")\n" +

@@ -113,7 +113,7 @@ export function creaMovibles(dp: DepsMovibles) {
     function avisa(txt?: T) {
       if (typeof dp.Hud !== "undefined" && dp.Hud && typeof dp.Hud.aviso === "function") { dp.Hud.aviso(txt, 2500); return; }
       var c: T = registro.length ? cont(registro[0]) : document.body;
-      if (!avisoEl || avisoEl.parentElement !== c) { avisoEl = document.createElement("div"); avisoEl.setAttribute("role", "status"); avisoEl.style.cssText = "position:absolute;left:50%;top:48px;transform:translateX(-50%);z-index:40;max-width:calc(100% - 24px);padding:5px 12px;border-radius:99px;font:13px system-ui,sans-serif;color:#fff;background:rgba(16,20,24,0.88);pointer-events:none"; c.appendChild(avisoEl); }
+      if (!avisoEl || avisoEl.parentElement !== c) { avisoEl = document.createElement("div"); avisoEl.setAttribute("role", "status"); avisoEl.style.cssText = "position:absolute;left:50%;top:48px;transform:translateX(-50%);z-index:40;max-width:calc(100% - 24px);padding:5px 12px;border-radius:99px;font:.8125rem system-ui,sans-serif;color:#fff;background:rgba(16,20,24,0.88);pointer-events:none"; c.appendChild(avisoEl); }
       avisoEl.textContent = txt; avisoEl.hidden = false; clearTimeout(tAvisa); tAvisa = setTimeout(function () { avisoEl.hidden = true; }, 2500);
     }
     function muestraZonas(m?: T, ver?: T) {
@@ -181,7 +181,7 @@ export function creaMovibles(dp: DepsMovibles) {
     var ESQ: T = [["ai", "↖ Arriba a la izquierda"], ["ad", "↗ Arriba a la derecha"], ["bi", "↙ Abajo a la izquierda"], ["bd", "↘ Abajo a la derecha"], ["defecto", "Donde estaba al principio"]];
     function menuLlevar(m?: T, boton?: T) {
       var menu: T = document.createElement("div"); menu.hidden = true; menu.setAttribute("role", "group"); menu.setAttribute("aria-label", "Llevar a…");
-      menu.style.cssText = "position:absolute;right:6px;top:46px;z-index:2;width:220px;max-width:calc(100% - 12px);padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px;border-radius:10px;background:rgba(16,20,24,0.96);border:1px solid rgba(255,255,255,0.3);color:#fff;font:13px system-ui,sans-serif";
+      menu.style.cssText = "position:absolute;right:6px;top:46px;z-index:2;width:220px;max-width:calc(100% - 12px);padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px;border-radius:10px;background:rgba(16,20,24,0.96);border:1px solid rgba(255,255,255,0.3);color:#fff;font:.8125rem system-ui,sans-serif";
       ESQ.forEach(function (e?: T) {
         var b: T = document.createElement("button"); b.type = "button"; b.textContent = e[1]; b.setAttribute("data-esquina", e[0]);
         b.style.cssText = "font:inherit;color:inherit;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.3);border-radius:8px;min-height:44px;padding:0 6px;cursor:pointer" + (e[0] === "defecto" ? ";grid-column:1/-1" : "");

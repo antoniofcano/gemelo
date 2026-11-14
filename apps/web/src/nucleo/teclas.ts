@@ -6,7 +6,12 @@
 
 /** Lo que se usa de un KeyboardEvent. */
 export interface TeclaEvento { code: string; ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean; repeat?: boolean; target?: any; preventDefault(): void }
-export interface DepsTeclas { ventana?: { addEventListener(tipo: string, fn: (e: any) => void): void } | null; consola?: { error(...a: unknown[]): void } | null }
+export interface DepsTeclas { ventana?: { addEventListener(tipo: string, fn: (e: any) => void): void } | null; consola?: { error(...a: unknown[]): void } | null;
+  /** L6-20: ¿valen los atajos de una sola tecla? (Configuración → Accesibilidad; sin ella, sí) */
+  atajos?: () => boolean }
+
+/** L6-20 (WCAG 2.1.4): las teclas de un solo carácter (letras, cifras y + −), las que «Atajos de una sola tecla» apaga. El HUD, el paseo y la cámara usan el mismo patrón en sus trozos puros */
+export const UNA_TECLA = /^(Key[A-Z]|Digit\d|Numpad\d|Equal|Minus|NumpadAdd|NumpadSubtract|BracketRight|Slash)$/;
 
 export function creaTeclas(deps?: DepsTeclas) {
   var ventana = deps && deps.ventana ? deps.ventana : null, consola = deps && deps.consola ? deps.consola : null;
@@ -14,13 +19,15 @@ export function creaTeclas(deps?: DepsTeclas) {
     Escape: "31_hud", F1: "31_hud", KeyF: "31_hud", Home: "31_hud", Enter: "31_hud", NumpadEnter: "31_hud",
     ArrowUp: "12_paseo", ArrowDown: "12_paseo", ArrowLeft: "12_paseo", ArrowRight: "12_paseo", KeyW: "12_paseo", KeyA: "12_paseo", KeyS: "12_paseo", KeyD: "12_paseo",
     ShiftLeft: "12_paseo", ShiftRight: "12_paseo", Space: "12_paseo", KeyC: "12_paseo", KeyV: "12_paseo", KeyQ: "12_paseo", KeyE: "12_paseo",
-    KeyL: "12b_llegada", KeyH: "13b_hazas", KeyM: "17_minimapa"
+    KeyL: "12b_llegada", KeyH: "13b_hazas", KeyM: "17_minimapa",
+    PageUp: "09_camara", PageDown: "09_camara", NumpadAdd: "09_camara", NumpadSubtract: "09_camara", Equal: "09_camara", Minus: "09_camara"   // L6-04: acercar y alejar en la vista aérea
   };
   for (var i = 0; i <= 6; i++) { RESERVADAS["Digit" + i] = "31_hud"; RESERVADAS["Numpad" + i] = "31_hud"; }
   var mapa: Record<string, { fn: (e: TeclaEvento) => unknown; dueno: string }> = {}, escuchando = false;
   function campo(el: any) { var t = el && el.tagName; return t === "INPUT" || t === "SELECT" || t === "TEXTAREA" || !!(el && el.isContentEditable); }
   function alPulsar(e: TeclaEvento) {
     var r = mapa[e.code]; if (!r || e.ctrlKey || e.metaKey || e.altKey || e.repeat || campo(e.target)) return;
+    if (deps && deps.atajos && UNA_TECLA.test(e.code)) { var si = true; try { si = deps.atajos(); } catch (er) {} if (!si) return; }   // L6-20
     var usada; try { usada = r.fn(e); } catch (er) { try { if (consola) consola.error("[Teclas] " + e.code, er); } catch (e2) {} }
     if (usada !== false) e.preventDefault();
   }

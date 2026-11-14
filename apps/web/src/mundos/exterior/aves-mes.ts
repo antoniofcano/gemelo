@@ -134,7 +134,7 @@ export function creaAvesMes(d: DepsAvesMes, n: ContextoComponente) {
       li.appendChild(document.createTextNode((x.cientifico ? " (" + x.cientifico + ")" : "") + " · " + x.detalle)); ul.appendChild(li);
     });
     cuerpo.appendChild(ul);
-    var pie = el("div", "font-size:12px;opacity:0.85;line-height:1.4");
+    var pie = el("div", "font-size:.75rem;opacity:0.85;line-height:1.4");
     pie.appendChild(el("p", "margin:0 0 4px", f.atribucion));
     pie.appendChild(el("p", "margin:0 0 4px", "Licencias: " + f.licencias + (f.anios ? " · años " + f.anios : "") + (f.generado ? " · descargado el " + f.generado : "")));
     var det = el("details", ""); det.appendChild(el("summary", "cursor:pointer", "Conjuntos de datos (" + f.fuentes.length + ")"));

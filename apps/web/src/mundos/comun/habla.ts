@@ -220,10 +220,10 @@ export function creaHabla(dp: DepsHabla, n?: any, Vz?: any, Gd?: any) {
   function tarjetaPantalla() {
     var h: any = px(), T: any = datosTarjeta();
     try { tarjFoco = document.activeElement || null; } catch (e: any) { tarjFoco = null; }
-    var cuerpo: any = el("div", { id: "hablaTarjetaCaja", style: "background:#101418;color:#fff;border:1px solid rgba(64,240,255,0.6);border-radius:16px;padding:16px 18px;max-width:min(440px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;box-sizing:border-box;font:15px/1.45 system-ui,sans-serif;text-align:left" });
-    var tit: any = el("h2", { id: "hablaTarjetaT", style: "margin:0 0 8px;font:700 18px/1.3 system-ui,sans-serif" }, [T.titulo]);
+    var cuerpo: any = el("div", { id: "hablaTarjetaCaja", style: "background:#101418;color:#fff;border:1px solid rgba(64,240,255,0.6);border-radius:16px;padding:16px 18px;max-width:min(440px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;box-sizing:border-box;font:.9375rem/1.45 system-ui,sans-serif;text-align:left" });
+    var tit: any = el("h2", { id: "hablaTarjetaT", style: "margin:0 0 8px;font:700 1.125rem/1.3 system-ui,sans-serif" }, [T.titulo]);
     var lineasEl: any = el("div", { id: "hablaTarjetaLineas" }, T.lineas.map(function (l?: any) { return el("p", { id: "hablaTarjeta-" + l.k, style: "margin:6px 0" }, [el("strong", {}, [l.t + ". "]), l.txt]); }));
-    var pie: any = el("p", { id: "hablaTarjetaPie", style: "margin:8px 0 10px;font-size:13px;opacity:0.8" }, [T.pie]);
+    var pie: any = el("p", { id: "hablaTarjetaPie", style: "margin:8px 0 10px;font-size:.8125rem;opacity:0.8" }, [T.pie]);
     var ok: any = el("button", { id: "hablaTarjetaOk", type: "button", style: CSS_BTN + ";min-height:" + h + "px;min-width:" + h + "px" }, [T.boton]);
     var fila: any = el("div", { style: "display:flex;justify-content:flex-end" }, [ok]);
     [tit, lineasEl, pie, fila].forEach(function (x?: any) { cuerpo.appendChild(x); });
@@ -259,11 +259,11 @@ export function creaHabla(dp: DepsHabla, n?: any, Vz?: any, Gd?: any) {
   function avisoPantalla() {
     var h: any = px(), A: any = H.AVISO;
     try { avisoFoco = document.activeElement || null; } catch (e: any) { avisoFoco = null; }
-    var cuerpo: any = el("div", { id: "hablaConsentCaja", style: "background:#101418;color:#fff;border:1px solid rgba(64,240,255,0.6);border-radius:16px;padding:16px 18px;max-width:min(460px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;box-sizing:border-box;font:15px/1.45 system-ui,sans-serif;text-align:left" });
-    var tit: any = el("h2", { id: "hablaConsentT", style: "margin:0 0 8px;font:700 18px/1.3 system-ui,sans-serif" }, [A.titulo]);
+    var cuerpo: any = el("div", { id: "hablaConsentCaja", style: "background:#101418;color:#fff;border:1px solid rgba(64,240,255,0.6);border-radius:16px;padding:16px 18px;max-width:min(460px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;box-sizing:border-box;font:.9375rem/1.45 system-ui,sans-serif;text-align:left" });
+    var tit: any = el("h2", { id: "hablaConsentT", style: "margin:0 0 8px;font:700 1.125rem/1.3 system-ui,sans-serif" }, [A.titulo]);
     var puntos: any = el("ul", { style: "margin:0 0 10px;padding-left:20px" }, A.puntos.map(function (t?: any) { return el("li", { style: "margin:4px 0" }, [t]); }));
     var enlace: any = el("a", { id: "hablaConsentEnlace", href: A.enlace.href, target: "_blank", rel: "noopener noreferrer", style: "color:#7fe9ff;display:inline-block;min-height:" + h + "px;line-height:" + h + "px" }, [A.enlace.texto]);
-    var nota: any = el("p", { style: "margin:4px 0 10px;font-size:12px;opacity:0.75" }, [A.nota]);
+    var nota: any = el("p", { style: "margin:4px 0 10px;font-size:.75rem;opacity:0.75" }, [A.nota]);
     var err: any = el("p", { id: "hablaConsentError", role: "alert", hidden: true, style: "margin:0 0 8px;color:#ffb4b4;font-weight:600" });
     var ok: any = el("button", { id: "hablaConsentAcepta", type: "button", style: CSS_BTN + ";min-height:" + h + "px;min-width:" + h + "px" }, [A.aceptar]);
     var no: any = el("button", { id: "hablaConsentNo", type: "button", style: CSS_BTN + ";min-height:" + h + "px;min-width:" + h + "px;background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.5)" }, [A.ahoraNo]);
@@ -310,23 +310,24 @@ export function creaHabla(dp: DepsHabla, n?: any, Vz?: any, Gd?: any) {
   }
 
   // ---- la pantalla: una caja arriba, bajo la tira de la palabra de 46 (no tapa los mandos táctiles de abajo)
-  var CSS_BTN: any = "font:600 15px/1.2 system-ui,sans-serif;color:#fff;border-radius:999px;padding:8px 16px;cursor:pointer;background:rgba(64,240,255,0.16);border:1px solid rgba(64,240,255,0.7);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;margin:2px 4px";
+  var CSS_BTN: any = "font:600 .9375rem/1.2 system-ui,sans-serif;color:#fff;border-radius:999px;padding:8px 16px;cursor:pointer;background:rgba(64,240,255,0.16);border:1px solid rgba(64,240,255,0.7);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;margin:2px 4px";
   function monta() {
     if (caja) return;
     var h: any = px();
+    var sitio: any = null; try { sitio = document.getElementById ? document.getElementById("hudVoz") : null; } catch (e: any) { sitio = null; }   // L6-05: su sitio reservado en el HUD (bajo «lo tuyo»); sin él, flota como antes
     caja = el("div", { id: "hablaCaja", role: "group", "aria-label": "Micrófono de la visita guiada", hidden: true,
-      style: "position:absolute;left:50%;top:50px;transform:translateX(-50%);z-index:31;width:max-content;max-width:min(440px,calc(100% - 24px));padding:8px 10px;border-radius:16px;background:rgba(16,20,24,0.92);color:#fff;font:14px/1.4 system-ui,sans-serif;box-sizing:border-box;text-align:center" });
+      style: (sitio ? "position:relative;width:100%;" : "position:absolute;left:50%;top:50px;transform:translateX(-50%);z-index:31;width:max-content;max-width:min(440px,calc(100% - 24px));") + "padding:8px 10px;border-radius:16px;background:rgba(16,20,24,0.92);color:#fff;font:.875rem/1.4 system-ui,sans-serif;box-sizing:border-box;text-align:center" });
     icoEl = el("span", { "aria-hidden": "true", style: "margin-right:6px" }); txtEl = el("span");
     estadoEl = el("div", { id: "hablaEstado", role: "status", "aria-live": "polite", "aria-atomic": "true", style: "font-weight:600;margin:0 0 4px" }, [icoEl, txtEl]);
     boton = el("button", { id: "hablaBoton", type: "button", style: CSS_BTN + ";min-height:" + h + "px;min-width:" + h + "px" }, ["Hablar"]);
     silencio = el("button", { id: "hablaSilencio", type: "button", hidden: true, "aria-label": "Silenciar mi micrófono", style: CSS_BTN + ";min-height:" + h + "px;min-width:" + h + "px;background:rgba(229,72,77,0.18);border-color:rgba(229,72,77,0.8)" }, ["Silenciarme"]);
     casilla = el("input", { id: "hablaAuric", type: "checkbox", style: "width:" + Math.round(h * 0.5) + "px;height:" + Math.round(h * 0.5) + "px;margin:0 8px 0 0;vertical-align:middle" });
     var etiqueta: any = el("label", { id: "hablaAuricEt", style: "display:inline-flex;align-items:center;min-height:" + h + "px;cursor:pointer;margin:0 4px", hidden: true }, [casilla, "Llevo auriculares"]);
-    avisoEl = el("p", { id: "hablaAviso", style: "margin:4px 0 0;font-size:13px;opacity:0.9", hidden: true });
+    avisoEl = el("p", { id: "hablaAviso", style: "margin:4px 0 0;font-size:.8125rem;opacity:0.9", hidden: true });
     var fila: any = el("div", { style: "display:flex;flex-wrap:wrap;justify-content:center;align-items:center" }, [boton, silencio, etiqueta]);
     caja.appendChild(estadoEl); caja.appendChild(fila); caja.appendChild(avisoEl);
     caja._et = etiqueta;
-    (visor || document.body).appendChild(caja);
+    (sitio || visor || document.body).appendChild(caja);
     // el botón: pulsar = clic; mantener = apretar y soltar (el puntero), o la barra y Intro mantenidas
     boton.addEventListener("pointerdown", function (e?: any) { if (modoAj === "mantener" && esMicro()) { puntero = true; if (e.preventDefault) e.preventDefault(); gesto("baja", "boton"); } else if (esMano()) { /* el clic */ } });
     ["pointerup", "pointercancel", "pointerleave"].forEach(function (nm?: any) { boton.addEventListener(nm, function () { if (puntero) { puntero = false; gesto("suelta", "boton"); } }); });

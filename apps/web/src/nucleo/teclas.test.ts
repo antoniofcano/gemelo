@@ -31,6 +31,13 @@ describe("creaTeclas", () => {
     for (const extra of [{ ctrlKey: true }, { altKey: true }, { metaKey: true }, { repeat: true }, { target: { tagName: "INPUT" } }, { target: { isContentEditable: true } }]) v.oyentes[0]!(tecla("KeyJ", extra));
     assert.deepEqual(usadas, []);
   });
+  it("L6-20: con «Atajos de una sola tecla» apagado, las letras, cifras y + − registradas no hacen nada (y no se anulan); las demás siguen", () => {
+    let si = false; const v = ventana(), T = creaTeclas({ ventana: v, atajos: () => si }), usadas: string[] = [];
+    T.registra("KeyJ", e => { usadas.push(e.code); }); T.registra("F2", e => { usadas.push(e.code); });
+    const j = tecla("KeyJ"); v.oyentes[0]!(j); v.oyentes[0]!(tecla("F2"));
+    assert.deepEqual(usadas, ["F2"]); assert.ok(!j.prevenida);
+    si = true; v.oyentes[0]!(tecla("KeyJ")); assert.deepEqual(usadas, ["F2", "KeyJ"]);
+  });
   it("una función que falla se dice en la consola y no anula lo del navegador por error", () => {
     const v = ventana(), errores: unknown[][] = [], T = creaTeclas({ ventana: v, consola: { error: (...a: unknown[]) => errores.push(a) } });
     T.registra("KeyJ", () => { throw new Error("x"); });

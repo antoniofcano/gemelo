@@ -253,7 +253,7 @@ function threeFalso(cuenta) {
 }
 function montaCorro({ api = true, srvOpc = {}, vr = false, identidades = { [ANA_ID]: 3 }, sala = "general", aerea = false } = {}) {
   enfocado = null;
-  const srv = Object.assign({ estado: 200, disponible: true, activa: false, cons: false, corro: null, recibidas: [], enviadas: [], publicos: [], llamadas: [], fallaPutCons: null }, srvOpc);
+  const srv = Object.assign({ estado: 200, disponible: true, activa: false, cons: false, corro: null, recibidas: [], enviadas: [], publicos: [], llamadas: [], fallaPutCons: null, bloqueados: [] }, srvOpc);
   const J = (st, j) => Promise.resolve({ ok: st < 300, status: st, json: () => (j === null ? Promise.reject(new Error("sin cuerpo")) : Promise.resolve(j)) });
   const fetch = (u, o) => {
     const b = o.body ? JSON.parse(o.body) : undefined; srv.llamadas.push([o.method, u, b]);
@@ -272,7 +272,10 @@ function montaCorro({ api = true, srvOpc = {}, vr = false, identidades = { [ANA_
     if (m) { assert.deepStrictEqual(b, {}, "aceptar y rechazar llevan cuerpo {}"); srv.recibidas = []; if (m[2] === "rechazar") return J(204, null); srv.corro = { id: "ABCdef123_-x", sala: SALA, miembros: [{ prefijo: YO, alias: "Yo", yo: true }, { prefijo: ANA, alias: "Ana" }] }; return J(200, { corro: "ABCdef123_-x", sala: SALA }); }
     if (/^\/api\/presencia\/corros\/invitaciones\//.test(u) && o.method === "DELETE") { srv.enviadas = []; return J(204, null); }
     if (u === "/api/presencia/corros/salir") { srv.corro = null; return J(204, null); }
+    if (u === "/api/presencia/corros/bloqueos" && o.method === "GET") return J(200, { bloqueos: srv.bloqueados });
     if (u === "/api/presencia/corros/bloqueos") return J(201, { prefijo: C.prefijoDe(b.identidad) });
+    m = /^\/api\/presencia\/corros\/bloqueos\/(h_[A-Za-z0-9_-]{22})$/.exec(u);
+    if (m && o.method === "DELETE") { srv.bloqueados = srv.bloqueados.filter(x => x.prefijo !== m[1]); return J(204, null); }
     if (u === "/api/presencia/corros/avisos") { srv.corro = null; return J(201, { id: 7 }); }
     return J(404, { error: "no" });
   };
@@ -403,9 +406,14 @@ test("en el corro: la lista (alias, «Tú»), quién habla (texto aria-live y ha
   botonCon(caja, "Silenciar").dispara("click"); assert.deepStrictEqual(c.voz.callados.pop(), [ANA, true]); assert.match(por(c.visor, "corroCaja").textContent, /silenciado por ti/);
   botonCon(por(c.visor, "corroCaja"), "Volver a oír").dispara("click"); assert.deepStrictEqual(c.voz.callados.pop(), [ANA, false]);
   assert.ok(c.acciones(ANA_ID, 3).some(a => a.id === "silenciar"), "en su ficha, también"); assert.ok(!c.acciones(ANA_ID, 3).some(a => a.id === "invitar"), "ya está en tu corro: no se invita");
-  // bloquear
+  // bloquear (L6-07, decisión 239): primero se confirma, con el foco en «Cancelar»; «Cancelar» no bloquea; «Bloquear» sí, y dice dónde se deshace
   botonCon(por(c.visor, "corroCaja"), "Bloquear").dispara("click"); await c.tic();
-  assert.deepStrictEqual(c.srv.llamadas.find(l => l[1] === "/api/presencia/corros/bloqueos"), ["POST", "/api/presencia/corros/bloqueos", { identidad: ANA_ID }]); assert.match(c.avisosHud.pop(), /No se le dice/);
+  assert.ok(por(c.visor, "corroBloquear"), "pide confirmación"); assert.strictEqual(enfocado, por(c.visor, "corroBloquearNo"), "el foco en «Cancelar»");
+  assert.ok(!c.srv.llamadas.some(l => l[1] === "/api/presencia/corros/bloqueos"), "sin confirmar, nada"); assert.match(por(c.visor, "corroBloquear").textContent, /Personas bloqueadas/);
+  por(c.visor, "corroBloquearNo").dispara("click"); assert.strictEqual(por(c.visor, "corroBloquear"), undefined); assert.ok(!c.srv.llamadas.some(l => l[1] === "/api/presencia/corros/bloqueos"));
+  botonCon(por(c.visor, "corroCaja"), "Bloquear").dispara("click"); por(c.visor, "corroBloquearSi").dispara("click"); await c.tic(); await c.tic();
+  assert.deepStrictEqual(c.srv.llamadas.find(l => l[1] === "/api/presencia/corros/bloqueos"), ["POST", "/api/presencia/corros/bloqueos", { identidad: ANA_ID }]); assert.match(c.avisosHud.pop(), /No se le dice\. Lo deshaces en Configuración → Voz → Personas bloqueadas/);
+  assert.strictEqual(por(c.visor, "corroBloquear"), undefined, "y el diálogo se cierra");
   // avisar: motivo de lista, texto ≤ 280, sin audio; quien avisa sale
   botonCon(por(c.visor, "corroCaja"), "Avisar").dispara("click");
   const d = por(c.visor, "corroAvisar"); assert.ok(d); assert.strictEqual(enfocado, por(c.visor, "corroAvisarNo"), "el foco en «Cancelar»"); assert.strictEqual(por(c.visor, "corroAvisarSi").disabled, true, "sin motivo, no se envía");
@@ -499,4 +507,22 @@ test("el manifiesto, los eventos del catálogo y las interfaces: «corro-voz» c
   for (const m of codigo.matchAll(/fetch\(([^,)]+)/g)) assert.ok(/^url$/.test(m[1].trim()), "un único fetch, el de llama(): " + m[1]);
   assert.ok(!/https?:\/\//.test(codigo), "sin otros hosts");
   assert.deepStrictEqual(LaminasPuro.lineas("uno dos tres cuatro", 100, s => s.length * 12), ["uno dos", "tres", "cuatro"], "LaminasPuro.lineas parte por ancho");
+});
+
+test("L6-07 (decisión 239): «Personas bloqueadas» en Configuración → Voz lista los bloqueos de la api y «Desbloquear» los quita (DELETE); en la ficha, «Bloquear su voz» también confirma; en VR, una lámina", async () => {
+  const c = montaCorro({ srvOpc: { ...enCorro(), bloqueados: [{ prefijo: LUIS, alias: "Luis", desde: "2026-11-14T10:00:00Z" }] } }); await c.tic(); await c.tic();
+  const campo = c.aj.pest.campos.find(x => x.id === "ajCorroBloqueos"); assert.ok(campo, "el botón en la pestaña Voz"); assert.strictEqual(campo.boton, "Personas bloqueadas…");
+  campo.alClic(); await c.tic(); await c.tic();
+  const d = por(c.visor, "corroBloqueados"); assert.ok(d); assert.match(d.textContent, /Luis/); assert.match(por(c.visor, "corroBloqueadosEstado").textContent, /1 persona/);
+  const des = botonCon(d, "Desbloquear"); assert.strictEqual(des.attrs["aria-label"], "Desbloquear la voz de Luis");
+  des.dispara("click"); await c.tic(); await c.tic();
+  assert.deepStrictEqual(c.srv.llamadas.find(l => l[0] === "DELETE" && /bloqueos\//.test(l[1])), ["DELETE", "/api/presencia/corros/bloqueos/" + LUIS, undefined]);
+  assert.strictEqual(botonCon(por(c.visor, "corroBloqueados"), "Desbloquear"), undefined); assert.match(por(c.visor, "corroBloqueadosEstado").textContent, /No has bloqueado a nadie/);
+  assert.ok(c.avisosHud.some(t => /Has desbloqueado la voz de Luis/.test(t)));
+  por(c.visor, "corroBloqueadosSi").dispara("click"); assert.strictEqual(por(c.visor, "corroBloqueados"), undefined);
+  // la ficha (Presencia.accionesPersona): también confirma
+  c.acciones(ANA_ID, 3).find(a => a.id === "bloquear").fn(); assert.ok(por(c.visor, "corroBloquear")); assert.ok(!c.srv.llamadas.some(l => l[0] === "POST" && l[1] === "/api/presencia/corros/bloqueos"));
+  // en VR: una lámina con Cancelar y Bloquear
+  const v = montaCorro({ srvOpc: enCorro(), vr: true }); await v.tic(); await v.tic();
+  v.gancho("confirmaBloqueo", ANA_ID); assert.strictEqual(v.gancho().lamina, "bloquear"); assert.ok(!v.srv.llamadas.some(l => l[0] === "POST" && l[1] === "/api/presencia/corros/bloqueos"));
 });

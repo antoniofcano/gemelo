@@ -49,14 +49,14 @@ export function creaMinimapa(dp: DepsMinimapa) {
     try { mini.oculto = localStorage.getItem("gemelo.minimapa") === "oculto"; } catch (e: T) {}
     var bru: T = dp.$("norte");
     if (bru) { bru.removeAttribute("aria-pressed"); bru.title = "Brújula: el norte, arriba"; }
-    var mb: T = "font:inherit;color:inherit;background:none;border:0;min-width:44px;min-height:44px;cursor:pointer;padding:0;font-size:17px";
+    var mb: T = "font:inherit;color:inherit;background:none;border:0;min-width:44px;min-height:44px;cursor:pointer;padding:0;font-size:1.0625rem";
     function boton(txt?: T, etiqueta?: T, clase?: T) { var b: T = document.createElement("button"); b.type = "button"; b.textContent = txt; b.setAttribute("aria-label", etiqueta); b.title = etiqueta; b.style.cssText = mb; if (clase) b.className = clase; return b; }
     var agarre: T = boton("⠿", "Mover el minimapa: flechas del teclado (Mayús, más deprisa; Inicio, a su sitio)", "agarre"), tit: T = document.createElement("strong"),
       bZoom: T = boton("🔍", "Acercar el mapa"), bPlega: T = boton("▾", "Plegar el minimapa"), asa: T = document.createElement("div");
-    agarre.style.cursor = "grab"; agarre.style.color = "rgba(255,255,255,0.7)"; tit.textContent = "Mapa"; tit.style.cssText = "flex:1;font-size:13px;padding-right:6px";
+    agarre.style.cursor = "grab"; agarre.style.color = "rgba(255,255,255,0.7)"; tit.textContent = "Mapa"; tit.style.cssText = "flex:1;font-size:.8125rem;padding-right:6px";
     asa.className = "asa"; asa.style.cssText = "display:flex;align-items:center;gap:2px;padding-left:2px;cursor:grab"; [agarre, tit, bZoom, bPlega].forEach(function (e?: T) { asa.appendChild(e); });
     var wrap: T = document.createElement("div"); wrap.id = "mapaFlotante"; wrap.hidden = true;
-    wrap.style.cssText = "position:absolute;left:14px;top:48px;z-index:6;border-radius:10px;overflow:hidden;width:max-content;max-width:calc(100% - 28px);background:rgba(16,20,24,0.88);color:#fff;font:13px system-ui,sans-serif;border:1.5px solid rgba(255,255,255,0.25);box-shadow:0 4px 16px rgba(0,0,0,.28)";
+    wrap.style.cssText = "position:absolute;left:14px;top:48px;z-index:6;border-radius:10px;overflow:hidden;width:max-content;max-width:calc(100% - 28px);background:rgba(16,20,24,0.88);color:#fff;font:.8125rem system-ui,sans-serif;border:1.5px solid rgba(255,255,255,0.25);box-shadow:0 4px 16px rgba(0,0,0,.28)";
     mini.cv.parentNode.insertBefore(wrap, mini.cv); wrap.appendChild(asa); wrap.appendChild(mini.cv);
     mini.cv.hidden = false; mini.cv.style.cssText += ";position:static;display:block;border:0;border-radius:0;box-shadow:none;max-width:none";
     mini.wrap = wrap;

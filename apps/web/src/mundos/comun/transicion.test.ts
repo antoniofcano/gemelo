@@ -6,10 +6,10 @@ const THREE: any = await import(/* @vite-ignore */ "three" as string);   // sin 
 import { describe, expect, it } from "vitest";
 import { creaTransicion } from "./transicion.ts";
 
-function monta(seco: boolean) {
+function monta(seco: boolean, reducido = false) {
   const camera = new THREE.PerspectiveCamera(), persona = new THREE.Group(), emitidos: string[] = [];
   camera.position.set(0, 300, 0);
-  const T = creaTransicion({ THREE, camera, pp: { x: 0, y: 0, ang: 0 }, altSuelo: () => 0, sueloSeco: () => seco, Bus: { emite: (ev: string) => { emitidos.push(ev); return 0; } }, persona });
+  const T = creaTransicion({ THREE, camera, pp: { x: 0, y: 0, ang: 0 }, altSuelo: () => 0, sueloSeco: () => seco, Bus: { emite: (ev: string) => { emitidos.push(ev); return 0; } }, persona, reducido: () => reducido });
   return { T, camera, persona, emitidos };
 }
 
@@ -21,6 +21,14 @@ describe("transición del mapa al paseo", () => {
     expect(T.TR.act).toBe(false); expect(T.TR.aterrizo).toBe(true);
     expect(emitidos.filter(e => e === "sonido:golpe").length).toBe(1); expect(emitidos.filter(e => e === "perros:llegan").length).toBe(1);
     expect(emitidos.filter(e => e === "polvo:emite").length).toBe(16);
+  });
+  it("L6-03: con «Movimiento: Reducido», un corte: sin vuelo de la cámara ni caída del muñeco, aterriza en el primer fotograma (avisa igual) y la salida también es un corte", () => {
+    const { T, camera, persona, emitidos } = monta(true, true);
+    T.iniciaTransicion(); expect(T.TR.dur).toBeLessThan(0.01);
+    persona.position.y = 0; camera.position.set(0, 2, 5); T.transEntrada(1 / 60);
+    expect(T.TR.act).toBe(false); expect(T.TR.aterrizo).toBe(true); expect(persona.position.y).toBe(0); expect(camera.position.y).toBeCloseTo(2);
+    expect(emitidos.filter(e => e === "perros:llegan").length).toBe(1);
+    T.iniciaSalida(); T.transSalida(1 / 60); expect(T.TR.sal).toBe(false);
   });
   it("con el suelo mojado no hay polvo; al salir, vuelve a la órbita en TR.durS", () => {
     const { T, emitidos } = monta(false);

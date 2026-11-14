@@ -459,7 +459,7 @@ export function manifiestoMide(dp: DepsMide): Manifiesto {
     function ui() {
       if (UI || !(contador() || api.on || estado !== "inactivo")) return;
       UI = document.createElement("div"); UI.id = "mideCaja";
-      UI.style.cssText = "position:absolute;right:8px;bottom:8px;z-index:30;font:11px/1.35 ui-monospace,Menlo,monospace;background:rgba(0,0,0,.78);color:#a8f0b0;padding:5px 7px;border-radius:5px;max-width:min(92%,430px)";
+      UI.style.cssText = "position:absolute;right:8px;bottom:8px;z-index:30;font:.6875rem/1.35 ui-monospace,Menlo,monospace;background:rgba(0,0,0,.78);color:#a8f0b0;padding:5px 7px;border-radius:5px;max-width:min(92%,430px)";
       var b1: T = document.createElement("button"), b2: T = document.createElement("button"), b3: T = document.createElement("button"), pre: T = document.createElement("pre");
       b1.type = b2.type = b3.type = "button"; b1.id = "mideMide"; b2.id = "mideCopia"; b3.id = "mideEnvia";
       [b1, b2, b3].forEach(function (b?: T) { b.style.cssText = "font:inherit;margin-right:6px;padding:3px 8px;border-radius:4px;border:1px solid #5a8a62;background:#1d2b20;color:#d6ffdc;cursor:pointer"; });

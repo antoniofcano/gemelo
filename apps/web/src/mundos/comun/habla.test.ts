@@ -44,7 +44,7 @@ class El {
   focus() {} dispara(n: string) { (this.oy[n] || []).slice().forEach(f => f({ preventDefault() {}, target: this })); }
   todos(id: string): El[] { return (this.id === id || this.attrs["id"] === id ? [this as El] : []).concat(...this.children.map(c => (c.todos ? c.todos(id) : []))); }
 }
-function monta({ papel = "familia", puede = false, consent = true } = {}) {
+function monta({ papel = "familia", puede = false, consent = true, ranura = null as El | null } = {}) {
   const voz = { sala: "guiada-12", dentro: true, guiada: true, corro: false, papel, puede, micro: "cerrado", auriculares: false, motivo: "" };
   const Vz = { estado: () => ({ ...voz }), abre: () => { voz.micro = "abierto"; return Promise.resolve(true); }, cierra: () => { voz.micro = "cerrado"; return Promise.resolve(true); },
     auriculares: (si?: boolean) => { if (si !== undefined) voz.auriculares = si; return voz.auriculares; }, hablan: () => [] };
@@ -56,7 +56,7 @@ function monta({ papel = "familia", puede = false, consent = true } = {}) {
   const VRX: any = { on: false, voz: null };
   const dp: DepsHabla = {
     location: { search: "" }, window: { addEventListener: (n: string) => { escuchas[n] = (escuchas[n] || 0) + 1; }, removeEventListener: (n: string) => { escuchas[n]!--; } },
-    document: { createElement: (t: string) => new El(t), createTextNode: (t: string) => ({ texto: t }), body: new El("body"), activeElement: null },
+    document: { createElement: (t: string) => new El(t), createTextNode: (t: string) => ({ texto: t }), body: new El("body"), activeElement: null, getElementById: (id: string) => (id === "hudVoz" ? ranura : null) },
     fetch: (u: string, o: any) => (u === "/api/presencia/voz/consentimiento" && o.method === "GET" ? Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ version: 1, aceptada: consent }) })
       : u === "/api/presencia/voz/consentimiento" ? resp(200, { version: 1, aceptada: true }) : resp(200, { puesto: 1 })),
     D: {}, ConfigPuro: { prefijoApi: () => "/api" }, visor,
@@ -81,6 +81,14 @@ describe("creaHabla: componente de todo mundo con libera() de verdad (A3-6b)", (
     expect(def.id).toBe(ID_HABLA); expect(def.mundos).toBe("todos"); expect(def.bandera).toEqual({ defecto: true, url: "habla" });
     expect(def.presupuesto).toEqual({ llamadas: 1, triangulos: 2, texturasMB: 4 }); expect(def.expone).toEqual([]);
     expect(def.eventos.emite).toEqual(["habla:micro", "habla:mano", "habla:consentimiento"]);
+  });
+
+  it("L6-05: con el sitio reservado del HUD (#hudVoz) la caja del micro va allí, no centrada encima del HUD", async () => {
+    const ranura = new El("div"), m = monta({ papel: "familia", puede: true, ranura });
+    m.api.tarde(0.25); await espera();
+    expect(ranura.todos("hablaCaja")).toHaveLength(1); expect(m.visor.todos("hablaCaja")).toHaveLength(0);
+    expect(String((ranura.todos("hablaCaja")[0] as any).style.cssText)).not.toMatch(/position:absolute/);
+    m.libera();
   });
 
   it("libera() quita la caja, el aviso de voz, la lámina de VR, el gatillo, la tecla T, la fila del panel, la pestaña, las escuchas y el gancho", async () => {

@@ -80,7 +80,7 @@ test("los controles que buscan las pruebas conservan su id (se mueven, no se ren
 test("decisión 89: se quitan «+6 h», «Mañana a las 12:00», el pasear duplicado y el segundo deslizador de fecha; los textos de ayuda fijos se quedan", () => {
   for (const id of ["tMas6", "tManana", "btnPaseoV", "hSel"]) assert.ok(!IDS.includes(id), "#" + id + " debía quitarse");
   assert.ok(IDS.includes("ayuda") && IDS.includes("ayudaPaseo"), "los textos de ayuda fijos se quedan (reubicados)");
-  assert.match(css, /\.ayuda \{[^}]*font-size: 11\.5px[^}]*pointer-events: none/, "discretos: pequeños y sin comerse los toques");
+  assert.match(css, /\.ayuda \{[^}]*font-size: \.7188rem[^}]*pointer-events: none/, "discretos: pequeños (11,5 px en rem, L6-01) y sin comerse los toques");
   // los duplicados que aún usan otros módulos siguen existiendo, pero fuera de la vista
   const reserva = PL.slice(PL.indexOf('<div id="reserva" hidden>'), PL.indexOf("</div>", PL.indexOf('<div id="reserva" hidden>')));
   for (const id of ["btnSonido", "btnQuad", "btnDron", "hora"]) assert.ok(reserva.includes('id="' + id + '"'), "#" + id + " debía quedar en la reserva oculta");
@@ -117,4 +117,93 @@ test("accesibilidad: todo <input>, <select> y <textarea> lleva id o name (DevToo
   assert.deepStrictEqual(sin, [], "campos de formulario sin id ni name (añade uno único y estable): " + sin.join(" | "));
   const vistos = new Set(), rep = IDS.filter(i => vistos.has(i) || !vistos.add(i));
   assert.deepStrictEqual(rep, [], "ids repetidos en plantilla.html");
+});
+
+// ---------- la pasada de accesibilidad de la auditoría de noviembre (lente 6). En Node, leyendo el CSS y el TS: lo que solo un navegador mide (estilos calculados, cajas,
+// contrastes sobre el fotograma) va al banco (ver «ajustes_ui.test.js»); en el iPhone y en el Quest, NO probado.
+const reglas = [...css.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(m => ({ sel: m[1].replace(/^[\s\S]*@media[^{]*$/, "").trim(), cuerpo: m[2] }));
+
+test("L6-01: el tamaño del texto escala la raíz y TODO texto de la página va en rem (el HUD, el menú, las ventanas y las cajas que crea el cliente)", () => {
+  assert.match(css, /:root \{ font-size: calc\(100% \* var\(--escala-texto\)\); \}/, "la raíz escala con --escala-texto (Configuración → Accesibilidad)");
+  assert.match(css, /--escala-texto: 1;/, "con su valor por defecto");
+  const px = reglas.filter(r => /font(-size)?:\s*[^;]*\b\d+(\.\d+)?px/.test(r.cuerpo)).map(r => r.sel);
+  assert.deepStrictEqual(px, [], "font-size en px en plantilla.css (no crece con el ajuste): pásalo a rem");
+  const ajustes = lee("apps/web/src/ui/ajustes.ts");
+  assert.match(ajustes, /setProperty\("--escala-texto"/, "ajustes.ts pone --escala-texto en <html>");
+  // el DOM que crea el cliente con estilos en línea: font-size y font en rem (los lienzos, cx.font = "…px", no son CSS y no cuentan)
+  const malos = [];
+  for (const [f, t] of CLIENTE) for (const m of t.matchAll(/(font-size:\s*\d+(\.\d+)?px|\bfont:\s*(\d{3} )?\d+(\.\d+)?px)/g)) malos.push(f + ": " + m[0]);
+  assert.deepStrictEqual(malos, [], "estilos en línea con el texto en px: no crecen con «Tamaño del texto»");
+});
+
+test("L6-02: el alto contraste no borra pulsado, abierto, elegido ni actual", () => {
+  const r = reglas.find(x => /data-contraste="alto"/.test(x.sel) && /aria-pressed="true"/.test(x.sel));
+  assert.ok(r, "falta la regla de alto contraste para los estados");
+  for (const a of ["aria-pressed", "aria-expanded", "aria-selected", "aria-checked", "aria-current"]) assert.match(r.sel, new RegExp(a + '="true"'), "el estado " + a);
+  assert.match(r.cuerpo, /background: #fff !important/); assert.match(r.cuerpo, /color: #000 !important/);
+});
+
+test("L6-03 (CSS): «Movimiento: Normal» manda sobre la preferencia del sistema; «Reducido» apaga las animaciones", () => {
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{ :root:not\(\[data-movimiento="normal"\]\) \*/);
+  assert.match(css, /:root\[data-movimiento="reducido"\] \*/);
+});
+
+test("L6-14 y L6-15: la pestaña activa de Configuración y los textos fijos del HUD con contraste (texto oscuro sobre el olivo; texto claro sobre el cristal)", () => {
+  assert.match(css, /\.ajustes \.aj-pestanas \[aria-selected="true"\] \{[^}]*color: var\(--sobre-olivo\)/);
+  assert.match(css, /\.ayuda \{[^}]*color: var\(--hud-txt\); background: var\(--hud\)/, ".ayuda");
+  assert.match(css, /\.hud-atrib \{[^}]*color: var\(--hud-txt\); background: var\(--hud\)/, ".hud-atrib");
+});
+
+test("L6-17: los controles que se tocan miden 44 px como mínimo (min-height, alto o ancho en px por debajo de 44)", () => {
+  const TOCABLES = /(button|select|input|\.boton|\.chip|\.h-btn|\.h-punto|\.reiniciar|\[role="tab"\]|summary)(?![\w-])/;
+  const EXCEPCION = { ".hud-atrib": "solo en escritorio (en táctil va al menú, plantilla.css); 24 px, WCAG 2.5.8" };
+  const malos = [];
+  for (const r of reglas) {
+    if (!TOCABLES.test(r.sel) && !/\.hud-atrib/.test(r.sel)) continue;
+    if (/::?(before|after)|:disabled|\.capa input|label\.aj-fila input|\.insignia/.test(r.sel)) continue;   // el dibujo del punto; las casillas van dentro de su etiqueta de 44 px
+    for (const m of r.cuerpo.matchAll(/(?:^|;)\s*(min-height|height|min-width|width):\s*(\d+)px/g)) {
+      if (Number(m[2]) >= 44) continue;
+      const exc = Object.keys(EXCEPCION).find(k => r.sel.includes(k));
+      if (!exc) malos.push(r.sel + " → " + m[1] + ": " + m[2] + "px");
+    }
+  }
+  assert.deepStrictEqual(malos, [], "zonas táctiles por debajo de 44 px");
+  // y los botones de la lista del corro (L6-17 citaba sus 32 px)
+  assert.doesNotMatch(lee("apps/web/src/mundos/comun/corro.ts"), /min-height:32px/, "los botones del corro, a 44 px (56 en el Quest)");
+});
+
+test("L6-18: en táctil la ficha y la baliza del paseo caen bajo «lo tuyo» (la fila acaba en y = 154)", () => {
+  const top = s => { const r = reglas.find(x => x.sel.startsWith(s)); const m = r && /top: calc\(var\(--sa-t\) \+ (\d+)px\)/.exec(r.cuerpo); return m ? Number(m[1]) : 0; };
+  assert.ok(top('[data-tactil="si"] .ficha') >= 158, "la ficha");
+  assert.ok(top('[data-tactil="si"] .visor.paseo .t-baliza') >= 158, "la baliza del paseo");
+});
+
+test("L6-21 y botones solo-icono: todo botón de la plantilla sin letras visibles lleva aria-label (o un .vh), y el aria-label contiene el rótulo visible (WCAG 2.5.3)", () => {
+  const sinNombre = [], noContiene = [];
+  for (const m of PL.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)) {
+    const at = m[1], dentro = m[2], id = (/\bid="([^"]+)"/.exec(at) || [, "?"])[1];
+    const visible = dentro.replace(/<span class="vh">[\s\S]*?<\/span>/g, "").replace(/<[^>]*aria-hidden="true"[^>]*>[\s\S]*?<\/[a-z]+>/g, "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+    const oculto = /class="vh"/.test(dentro), label = (/aria-label="([^"]*)"/.exec(at) || [])[1];
+    const letras = /\p{L}{2,}/u.test(visible);
+    if (!letras && !label && !oculto) sinNombre.push(id);
+    if (letras && label && !label.toLowerCase().includes(visible.toLowerCase().replace(/ ?[▾]$/, ""))) noContiene.push(id + ": «" + visible + "» ⊄ «" + label + "»");
+  }
+  assert.deepStrictEqual(sinNombre, [], "botones solo-icono sin nombre accesible");
+  assert.deepStrictEqual(noContiene, [], "aria-label que no contiene el texto visible");
+});
+
+test("L6-09: la Ayuda describe los controles de hoy (la palanca, tocar el suelo para ir andando) y su tabla trae todas las teclas reservadas y la T de hablar", () => {
+  const ayuda = PL.slice(PL.indexOf('id="ventanaAyuda"'), PL.indexOf("</section>", PL.indexOf('id="ventanaAyuda"')));
+  assert.doesNotMatch(ayuda, /al pasear, la cruceta va abajo/, "la cruceta ya no es lo de por defecto (la palanca, EV2-B2)");
+  assert.match(ayuda, /palanca/i); assert.match(ayuda, /toque corto en el suelo te lleva andando/);
+  const kbd = new Set([...ayuda.matchAll(/<kbd>([^<]+)<\/kbd>/g)].map(m => m[1]));
+  for (const k of ["W A S D", "Mayús", "Intro", "Inicio", "0", "Q", "E", "V", "Espacio", "C", "L", "1", "6", "M", "H", "F", "F1", "Esc", "←", "→", "T"]) assert.ok(kbd.has(k), "falta <kbd>" + k + "</kbd> en la Ayuda");
+});
+
+test("L6-05: la voz (la palabra de la guiada, el micro y el corro) tiene su sitio reservado en la columna del estado, bajo «lo tuyo», y sus módulos lo usan", () => {
+  const estado = PL.slice(PL.indexOf('id="hudEstado"'), PL.indexOf("<!-- arriba a la derecha"));
+  assert.ok(estado.indexOf('id="hudVoz"') > estado.indexOf('id="hudPersonal"'), "#hudVoz dentro de #hudEstado, después de «lo tuyo»");
+  assert.match(css, /\.hud-estado \{ z-index: 23; \}/, "la columna por encima de la palanca y los flotantes");
+  for (const f of ["apps/web/src/mundos/comun/corro.ts", "apps/web/src/mundos/comun/habla.ts", "apps/web/src/ui/guiada.ts"]) assert.match(lee(f), /getElementById\("hudVoz"\)/, f + " usa #hudVoz");
+  assert.match(lee("apps/web/src/ui/hud.ts"), /"hudEstado"/, "Hud.zonasProhibidas guarda la columna del estado (con la voz dentro) de los flotantes");
 });

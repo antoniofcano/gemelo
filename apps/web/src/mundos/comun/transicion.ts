@@ -6,7 +6,9 @@
 import type { T } from "./tipos.ts";
 
 /** Lo que el talón de 24 le da: THREE, la cámara (03_escena), pp (12_paseo), altSuelo (16_vida), sueloSeco (22_huellas), el Bus; persona (12_paseo), por getter */
-export interface DepsTransicion { THREE: T; camera: T; pp: T; altSuelo(x: number, y: number): number; sueloSeco(x: number, y: number): boolean; Bus: T; readonly persona: T }
+export interface DepsTransicion { THREE: T; camera: T; pp: T; altSuelo(x: number, y: number): number; sueloSeco(x: number, y: number): boolean; Bus: T; readonly persona: T;
+  /** L6-03: «Movimiento: Reducido» (Configuración, o el sistema): sin el vuelo de la cámara ni la caída del muñeco, un corte */
+  reducido?(): boolean }
 
 export function creaTransicion(dp: DepsTransicion) {
   // --- del mapa al paseo: la cámara baja volando desde donde estaba hasta detrás del muñequito, que cae desde el cielo y rebota al aterrizar
@@ -15,7 +17,9 @@ export function creaTransicion(dp: DepsTransicion) {
   function suave(s?: T) { s = Math.max(0, Math.min(1, s)); return s * s * (3 - 2 * s); }
   function iniciaTransicion() {   // se llama al entrar en el paseo, con la cámara todavía en la órbita
     TR.act = true; TR.t = 0; TR.aterrizo = false; TR.sal = false; TR.desde.copy(dp.camera.position); TR.qDesde.copy(dp.camera.quaternion);
-    TR.dur = Math.max(1.6, Math.min(2.8, dp.camera.position.distanceTo(new dp.THREE.Vector3(dp.pp.x, dp.altSuelo(dp.pp.x, dp.pp.y), -dp.pp.y)) / 260 + 1.5));
+    TR.red = !!(dp.reducido && dp.reducido());   // L6-03: un corte, sin vuelo ni caída (el aterrizaje avisa igual: perros, golpe)
+    TR.caida = TR.red ? 0 : 34; TR.tCae = TR.red ? 0 : 1.35;
+    TR.dur = TR.red ? 0.001 : Math.max(1.6, Math.min(2.8, dp.camera.position.distanceTo(new dp.THREE.Vector3(dp.pp.x, dp.altSuelo(dp.pp.x, dp.pp.y), -dp.pp.y)) / 260 + 1.5));
   }
   function transEntrada(dt?: T) {   // después de que el paseo haya puesto su cámara y su muñequito
     if (!TR.act) return;
@@ -23,9 +27,9 @@ export function creaTransicion(dp: DepsTransicion) {
     dp.camera.position.lerpVectors(TR.desde, dp.camera.position.clone(), s); qObj.copy(dp.camera.quaternion); dp.camera.quaternion.copy(TR.qDesde).slerp(qObj, s);
     var T: T = TR.tCae, y: T;
     if (TR.t < T) { var u: T = TR.t / T; y = TR.caida * (1 - u * u); }
-    else { var tt: T = TR.t - T; y = 0.42 * Math.abs(Math.sin(tt * 9)) * Math.exp(-tt * 4.5); if (!TR.aterrizo) { TR.aterrizo = true; aterriza(); } }
+    else { var tt: T = TR.t - T; y = TR.red ? 0 : 0.42 * Math.abs(Math.sin(tt * 9)) * Math.exp(-tt * 4.5); if (!TR.aterrizo) { TR.aterrizo = true; aterriza(); } }
     dp.persona.position.y += y; dp.persona.rotation.x = TR.t < T ? Math.sin(TR.t * 3) * 0.12 : 0;   // un poco de braceo en la caída
-    if (TR.t > TR.dur + 0.6) { TR.act = false; dp.persona.rotation.x = 0; }
+    if (TR.t > TR.dur + (TR.red ? 0 : 0.6)) { TR.act = false; dp.persona.rotation.x = 0; }
   }
   function aterriza() {   // polvo y un golpe sordo; y los perros salen corriendo hacia ti
     dp.Bus.emite("perros:llegan");
@@ -34,7 +38,7 @@ export function creaTransicion(dp: DepsTransicion) {
     dp.Bus.emite("sonido:golpe", {});
   }
   function iniciaSalida() {   // al salir del paseo la cámara vuelve sin salto a la órbita
-    TR.sal = true; TR.ts = 0; TR.act = false; TR.pS.copy(dp.camera.position); TR.qS.copy(dp.camera.quaternion);
+    TR.sal = true; TR.ts = 0; TR.act = false; TR.pS.copy(dp.camera.position); TR.qS.copy(dp.camera.quaternion); TR.durS = dp.reducido && dp.reducido() ? 0.001 : 1.1;   // L6-03
   }
   function transSalida(dt?: T) {   // después de que la órbita haya puesto su cámara
     if (!TR.sal) return;

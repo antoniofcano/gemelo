@@ -136,7 +136,7 @@ export function OficinaMundoMotor(dp: DepsOficinaMundo, n: T, R: T, P: T) {
     n.emite("oficina:anuncio", { texto: texto });
     if (dp.VRX.on) { anuncioVR = texto; dp.Laminas.abre({ id: LAM_A, ancho: 1.1, alto: 0.36, w: 880, h: 288, pinta: pintaAnuncioVR, firma: function () { return anuncioVR; }, alTocar: function () { dp.Laminas.cierra(LAM_A); return true; } }); return; }
     if (!banner) {
-      banner = el("div", { id: "oficinaAnuncio", role: "status", "aria-live": "polite", style: "position:absolute;left:50%;top:64px;transform:translateX(-50%);z-index:32;max-width:min(560px,calc(100% - 32px));padding:10px 14px;border-radius:12px;background:rgba(72,84,20,0.95);color:#fff;font:15px/1.4 system-ui,sans-serif;box-sizing:border-box;pointer-events:none;box-shadow:0 2px 10px rgba(0,0,0,0.35)" });
+      banner = el("div", { id: "oficinaAnuncio", role: "status", "aria-live": "polite", style: "position:absolute;left:50%;top:64px;transform:translateX(-50%);z-index:32;max-width:min(560px,calc(100% - 32px));padding:10px 14px;border-radius:12px;background:rgba(72,84,20,0.95);color:#fff;font:.9375rem/1.4 system-ui,sans-serif;box-sizing:border-box;pointer-events:none;box-shadow:0 2px 10px rgba(0,0,0,0.35)" });
       (dp.visor || document.body).appendChild(banner);
     }
     banner.textContent = "◆ Oficina: " + texto; banner.hidden = false;
@@ -172,7 +172,7 @@ export function OficinaMundoMotor(dp: DepsOficinaMundo, n: T, R: T, P: T) {
       var bs = "font:inherit;color:inherit;border-radius:8px;padding:6px 14px;min-height:44px;min-width:44px;cursor:pointer;margin-right:8px;";
       var p: T = el("p", { id: "oficinaSalaTxt", style: "margin:0 0 8px" }), ir: T = el("button", { type: "button", style: bs + "background:rgba(64,240,255,0.22);border:1px solid rgba(64,240,255,0.7)" }, ["Ir"]);
       var no: T = el("button", { type: "button", style: bs + "background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.35)" }, ["Quedarme"]);
-      var raiz: T = el("div", { id: "oficinaInvitacion", role: "dialog", "aria-label": "Invitación de la oficina", "aria-describedby": "oficinaSalaTxt", style: "position:absolute;left:50%;top:120px;transform:translateX(-50%);z-index:33;max-width:min(380px,calc(100% - 32px));padding:12px;border-radius:12px;background:rgba(16,20,24,0.94);color:#fff;font:14px/1.4 system-ui,sans-serif;box-sizing:border-box" }, [p, ir, no]);
+      var raiz: T = el("div", { id: "oficinaInvitacion", role: "dialog", "aria-label": "Invitación de la oficina", "aria-describedby": "oficinaSalaTxt", style: "position:absolute;left:50%;top:120px;transform:translateX(-50%);z-index:33;max-width:min(380px,calc(100% - 32px));padding:12px;border-radius:12px;background:rgba(16,20,24,0.94);color:#fff;font:.875rem/1.4 system-ui,sans-serif;box-sizing:border-box" }, [p, ir, no]);
       ir.addEventListener("click", aceptaSala); no.addEventListener("click", rechazaSala);
       raiz.addEventListener("keydown", function (e?: T) { e.stopPropagation(); if (e.key === "Escape") { rechazaSala(); e.preventDefault(); } });   // las teclas no mueven al paseante
       (dp.visor || document.body).appendChild(raiz);
@@ -198,7 +198,7 @@ export function OficinaMundoMotor(dp: DepsOficinaMundo, n: T, R: T, P: T) {
     var css = "font:inherit;color:inherit;border-radius:8px;padding:6px 12px;min-height:44px;cursor:pointer;background:rgba(163,178,54,0.2);border:1px solid rgba(163,178,54,0.75)";
     var campo = "font:inherit;width:100%;box-sizing:border-box;min-height:44px;padding:6px 8px;border-radius:8px;margin:4px 0";
     var salaTxt: T = el("p", { style: "margin:0 0 6px" }), irOtra: T = el("button", { type: "button", style: css }), invitar: T = el("button", { type: "button", style: css + ";margin-left:8px" });
-    var aTxt: T = el("textarea", { name: "of-anuncio-texto", maxLength: OP.ANUNCIO_MAX, rows: 3, style: campo, "aria-label": "Texto del anuncio (hasta " + OP.ANUNCIO_MAX + " caracteres)" }), aCuenta: T = el("span", { style: "opacity:0.7;font-size:12px" }, ["0 / " + OP.ANUNCIO_MAX]);
+    var aTxt: T = el("textarea", { name: "of-anuncio-texto", maxLength: OP.ANUNCIO_MAX, rows: 3, style: campo, "aria-label": "Texto del anuncio (hasta " + OP.ANUNCIO_MAX + " caracteres)" }), aCuenta: T = el("span", { style: "opacity:0.7;font-size:.75rem" }, ["0 / " + OP.ANUNCIO_MAX]);
     var aSala: T = el("select", { name: "of-anuncio-sala", style: campo, "aria-label": "A quién se anuncia" }, [el("option", { value: "todas" }, ["A las dos salas"]), el("option", { value: "general" }, ["A la Visita libre"]), el("option", { value: "visita" }, ["A la Sala de la visita"])]);
     var aBtn: T = el("button", { type: "button", style: css }, ["Anunciar"]);
     var bTit: T = el("input", { type: "text", name: "of-baliza-titulo", maxLength: OP.TITULO_MAX, style: campo, "aria-label": "Título de la baliza (hasta " + OP.TITULO_MAX + ")", placeholder: "Aquí se recoge hoy" });
@@ -206,11 +206,11 @@ export function OficinaMundoMotor(dp: DepsOficinaMundo, n: T, R: T, P: T) {
     var bHoras: T = el("select", { name: "of-baliza-horas", style: campo, "aria-label": "Cuánto dura la baliza" }, OP.HORAS.map(function (h?: T) { return el("option", { value: String(h) }, [h < 24 ? h + " h" : h / 24 + (h === 24 ? " día" : " días")]); }));
     bHoras.value = "8";
     var bBtn: T = el("button", { type: "button", style: css }, ["Poner aquí"]), estado: T = el("p", { role: "status", "aria-live": "polite", style: "margin:8px 0 0;min-height:1.4em" });
-    var h3 = function (t?: T) { return el("h3", { style: "margin:12px 0 4px;font-size:14px" }, [t]); };
+    var h3 = function (t?: T) { return el("h3", { style: "margin:12px 0 4px;font-size:.875rem" }, [t]); };
     // A3-8b: la parte de la baliza, en un bloque que se esconde mientras el exterior no es el mundo activo (una baliza se pone donde estás en la finca)
     var hBal: T = h3("Baliza oficial donde estás"), bloqueBal: T = el("div", {}, [hBal, bTit, bTxt, bHoras, bBtn]);
     [h3("Sala"), salaTxt, irOtra, invitar, h3("Anunciar"), aTxt, aCuenta, aSala, aBtn, bloqueBal, estado,
-      el("p", { style: "margin:8px 0 0;opacity:0.7;font-size:12px" }, ["Te ven con chaleco e insignia. Todo lo que haces aquí queda en la auditoría."])].forEach(function (x?: T) { cu.appendChild(x); });
+      el("p", { style: "margin:8px 0 0;opacity:0.7;font-size:.75rem" }, ["Te ven con chaleco e insignia. Todo lo que haces aquí queda en la auditoría."])].forEach(function (x?: T) { cu.appendChild(x); });
     aTxt.addEventListener("input", function () { aCuenta.textContent = Array.from(aTxt.value).length + " / " + OP.ANUNCIO_MAX; });
     irOtra.addEventListener("click", function () { var a: T = OP.otraSala(P.sala()); estado.textContent = "Cambiando de sala…"; P.cambiaSala(a).then(function (ok?: T) { estado.textContent = ok ? "Estás en la " + OP.SALAS[a] + "." : "No se pudo cambiar de sala."; pintaPanel(); }); });
     invitar.addEventListener("click", function () {

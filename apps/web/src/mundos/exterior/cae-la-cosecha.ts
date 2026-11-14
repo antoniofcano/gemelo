@@ -340,7 +340,7 @@ export function CaeLaCosechaPartida(ctx: T, suena: T) {
     var el: T = document.createElement("button"), svg: T = document.createElementNS("http://www.w3.org/2000/svg", "svg"), ruta: T = document.createElementNS("http://www.w3.org/2000/svg", "path"), et: T = document.createElement("span");
     el.type = "button"; el.setAttribute("aria-label", b.t); el.setAttribute("data-accion", b.a);
     el.style.cssText = "flex:1 1 0;min-width:56px;max-width:120px;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;" +
-      "border-radius:14px;border:2px solid rgba(255,255,255,0.45);background:rgba(255,255,255,0.12);color:#fff;font:600 15px system-ui,sans-serif;touch-action:none;cursor:pointer;user-select:none;-webkit-user-select:none";
+      "border-radius:14px;border:2px solid rgba(255,255,255,0.45);background:rgba(255,255,255,0.12);color:#fff;font:600 .9375rem system-ui,sans-serif;touch-action:none;cursor:pointer;user-select:none;-webkit-user-select:none";
     svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("width", "28"); svg.setAttribute("height", "28"); svg.setAttribute("aria-hidden", "true");
     ruta.setAttribute("d", b.d); ruta.setAttribute("fill", "none"); ruta.setAttribute("stroke", "currentColor"); ruta.setAttribute("stroke-width", "2.6"); ruta.setAttribute("stroke-linecap", "round"); ruta.setAttribute("stroke-linejoin", "round");
     svg.appendChild(ruta); et.textContent = b.t; el.appendChild(svg); el.appendChild(et); caja.appendChild(el);

@@ -3,7 +3,7 @@
 // (AbortController), quita el complemento de la ficha, la capa de rótulos y window.__personaliza; L2-08: el ImageBitmap de una foto demasiado grande se cierra aunque no
 // se use; L6-12: el recuadro se anuncia con su título. HONESTIDAD: DOM, api y three de mentira; el recuadro con teclado real, en el iPhone y en el Quest, no está probado.
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ID_PERSONALIZACION, manifiestoPersonalizacion } from "./personalizacion.ts";
+import { ID_PERSONALIZACION, PersonalizaPuro, manifiestoPersonalizacion } from "./personalizacion.ts";
 import { busPrueba, montaComponente } from "../../nucleo/prueba-componentes.ts";
 import { creaMundo, type Mundo } from "../../nucleo/prueba-dom.ts";
 
@@ -63,6 +63,24 @@ describe("la personalización de los árboles", () => {
     expect(h2.textContent).toBe("Nombrar este olivo"); expect(dialogo.getAttribute("aria-labelledby")).toBe(h2.getAttribute("id"));
     s.c.libera();
     expect(s.m.documento.getElementById("personalizaPanel")).toBeNull();
+  });
+  it("L6-12: el recuadro atrapa el foco (Tab y Mayús+Tab dan la vuelta dentro) y al cerrarlo el foco vuelve a quien lo abrió", async () => {
+    const s = monta((u) => (u === "/api/sesion" ? J(200, { titular: true }) : u === "/api/hazas/1/olivos" ? J(200, LISTA) : J(404, null)));
+    s.api.actualiza("tarde", 0.4); await espera();
+    const quien = s.m.el("button", "quienAbre"); s.m.documento.body.appendChild(quien); quien.focus();
+    const f: A = { filas: [] }; s.complementos[0](f, "olivo:hituelo:100", "pantalla"); f.acciones.find((a: A) => a.id === "nombrar").fn();
+    const dialogo = s.m.documento.getElementById("personalizaPanel"), orden = dialogo.querySelectorAll("input,select,textarea,button,a");
+    expect(s.m.documento.activeElement).toBe(orden[0]);
+    const tab = (atras = false) => dialogo.dispatchEvent({ type: "keydown", key: "Tab", shiftKey: atras, target: s.m.documento.activeElement, stopPropagation() { /* doble */ }, preventDefault() { /* doble */ } });
+    orden[orden.length - 1].focus(); tab(); expect(s.m.documento.activeElement).toBe(orden[0]);
+    tab(true); expect(s.m.documento.activeElement).toBe(orden[orden.length - 1]);
+    dialogo.dispatchEvent({ type: "keydown", key: "Escape", stopPropagation() { /* doble */ }, preventDefault() { /* doble */ } });
+    expect(s.m.documento.getElementById("personalizaPanel")).toBeNull(); expect(s.m.documento.activeElement).toBe(quien);
+    s.c.libera();
+  });
+  it("L6-16: el nombre sobre el olivo no baja de 0,7 de opacidad al alejarse (se lee sobre el cielo claro)", () => {
+    expect(PersonalizaPuro.opacidadRotulo(0)).toBe(1); expect(PersonalizaPuro.opacidadRotulo(PersonalizaPuro.CERCA_M)).toBe(0.7);
+    expect(PersonalizaPuro.opacidadRotulo(PersonalizaPuro.CERCA_M * 0.2)).toBeCloseTo(0.8);
   });
   it("L2-08: el ImageBitmap de una foto demasiado grande se cierra aunque no se use", async () => {
     const cerrar = vi.fn();

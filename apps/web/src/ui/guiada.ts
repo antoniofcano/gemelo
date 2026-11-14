@@ -151,9 +151,10 @@ export function GuiadaMotor(dp: DepsGuiada, n: T, R: T, P: T, Vz: T) {
   }
   function montaTira() {
     if (tira) return;
-    tira = el("div", { id: "guiadaPalabra", style: "position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:31;max-width:min(420px,calc(100% - 32px));padding:6px 12px;border-radius:999px;background:rgba(16,20,24,0.9);color:#fff;font:600 14px/1.4 system-ui,sans-serif;box-sizing:border-box;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis", hidden: true, "aria-hidden": "true" });
+    var sitio: T = null; try { sitio = document.getElementById ? document.getElementById("hudVoz") : null; } catch (e: T) { sitio = null; }   // L6-05: con las cajas de voz, bajo «lo tuyo»; no cae sobre la telemetría del dron
+    tira = el("div", { id: "guiadaPalabra", style: (sitio ? "position:relative;max-width:100%;" : "position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:31;max-width:min(420px,calc(100% - 32px));") + "padding:6px 12px;border-radius:999px;background:rgba(16,20,24,0.9);color:#fff;font:600 .875rem/1.4 system-ui,sans-serif;box-sizing:border-box;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis", hidden: true, "aria-hidden": "true" });
     avisos = el("div", { id: "guiadaAvisos", role: "status", "aria-live": "polite", style: "position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap" });
-    (dp.visor || document.body).appendChild(tira); (dp.visor || document.body).appendChild(avisos);
+    (sitio || dp.visor || document.body).appendChild(tira); (dp.visor || document.body).appendChild(avisos);
   }
   function pintaTira() {
     if (!tira) return;
@@ -265,7 +266,7 @@ export function GuiadaMotor(dp: DepsGuiada, n: T, R: T, P: T, Vz: T) {
     if (vg) return;
     var cu: T = null, quitaV: T = dp.Ventanas.registra("guia", { titulo: "Visita guiada", construye: function (c?: T) { cu = c; } });
     if (!quitaV || !cu) return;
-    var h3 = function (t?: T) { return el("h3", { style: "margin:12px 0 4px;font-size:14px" }, [t]); };
+    var h3 = function (t?: T) { return el("h3", { style: "margin:12px 0 4px;font-size:.875rem" }, [t]); };
     var prep: T = el("p", { style: "margin:0 0 4px" }), lst: T = el("ul", { style: "list-style:none;margin:4px 0;padding:0;max-height:24vh;overflow:auto", "aria-label": "Familias en la sala" });
     var turno: T = el("p", { style: "margin:0 0 4px" }), mas: T = el("button", { type: "button", style: css }, ["+1 min"]), cor: T = el("button", { type: "button", style: css }, ["Cortar"]);
     var manos: T = el("ol", { style: "margin:4px 0;padding-left:22px", "aria-label": "Manos levantadas, en orden" }), sinManos: T = el("p", { style: "margin:0;opacity:0.7" }, ["Nadie ha levantado la mano."]);
@@ -279,8 +280,8 @@ export function GuiadaMotor(dp: DepsGuiada, n: T, R: T, P: T, Vz: T) {
     conG.addEventListener("click", function () { conGrupo(); }); mqOn.addEventListener("click", function () { maquinasGrupo(true); }); mqOff.addEventListener("click", function () { maquinasGrupo(false); });
     mas.addEventListener("click", function () { alarga(); }); cor.addEventListener("click", function () { corta(); });
     sil.addEventListener("click", function () { silencia(); }); cie.addEventListener("click", function () { cierraSala(seg.value); });
-    [h3("Preparar"), prep, lst, h3("El recorrido"), rec, conG, mqOn, mqOff, el("p", { style: "margin:4px 0 0;opacity:0.7;font-size:12px" }, ["Las paradas: «Llevar al grupo» en la ficha de cada una, dentro."]), h3("La palabra"), turno, mas, cor, h3("Manos levantadas"), manos, sinManos, h3("Moderar"), sil, el("br"), seg, cie, estado,
-      el("p", { style: "margin:8px 0 0;opacity:0.7;font-size:12px" }, ["La palabra dura 2 minutos y se acaba sola. Nada se graba. Lo que haces aquí queda en la auditoría."])].forEach(function (x?: T) { cu.appendChild(x); });
+    [h3("Preparar"), prep, lst, h3("El recorrido"), rec, conG, mqOn, mqOff, el("p", { style: "margin:4px 0 0;opacity:0.7;font-size:.75rem" }, ["Las paradas: «Llevar al grupo» en la ficha de cada una, dentro."]), h3("La palabra"), turno, mas, cor, h3("Manos levantadas"), manos, sinManos, h3("Moderar"), sil, el("br"), seg, cie, estado,
+      el("p", { style: "margin:8px 0 0;opacity:0.7;font-size:.75rem" }, ["La palabra dura 2 minutos y se acaba sola. Nada se graba. Lo que haces aquí queda en la auditoría."])].forEach(function (x?: T) { cu.appendChild(x); });
     var quitaI: T = dp.Hud.icono({ id: "guia", ico: "🎙", txt: "Visita guiada", prio: 2, ventana: "guia" });
     vg = { prep: prep, lst: lst, turno: turno, mas: mas, cor: cor, manos: manos, sinManos: sinManos, cie: cie, estado: estado, rec: rec, conG: conG, mqOn: mqOn, mqOff: mqOff, firma: "", retira: function () { quitaI(); quitaV(); } };
     pintaPanel();

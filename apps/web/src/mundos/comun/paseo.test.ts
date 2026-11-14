@@ -2,7 +2,7 @@
 // primera; A3-8c); con «arriba» se anda hacia donde mira, a la velocidad que da la vida (velPaseo), y el mundo activo aparta del tronco (gm.obstaculo); la palanca suma al teclado; y libera() quita
 // al muñequito (sus geometrías y sus materiales, con sus «dispose») y todas sus escuchas. HONESTIDAD: nada se dibuja aquí; en el iPhone y el Quest, NO probado.
 import { describe, expect, it } from "vitest";
-import { ID_PASEO, PalancaPuro, creaPaseo } from "./paseo.ts";
+import { ID_PASEO, PalancaPuro, TeclasPaseo, creaPaseo } from "./paseo.ts";
 import type { DepsPaseo } from "./paseo.ts";
 import { creaMateriales } from "../../nucleo/materiales.ts";
 import type { ThreeMin } from "../../nucleo/materiales.ts";
@@ -31,6 +31,20 @@ function monta() {
   const api = creaPaseo(d);
   return { api, d, legado: api.E as A, scene, ventana, documento, elementos };   // A3-8c: lo que leen los demás, Paseo.E (antes, lo que el legado espejaba)
 }
+
+describe("L6-11: las teclas del paseo no roban las del navegador", () => {
+  it("nada con Ctrl, Alt o Cmd ni en un campo; Espacio sobre un botón es su clic; dentro de una ventana, Espacio y las flechas son suyos; WASD anda igual", () => {
+    expect(TeclasPaseo.accion({ code: "KeyW" }, {})).toBe("up");
+    for (const m of [{ ctrl: true }, { meta: true }, { alt: true }]) expect(TeclasPaseo.accion({ code: "KeyS", ...m }, {})).toBe(null);
+    expect(TeclasPaseo.accion({ code: "ArrowLeft" }, { tag: "INPUT" })).toBe(null);
+    expect(TeclasPaseo.accion({ code: "Space" }, { tag: "BUTTON" })).toBe(null); expect(TeclasPaseo.accion({ code: "Space" }, { tag: "CANVAS" })).toBe("sube");
+    expect(TeclasPaseo.accion({ code: "ArrowDown" }, { tag: "DIV", panel: true })).toBe(null); expect(TeclasPaseo.accion({ code: "KeyD" }, { tag: "BUTTON", panel: true })).toBe("right");
+    expect(TeclasPaseo.accion({ code: "KeyQ" }, { tag: "BUTTON" })).toBe("quad");
+    // L6-20: sin atajos de una tecla, ni WASD ni V, Q, E; las flechas, Mayús y Espacio siguen
+    expect(TeclasPaseo.accion({ code: "KeyW" }, { sinAtajos: true })).toBe(null); expect(TeclasPaseo.accion({ code: "KeyE" }, { sinAtajos: true })).toBe(null);
+    expect(TeclasPaseo.accion({ code: "ArrowUp" }, { sinAtajos: true })).toBe("up"); expect(TeclasPaseo.accion({ code: "ShiftLeft" }, { sinAtajos: true })).toBe("run");
+  });
+});
 
 describe("paseo", () => {
   it("al cargar, el muñequito ya está en la escena (oculto) y el legado lo tiene; entrar y salir espejan paseando y teclas", () => {
