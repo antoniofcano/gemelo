@@ -131,12 +131,14 @@ describe("creaCorro: componente de todo mundo con libera() de verdad (A3-6b)", (
     await espera(); m.voz.entra!(true); await espera(); m.api.tarde(0.25); await espera();
     const caja = m.visor.children.find(c => c.id === "corroCaja" || c.attrs.id === "corroCaja") as any, lista = caja._l as El;
     const botones = () => lista.children.flatMap(li => li.children.filter(h => h.tagName === "BUTTON"));
-    const antes = botones(); expect(antes.length).toBeGreaterThanOrEqual(1);
+    const antes = botones(), filasAntes = [...lista.children]; expect(antes.length).toBeGreaterThanOrEqual(1);
+    // por IDENTIDAD de nodo (toBe uno a uno), no por forma: una lista rehecha con nodos nuevos iguales no pasa
+    const mismos = (ahora: El[], previos: El[]) => { expect(ahora).toHaveLength(previos.length); ahora.forEach((x, i) => expect(x).toBe(previos[i])); };
     (m.oy["voz:habla"] || []).forEach(f => f({ identidad: ANA_ID, habla: true })); m.api.tarde(0.25);
     expect(lista.children.map(li => li.children[0]!.textContent).join("|")).toMatch(/Ana · habla/);
-    expect(botones()).toEqual(antes);   // los mismos nodos: el que tenía el foco sigue ahí
+    mismos(botones(), antes); mismos([...lista.children], filasAntes);   // los mismos nodos: el que tenía el foco sigue ahí
     (m.oy["voz:habla"] || []).forEach(f => f({ identidad: ANA_ID, habla: false })); m.api.tarde(0.25);
-    expect(botones()).toEqual(antes);
+    mismos(botones(), antes); mismos([...lista.children], filasAntes);
     m.libera();
   });
 
