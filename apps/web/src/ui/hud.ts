@@ -56,7 +56,9 @@ export var HudPuro: T = (function () {
     }
     // Esc cierra lo último abierto, en este orden; si no hay nada, abre el menú
     function ordenEsc(est?: T) { return est.desplegable ? "desplegable" : est.ficha ? "ficha" : est.baliza ? "baliza" : est.ventana ? "ventana" : est.recorrido ? "recorrido" : "menu"; }
-    return { MODOS: MODOS, modoDe: modoDe, rumboCamara: rumboCamara, zonas: zonas, tactil: tactil, zurda: zurda, accionTecla: accionTecla, ordenEsc: ordenEsc };
+    // L3-19b: la leyenda de abajo dice la fecha del NDVI y qué es cada color también con solo las copas coloreadas (sin la capa del menú no se ve su nota); sin fecha, el texto fijo
+    function textoLeyendaNdvi(fecha?: T) { return "NDVI" + (typeof fecha === "string" && /\d/.test(fecha) ? " del " + fecha : "") + " · cada color, un cuadro de 10 × 10 m (varios árboles) · relativo a esta finca y fecha · sin calibrar"; }
+    return { textoLeyendaNdvi: textoLeyendaNdvi, MODOS: MODOS, modoDe: modoDe, rumboCamara: rumboCamara, zonas: zonas, tactil: tactil, zurda: zurda, accionTecla: accionTecla, ordenEsc: ordenEsc };
   })();
   // [puro:fin]
 export function creaHud(dp: DepsHud) {
@@ -156,6 +158,7 @@ export function creaHud(dp: DepsHud) {
       Array.prototype.forEach.call(document.querySelectorAll('#hud [data-abre="historia"]'), function (b?: T) { if (b.hidden !== !!sinHist) b.hidden = !!sinHist; });
       // la leyenda NDVI, abajo, solo con la capa o con las copas coloreadas
       var nh: T = dp.$("ndviHud"), conNdvi: T = (dp.$("cNdvi") && dp.$("cNdvi").checked) || (dp.$("cTinte") && dp.$("cTinte").checked); if (nh && nh.hidden === !!conNdvi) nh.hidden = !conNdvi;
+      if (nh && !nh.hidden) { var pie: T = nh.querySelector("small"), fe: T = dp.$("ndviFecha"), tx: T = HudPuro.textoLeyendaNdvi(fe && fe.textContent); if (pie && pie.textContent !== tx) pie.textContent = tx; }
     }
     function refrescaBrujula() {
       if (!aguja || dp.VRX.on) return;
