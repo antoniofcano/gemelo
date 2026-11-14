@@ -20,6 +20,7 @@
 //     con el fundido de Llegada y el cambio de mundo de aquí, y la lámina en VR), y lo que el interior necesita de la guiada (deps.guiada).
 import type { Manifiesto } from "../../nucleo/componentes.ts";
 import type { IdMundo, Pose2, Puerta, ResultadoCambio } from "../../nucleo/mundos.ts";
+import { movimientoReducido } from "../../nucleo/movimiento.ts";
 import type { T } from "../comun/tipos.ts";
 import type { creaInterior, DecodificadoresInterior, DepsInterior } from "./index.ts";
 import { creaPortones, manifiestoPortones } from "./porton.ts";
@@ -61,12 +62,8 @@ export interface DepsCableaInteriores {
   Ajustes?(): { movimientoReducido?(): boolean } | null | undefined;
 }
 
-/** L6-03: ¿se reduce el movimiento? Manda el ajuste de la aplicación (Ajustes.movimientoReducido, que ya respeta «Como el sistema»); sin Configuración, prefers-reduced-motion */
-export function movimientoReducido(aj: { movimientoReducido?(): boolean } | null | undefined, ventana: Record<string, unknown>): boolean {
-  try { if (aj && typeof aj.movimientoReducido === "function") return !!aj.movimientoReducido(); } catch (e) { /* sigue con el sistema */ }
-  const mm = ventana.matchMedia as ((q: string) => { matches: boolean }) | undefined;
-  try { return !!(mm && mm.call(ventana, "(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; }
-}
+/** L6-03: ¿se reduce el movimiento? La regla única vive en nucleo/movimiento.ts (el ajuste de la aplicación; sin Configuración, el sistema); aquí se reexporta */
+export { movimientoReducido };
 
 /** v1.3: la carpeta del transcodificador Basis junto a la página (la copia vite.config.js, RUTA_BASIS; la misma que usa el suelo de fotos) */
 export const RUTA_BASIS = "basis/";

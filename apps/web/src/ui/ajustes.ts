@@ -5,6 +5,7 @@
 // #menuAjustes. Los ajustes siguen leyéndose después (el almacén no se suelta): quien los lee no se rompe. Código movido tal cual (solo se tipan parámetros y
 // variables, y «x.addEventListener(» pasa a «escucha(x, »); lo que el legado reescribe o declara después (Hud, Movibles, tamano) entra por getter.
 import type { Manifiesto } from "../nucleo/componentes.ts";
+import { CONSULTA_MOVIMIENTO, sistemaReduceMovimiento } from "../nucleo/movimiento.ts";
 import { creaSoltador } from "./soltador.ts";
 import type { T } from "./tipos.ts";
 
@@ -115,7 +116,7 @@ export function creaAjustes(dp: DepsAjustes) {
     // L6-03: «Movimiento» (sistema, reducido o normal) es lo que leen también lo 3D (la transición al paseo, el tiempo, las máquinas de los interiores): movimientoReducido()
     // lo da sin consultar la media query en cada fotograma (se recalcula al cambiar el ajuste o el sistema) y alMovimiento(fn) avisa de cada cambio
     var reducidoYa: T = null, oyentesMov: T = [];
-    function calculaReducido() { var m: T = api.lee("acc.movimiento"); if (m === "sistema") return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); return m === "reducido"; }
+    function calculaReducido() { var m: T = api.lee("acc.movimiento"); if (m === "sistema") return sistemaReduceMovimiento(window); return m === "reducido"; }
     function movimientoReducido() { return reducidoYa !== null ? reducidoYa : calculaReducido(); }
     function alMovimiento(fn?: T) { if (typeof fn !== "function") return function () {}; oyentesMov.push(fn); try { fn(movimientoReducido()); } catch (e: T) {} return function () { var i: T = oyentesMov.indexOf(fn); if (i >= 0) oyentesMov.splice(i, 1); }; }
     function tactil() { var t: T = api.lee("controles.tactil"); if (t === "auto") return !!(window.matchMedia && matchMedia("(pointer: coarse)").matches); return t === "si"; }
@@ -303,7 +304,7 @@ export function creaAjustes(dp: DepsAjustes) {
     var cs: T = dp.$("cSonido"); if (cs) { var lab: T = cs.closest && cs.closest("label"); if (lab) lab.hidden = true; }   // la casilla vieja de Capas: el sonido tiene ahora su pestaña (la añade el componente, Ajustes.registra)
     ligaControl("exag", "vista.exag", "input"); ligaControl("corr", "vista.corr", "input");
     api.alCambiar(function (clave?: T) { aplica(clave); pinta(); });
-    if (window.matchMedia) { try { escucha(matchMedia("(prefers-reduced-motion: reduce)"), "change", function () { aplica("acc.movimiento"); }); escucha(matchMedia("(pointer: coarse)"), "change", function () { aplica("controles.tactil"); }); } catch (e: T) {} }
+    if (window.matchMedia) { try { escucha(matchMedia(CONSULTA_MOVIMIENTO), "change", function () { aplica("acc.movimiento"); }); escucha(matchMedia("(pointer: coarse)"), "change", function () { aplica("controles.tactil"); }); } catch (e: T) {} }
     api.claves().forEach(aplica);
     if (dp.movimiento) alMovimiento(dp.movimiento);   // L6-03
     api.pinta = function () { construye(); pinta(); };   // por si el menú se crea después

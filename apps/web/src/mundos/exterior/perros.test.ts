@@ -21,7 +21,7 @@ function fusiona(partes: [any, any][], conUv?: boolean) {   // eslint-disable-li
 }
 const lienzo = () => ({ width: 0, height: 0, getContext: () => new Proxy({}, { get: (_t, k) => (k === "measureText" ? () => ({ width: 10 }) : () => {}), set: () => true }) });
 
-function monta() {
+function monta(reducido?: boolean) {
   const E = { paseando: true, enQuad: false, enDron: false, tVida: 0 }, rnd = semilla(77);
   const scene = new THREE.Scene(), gFauna = new THREE.Group(); scene.add(gFauna);
   const oyentes: Record<string, ((d?: unknown) => void)[]> = {}, capas: unknown[] = [], emitidos: string[] = [], relojes = new Map<number, () => void>(); let idReloj = 0;
@@ -32,7 +32,8 @@ function monta() {
     geoSombra, matSombra, gFauna, paseando: () => E.paseando, pp: { x: 10, y: 10, ang: 0, paso: 0 }, tVida: () => E.tVida, enQuad: () => E.enQuad, enDron: () => E.enDron,
     altSuelo: (x: number, y: number) => 2 + 0.01 * x + Math.sin(y * 0.1), pendienteRumbo: () => [0.1, 0.05], sueloSeco: () => true,
     Minimapa: { capa: (fn) => { capas.push(fn); return () => { capas.pop(); }; } }, fusionaGeometrias: fusiona, document: { createElement: lienzo }, window, aleatorio: rnd,
-    reloj: { setTimeout: (f: () => void) => { relojes.set(++idReloj, f); return idReloj; }, clearTimeout: (id: unknown) => { relojes.delete(id as number); } }
+    reloj: { setTimeout: (f: () => void) => { relojes.set(++idReloj, f); return idReloj; }, clearTimeout: (id: unknown) => { relojes.delete(id as number); } },
+    ...(reducido !== undefined ? { reducido: () => reducido } : {})
   };
   const n = { id: ID_PERROS, parametros: {}, limpia: <F>(f: F) => f, emite: (ev: string, d?: unknown) => { emitidos.push(ev); (oyentes[ev] || []).forEach((f) => f(d)); return 0; }, api: () => null,
     on: (ev: string, fn: (d?: unknown) => void) => { (oyentes[ev] = oyentes[ev] || []).push(fn); return () => { oyentes[ev] = (oyentes[ev] || []).filter((f) => f !== fn); }; } } as ContextoComponente;
@@ -69,6 +70,14 @@ describe("perros: el componente", () => {
     const { emite } = monta();
     const q1 = { x: 11, y: 10, res: null as { x: number } | null }; emite("perros:amenaza", q1); expect(q1.res).toBeTruthy();
     const q2 = { x: 90, y: 90, res: null as unknown }; emite("perros:amenaza", q2); expect(q2.res).toBeNull();
+  });
+  it("L6-03: con «Movimiento: Reducido» no salen a explorar ni a perseguir a la carrera: te siguen; sin él, sí salen", () => {
+    for (const reducido of [false, true]) {
+      const { api, emite, E, window, deps } = monta(reducido); emite("perros:llegan");
+      const estados = new Set<string>();
+      for (let i = 0; i < 600; i++) { E.tVida += 0.05; deps.pp.x = 10 + 8 * Math.cos(i * 0.006); deps.pp.y = 10 + 8 * Math.sin(i * 0.006); api.actualiza(0.05);   /* quien pasea, andando despacio */ for (const p of (window["__perrosDebug"] as () => { est: string }[])()) estados.add(p.est); }
+      expect(estados.has("explora") || estados.has("persigue")).toBe(!reducido);
+    }
   });
   it("sin pasear, todo fuera", () => {
     const { api, emite, E, gFauna } = monta(); emite("perros:llegan"); api.actualiza(0.05);

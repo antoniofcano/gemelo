@@ -38,6 +38,9 @@ export interface DepsPerros extends Pick<LecturaVida, "tVida" | "enQuad" | "enDr
   /** el DOM (lienzos del pelaje y de los rótulos) y la ventana (window.__perrosDebug) */
   document: T3;
   window: T3;
+  /** L6-03: «Movimiento: Reducido» (Ajustes, por nucleo/movimiento.ts): no salen a perseguir conejos ni a explorar a la carrera: te siguen al paso; lo que ya se mueve acaba su gesto (nada se congela a medias) */
+  reducido?: () => boolean;
+
   /** el azar (Math.random por defecto) y el reloj (setTimeout y clearTimeout de la ventana por defecto): las pruebas los fijan */
   aleatorio?: () => number;
   reloj?: { setTimeout(f: () => void, ms: number): unknown; clearTimeout(id: unknown): void };
@@ -52,6 +55,7 @@ export function angCorto(a: number, b: number): number { var d = (b - a) % 6.283
 export function creaPerros(d: DepsPerros, ctx: ContextoComponente) {
   const THREE = d.THREE, D = d.D, copas = d.copas, camera = d.camera, texColor = d.texColor, hash = d.hash, geoSombra = d.geoSombra, matSombra = d.matSombra, gFauna = d.gFauna;
   const altSuelo = d.altSuelo, pendienteRumbo = d.pendienteRumbo, sueloSeco = d.sueloSeco, Minimapa = d.Minimapa, fusionaGeometrias = d.fusionaGeometrias, document = d.document, window = d.window;
+  const reducido = d.reducido;   // L6-03 (dentro del bucle, `d` es cada perro)
   const materiales = d.Materiales.de(ID_PERROS);   // lo que cree este componente se libera con su libera()
   const pp = d.pp, paseando = d.paseando, tVida = d.tVida, enQuad = d.enQuad, enDron = d.enDron, rnd = d.aleatorio || Math.random;
   const setT = d.reloj ? d.reloj.setTimeout.bind(d.reloj) : setTimeout, clearT = d.reloj ? d.reloj.clearTimeout.bind(d.reloj) : clearTimeout;
@@ -127,7 +131,7 @@ export function creaPerros(d: DepsPerros, ctx: ContextoComponente) {
   function actualizaPerros(dt: any) {
     if (!paseando()) { for (var j = 0; j < PERROS.length; j++) { PERROS[j].malla.visible = false; PERROS[j].tag.visible = false; PERROS[j].est = "fuera"; } jugHay = false; empacaPerros(); return; }
     var vj = jugHay ? Math.hypot(pp.x - jugAx, pp.y - jugAy) / Math.max(dt, 1e-3) : 0; jugAx = pp.x; jugAy = pp.y; jugHay = true; jugador.v += (vj - jugador.v) * Math.min(1, dt * 5); jugador.quieto = jugador.v < 0.25 ? jugador.quieto + dt : 0;
-    var fx = Math.sin(pp.ang), fy = Math.cos(pp.ang), rx = Math.cos(pp.ang), ry = -Math.sin(pp.ang), e: any = D.ext, rad = Math.PI / 180;
+    var fx = Math.sin(pp.ang), fy = Math.cos(pp.ang), rx = Math.cos(pp.ang), ry = -Math.sin(pp.ang), e: any = D.ext, rad = Math.PI / 180, red = !!(reducido && reducido());
     for (var k = 0, d; k < PERROS.length; k++) {
       d = PERROS[k]; if (d.est === "fuera") continue;
       d.t -= dt; d.ult -= dt; var dj = Math.hypot(pp.x - d.x, pp.y - d.y), vmax = d.vmax * (enQuad() ? 1.25 : 1), destX = pp.x, destY = pp.y, vel = 0, atento = false;
@@ -137,6 +141,7 @@ export function creaPerros(d: DepsPerros, ctx: ContextoComponente) {
       else if (d.est === "sigue") {
         if (dj > 17) d.est = "viene";
         else if (jugador.quieto > 5 && dj < 5) { d.est = "descansa"; d.t = 6 + rnd() * 8; }
+        else if (d.t <= 0 && red) d.t = 3;
         else if (d.t <= 0) { var cj = conejoCerca(d, 26); if (cj && rnd() < 0.65) { d.est = "persigue"; d.obj = cj; d.t = 6.5; if (rnd() < d.ladra * 3) ladrido(d); } else { var a = rnd() * 6.283, r = 5 + rnd() * 6; d.obj = { x: pp.x + Math.cos(a) * r, y: pp.y + Math.sin(a) * r }; d.est = "explora"; d.t = 7; } }   // reserva-ok: el destino de explorar, una vez cada varios segundos (no por fotograma)
       } else if (d.est === "explora") { if (dj > 22 || d.t <= 0) d.est = "viene"; else if (Math.hypot(d.obj.x - d.x, d.obj.y - d.y) < 1.2) { d.est = "olfatea"; d.t = 1.6 + rnd(); } }
       else if (d.est === "olfatea") { if (d.t <= 0) { d.est = "sigue"; d.t = 3 + rnd() * 5; } }

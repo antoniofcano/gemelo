@@ -33,7 +33,7 @@ export interface DepsFichasTiempo {
   red: () => A;
   /** window.__TIEMPO_PRUEBA (solo en local) o null */
   prueba: () => A;
-  /** prefers-reduced-motion */
+  /** L6-03: «Movimiento: Reducido» al crearse (sin «Reproducir»); después lo cambia calma(v) */
   calma: boolean;
   /** los relojes y las escuchas del navegador; libera() los suelta */
   temporizador: { setInterval(fn: () => void, ms: number): A; clearInterval(id: A): void };
@@ -198,12 +198,8 @@ export function creaFichasTiempo(d: DepsFichasTiempo) {
     escucha($("tAhora"), "click", function () { TM.demo = ""; $("tDemo").value = ""; TM.modo = "ahora"; TM.idx = TM.ahoraIdx; TM.corrimientoH = 0; $("tMomento").value = TM.idx; refrescaTiempo(); });
     // «+6 h» y «Mañana a las 12:00» se quitaron (decisión 89): el deslizador «Momento» y «Ahora» bastan
     escucha($("tDemo"), "change", function () { TM.demo = $("tDemo").value; refrescaTiempo(); });
-    escucha($("tPlay"), "click", function () {
-      TM.jugando = !TM.jugando; $("tPlay").textContent = TM.jugando ? "Pausa" : "Reproducir"; $("tPlay").setAttribute("aria-pressed", String(TM.jugando)); d.temporizador.clearInterval(reloj);
-      var i = relojes.indexOf(reloj); if (reloj !== null && i >= 0) relojes.splice(i, 1); reloj = null;
-      if (TM.jugando) reloj = cada(function () { var h = TM.prev && TM.prev.horas; if (!h) return; TM.idx = (TM.idx + 1) % h.length; TM.modo = "prevision"; $("tMomento").value = TM.idx; refrescaTiempo(); }, 700);
-    });
-    if (d.calma) $("tPlay").hidden = true;
+    escucha($("tPlay"), "click", function () { juega(!TM.jugando); });
+    calma(calmaYa);
     escucha($("tLeer"), "click", leerTiempo);
     // la lámina de la previsión en el mundo: la pide por el Bus («prevision:alterna», la atiende el componente fichas-tiempo de 35_fichas_tiempo.js);
     // el botón solo se ve si alguien la atiende (si el componente está apagado o fuera del motor, no hay botón muerto)
@@ -227,6 +223,18 @@ export function creaFichasTiempo(d: DepsFichasTiempo) {
       return r;
     });
   }
+  // «Reproducir» la previsión: un reloj que avanza la hora cada 700 ms (sin él con «Movimiento: Reducido»)
+  var calmaYa = !!d.calma;
+  function juega(si: boolean): void {
+    TM.jugando = si; var b = $("tPlay"); if (b) { b.textContent = si ? "Pausa" : "Reproducir"; b.setAttribute("aria-pressed", String(si)); }
+    if (reloj !== null) { d.temporizador.clearInterval(reloj); var i = relojes.indexOf(reloj); if (i >= 0) relojes.splice(i, 1); reloj = null; }
+    if (si) reloj = cada(function () { var h = TM.prev && TM.prev.horas; if (!h) return; TM.idx = (TM.idx + 1) % h.length; TM.modo = "prevision"; $("tMomento").value = TM.idx; refrescaTiempo(); }, 700);
+  }
+  /** L6-03: «Movimiento: Reducido» (o el sistema) quita «Reproducir» y, si estaba reproduciendo, lo para donde está; «Normal» lo devuelve */
+  function calma(v: boolean): void {
+    calmaYa = !!v; var b = $("tPlay"); if (b) b.hidden = calmaYa;
+    if (calmaYa && TM.jugando && !suelto) juega(false);
+  }
   /** L2-11: para los relojes (la relectura cada 10 min y «Reproducir») y quita todas las escuchas (los controles, el tema, el Bus); lo que llegue después se tira */
   function libera(): number {
     if (suelto) return 0;
@@ -239,7 +247,7 @@ export function creaFichasTiempo(d: DepsFichasTiempo) {
   }
   return {
     tarjetaEstacion: tarjetaEstacion, tarjetaPrevision: tarjetaPrevision, refrescaTiempo: refrescaTiempo, aplicaDatos: aplicaDatos, pasoHoraMundo: pasoHoraMundo,
-    leerApi: leerApi, leerTiempo: leerTiempo, tiempoSimulado: tiempoSimulado, monta: monta, libera: libera,
+    leerApi: leerApi, leerTiempo: leerTiempo, tiempoSimulado: tiempoSimulado, monta: monta, libera: libera, calma: calma,
     /** cuántos relojes y escuchas siguen apuntados (para la prueba de L2-11) */
     vivos: function (): { relojes: number; escuchas: number } { return { relojes: relojes.length, escuchas: bajas.length }; }
   };

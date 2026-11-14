@@ -19,6 +19,7 @@
 // (AbortController: el récord de la familia, la clasificación y guardar la partida). Los trozos [puro:…] y el cuerpo de JuegosMotor los evalúa en Node
 // pruebas/guardianes/juego_cosecha.test.js (el .ts, leído como JavaScript: sin tipos ni «dp.»).
 import type { Manifiesto } from "../../nucleo/componentes.ts";
+import { movimientoReducido } from "../../nucleo/movimiento.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type T = any;
@@ -26,7 +27,11 @@ type T = any;
 export const ID_JUEGOS = "juegos";
 
 /** Lo que el talón de 40 le da: D (01), Pausa, ConfigPuro, Teclas y Config (02c), Laminas (02d), Hud (31) y Ventanas (32); VRX y PanelVR (29_vr, que el código comprobaba con typeof), por getter */
-export interface DepsJuegos { D: T; Pausa: T; ConfigPuro: T; Config: T; Teclas: T; Laminas: T; Hud: T; Ventanas: T; readonly VRX: T; readonly PanelVR: T }
+export interface DepsJuegos {
+  D: T; Pausa: T; ConfigPuro: T; Config: T; Teclas: T; Laminas: T; Hud: T; Ventanas: T; readonly VRX: T; readonly PanelVR: T;
+  /** L6-03: Configuración (33_ajustes), por getter: «Movimiento» de la aplicación; sin ella, el sistema (nucleo/movimiento.ts) */
+  readonly Ajustes?: { movimientoReducido?(): boolean } | null;
+}
 
 // [puro:inicio] (sin DOM ni THREE: lo evalúa en Node pruebas/guardianes/juego_cosecha.test.js)
 export var JuegosPuro: T = (function () {
@@ -215,7 +220,7 @@ export function JuegosMotor(dp: DepsJuegos, n: T) {
   // lo que el anfitrión da a quien crea una partida, salvo el lienzo y los botones (la época del olivo de hoy, la semilla, el movimiento reducido)
   function ctxBase() {
     var ep: T = null; try { var m: T = /[?&]epoca=([a-z]+)/.exec(location.search); ep = m ? m[1] : (dp.Config.tablaEpocas(dp.D.finca_id) ? dp.Config.epocaDeFecha(dp.Config.tablaEpocas(dp.D.finca_id), new Date()) : null); } catch (e: T) { ep = null; }
-    var reducido = false; try { reducido = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e: T) {}
+    var reducido = movimientoReducido(dp.Ajustes, window);   // L6-03: el ajuste «Movimiento» de la aplicación, no solo el sistema
     return { epoca: ep, semilla: JP.semilla(location.search, Date.now()), reducido: reducido };
   }
   function nuevaPartida() {

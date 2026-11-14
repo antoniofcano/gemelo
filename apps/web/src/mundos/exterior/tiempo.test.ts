@@ -190,6 +190,15 @@ describe("el tiempo del exterior: el componente", () => {
     expect(i).toBeGreaterThan(0);
     expect(src.slice(i, f)).toMatch(/\bpaseando:\s*function \(\) \{ return [^}]*Paseo\.E\.paseando; \}/);
   });
+  it("L6-03: calma(v) sigue al ajuste «Movimiento»: quita «Reproducir» (y lo para si iba) y lo devuelve con «Normal»", () => {
+    const { tiempo, els, tm } = monta();
+    expect(els.tPlay.hidden).toBe(false);
+    els.tPlay.dispara("click"); expect(tiempo.TM.jugando).toBe(true); const relojes = tm.vivos.size;
+    tiempo.calma(true);
+    expect(els.tPlay.hidden).toBe(true); expect(tiempo.TM.jugando).toBe(false); expect(tm.vivos.size).toBe(relojes - 1); expect(els.tPlay.textContent).toBe("Reproducir");
+    tiempo.calma(false); expect(els.tPlay.hidden).toBe(false); expect(tiempo.TM.jugando).toBe(false);
+    tiempo.libera();
+  });
   it("L8-05: con la estación de otra fecha, la chapita dice «estimado»", () => {
     const { tiempo, els } = monta({ estimado: () => true });
     tiempo.actualiza(0.3); expect(els.tInsT.textContent).toMatch(/· estimado$/);
