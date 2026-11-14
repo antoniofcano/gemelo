@@ -339,6 +339,7 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 
 
 ### Corregido
+- Documentación al día con el código (auditoría de noviembre, lente 10): ESTADO vuelve a ser estado, nada habla ya en tiempo previo al despliegue, ARCHITECTURE nombra los 92 pasos del arranque (con guardián nuevo), una sola verdad sobre la build de VR del Quest, las skills `modelado-3d` y `mundos-virtuales` coinciden con el código, cinco estudios de un día pasan a `historico/` y el guardián de rutas vigila también `apps/`, `tuberia/` e `infra/`.
 - Avatares VRM dentro de los interiores: en la fábrica (sin luces de escena: su luz es horneada y la de las máquinas viene de la sonda) se veían casi negros. Ahora, como los muñecos, van «sin luz» mientras se está dentro: su color y su textura pasan al emisivo y salen igual con o sin luces; al salir, como estaban. Comprobado en Chrome sin pantalla (materiales y captura); iPhone y Quest sin probar.
 - La e2e de la visita guiada compartida ya no da por buena una memoria de GPU «parecida» al volver: un inventario de lo subido a la GPU mostró que las ~20 geometrías de más de quien sigue al guía eran contenido del exterior recargado (olivos y carteles de haza a la vista), no restos del interior; ahora la prueba exige que nada nuevo quede vivo fuera de la escena.
 - El validador de interiores lee las extensiones del trozo JSON del glb: una extensión no admitida que gltf-validator no conoce ya no pasa sin error.

@@ -1,6 +1,6 @@
 # ADR-0035 — Interiores comprimidos: meshopt para la geometría y KTX2 (Basis Universal) para las texturas (contrato mundo-interior v1.3)
 
-- **Estado:** Aceptado (la fábrica comprimida se publicó en el VPS el 2026-11-14, con la confirmación de Antonio: ESTADO, «Publicado»)
+- **Estado:** Propuesto. La fábrica comprimida está publicada en el VPS desde el 2026-11-14, pero se acepta cuando Antonio la vea bien en el Quest; si no, se vuelve a la sin comprimir (copia en el servidor)
 - **Fecha:** 2026-11-14
 
 ## Contexto
