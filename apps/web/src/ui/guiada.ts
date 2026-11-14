@@ -15,6 +15,10 @@
 //  · EL PANEL DEL GUÍA (papel «guia» u «oficina» en la sala; en pantalla): ventana «Visita guiada» con su icono en la barra: preparar (cuántas familias
 //    apuntadas hay y cuántas están ya dentro, y quién está), la cola de manos en orden de llegada, dar la palabra (2 min), +1 min, cortar,
 //    silenciar a todos menos al guía, sacar a una familia (pide pulsar dos veces) y cerrar la sala avisando antes (dos veces; 10-60 s).
+//  · EL RECORRIDO (visita compartida, decisiones 233-238): en la ventana del guía, dónde está el grupo (lo que llega por «guiada:visita»), «Entrar con el
+//    grupo / Salir con el grupo» (lleva al grupo al mundo en el que estás: «mundo:entra») y «Máquinas para todos: en marcha / paradas»; y lo que el interior
+//    pide por «guiada:pide» («Llevar al grupo a la parada N», en pantalla y en VR). Todo es POST /api/presencia/guiadas/:evento/visita; un 409 sala_sin_abrir
+//    (nadie ha entrado aún en la sala de LiveKit) se dice corto, los demás errores con un aviso genérico.
 //  · EN VR (gafas), una fila de PanelVR (pestaña «Ir a») con lo esencial: quién habla y cuánto le queda, dar la palabra a la 1.ª mano, +1 min, cortar y
 //    silenciar a todos. Sacar y cerrar, en pantalla (piden confirmar y leer).
 // Lo que llega de la sala (alias, metadatos, atributos, mensajes) es DATO de otras personas: se valida y se pinta con textContent, nunca como HTML.
@@ -188,7 +192,7 @@ export function GuiadaMotor(dp: DepsGuiada, n: T, R: T, P: T, Vz: T) {
     if (cuerpo) { o.headers["content-type"] = "application/json"; o.body = JSON.stringify(cuerpo); }
     return fetch("/api/presencia/guiadas/" + ev + "/" + ruta, o).then(function (r?: T) {
       if (r.status === 204) return null;
-      return r.json().catch(function () { return null; }).then(function (j?: T) { if (!r.ok) { var e: T = new Error(G.textoError(j, r.status)); e.status = r.status; throw e; } return j; });
+      return r.json().catch(function () { return null; }).then(function (j?: T) { if (!r.ok) { var e: T = new Error(G.textoError(j, r.status)); e.status = r.status; e.motivo = j && typeof j.motivo === "string" ? j.motivo : ""; throw e; } return j; });
     });
   }
   function sondea() {
@@ -213,6 +217,40 @@ export function GuiadaMotor(dp: DepsGuiada, n: T, R: T, P: T, Vz: T) {
     pintaPanel();
     return accion(nom + " ha salido de la visita (15 min sin poder volver).", "POST", "expulsar", { identidad: id });
   }
+  // ---- el recorrido (visita compartida): el grupo, al mundo y a la parada que diga el guía, y las máquinas para todos
+  var visitaG: T = null, miMundo = "exterior", MUNDOS_POSE: T = ["exterior", "patios", "fabrica"];
+  var NOMBRE_MUNDO: T = { exterior: "fuera", patios: "en los patios", fabrica: "en la fábrica" };
+  function avisoGuia(t?: T) { ponEstado(t); if (dp.Hud && dp.Hud.aviso) dp.Hud.aviso(t, 4000); }
+  function mueveGrupo(cuerpo?: T, hecho?: T) {
+    if (ev === null || !G.modera(papel)) { avisoGuia("No estás en la visita guiada como guía."); return Promise.resolve(false); }
+    est.acciones++; ponEstado("…");
+    return pide("POST", "visita", cuerpo).then(function (j?: T) {
+      if (j && j.visita && typeof j.visita === "object") { visitaG = { mundo: j.visita.mundo, parada: j.visita.parada, maquinas: j.visita.maquinas, n: j.visita.n }; pintaPanel(); }
+      ponEstado(hecho); return true;
+    }, function (e?: T) {
+      avisoGuia(e && e.status === 409 && e.motivo === "sala_sin_abrir" ? "Entra en la sala antes de llevar al grupo." : "No se ha podido mover al grupo: " + (e && e.message ? e.message : "inténtalo otra vez."));
+      return false;
+    });
+  }
+  function conGrupo() { return mueveGrupo({ mundo: miMundo }, miMundo === "exterior" ? "El grupo sale contigo." : "El grupo entra contigo."); }
+  function maquinasGrupo(on?: T) { return mueveGrupo({ maquinas: { marcha: !!on } }, on ? "Máquinas en marcha para todos." : "Máquinas paradas para todos."); }
+  function textoRecorrido() {
+    if (!visitaG) return "El grupo aún no se ha movido.";
+    return "El grupo está " + (NOMBRE_MUNDO[visitaG.mundo] || visitaG.mundo) + (visitaG.parada !== null && visitaG.parada !== undefined ? ", en la parada " + (visitaG.parada + 1) : "") + "."
+      + (visitaG.maquinas ? " Máquinas " + (visitaG.maquinas.marcha ? "en marcha" : "paradas") + " para todos." : "");
+  }
+  n.on("guiada:visita", function (d?: T) {
+    if (d && typeof d === "object" && typeof d.mundo === "string") { visitaG = { mundo: d.mundo, parada: typeof d.parada === "number" ? d.parada : null, maquinas: d.maquinas || null, n: d.n }; pintaPanel(); }
+  });
+  n.on("mundo:entra", function (d?: T) { if (d && typeof d.id === "string") { miMundo = d.id; pintaPanel(); } });
+  // el interior: «Llevar al grupo a la parada N» (con el mundo), en pantalla o en VR
+  n.on("guiada:pide", function (d?: T) {
+    if (!d || typeof d !== "object") return;
+    var c: T = {}; if (typeof d.mundo === "string") c.mundo = d.mundo; if (typeof d.parada === "number" || d.parada === null) c.parada = d.parada;
+    if (d.maquinas && typeof d.maquinas.marcha === "boolean") c.maquinas = { marcha: d.maquinas.marcha };
+    mueveGrupo(c, typeof c.parada === "number" ? "El grupo va a la parada " + (c.parada + 1) + "." : c.maquinas ? (c.maquinas.marcha ? "Máquinas en marcha para todos." : "Máquinas paradas para todos.") : "Hecho.");
+  });
+
   function cierraSala(seg?: T) {
     var c: T = G.confirma(confirmaSt, "cierra", Date.now()); confirmaSt = c.st;
     if (!c.hecho) { ponEstado("¿Cerrar la sala? Todos vuelven a la visita libre. Pulsa otra vez para confirmarlo."); pintaPanel(); return Promise.resolve(false); }
@@ -236,12 +274,15 @@ export function GuiadaMotor(dp: DepsGuiada, n: T, R: T, P: T, Vz: T) {
     seg.value = String(G.DEFECTO_CIERRE);
     var cie: T = el("button", { type: "button", style: cssPeligro }, ["Cerrar la sala"]);
     var estado: T = el("p", { role: "status", "aria-live": "polite", style: "margin:8px 0 0;min-height:1.4em" });
+    var rec: T = el("p", { style: "margin:0 0 4px" }), conG: T = el("button", { type: "button", style: css }, ["Entrar con el grupo"]);
+    var mqOn: T = el("button", { type: "button", style: css, "aria-pressed": "false" }, ["Máquinas para todos: en marcha"]), mqOff: T = el("button", { type: "button", style: css, "aria-pressed": "false" }, ["Máquinas para todos: paradas"]);
+    conG.addEventListener("click", function () { conGrupo(); }); mqOn.addEventListener("click", function () { maquinasGrupo(true); }); mqOff.addEventListener("click", function () { maquinasGrupo(false); });
     mas.addEventListener("click", function () { alarga(); }); cor.addEventListener("click", function () { corta(); });
     sil.addEventListener("click", function () { silencia(); }); cie.addEventListener("click", function () { cierraSala(seg.value); });
-    [h3("Preparar"), prep, lst, h3("La palabra"), turno, mas, cor, h3("Manos levantadas"), manos, sinManos, h3("Moderar"), sil, el("br"), seg, cie, estado,
+    [h3("Preparar"), prep, lst, h3("El recorrido"), rec, conG, mqOn, mqOff, el("p", { style: "margin:4px 0 0;opacity:0.7;font-size:12px" }, ["Las paradas: «Llevar al grupo» en la ficha de cada una, dentro."]), h3("La palabra"), turno, mas, cor, h3("Manos levantadas"), manos, sinManos, h3("Moderar"), sil, el("br"), seg, cie, estado,
       el("p", { style: "margin:8px 0 0;opacity:0.7;font-size:12px" }, ["La palabra dura 2 minutos y se acaba sola. Nada se graba. Lo que haces aquí queda en la auditoría."])].forEach(function (x?: T) { cu.appendChild(x); });
     var quitaI: T = dp.Hud.icono({ id: "guia", ico: "🎙", txt: "Visita guiada", prio: 2, ventana: "guia" });
-    vg = { prep: prep, lst: lst, turno: turno, mas: mas, cor: cor, manos: manos, sinManos: sinManos, cie: cie, estado: estado, firma: "", retira: function () { quitaI(); quitaV(); } };
+    vg = { prep: prep, lst: lst, turno: turno, mas: mas, cor: cor, manos: manos, sinManos: sinManos, cie: cie, estado: estado, rec: rec, conG: conG, mqOn: mqOn, mqOff: mqOff, firma: "", retira: function () { quitaI(); quitaV(); } };
     pintaPanel();
   }
   function quitaPanel() { if (vg) { vg.retira(); vg = null; } }
@@ -254,6 +295,14 @@ export function GuiadaMotor(dp: DepsGuiada, n: T, R: T, P: T, Vz: T) {
     vg.mas.disabled = vg.cor.disabled = !pal;
     vg.cie.textContent = confirmaSt && confirmaSt.id === "cierra" ? "Pulsa otra vez para cerrar" : cierre ? "Cerrándose…" : "Cerrar la sala";
     vg.cie.disabled = !!cierre;
+    // el recorrido: dónde está el grupo; «Entrar / Salir con el grupo» al mundo en el que estás (si no está ya contigo); las máquinas, solo en un interior
+    vg.rec.textContent = textoRecorrido();
+    var conmigo: T = (visitaG ? visitaG.mundo : "exterior") === miMundo, valeMundo: T = MUNDOS_POSE.indexOf(miMundo) >= 0;
+    vg.conG.textContent = conmigo ? "El grupo está contigo" : miMundo === "exterior" ? "Salir con el grupo" : "Entrar con el grupo";
+    vg.conG.disabled = conmigo || !valeMundo;
+    var mq: T = visitaG && visitaG.maquinas ? visitaG.maquinas.marcha : null;
+    vg.mqOn.hidden = vg.mqOff.hidden = miMundo === "exterior" || !valeMundo;
+    vg.mqOn.setAttribute("aria-pressed", mq === true ? "true" : "false"); vg.mqOff.setAttribute("aria-pressed", mq === false ? "true" : "false");
     // las listas solo se rehacen si cambia lo que dicen (el texto de la cuenta atrás va aparte)
     var firma: T = JSON.stringify([fam.map(function (x?: T) { return [x.identidad, x.alias]; }), c.map(function (x?: T) { return x.identidad; }), pal && pal.identidad, confirmaSt, vista && vista.inscritos]);
     if (firma === vg.firma) return;
@@ -319,7 +368,7 @@ export function GuiadaMotor(dp: DepsGuiada, n: T, R: T, P: T, Vz: T) {
   function estado() {
     return { evento: ev, yo: yoId, papel: papel, palabra: pal ? { identidad: pal.identidad, alias: pal.alias, segundos: pal.segundos } : null, manos: G.cola(g, Date.now()).map(function (x?: T) { return x.identidad; }),
       familias: G.familias(g).map(function (x?: T) { return x.identidad; }), ventana: !!vg, tira: tira && !tira.hidden ? tira.textContent : "", cierre: cierre ? new Date(cierre.en).toISOString() : null,
-      inscritos: vista && vista.inscritos ? vista.inscritos : null, cierres: est.cierres, descartados: est.descartados, acciones: est.acciones, vueltas: est.vueltas, error: est.error };
+      inscritos: vista && vista.inscritos ? vista.inscritos : null, recorrido: visitaG, mundo: miMundo, cierres: est.cierres, descartados: est.descartados, acciones: est.acciones, vueltas: est.vueltas, error: est.error };
   }
   function libera() {
     vivo = false; ctl.abort(); cierre = null; desengancha(); quitaPanel();
@@ -327,10 +376,12 @@ export function GuiadaMotor(dp: DepsGuiada, n: T, R: T, P: T, Vz: T) {
     [tira, avisos].forEach(function (x?: T) { if (x && x.parentNode) x.parentNode.removeChild(x); }); tira = avisos = null;
     if ((window as T).__guiada === gancho) (window as T).__guiada = undefined;
   }
-  // gancho de pruebas: el estado; «sondea», «dar» (identidad), «mano1», «alarga», «corta», «silencia», «saca» (identidad), «cierra» (segundos), «vuelve»
+  // gancho de pruebas: el estado; «sondea», «dar» (identidad), «mano1», «alarga», «corta», «silencia», «saca» (identidad), «cierra» (segundos), «vuelve»;
+  // el recorrido: «conGrupo», «maquinas» (true/false) y «parada» (índice, en el mundo en el que estás)
   function gancho(a?: T, arg?: T) {
     if (a === "sondea") return sondea(); if (a === "dar") return dar(arg); if (a === "mano1") return darPrimera(); if (a === "alarga") return alarga(); if (a === "corta") return corta();
     if (a === "silencia") return silencia(); if (a === "saca") return saca(arg); if (a === "cierra") return cierraSala(arg); if (a === "vuelve") return vuelve();
+    if (a === "conGrupo") return conGrupo(); if (a === "maquinas") return maquinasGrupo(arg); if (a === "parada") return mueveGrupo({ mundo: miMundo, parada: arg }, "El grupo va a la parada " + (arg + 1) + ".");
     return estado();
   }
   (window as T).__guiada = gancho;
@@ -348,7 +399,7 @@ export function manifiestoGuiada(dp: DepsGuiada): Manifiesto {
     id: ID_GUIADA, version: 1,
     consume: ["Red", "Presencia", "Voz", "SalaPose", "Ventanas", "Hud", "Laminas", "PanelVR", "VRX"],
     expone: ["Guiada"],   // F3e: 47_habla.js lee de aquí quién eres (yo), el evento y la cola de manos (estado())
-    eventos: { escucha: ["voz:estado", "depura:lineas"], emite: ["guiada:palabra", "guiada:cierre"] },
+    eventos: { escucha: ["voz:estado", "depura:lineas", "guiada:visita", "guiada:pide", "mundo:entra"], emite: ["guiada:palabra", "guiada:cierre"] },
     bandera: { defecto: true, url: "guia" },
     // la lámina del cierre en VR (1 llamada, 2 triángulos, una textura de 880 × 288 sin mipmaps: ≈ 1 MB, solo mientras se ve); la fila de PanelVR pinta sobre lo
     // suyo (0 llamadas nuevas); en pantalla, DOM

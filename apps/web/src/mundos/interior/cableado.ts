@@ -15,13 +15,17 @@
 //   · la luz aparte (v1.2): el entorno de las piezas con luz propia, hecho con la sonda (entornoDeSonda: SphericalHarmonics3 de three en un
 //     equirectangular pequeño y PMREMGenerator), y si el sistema pide reducir el movimiento (las máquinas entran paradas);
 //   · el glb comprimido (v1.3, ADR-0035): los import() del decodificador de meshopt y del KTX2Loader (escritos en el arranque, como el del GLTFLoader:
-//     Vite los trocea y solo se descargan si un glb los usa), el renderer y la carpeta del transcodificador Basis (la del suelo de fotos).
+//     Vite los trocea y solo se descargan si un glb los usa), el renderer y la carpeta del transcodificador Basis (la del suelo de fotos);
+//   · la visita guiada compartida (seguimiento.ts, decisiones 233-238): el componente «visita-compartida» de todos los mundos (el aviso a la familia, «Ir»
+//     con el fundido de Llegada y el cambio de mundo de aquí, y la lámina en VR), y lo que el interior necesita de la guiada (deps.guiada).
 import type { Manifiesto } from "../../nucleo/componentes.ts";
 import type { IdMundo, Pose2, Puerta, ResultadoCambio } from "../../nucleo/mundos.ts";
 import type { T } from "../comun/tipos.ts";
 import type { creaInterior, DecodificadoresInterior, DepsInterior } from "./index.ts";
 import { creaPortones, manifiestoPortones } from "./porton.ts";
 import type { DepsPortones, VidaPortones } from "./porton.ts";
+import { creaSeguimiento, manifiestoSeguimiento } from "./seguimiento.ts";
+import type { DepsSeguimiento, InteriorGuiado } from "./seguimiento.ts";
 
 export interface DepsCableaInteriores {
   /** el gestor de mundos (90_final) */
@@ -47,7 +51,9 @@ export interface DepsCableaInteriores {
   /** eje B, la puerta del cortijo (porton.ts): sin Componentes no hay puerta en el exterior (las pruebas del cableado no la montan) */
   Componentes?: { registra(m: Manifiesto): boolean } | null;
   Vida?: VidaPortones | null;
-  Llegada?: DepsPortones["Llegada"]; Minimapa?: DepsPortones["Minimapa"];
+  Llegada?: (NonNullable<DepsPortones["Llegada"]> & { funde?(fn: () => void): boolean; aparece?(x: number, y: number, ang?: number): void }) | null; Minimapa?: DepsPortones["Minimapa"];
+  /** las láminas (ui/laminas.ts): el aviso de la visita guiada en VR */
+  Laminas?: DepsSeguimiento["Laminas"];
   /** el panel de VR: las filas (la puerta del cortijo y la visita), la tapa, repintar y abrirlo (la visita) */
   PanelVR?: (NonNullable<DepsPortones["PanelVR"]> & { tapa?(fn: () => boolean): () => void; repinta?(): void; abierto?(): boolean; conmutaPanel?(): void }) | null;
   Materiales?: T; suelo?(x: number, y: number): number; Estado?: { exag: number };
@@ -99,7 +105,7 @@ export function entornoDeSonda(THREE: T, renderer: T, sonda: number[]): { textur
 
 export function cableaInteriores(d: DepsCableaInteriores) {
   let primeraFuera: boolean | null = null, ultimo: IdMundo | null = null, destino: IdMundo | null = null, llegadaFuera: Pose2 | null = null;
-  const creados = new Map<IdMundo, { estado(): unknown; visita?(): { accion(a: string): void; estado(): unknown } | null; maquinas?(): { pon(on: boolean): void; estado(): unknown } | null }>();
+  const creados = new Map<IdMundo, { estado(): unknown; visita?(): { accion(a: string): void; estado(): unknown } | null; maquinas?(): { pon(on: boolean): void; estado(): unknown } | null } & Partial<InteriorGuiado>>();
   const aviso = (s: string, ms?: number): void => { const h = d.Hud(); if (h) h.aviso(s, ms); };
   // todo cambio de mundo pasa por aquí: recuerda adónde se va (para el quad y la VR al salir) y, si sale bien, lo apunta en la dirección
   function cambia(a: IdMundo, llegada?: Pose2 | null, puerta?: Puerta | null): Promise<ResultadoCambio> {
@@ -126,6 +132,16 @@ export function cableaInteriores(d: DepsCableaInteriores) {
   if (d.Componentes && portones) d.Componentes.registra(manifiestoPortones(portones));
   const pose = { lee: d.pose.lee, pon(p: Pose2): void { d.pose.pon(p); if (d.VRX.on) d.vrAparece(p.x, p.y, p.ang); } };
   const documento = (d.ventana as Record<string, unknown>).document as T | undefined;
+  // la visita guiada compartida: lo que la familia ve y hace cuando el guía mueve al grupo (de todos los mundos), y lo que el interior le pregunta
+  const L = d.Llegada, documentoS = (d.ventana as Record<string, unknown>).document as T | undefined;
+  const seguimiento = creaSeguimiento({
+    actual: () => (d.gm.actual === undefined ? null : d.gm.actual),
+    interior: id => { const w = d.gm.actual === id ? creados.get(id as IdMundo) : undefined; return w && w.titulos && w.puesto && w.vaA && w.alGuiada ? (w as InteriorGuiado) : null; },
+    cambia: a => cambia(a), pose: { pon: p => pose.pon(p) }, vr: () => !!d.VRX.on, documento: documentoS || null, aviso,
+    Llegada: L && L.funde && L.aparece ? { funde: fn => L.funde!(fn), aparece: (x, y, ang) => L.aparece!(x, y, ang) } : null,
+    Laminas: d.Laminas || null,
+  });
+  if (d.Componentes) d.Componentes.registra(manifiestoSeguimiento(seguimiento));
   // la visita en VR: el panel abierto en la pestaña «Mundo», donde van sus filas
   const abrePanel = (): void => {
     const P = d.PanelVR; if (!P) return;
@@ -163,6 +179,7 @@ export function cableaInteriores(d: DepsCableaInteriores) {
       entorno: sonda => entornoDeSonda(d.THREE, d.renderer, sonda),
       decodificadores: d.cargaMeshopt && d.cargaKtx2 ? { meshopt: d.cargaMeshopt, ktx2: d.cargaKtx2, renderer: d.renderer, ruta: RUTA_BASIS } : null,
       ahora: () => (typeof performance !== "undefined" ? performance.now() : Date.now()),
+      guiada: d.Componentes ? seguimiento : null,
       reducido: () => { const mm = d.ventana.matchMedia as ((q: string) => { matches: boolean }) | undefined; try { return !!(mm && mm.call(d.ventana, "(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; } },
     };
   }
@@ -185,10 +202,16 @@ export function cableaInteriores(d: DepsCableaInteriores) {
   d.ventana.__cambiaMundo = (a: IdMundo) => cambia(a);
   // la puerta del cortijo, para ?debug y las pruebas: su estado (accesos, cruces, precargas) y «Ir al cortijo»
   d.ventana.__porton = () => (portones ? portones.estado() : null);
+  // la visita guiada compartida, para ?debug y las pruebas: su estado; «ir», «quedo», «seguir»/«noSeguir» como los botones
+  d.ventana.__seguimiento = (a?: string) => {
+    if (a === "ir") seguimiento.ir(); else if (a === "quedo") seguimiento.quedo(); else if (a === "seguir" || a === "noSeguir") seguimiento.seguir(a === "seguir");
+    return seguimiento.estadoSeguimiento();
+  };
   d.ventana.__irAlCortijo = () => (portones ? portones.irAlCortijo() : false);
   return {
     deps,
     portones,
+    seguimiento,
     /** con el exterior ya cargado, a ?mundo=<id> (vacio, patios, fabrica…); si no se puede, lo dice */
     entraPorUrl(busqueda: string): void {
       const a = mundoDeUrl(busqueda) as IdMundo | null;

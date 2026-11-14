@@ -75,8 +75,17 @@ function creaRecorrido(paradas: ReadonlyArray<Pick<Parada, "pos" | "radio">>, hi
   /** «Siguiente parada»: cierra la ficha abierta y devuelve el índice de la siguiente (o −1 si se acabó) */
   function siguiente(): number { abierta = -1; return sig < n ? sig : -1; }
   function cierra(): void { abierta = -1; }
+  /** Ir a la parada k impuesto desde fuera (la visita guiada: «Ir» al aviso del guía): la visita en marcha si no lo estaba, la ficha de k abierta (la que
+   *  hubiera, cerrada) y la siguiente, la de después. La parada queda desarmada hasta alejarse, como al llegar andando. Devuelve el evento, o null si k no existe. */
+  function vaA(k: number): EventoVisita | null {
+    if (!Number.isInteger(k) || k < 0 || k >= n) return null;
+    if (modo !== "visita") { modo = "visita"; vista.fill(false); armada.fill(true); }
+    ev.cierra = abierta >= 0 && abierta !== k ? abierta : undefined; ev.abre = k;
+    armada[k] = false; vista[k] = true; abierta = k; sig = k + 1;
+    return ev;
+  }
   return {
-    empieza, deja, paso, siguiente, cierra,
+    empieza, deja, paso, siguiente, cierra, vaA,
     modo: (): ModoVisita => modo, sig: (): number => sig, abierta: (): number => abierta,
     vista: (i: number): boolean => !!vista[i], fin: (): boolean => modo === "visita" && sig >= n,
   };

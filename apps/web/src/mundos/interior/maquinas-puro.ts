@@ -107,6 +107,18 @@ function creaMarcha(maquinas: readonly Maquina[], rampa = RAMPA_S) {
   const tipo = maquinas.map(m => TIPOS.indexOf(m.tipo));
   const a = new Float64Array(n), b = new Float64Array(n);   // fase: giro (rad), vaivén (ciclos), traslación (s), textura (u, v)
   let marcha = 0, objetivo = 0;
+  function adelanta(k: number): void {
+    if (k === 0) return;
+    for (let i = 0; i < n; i++) {
+      const v = vel[i]!, m = maquinas[i]!;
+      switch (tipo[i]) {
+        case 0: a[i] = (a[i]! + DOS_PI * v / 60 * k) % DOS_PI; break;
+        case 1: a[i] = (a[i]! + v / 60 * k) % 1; break;
+        case 2: a[i] = a[i]! + k; { const L = m.recorrido || 0, w = Math.abs(v) || 1, T = 2 * (L / w + (m.pausa_s || 0)); if (T > 0) a[i] = a[i]! % T; } break;
+        case 3: { const uv = m.uv || [0, 0]; a[i] = (a[i]! - uv[0]! * v * k) % 1; b[i] = (b[i]! - uv[1]! * v * k) % 1; } break;
+      }
+    }
+  }
   return {
     n,
     /** las velocidades resueltas (en sus unidades) */
@@ -120,18 +132,16 @@ function creaMarcha(maquinas: readonly Maquina[], rampa = RAMPA_S) {
     quieta(): boolean { return marcha === 0 && objetivo === 0; },
     avanza(dt: number): void {
       if (marcha !== objetivo) marcha = objetivo > marcha ? Math.min(1, marcha + dt / rampa) : Math.max(0, marcha - dt / rampa);
-      const k = ese(marcha) * dt;
-      if (k === 0) return;
-      for (let i = 0; i < n; i++) {
-        const v = vel[i]!, m = maquinas[i]!;
-        switch (tipo[i]) {
-          case 0: a[i] = (a[i]! + DOS_PI * v / 60 * k) % DOS_PI; break;
-          case 1: a[i] = (a[i]! + v / 60 * k) % 1; break;
-          case 2: a[i] = a[i]! + k; { const L = m.recorrido || 0, w = Math.abs(v) || 1, T = 2 * (L / w + (m.pausa_s || 0)); if (T > 0) a[i] = a[i]! % T; } break;
-          case 3: { const uv = m.uv || [0, 0]; a[i] = (a[i]! - uv[0]! * v * k) % 1; b[i] = (b[i]! - uv[1]! * v * k) % 1; } break;
-        }
-      }
+      adelanta(ese(marcha) * dt);
     },
+    /** la visita guiada: en marcha y con las fases de quien lleva t s en marcha desde parado (la rampa de arranque cuenta como rampa/2 s a toda marcha),
+     *  para que quien entra tarde vea las piezas donde los demás [SUPUESTO: con los relojes del aparato y de la api de acuerdo] */
+    fija(t: number): void {
+      a.fill(0); b.fill(0); marcha = objetivo = 1;
+      adelanta(Math.max(0, t - rampa / 2));
+    },
+    /** desde parado, las fases a cero (quien arranca a la vez que los demás las tiene iguales) */
+    aCero(): void { if (marcha === 0) { a.fill(0); b.fill(0); } },
     /** giro: ángulo (rad); vaivén y traslación: metros desde el reposo por el eje; textura: desplazamiento U */
     valor(i: number): number {
       const m = maquinas[i]!;
@@ -146,5 +156,16 @@ function creaMarcha(maquinas: readonly Maquina[], rampa = RAMPA_S) {
   };
 }
 
-export const MaquinasPuro = { valida, velocidades, posTraslacion, posVaiven, rotaEnPadre, creaMarcha, RAMPA_S };
+/**
+ * La visita guiada: el guía pone las máquinas en marcha para todos (desde = cuándo, ms de la api). t = segundos desde entonces; marcha = la de este aparato.
+ *  · «fija»: hace rato (más de dos rampas): quien entra tarde, con las fases de los demás (Marcha.fija);
+ *  · «cero»: acaba de pasar y aquí están paradas: arrancan desde las fases a cero, a la vez que los demás (Marcha.aCero y la rampa de siempre);
+ *  · «nada»: acaba de pasar y aquí ya se movían: siguen sin salto (no a la par de los demás: es ilustrativo y un salto se ve más).
+ */
+function sincroniza(marcha: number, t: number, rampa = RAMPA_S): "fija" | "cero" | "nada" {
+  if (t >= 2 * rampa) return "fija";
+  return marcha === 0 ? "cero" : "nada";
+}
+
+export const MaquinasPuro = { valida, velocidades, posTraslacion, posVaiven, rotaEnPadre, creaMarcha, sincroniza, RAMPA_S };
 export type Marcha = ReturnType<typeof creaMarcha>;

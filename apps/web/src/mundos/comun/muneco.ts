@@ -73,7 +73,8 @@ export const Muneco: any = (function () {
 // llegas y, si ahí hay árbol, probando cada 30° alrededor; mirándola. Un sitio vale si no cae dentro de ninguna copa (radio medio de su perfil LiDAR)
 // ni a menos de rTronco + 0,2 m de un tronco y está dentro de la finca (3 m de margen, como el paseo). Si ninguno está libre de copas, el primero libre
 // de troncos; si ni eso, el primero empujado fuera de los troncos como hace el paseo (12_paseo.js). t, desde = {x este, y norte};
-// obst = [{x, y, r}] (r = radio de la copa; 0 si no se sabe); ext = D.ext [oeste, norte, este, sur]; opc = {rTronco (0,55 a pie, 1,05 en quad), suelo(x, y)}.
+// obst = [{x, y, r}] (r = radio de la copa; 0 si no se sabe); ext = D.ext [oeste, norte, este, sur]; opc = {rTronco (0,55 a pie, 1,05 en quad), suelo(x, y), dentro(x, y)
+// (un sitio solo vale si da true: las zonas de un interior, visita guiada compartida)}.
 // Devuelve {x, y, ang (rumbo del paseo: 0 norte, π/2 este), z (suelo, si se da la función), libre: "copa" | "tronco" | "empujado", d}.
 export const Encuentro: any = (function () {
   var DISTS: any = [2.5, 3, 2, 3.5, 4], BALIZA: any = [4.5, 4, 5, 3.5, 5.5], PASO: any = Math.PI / 6, MARGEN: any = 3, HOLGURA: any = 0.2;
@@ -95,7 +96,7 @@ export const Encuentro: any = (function () {
     for (var i: any = 0; i < DS.length && nivelMejor < 2; i++) {
       for (var k: any = 0; k < 12; k++) {
         var a: any = base + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * PASO, x: any = t.x + Math.cos(a) * DS[i], y: any = t.y + Math.sin(a) * DS[i];
-        if (!dentro(x, y, ext)) continue;
+        if (!dentro(x, y, ext) || (opc.dentro && !opc.dentro(x, y))) continue;
         if (!primero) primero = { x: x, y: y };
         var n: any = mide(x, y, obst, rT);
         if (n > nivelMejor) { nivelMejor = n; mejor = { x: x, y: y, d: DS[i] }; if (n === 2) break; }

@@ -160,6 +160,14 @@ body { background: #0b0d0a; color: var(--fg); font-family: var(--body); font-siz
 #maquinasInterior button { font: inherit; color: inherit; min-height: 44px; min-width: 44px; padding: 6px 12px; border-radius: 8px; cursor: pointer; background: rgba(255,255,255,0.06); border: 1px solid var(--hud-borde); }
 #maquinasInterior button[aria-pressed="false"] { background: rgba(64,240,255,0.16); border-color: rgba(64,240,255,0.55); }
 #maquinasInterior button:focus-visible { outline: 2px solid #40f0ff; outline-offset: 2px; }
+/* la visita guiada compartida (mundos/interior/seguimiento.ts): el aviso a la familia («El guía va a la parada N» con Ir y Me quedo) y «Seguir al guía», arriba en el centro, bajo la tira de la palabra; 44 px */
+#guiadaSigue { right: auto; left: 50%; transform: translateX(-50%); top: calc(var(--sa-t) + 52px); width: min(420px, calc(100% - 32px)); }
+#guiadaSigue.visita-compacta { width: auto; padding: 6px; }
+#guiadaSigue p { margin: 0 0 8px; line-height: 1.45; font-size: 15px; }
+#guiadaSigue .visita-botones { display: flex; flex-wrap: wrap; gap: 8px; }
+#guiadaSigue button { font: inherit; color: inherit; min-height: 44px; min-width: 44px; padding: 6px 12px; border-radius: 8px; cursor: pointer; background: rgba(255,255,255,0.06); border: 1px solid var(--hud-borde); }
+#guiadaSigue .visita-primario, #guiadaSigue button[aria-pressed="true"] { background: rgba(64,240,255,0.16); border-color: rgba(64,240,255,0.55); }
+#guiadaSigue button:focus-visible { outline: 2px solid #40f0ff; outline-offset: 2px; }
 
 /* ventanas: una grande a la vez (decisión 87). Lateral bajo la barra en escritorio; hoja inferior en móvil vertical; lateral alto en horizontal */
 .ventana { position: absolute; z-index: 25; top: calc(var(--sa-t) + 64px); right: calc(var(--sa-r) + 10px); width: min(380px, calc(100% - 20px)); max-height: calc(100% - var(--sa-t) - var(--sa-b) - 84px); display: flex; flex-direction: column; background: var(--hud-fuerte); border: 1px solid var(--hud-borde); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.35); font-size: 13.5px; }
