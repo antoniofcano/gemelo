@@ -93,7 +93,7 @@ export function creaPaseo(d: DepsPaseo) {
   function entraPaseo() {
     var parcelaSel = d.parcelaSel(), fincaSel = d.fincaSel(), fincas = d.fincas();
     paseando = true; ponPrimera(false); espeja();
-    var pr0 = D.parcelas[parcelaSel >= 0 ? parcelaSel : (fincaSel >= 0 ? fincas[fincaSel].parcelas[0] : 0)]; pp.x = pr0.centro[0]; pp.y = pr0.centro[1] - 6; pp.ang = 0;
+    var pr0 = D.parcelas[parcelaSel >= 0 ? parcelaSel : (fincaSel >= 0 && fincas[fincaSel] ? fincas[fincaSel].parcelas[0] : 0)]; if (pr0) { pp.x = pr0.centro[0]; pp.y = pr0.centro[1] - 6; } pp.ang = 0;   // L7-13: sin parcelas, se pasea desde donde estaba
     persona.visible = true; $("btnPaseo").setAttribute("aria-pressed", "true");   // el botón «Pasear» se esconde al pasear: se sale con Inicio o el selector de modo (31_hud.js)
     visor.classList.add("paseo"); $("ayudaPaseo").hidden = false; $("ayuda").hidden = true; $("ficha").hidden = true; lienzo.tabIndex = 0; lienzo.focus({ preventScroll: true });
     camPos.set(pp.x, 5, -pp.y + 5); vidaEntra(); iniciaTransicion();

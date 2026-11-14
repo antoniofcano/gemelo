@@ -221,8 +221,8 @@ export function creaVrPanel(c: CtxVr) {
   }
   function vrValores() {
     var parcelas = d.parcelas(), fincas = d.fincas(), NDV = d.NDV(), ndviIdx = d.ndviIdx();
-    var pr = parcelas[VRX.parcSel] || parcelas[0], fn = fincas.length > 1 && fincas[pr.finca] ? fincas[pr.finca].nombre + " · " : "";
-    return { hora: horaMundoTexto(), fecha: NDV ? dd2(NDV.fechas[ndviIdx]) : "–", exag: fmt(Estado.exag, Estado.exag % 1 ? 2 : 0) + "×", parcela: fn + pr.nombre };
+    var pr = parcelas[VRX.parcSel] || parcelas[0], fn = pr && fincas.length > 1 && fincas[pr.finca] ? fincas[pr.finca].nombre + " · " : "";   // L7-13: un mundo sin parcelas (fábrica, museo…) pinta «–»
+    return { hora: horaMundoTexto(), fecha: NDV ? dd2(NDV.fechas[ndviIdx]) : "–", exag: fmt(Estado.exag, Estado.exag % 1 ? 2 : 0) + "×", parcela: pr ? fn + pr.nombre : "–" };
   }
   function vrPintaPanel() {
     VRX.sinPint = vrSinEscena();   // antes de construir los botones: el letrero desplaza el contenido
@@ -332,7 +332,7 @@ export function creaVrPanel(c: CtxVr) {
     B.forEach(function (q: T) { cx.fillStyle = VRX.hoverB === q.id ? "#4a5866" : q.prim ? "#1d5f6b" : "#2a3139"; vrRect(cx, q.x, q.y, q.w, q.h, 14); cx.fill(); cx.fillStyle = "#ffffff"; cx.fillText(q.txt, q.x + q.w / 2, q.y + q.h / 2 + 1); });
     cx.textAlign = "left"; fichaB.tex.needsUpdate = true; VRX.botonesB = B;
   }
-  function vrParcela(d: T) { var parcelas = c.d.parcelas(); VRX.parcSel = (VRX.parcSel + d + parcelas.length) % parcelas.length; var p = parcelas[VRX.parcSel], px = p.centro[0], py = p.centro[1] - 6; VRX.sucio = true; vrSalta(px, py, function () { vrIrA(px, py); }); }
+  function vrParcela(d: T) { var parcelas = c.d.parcelas(); if (!parcelas || !parcelas.length) return; VRX.parcSel = (VRX.parcSel + d + parcelas.length) % parcelas.length; var p = parcelas[VRX.parcSel], px = p.centro[0], py = p.centro[1] - 6; VRX.sucio = true; vrSalta(px, py, function () { vrIrA(px, py); }); }
   // T7a: la tarjeta de la medida (30_mide.js) sobre el panel: texto a 29 px en un panel de 1 m (letra de ≈ 2,8 cm, legible a 1 m) y «Cerrar» pulsable con el gatillo
   function vrPintaMide(B: T) {
     var cx = panel.cx, W = panel.W, H = panel.H, M = vrMedida(), r = M.resultado;
@@ -378,6 +378,6 @@ export function creaVrPanel(c: CtxVr) {
     engancha(); VRX.sucio = true;
   }
   return { creaLamina, panel, ficha, fichaB, vrMed, VR_CAPAS, vrBajoRayo, vrSigue, vrQueda, vrSuelta, vrAgarreTic, agarre: function () { return vrAg; }, vrRect, PanelVR,
-    vrPanelConmuta, vrVinetaConmuta, vrLeeAjustes, vrSuscribe, vrPintaPanel, vrPintaFicha, vrGenteTic, vrFichaTic, vrPintaAcciones, vrGatillo, libera, monta };
+    vrPanelConmuta, vrVinetaConmuta, vrLeeAjustes, vrSuscribe, vrPintaPanel, vrPintaFicha, vrGenteTic, vrFichaTic, vrPintaAcciones, vrGatillo, vrParcela, libera, monta };
 }
 export type VrPanel = ReturnType<typeof creaVrPanel>;

@@ -15,12 +15,12 @@ function el(extra?: A) {
   const o: A = Object.assign({ n: 0, hidden: false, style: {}, classList: { add() { /* doble */ }, remove() { /* doble */ } }, setAttribute() { /* doble */ }, focus() { /* doble */ } }, extra || {});
   o.addEventListener = () => { o.n++; }; o.removeEventListener = () => { o.n--; }; return o;
 }
-function monta() {
+function monta(parcelas?: A[]) {
   const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(), ventana = el(), documento = el(), elementos: Record<string, A> = {};
   const $ = (id: string) => (elementos[id] = elementos[id] || el());
   const dron = { on: false };
   const d: DepsPaseo = {
-    THREE, scene, camera, Estado: { exag: 1 }, Materiales: creaMateriales({ THREE: THREE as unknown as ThreeMin, busqueda: "" }), D: { parcelas: [{ centro: [10, 26] }] }, $, lienzo: el({ tabIndex: 0 }), visor: el(), copaAlta: () => 0, sensMirar: () => ({ k: 1, y: 1 }),
+    THREE, scene, camera, Estado: { exag: 1 }, Materiales: creaMateriales({ THREE: THREE as unknown as ThreeMin, busqueda: "" }), D: { parcelas: parcelas || [{ centro: [10, 26] }] }, $, lienzo: el({ tabIndex: 0 }), visor: el(), copaAlta: () => 0, sensMirar: () => ({ k: 1, y: 1 }),
     parcelaSel: () => 0, fincaSel: () => -1, fincas: () => [],
     vida: { velPaseo: (av: number) => av * 1.7, giroPaseo: () => 1, ponQuad() { /* doble */ }, ponDron() { /* doble */ }, vidaPaseo() { /* doble */ }, cicloVista() { /* doble */ },
       dronMando() { /* doble */ }, camaraDron: () => false, vidaEntra() { /* doble */ }, vidaSale() { /* doble */ } },
@@ -33,6 +33,11 @@ function monta() {
 }
 
 describe("paseo", () => {
+  it("L7-13: un mundo sin parcelas: entrar no rompe y se pasea desde donde estaba", () => {
+    const m = monta([]); m.api.pp.x = 3; m.api.pp.y = 4;
+    expect(() => m.api.entraPaseo()).not.toThrow();
+    expect(m.api.pp).toMatchObject({ x: 3, y: 4, ang: 0 }); expect(m.legado.paseando).toBe(true);
+  });
   it("al cargar, el muñequito ya está en la escena (oculto) y el legado lo tiene; entrar y salir espejan paseando y teclas", () => {
     const m = monta();
     expect(m.d.Materiales.duenos()["paseo"]).toBe(4);   // piel, camisa, pantalón y gorra, de la fábrica con su dueño

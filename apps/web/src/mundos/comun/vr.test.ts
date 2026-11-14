@@ -32,7 +32,7 @@ function lienzo() {
   const cx: A = new Proxy({}, { get: (o: A, k: string) => k in o ? o[k] : k === "measureText" ? () => ({ width: 10 }) : () => undefined, set: (o: A, k: string, v: A) => { o[k] = v; return true; } });
   return { width: 0, height: 0, getContext: () => cx };
 }
-function monta(opc?: { busqueda?: string }) {
+function monta(opc?: { busqueda?: string; parcelas?: A[] }) {
   const { T, vivos } = threeContado();
   const ctl = [new T.Group(), new T.Group()], grip = [new T.Group(), new T.Group()];
   const bus: Record<string, ((x?: A) => void)[]> = {};
@@ -75,7 +75,7 @@ function monta(opc?: { busqueda?: string }) {
     VrControlPuro: VrControlPuro, VrPresupuesto: { ponEscalon() { /* doble */ }, mueve() { /* doble */ }, suelo: () => 0, escalonPorPasos: function* () { /* nada */ } },
     InfoDibujo: { fotograma: () => ({}) }, Materiales: creaMateriales({ THREE: T as unknown as ThreeMin, busqueda: "" }), UN: { uBumpK: { value: 1 } },
     Arboles: { perfil() { /* doble */ }, resumen: () => ({}) }, Render, Escena3D: { perfil() { /* doble */ }, resumen: () => ({ estado: "listo" }) }, pon: (m: string) => { d.Estado.modo = m; },
-    NDV: () => null, ndviIdx: () => 0, parcelas: () => [{ nombre: "Sintética", centro: [10, 20], finca: 0 }], fincas: () => [], meta: { ms: 0 }, pasoHoraMundo() { /* doble */ }, horaMundoTexto: () => "12:00",
+    NDV: () => null, ndviIdx: () => 0, parcelas: () => (opc && opc.parcelas) || [{ nombre: "Sintética", centro: [10, 20], finca: 0 }], fincas: () => [], meta: { ms: 0 }, pasoHoraMundo() { /* doble */ }, horaMundoTexto: () => "12:00",
     paseando: () => estado.paseando, primera: () => estado.primera, ponPrimera: (v: boolean) => { estado.primera = v; }, persona: () => persona, teclas: () => estado.teclas, pp: { x: 0, y: 0, ang: 0, paso: 0 },
     entraPaseo: () => { estado.paseando = true; }, salePaseo: () => { estado.paseando = false; }, actualizaPaseo() { /* doble */ },
     Llegada: { borra() { /* doble */ }, apunta: () => null, punto: () => null, alAnillo() { /* doble */ } }, pendFactor: () => 1, TR: { act: false }, Ajustes: () => null,
@@ -168,6 +168,17 @@ describe("VR: L7-04, la precompilación al entrar", () => {
     expect(c[0].o).toBe(m.scene); expect(c[0].c).toBe(m.camXr); expect(c[0].destino).toBe(m.mv);
     expect(m.renderer.getRenderTarget()).toBeNull();   // el destino prestado se devuelve
     expect(m.vr.VRX.compila).toMatchObject({ via: "compileAsync", ok: true, mv: true });
+  });
+});
+
+describe("VR: L7-13, un mundo sin parcelas", () => {
+  it("entrar, pintar la pestaña «Ir a» y pulsar ◀/▶ no rompe: la parcela se pinta «–» y no hay salto", async () => {
+    const m = monta({ parcelas: [] }); await espera();
+    await m.vr.entraVR(); expect(m.vr.VRX.on).toBe(true);
+    m.vr.VRX.pestana = "ira"; expect(() => m.vr.partes.panel.vrPintaPanel()).not.toThrow();
+    const rig0 = JSON.stringify(m.vr.VRX.rig);
+    expect(() => { m.vr.partes.panel.vrParcela(1); m.vr.partes.panel.vrParcela(-1); }).not.toThrow();
+    expect(m.vr.VRX.parcSel).toBe(0); expect(JSON.stringify(m.vr.VRX.rig)).toBe(rig0);
   });
 });
 
