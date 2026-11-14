@@ -13,6 +13,7 @@
 //   (las llaves de acceso de la familia, GET/DELETE /api/admin/hogares/:id/llaves, viven en llaves_hogar.ts)
 //   (GET /api/admin/hazas, las hazas con su titular para elegir, vive en hazas.ts: es la misma lista que usa la sección Hazas)
 // El nombre interno (decisión 109) no sale por ninguna ruta de los hogares. Todo queda en la auditoría, sin correos en el detalle.
+import { errorParaRegistro } from "../registro.ts";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { enTransaccion } from "../bd/pool.ts";
 import { mensajeDeBienvenida, mensajeDeEnlace } from "../auth/correo.ts";
@@ -159,7 +160,7 @@ export async function rutasFamilias(app: FastifyInstance, ctx: Contexto): Promis
       await cartero.envia((bienvenida ? mensajeDeBienvenida : mensajeDeEnlace)(correo, url, config.enlace.minutos));
       return true;
     } catch (e) {
-      req.log.error({ evento: "correo_fallido", hogar: enlace.hogarId, error: e instanceof Error ? e.message : "?" }, "no se pudo mandar el enlace");
+      req.log.error({ evento: "correo_fallido", hogar: enlace.hogarId, error: errorParaRegistro(e) }, "no se pudo mandar el enlace");
       return false;
     }
   }

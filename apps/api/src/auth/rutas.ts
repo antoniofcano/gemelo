@@ -1,4 +1,5 @@
 // Rutas del enlace mágico, de la entrada con llave sin correo (OF13b-5) y de la sesión (contratos/sesion.md, contratos/api.openapi.yaml).
+import { errorParaRegistro } from "../registro.ts";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Contexto } from "../contexto.ts";
@@ -78,7 +79,7 @@ export async function rutasAuth(app: FastifyInstance, ctx: Contexto): Promise<vo
       const url = config.urlPublica + "/api/auth/entrar?t=" + enlace.token;
       // sin esperar al SMTP: la respuesta tarda lo mismo exista o no la cuenta, y un SMTP lento no bloquea
       cartero.envia(mensajeDeEnlace(correo, url, config.enlace.minutos)).catch((e: unknown) => {
-        req.log.error({ evento: "correo_fallido", hogar: enlace.hogarId, error: e instanceof Error ? e.message : "?" }, "no se pudo mandar el enlace");
+        req.log.error({ evento: "correo_fallido", hogar: enlace.hogarId, error: errorParaRegistro(e) }, "no se pudo mandar el enlace");
       });
     }
     return rep.code(202).send({ mensaje: TEXTO_ACEPTADO });

@@ -5,6 +5,7 @@
 //   POST /api/admin/hornero/rehornear  (OF9, admin + confirmación reciente) deja la petición de una vuelta ya al hornero (fichero en el volumen compartido)
 // «Sincronizar ahora» ya existe (POST /api/admin/sincronia, en rutas.ts).
 // Nada de lo que sale lleva tokens, claves, URLs ni rutas del servidor: el modo y el estado, sí.
+import { errorParaRegistro } from "../registro.ts";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { mensajeDePrueba } from "../auth/correo.ts";
 import { audita } from "../auth/servicio.ts";
@@ -128,7 +129,7 @@ export async function rutasSistema(app: FastifyInstance, ctx: Contexto): Promise
     try {
       await cartero.envia(mensajeDePrueba(para));
     } catch (e) {
-      req.log.error({ evento: "correo_prueba_fallido", error: e instanceof Error ? e.message : "?" }, "el correo de prueba no salió");
+      req.log.error({ evento: "correo_prueba_fallido", error: errorParaRegistro(e) }, "el correo de prueba no salió");
       await audita(bd, req.session.hogarId!, "oficina.correo_prueba", { ok: false });
       return rep.code(502).send({ error: "correo_fallido", mensaje: "El correo de prueba no salió. Mira el registro del servidor." });
     }
