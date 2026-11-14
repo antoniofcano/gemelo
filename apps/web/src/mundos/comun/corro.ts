@@ -110,14 +110,16 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
     if (P && P.repintaGente) P.repintaGente();
     n.emite("corro:estado", { disponible: E.disponible, activa: E.activa, puedo: E.puedo, corro: !!E.corro, miembros: E.corro ? E.corro.miembros.length : 0, recibidas: E.recibidas.length, enviadas: E.enviadas.length });
   }
-  // la voz: en el corro, dentro de su sala; sin corro, fuera de cualquier sala de corro
+  // la voz: en el corro, dentro de su sala; sin corro, fuera de cualquier sala de corro. Mientras se está saliendo (el POST de salir en vuelo, con E.corro aún
+  // puesto) no se vuelve a entrar: antes, un sondeo en ese hueco pedía otro token (aún era miembro) y entraba en la sala ya borrada, que LiveKit volvía a crear
+  // vacía (corro_dev, 2026-11-14: la sala seguía viva 20 s después de deshacerse el corro)
   function sincronizaVoz() {
     if (!Vz || !vivo) return;
     var v: any = Vz.estado();
-    if (E.corro && E.puedo && !v.guiada && v.sala !== E.corro.sala && !v.entrando && !entrando && tVoz <= 0) {
+    if (E.corro && E.puedo && !saliendo && !v.guiada && v.sala !== E.corro.sala && !v.entrando && !entrando && tVoz <= 0) {
       if (v.corro) { Vz.sale(); }   // de otro corro (no debería): primero fuera
       entrando = true; est.entradasVoz++;
-      Vz.entraCorro().then(function (ok?: any) { entrando = false; if (ok && !vivo) { Vz.sale(); return; }   // A3-6b: liberado mientras la voz entraba: que no se quede en el corro
+      Vz.entraCorro().then(function (ok?: any) { entrando = false; if (ok && (!vivo || saliendo || !E.corro)) { Vz.sale(); return; }   // A3-6b: liberado (o saliendo del corro) mientras la voz entraba: que no se quede en la sala
         if (!ok && vivo) { tVoz = 5; pideYa = true; } repintaTodo(); });
     } else if (!E.corro && v.corro) Vz.sale();
   }
