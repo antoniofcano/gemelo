@@ -9,7 +9,7 @@ function lkFalso() {
   const salas: any[] = [];
   class Room {
     oy: Record<string, ((...a: any[]) => void)[]> = {}; conectada = false; desconexiones = 0; publicados: any[] = [];
-    remoteParticipants = new Map(); name = "hituelo-libre";
+    remoteParticipants = new Map(); name = "hituelo-libre"; metadata = "";
     localParticipant = { identity: "yo", metadata: "{}", permissions: { canPublishData: true }, publishData: (d: Uint8Array, o: unknown) => { this.publicados.push([d, o]); return Promise.resolve(); } };
     opc: unknown;
     constructor(opc: unknown) { this.opc = opc; salas.push(this); }
@@ -19,7 +19,7 @@ function lkFalso() {
     url = ""; token = ""; conexion: unknown = null;
     disconnect() { this.conectada = false; this.desconexiones++; return Promise.resolve(); }
   }
-  const RoomEvent = { ParticipantConnected: "pc", ParticipantDisconnected: "pd", DataReceived: "dr", Reconnecting: "rc", Reconnected: "rd", Disconnected: "di" };
+  const RoomEvent = { ParticipantConnected: "pc", ParticipantDisconnected: "pd", DataReceived: "dr", Reconnecting: "rc", Reconnected: "rd", Disconnected: "di", RoomMetadataChanged: "rm" };
   return { salas, mod: { Room, RoomEvent, DisconnectReason: { CLIENT_INITIATED: 1, DUPLICATE_IDENTITY: 2, PARTICIPANT_REMOVED: 4 }, Track: { Source: { Microphone: "microphone" } } } };
 }
 
@@ -41,6 +41,22 @@ describe("RedPuro (A3-6a)", () => {
     quita(); LK.salas[0].emite("dr", b, { identity: "h_2" }, 0, "chat"); expect(llega).toHaveLength(1);
     await s.sale();
     expect(estados).toEqual(["conectando", "dentro", "fuera"]); expect(s.motivo()).toBe("propio"); expect(LK.salas[0].desconexiones).toBe(1);
+  });
+});
+
+describe("los metadatos de la sala (ADR-0036)", () => {
+  it("metadatos() da el texto de la api tal cual (\"\" fuera); «sala-meta» avisa al cambiar y, si ya había, al quedar dentro; lo de una sala dejada no llega", async () => {
+    const LK = lkFalso(), red = RedPuro.crea({ carga: () => Promise.resolve(LK.mod), base: () => "https://gemelo.test/" });
+    const s = red.sala("visita"), llega: string[] = [];
+    expect(s.metadatos()).toBe(""); s.al("sala-meta", (t: string) => llega.push(t));
+    const Room = LK.mod.Room; LK.mod.Room = class extends Room { override metadata = '{"v":1,"n":3}'; };   // quien llega tarde: la sala ya tenía metadatos
+    await s.une({ url: "/rtc", token: "a" }); LK.mod.Room = Room;
+    expect(s.metadatos()).toBe('{"v":1,"n":3}'); expect(llega).toEqual(['{"v":1,"n":3}']);
+    LK.salas[0].metadata = "no es json"; LK.salas[0].emite("rm", "no es json");   // la red no los interpreta
+    expect(llega).toEqual(['{"v":1,"n":3}', "no es json"]);
+    await s.une({ url: "/rtc", token: "b" }); expect(llega).toHaveLength(2);   // la sala nueva sin metadatos: nada al entrar
+    LK.salas[0].emite("rm", "vieja"); expect(llega).toHaveLength(2);   // la de antes ya no cuenta
+    await s.sale(); expect(s.metadatos()).toBe("");
   });
 });
 
