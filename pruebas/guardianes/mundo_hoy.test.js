@@ -56,8 +56,8 @@ test("puro: cada línea dice su procedencia y de cuándo es; las parcelas se nom
   assert.match(mir.texto, /Parcelas según Vigía: Parcela sintética A, Parcela sintética de otra finca\.$/);
   const man = ls.find(l => /^Mañana/.test(l.texto));
   assert.strictEqual(man.etiqueta, "modelado"); assert.match(man.texto, /lluvia 5,1 mm \(hasta el 80 %\)/);
-  assert.ok(ls.some(l => l.etiqueta === "medido" && /Fenología anotada en 1 parcela; la última, envero y maduración \(BBCH 85\) el 03\/11 en La Sintética\./.test(l.texto)));
-  assert.ok(ls.some(l => l.etiqueta === "medido" && /1 tarea en curso y 1 terminada \(por parcela y tipo, nunca por persona\)/.test(l.texto)));
+  assert.ok(ls.some(l => l.etiqueta === "anotado" && l.pill === "p-guardado" && /Fenología anotada en 1 parcela; la última, envero y maduración \(BBCH 85\) el 03\/11 en La Sintética\./.test(l.texto)));
+  assert.ok(ls.some(l => l.etiqueta === "anotado" && l.pill === "p-guardado" && /1 tarea en curso y 1 terminada \(por parcela y tipo, nunca por persona\)/.test(l.texto)));
   assert.match(P.cabecera(v), /^Hoy, 05\/11\/2026 · 11:30 en la finca \(hora de Madrid\) · otoño$/);
   assert.strictEqual(P.nombre("desconocida-9", PARCELAS), "desconocida-9", "sin índice, el id tal cual");
 });
@@ -96,13 +96,13 @@ function domFalso() {
 function monta(o = {}) {
   const dom = domFalso(), hud = [], pedidas = [];
   const respuesta = o.respuesta === undefined ? EJEMPLO : o.respuesta;
-  const fetchFn = (u, op) => { pedidas.push(u); return o.falla ? Promise.reject(new Error("sin red")) : Promise.resolve({ status: o.status || 200, json: () => Promise.resolve(copia(respuesta)) }); };
+  const fetchFn = (u, op) => { pedidas.push(u); return o.falla || reloj.cae ? Promise.reject(new Error("sin red")) : Promise.resolve({ status: o.status || 200, json: () => Promise.resolve(copia(respuesta)) }); };
   const reloj = { n: 0 };
   const f = new Function("location", "window", "document", "HazasPuro", "D", "$", "Hud", "setInterval", "clearInterval",
     "\"use strict\";\nvar MundoHoyPuro = (function(){" + PURO + "\nreturn MundoHoyPuro;})();\n" + MOTOR + "\nreturn MundoHoyMotor;");
   const api = f({ search: "" }, { fetch: fetchFn }, dom.doc, { prefijoApi: (b, base) => (/^\/teselas\//.test(base) ? "/api/" : null) },
     { base: o.base === undefined ? "/teselas/x/" : o.base, parcelas: PARCELAS }, dom.$, { aviso: (t, ms) => hud.push([t, ms]) },
-    () => ++reloj.n, () => { reloj.parado = true; })({});
+    (cb) => { reloj.cb = cb; return ++reloj.n; }, () => { reloj.parado = true; })({});
   return { api, dom, hud, pedidas, reloj };
 }
 
@@ -183,4 +183,29 @@ test("el día real: la estación del olivo arranca hoy y ?fecha=AAAA-MM-DD mueve
     const r = creaReloj("?fecha=" + fecha, fmt, () => reloj).ahoraMs();
     assert.strictEqual(fmt.format(new Date(r)), fecha, "con el reloj en " + new Date(reloj).toISOString() + ", ?fecha=" + fecha + " cae en su día");
   }
+});
+
+test("L3-08: la fenología y las tareas de OlivarTrack son «anotado», nunca «medido»", () => {
+  const ls = P.lineas(P.valida(copia(EJEMPLO)), AHORA, PARCELAS);
+  assert.ok(!ls.some(l => l.etiqueta === "medido"), "en «Hoy en el campo» no hay nada medido: " + JSON.stringify(ls.filter(l => l.etiqueta === "medido").map(l => l.texto)));
+  assert.ok(ls.some(l => l.etiqueta === "anotado" && /^Fenología/.test(l.texto)) && ls.some(l => l.etiqueta === "anotado" && /^Esta semana/.test(l.texto)));
+});
+
+test("L3-09: la tarjeta envejece: «al día» solo con lectura reciente; si falla la relectura dice «última lectura hace N min» y no vuelve a decir «al día»", async () => {
+  const MIN = 60000;
+  assert.strictEqual(P.pastilla(true, 0, 5 * MIN, false), "al día");
+  assert.strictEqual(P.pastilla(false, 0, 5 * MIN, false), "en parte");
+  assert.strictEqual(P.pastilla(true, 0, 10 * MIN, true), "última lectura hace 10 min", "relectura fallida");
+  assert.strictEqual(P.pastilla(true, 0, (P.PLAZO_AL_DIA_MIN + 1) * MIN, false), "última lectura hace " + (P.PLAZO_AL_DIA_MIN + 1) + " min", "pasado el plazo");
+  const real = Date.now; let t = Date.parse("2026-11-05T11:30:00Z"); Date.now = () => t;
+  try {
+    const m = monta(); await espera();
+    const art = m.dom.ids.tHoyCampo; assert.match(art.textContent, /al día/);
+    m.reloj.cae = true; t += 10 * MIN; m.reloj.cb(); await espera();
+    assert.ok(!art.hidden, "con lectura previa la tarjeta se queda");
+    assert.match(art.textContent, /última lectura hace 10 min/); assert.doesNotMatch(art.textContent, /al día/);
+    t += 20 * MIN; m.reloj.cb(); await espera();
+    assert.match(art.textContent, /última lectura hace 30 min/);
+    m.api.libera();
+  } finally { Date.now = real; }
 });

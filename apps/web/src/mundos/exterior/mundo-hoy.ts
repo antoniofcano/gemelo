@@ -3,7 +3,7 @@
 // Madrid, los avisos del campo, mañana según la previsión, la fenología anotada, el trabajo de la semana y qué fuente falta) y, al llegar, el primer aviso en el HUD (unos segundos).
 // Es del EXTERIOR: habla de las parcelas de la finca (D.parcelas), de su previsión y de su trabajo de campo, y cuelga su tarjeta en el panel del tiempo del exterior. Componente
 // «mundo-hoy» de los mundos ["exterior"], con un libera() que suelta de verdad: el reloj de 10 min, la petición en vuelo (AbortController), la tarjeta del DOM, y lo que llegue tarde no
-// se pinta. Cada línea lleva su pastilla (medido / modelado / deducido) y de cuándo es el dato. Lo que llega es DATO: se valida y se pinta SIEMPRE con textContent, nunca como
+// se pinta. Cada línea lleva su pastilla (anotado / modelado / deducido; L3-08: lo de OlivarTrack es anotado, no medido) y de cuándo es el dato. Lo que llega es DATO: se valida y se pinta SIEMPRE con textContent, nunca como
 // código de la página; las parcelas de OlivarTrack se nombran con el índice de la finca (D.parcelas) y, si no están, se dice el id. Vigía no autoriza tratamientos: la frase de sus
 // avisos la pone la api (fija) y aquí no se añade nada. Sin servidor no se pide nada (ni un 404 en la consola). Presupuesto (regla 6): nada en la escena 3D (una tarjeta del DOM).
 // Código movido tal cual (solo se tipan parámetros y variables), salvo L8-12: «Mañana» se busca por su fecha, no por su posición en la lista.
@@ -19,7 +19,9 @@ export interface DepsMundoHoy { D: T; $: (id: string) => T; readonly Hud: T }
 
   // [puro:inicio] (sin DOM ni THREE: lo evalúa en Node pruebas/guardianes/mundo_hoy.test.js)
 export var MundoHoyPuro: T = (function () {
-    var PILL: T = { medido: "p-medido", modelado: "p-modelo", deducido: "p-deducido" };
+    var PILL: T = { medido: "p-medido", modelado: "p-modelo", deducido: "p-deducido", anotado: "p-guardado" };   // L3-08: «anotado» = lo que una persona registró en OlivarTrack (no es una medida del gemelo; usa el color de «guardado»)
+    // L3-09: pasado este plazo sin una lectura buena, la tarjeta deja de decir «al día» (la api se relee cada 10 min y guarda lo de fuera de 10 min a 1 h: 30 min sin éxito ya son dos relecturas perdidas)
+    var PLAZO_AL_DIA_MIN = 30;
     var FUENTE: T = { olivartrack: "OlivarTrack", vigia: "Vigía", gemelo: "el gemelo" };
     var TIPOS: T = { recogida: 1, helada: 1, lluvia: 1, fenologia: 1, mirada: 1 };
     var DIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -80,7 +82,7 @@ export var MundoHoyPuro: T = (function () {
       if (fe && Array.isArray(fe.parcelas) && fe.parcelas.length) {
         var u = fe.parcelas.slice().sort(function (a?: T, b?: T) { return String(b.fecha).localeCompare(String(a.fecha)); })[0];
         out.push({ texto: "Fenología anotada en " + fe.parcelas.length + (fe.parcelas.length === 1 ? " parcela" : " parcelas") + "; la última, " + txt(u.etapa, 60) + " (BBCH " + u.bbch + ") el " + fechaCorta(u.fecha) + " en " + nombre(u.parcela, indice) + ".",
-          pill: PILL.medido, etiqueta: "medido", clase: "", cuando: "de OlivarTrack" + (haceTxt(fe.consultadoEn || fe.leidoEn, ahora) ? ", " + haceTxt(fe.consultadoEn || fe.leidoEn, ahora) : "") + (fe.completo ? "" : "; lectura incompleta") });
+          pill: PILL.anotado, etiqueta: "anotado", clase: "", cuando: "de OlivarTrack" + (haceTxt(fe.consultadoEn || fe.leidoEn, ahora) ? ", " + haceTxt(fe.consultadoEn || fe.leidoEn, ahora) : "") + (fe.completo ? "" : "; lectura incompleta") });
       }
       var w = r.trabajoSemana;
       if (w && Array.isArray(w.porFinca)) {
@@ -88,7 +90,7 @@ export var MundoHoyPuro: T = (function () {
         var c = 0, h = 0; w.porFinca.forEach(function (x?: T) { c += x.enCurso || 0; h += x.hechas || 0; });
         out.push({ texto: !w.porFinca.length ? "Esta semana no hay trabajo anotado en OlivarTrack." : sabe ? "Esta semana en el campo: " + c + (c === 1 ? " tarea en curso" : " tareas en curso") + " y " + h + (h === 1 ? " terminada" : " terminadas") + " (por parcela y tipo, nunca por persona)."
           : "Esta semana hay trabajo anotado en el campo, pero OlivarTrack avisa de que la lista no está completa: no se dan totales.",
-          pill: PILL.medido, etiqueta: "medido", clase: "", cuando: "de OlivarTrack" + (haceTxt(w.consultadoEn || w.leidoEn, ahora) ? ", " + haceTxt(w.consultadoEn || w.leidoEn, ahora) : "") });
+          pill: PILL.anotado, etiqueta: "anotado", clase: "", cuando: "de OlivarTrack" + (haceTxt(w.consultadoEn || w.leidoEn, ahora) ? ", " + haceTxt(w.consultadoEn || w.leidoEn, ahora) : "") });
       }
       ["olivartrack", "vigia"].forEach(function (k?: T) {
         var x = f[k]; if (x.disponible) return;
@@ -96,6 +98,12 @@ export var MundoHoyPuro: T = (function () {
       });
       r.notas.slice(0, 5).forEach(function (n?: T) { out.push({ texto: txt(n.texto), pill: null, etiqueta: "", clase: "nota", cuando: FUENTE[n.de] ? "lo dice " + FUENTE[n.de] : "" }); });
       return out;
+    }
+    // L3-09: la pastilla de la tarjeta. «al día» solo si la última lectura buena es reciente (PLAZO_AL_DIA_MIN) y completa; si la relectura falló o pasó el plazo, dice de cuándo es lo que se ve
+    function pastilla(completo?: T, leidoMs?: T, ahora?: T, fallo?: T) {
+      var min = Math.max(0, Math.round((ahora - leidoMs) / 60000));
+      if (fallo || min > PLAZO_AL_DIA_MIN) return "última lectura " + haceTxt(new Date(leidoMs).toISOString(), ahora);
+      return completo ? "al día" : "en parte";
     }
     function cabecera(r?: T) {
       var a = r.ahora, d = String(a.fecha);
@@ -140,7 +148,7 @@ export var MundoHoyPuro: T = (function () {
       });
       return ids.length ? { parcelas: ids, cuando: typeof (w.consultadoEn || w.leidoEn) === "string" ? (w.consultadoEn || w.leidoEn) : null } : null;
     }
-    return { valida: valida, lee: lee, haceTxt: haceTxt, nombre: nombre, lineas: lineas, cabecera: cabecera, hud: hud, tablon: tablon, trabajo: trabajo };
+    return { valida: valida, lee: lee, haceTxt: haceTxt, nombre: nombre, lineas: lineas, cabecera: cabecera, hud: hud, pastilla: pastilla, PLAZO_AL_DIA_MIN: PLAZO_AL_DIA_MIN, tablon: tablon, trabajo: trabajo };
   })();
   // [puro:fin]
 
@@ -150,15 +158,15 @@ export function manifiestoMundoHoy(dp: DepsMundoHoy): Manifiesto {
   // [motor:inicio] (lo evalúa también en Node pruebas/guardianes/mundo_hoy.test.js con un DOM y un fetch de mentira)
   function MundoHoyMotor(n?: T) {
     var P = MundoHoyPuro, API = HazasPuro.prefijoApi(location.search, D.base);
-    var vivo = true, reloj: T = null, art: T = null, ultimo: T = null, avisado = false, ctl = new AbortController();   // A3-7b1: libera() corta la petición en vuelo
+    var vivo = true, reloj: T = null, art: T = null, ultimo: T = null, leidoMs = 0, avisado = false, ctl = new AbortController();   // A3-7b1: libera() corta la petición en vuelo
     // la misma fetch de la ventana, con la señal de este montaje (HazasPuro.lee la pide como función)
     function traer(url?: T, op?: T) { return window.fetch(url, Object.assign({}, op, { signal: ctl.signal })); }
     if (!API) return { libera: function () {}, estado: function () { return { datos: null, motivo: "sin_api" }; } };
     function el(tag?: T, clase?: T, texto?: T) { var e = document.createElement(tag); if (clase) e.className = clase; if (texto != null) e.textContent = texto; return e; }
-    function pinta(r?: T) {
+    function pinta(r?: T, fallo?: T) {
       while (art.firstChild) art.removeChild(art.firstChild);
       var h = el("h3", null, "Hoy en el campo ");
-      h.appendChild(el("span", "t-pill", r.completo ? "al día" : "en parte"));
+      h.appendChild(el("span", "t-pill", P.pastilla(r.completo, leidoMs, Date.now(), fallo)));
       art.appendChild(h);
       art.appendChild(el("p", "t-sub", P.cabecera(r)));
       var ul = el("ul", "t-avisos");
@@ -176,8 +184,8 @@ export function manifiestoMundoHoy(dp: DepsMundoHoy): Manifiesto {
     function lee() {
       P.lee(typeof window.fetch === "function" ? traer : null, API).then(function (x?: T) {
         if (!vivo) return;
-        if (!x.ok) { if (!ultimo) art.hidden = true; return; }   // sin sesión o la api no contesta: no se enseña nada (y se queda lo último)
-        ultimo = x.datos; pinta(x.datos);
+        if (!x.ok) { if (!ultimo) art.hidden = true; else pinta(ultimo, true); return; }   // sin sesión o la api no contesta: sin lectura previa no se enseña nada; con ella se queda, diciendo de cuándo es
+        ultimo = x.datos; leidoMs = Date.now(); pinta(x.datos);
         if (n && n.emite) n.emite("mundo:hoy", { linea: P.tablon(x.datos), trabajo: P.trabajo(x.datos) });   // EV-3c: el tablón de la entrada (44b_carteles.js) pinta esta línea; null = nada que decir
         var t = P.hud(x.datos);
         if (t && !avisado && typeof dp.Hud !== "undefined" && dp.Hud.aviso) { avisado = true; dp.Hud.aviso(t, 6000); }
