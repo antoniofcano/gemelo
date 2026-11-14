@@ -6,9 +6,13 @@ import { test } from "node:test";
 import type { ConfigLiveKit } from "../../src/config.ts";
 import { Corros, type Puertas } from "../../src/presencia/corro.ts";
 import { Expulsados, identidadOpaca, prefijoHogar, SALA_CORRO, SALA_GUIADA, SALAS, TTL_S } from "../../src/presencia/livekit.ts";
-import { vuelveAExpulsar } from "../../src/presencia/reingreso.ts";
+import pg from "pg";
+import { construyeApp } from "../../src/app.ts";
+import { BARRIDO_MS } from "../../src/presencia/corro.ts";
+import { arrancaCentinela, reconstruyeMarcas, SQL_EXPULSIONES_VIVAS, type Temporizador, vuelveAExpulsar } from "../../src/presencia/reingreso.ts";
 import { ExpulsadosGuiada } from "../../src/presencia/voz_rutas.ts";
-import { RelojFalso, SalaFalsa } from "../apoyo/voz.ts";
+import { configDePrueba, contexto } from "../apoyo/contexto.ts";
+import { RelojFalso, SalaFalsa, vacia } from "../apoyo/voz.ts";
 
 const LK: ConfigLiveKit = { url: "http://livekit:7880", urlPublica: "ws://localhost:7880", clave: "devreingreso", secreto: "r".repeat(16) + "-sintetico-de-prueba-reingreso" };
 const pre = (h: number) => prefijoHogar(LK, h);
@@ -88,4 +92,83 @@ test("corros: tras deshacerse un corro, quien vuelve a su sala con un token ante
   await reloj.avanza(TTL_S * 1000 + 1);
   sala.entra(s, identidadOpaca(LK, 2, "s2"));
   assert.equal(await c.barre(), 0, "pasada la vida del token, la sala ya no es asunto del barrido");
+});
+
+// ---------------------------------------------------------------- L9-06, remate: fallos por sala, el temporizador del centinela y el reinicio
+
+/** Un temporizador que se dispara a mano: guarda cada programación (ms y función) y cuáles se pararon. */
+class TemporizadorFalso implements Temporizador {
+  readonly programados: { ms: number; fn: () => void; parado: boolean }[] = [];
+  cada(ms: number, fn: () => void) { this.programados.push({ ms, fn, parado: false }); return this.programados.length - 1; }
+  para(h: unknown) { this.programados[h as number]!.parado = true; }
+  dispara() { for (const p of this.programados) if (!p.parado) p.fn(); }
+}
+const registro = () => { const avisos: string[] = []; return { avisos, log: { warn: (_o: object, m: string) => { avisos.push(m); } } }; };
+
+test("un error de LiveKit (no 404) en una sala se apunta y no corta la pasada: el expulsado sale de las demás", async () => {
+  const sala = new SalaFalsa(), exp = new Expulsados(), r = registro();
+  const moderador = { expulsaHogar: async (s: string, p: string) => { if (s === SALAS.general) throw new Error("LiveKit 503"); return sala.expulsaHogar(s, p); } };
+  sala.entra(SALAS.general, identidadOpaca(LK, 7, "movil")); sala.entra(SALAS.visita, identidadOpaca(LK, 7, "movil")); sala.entra(SALA_GUIADA(3), identidadOpaca(LK, 7, "pc"));
+  exp.marca(7, 0);
+  const g = new ExpulsadosGuiada(); g.marca(3, 7, 0);
+  const n = await vuelveAExpulsar({ moderador, prefijo: pre, expulsados: exp, guiada: g, salas: async () => [SALAS.general, SALAS.visita], ahora: () => 1000, log: r.log });
+  assert.equal(n, 2, "la visita y la guiada, aunque la general fallara");
+  assert.deepEqual(dentro(sala, SALAS.visita), []); assert.deepEqual(dentro(sala, SALA_GUIADA(3)), []);
+  assert.equal(r.avisos.length, 1); assert.match(r.avisos[0]!, /no pudo mirar una sala/);
+});
+
+test("arrancaCentinela: se programa cada `ms`, cada disparo es una pasada, no amontona pasadas si LiveKit tarda y se para", async () => {
+  const sala = new SalaFalsa(), exp = new Expulsados(), t = new TemporizadorFalso(), r = registro();
+  let pasadas = 0, suelta: (() => void) | null = null;
+  const salas = async () => { pasadas++; await new Promise<void>(res => { suelta = res; }); return [SALAS.general]; };
+  const para = arrancaCentinela({ moderador: sala, prefijo: pre, expulsados: exp, salas, log: r.log }, BARRIDO_MS, t);
+  assert.equal(t.programados.length, 1); assert.equal(t.programados[0]!.ms, BARRIDO_MS);
+  exp.marca(7); sala.entra(SALAS.general, identidadOpaca(LK, 7, "movil"));
+  t.dispara(); t.dispara(); await vacia();
+  assert.equal(pasadas, 1, "la segunda no empieza mientras la primera espera a LiveKit");
+  suelta!(); await vacia();
+  assert.deepEqual(dentro(sala, SALAS.general), [], "la pasada lo saca");
+  assert.ok(r.avisos.some(a => /volvió a entrar/.test(a)));
+  t.dispara(); await vacia(); assert.equal(pasadas, 2, "terminada la anterior, la siguiente sí");
+  suelta!(); await vacia();
+  para(); assert.equal(t.programados[0]!.parado, true);
+});
+
+/** Una base de mentira: a la consulta de las expulsiones vivas responde `filas`; a lo demás, vacío. */
+function bdConExpulsiones(filas: object[]) {
+  const consultas: unknown[][] = [];
+  return { consultas, bd: { query: async (sql: string, p: unknown[] = []) => { if (sql === SQL_EXPULSIONES_VIVAS) { consultas.push(p); return { rows: filas, rowCount: filas.length }; } return { rows: [], rowCount: 0 }; } } };
+}
+
+test("reconstruyeMarcas: las expulsiones de la auditoría de los últimos TTL_S vuelven a marcar, cada una con su hora; las filas raras se saltan", async () => {
+  const t0 = 10_000_000, { bd, consultas } = bdConExpulsiones([
+    { accion: "admin.presencia_expulsado", hogar: "7", evento: null, en: t0 },
+    { accion: "guiada.expulsado", hogar: "8", evento: "3", en: String(t0 + 500) },
+    { accion: "admin.presencia_expulsado", hogar: null, evento: null, en: t0 },
+    { accion: "guiada.expulsado", hogar: "9", evento: "x", en: t0 },
+  ]);
+  const exp = new Expulsados(), g = new ExpulsadosGuiada();
+  assert.equal(await reconstruyeMarcas(bd as unknown as pg.Pool, { expulsados: exp, guiada: g }), 2);
+  assert.deepEqual(consultas, [[TTL_S]], "mira solo la ventana de vida del token");
+  assert.ok(exp.esta(7, t0 + TTL_S * 1000 - 1)); assert.ok(!exp.esta(7, t0 + TTL_S * 1000), "vence cuando habría vencido sin el reinicio");
+  assert.deepEqual(g.vivos(t0 + 1000), [{ evento: 3, hogar: 8 }]);
+  assert.match(SQL_EXPULSIONES_VIVAS, /FROM auditoria/); assert.match(SQL_EXPULSIONES_VIVAS, /admin\.presencia_expulsado/); assert.match(SQL_EXPULSIONES_VIVAS, /guiada\.expulsado/);
+});
+
+test("la api cablea el centinela: al arrancar recupera de la auditoría al expulsado de antes del reinicio y el barrido periódico le saca", async () => {
+  const lk = { GEMELO_LIVEKIT_URL: "http://127.0.0.1:1", GEMELO_LIVEKIT_URL_PUBLICA: "ws://localhost:7880", GEMELO_LIVEKIT_CLAVE: "devreingreso2", GEMELO_LIVEKIT_SECRETO: "w".repeat(32) };
+  const { bd, consultas } = bdConExpulsiones([{ accion: "admin.presencia_expulsado", hogar: "7", evento: null, en: Date.now() - 60_000 }]);
+  const sala = new SalaFalsa(), t = new TemporizadorFalso();
+  const app = await construyeApp({ ...contexto(bd as unknown as pg.Pool, configDePrueba(lk)), moderador: sala, temporizador: t });
+  try {
+    await app.ready();
+    assert.equal(consultas.length, 1, "lee la auditoría al arrancar");
+    const prog = t.programados.filter(p => p.ms === BARRIDO_MS);
+    assert.equal(prog.length, 1, "el barrido periódico está programado (si se quita el cableado, esto falla)");
+    const lkc = configDePrueba(lk).livekit!;
+    sala.entra(SALAS.general, identidadOpaca(lkc, 7, "movil")); sala.entra(SALAS.general, identidadOpaca(lkc, 8, "pc"));
+    prog[0]!.fn(); await vacia();
+    assert.deepEqual(dentro(sala, SALAS.general), [identidadOpaca(lkc, 8, "pc")], "el expulsado antes del reinicio, fuera; el otro se queda");
+  } finally { await app.close(); }
+  assert.ok(t.programados.every(p => p.parado), "al cerrar la api, se para");
 });
