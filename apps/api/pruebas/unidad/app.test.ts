@@ -42,6 +42,19 @@ test("text/plain (tipo «simple» de CSRF) no se acepta", async () => {
   assert.equal(r.statusCode, 415);
 });
 
+test("formulario (auditoría A-06): solo lo aceptan /api/auth/entrar y /api/avisos/baja; en otra ruta, 415 antes de leer el cuerpo", async () => {
+  const FORM = { "content-type": "application/x-www-form-urlencoded" };
+  for (const [url, cuerpo] of [["/api/auth/enlace", "correo=ana%40example.com"], ["/api/sesion/salir-todas", "x=1"], ["/api/admin/hogares/1/revocar", "x=1"]] as const) {
+    const r = await app.inject({ method: "POST", url, headers: deLaWeb(FORM), payload: cuerpo });
+    assert.equal(r.statusCode, 415, url + ": " + r.body);
+    assert.equal(r.json().error, "tipo_no_admitido");
+  }
+  const sin = await app.inject({ method: "POST", url: "/api/avisos/baja", headers: { ...FORM, "x-forwarded-proto": "https" }, payload: "List-Unsubscribe=One-Click" });
+  assert.notEqual(sin.statusCode, 415, "la baja con un clic (RFC 8058) sigue aceptando el formulario");
+  const entrar = await app.inject({ method: "POST", url: "/api/auth/entrar", headers: deLaWeb(FORM), payload: "t=corto" });
+  assert.notEqual(entrar.statusCode, 415, "la página del enlace manda el token por formulario");
+});
+
 test("validación estricta: un campo de más o un tipo malo es 400, no se ignora", async () => {
   const mas = await app.inject({ method: "POST", url: "/api/auth/enlace", headers: deLaWeb(), payload: { correo: "ana@example.com", rol: "admin" } });
   assert.equal(mas.statusCode, 400);

@@ -2,6 +2,7 @@
 # está aquí y cada operación de aquí existe. La ficha de haza remite a haza.schema.json (lista blanca, ADR-0014);
 # la sesión, a sesion.md (ADR-0013); la vida de las hazas (olivos personalizados, fotos, denuncias, bandeja), a vida.md
 # y olivos-haza.schema.json. Todo POST/PUT/DELETE exige Origin del sitio (salvo /api/csp-informe y /api/avisos/baja, que se protege con la firma del enlace).
+# Cuerpos en JSON; el formulario (application/x-www-form-urlencoded) solo lo aceptan POST /api/auth/entrar y POST /api/avisos/baja: en el resto, 415 tipo_no_admitido (auditoría A-06).
 openapi: 3.1.0
 info:
   title: Gemelo · api
