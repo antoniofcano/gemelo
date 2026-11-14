@@ -3,14 +3,14 @@
 // parte pura: la forma de los metadatos, su lectura tolerante y la mezcla con lo que pide el guía. La ruta es POST /api/presencia/guiadas/:evento/visita (voz_rutas.ts).
 import { readFileSync } from "node:fs";
 
-/** Los mundos de la pose (contratos/livekit-roles.json, clave `mundos_pose`; el índice es el código de 2 bits de la pose). «otro» (3) lo publica el cliente para un
+/** Los mundos de la pose (contratos/livekit-roles.json, `mundos_pose.lista`; el índice es el código de 2 bits de la pose). «otro» (3) lo publica el cliente para un
  *  mundo no listado, pero no es un mundo al que se pueda llevar al grupo. La api lee la clave del contrato si el fichero está junto al código (en desarrollo y
  *  en las pruebas); en la imagen de Docker, que no lleva contratos/, usa la lista literal del acuerdo del 2026-11-14 (la prueba de unidad compara las dos). */
 export const MUNDOS_POSE_LITERAL: readonly string[] = ["exterior", "patios", "fabrica", "otro"];
 function mundosDelContrato(): readonly string[] {
   try {
-    const j = JSON.parse(readFileSync(new URL("../../../../contratos/livekit-roles.json", import.meta.url), "utf8")) as { mundos_pose?: unknown };
-    const m = j.mundos_pose;
+    const j = JSON.parse(readFileSync(new URL("../../../../contratos/livekit-roles.json", import.meta.url), "utf8")) as { mundos_pose?: { lista?: unknown } };
+    const m = j.mundos_pose && j.mundos_pose.lista;   // livekit-roles v9: { $comment, lista }
     if (Array.isArray(m) && m.length > 0 && m.every(x => typeof x === "string")) return m as string[];
   } catch { /* sin contrato a mano: la lista literal */ }
   return MUNDOS_POSE_LITERAL;

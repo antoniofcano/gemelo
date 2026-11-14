@@ -9,9 +9,11 @@ import { CONTRATOS } from "../apoyo/esquemas.ts";
 
 const T0 = 1763100000000;
 
-test("los mundos: la lista de la api es la del contrato (clave mundos_pose, si ya está) o la literal del acuerdo; «otro» no es un destino", () => {
-  const c = (JSON.parse(readFileSync(CONTRATOS + "livekit-roles.json", "utf8")) as { mundos_pose?: string[] }).mundos_pose;
-  assert.deepEqual([...MUNDOS_POSE], c ?? [...MUNDOS_POSE_LITERAL]);
+test("los mundos: la lista de la api es la del contrato (mundos_pose.lista, livekit-roles v9) y la literal coincide con ella; «otro» no es un destino", () => {
+  const c = (JSON.parse(readFileSync(CONTRATOS + "livekit-roles.json", "utf8")) as { mundos_pose?: { lista?: string[] } }).mundos_pose;
+  assert.ok(c && Array.isArray(c.lista), "el contrato trae mundos_pose.lista");
+  assert.deepEqual([...MUNDOS_POSE], c.lista);
+  assert.deepEqual([...MUNDOS_POSE_LITERAL], c.lista, "la lista literal (la de la imagen de Docker, sin contratos/) es la del contrato");
   assert.deepEqual([...MUNDOS_POSE_LITERAL], ["exterior", "patios", "fabrica", "otro"]);
   assert.deepEqual([...MUNDOS_VISITA], ["exterior", "patios", "fabrica"]);
   assert.deepEqual(ESQUEMA_CUERPO_VISITA.properties.mundo.enum, ["exterior", "patios", "fabrica"]);
