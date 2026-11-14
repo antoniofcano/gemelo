@@ -35,6 +35,12 @@ Blender 5.2 en segundo plano; en esta máquina, lo pesado va por el banco: `node
 
 Orden de la 1.1: `inventario.py --sin-laminas --guarda` → `maquinas.py` → `hornea.py --modo aparte --sondas` → `exporta.py --modo aparte` → `exporta.mjs --luz` → `valida.js`. `vista.py --horneado` entiende los atlas.
 
+### El glb comprimido ([ADR-0035](../../../doc/adr/0035-interiores-comprimidos-meshopt-y-ktx2.md), contrato v1.3)
+
+| Paso | Guion | Qué hace |
+|---|---|---|
+| 12 | `node comprime.mjs <carpeta> <salida> [--color etc1s\|uastc] [--luz etc1s\|uastc] [--calidad N] [--sin-meshopt] [--sin-ktx2]` (o `exporta.mjs … --comprime [--luz-ktx2 …]`) | sobre una carpeta ya rematada (mundo.json y su glb), escribe en otra (nunca encima) el glb comprimido: la geometría con `meshopt()` de `@gltf-transform` (posición a 16 bits, UV a 14; el UV del albedo en mosaico, fuera de [0, 1], se queda en float) y las texturas en KTX2 con el Basis Universal de `ktx2-encoder` (ETC1S por defecto, UASTC + zstd si se pide; sRGB, con todos sus mipmaps, envueltos en el color que se repite). La malla de cada máquina de `maquinas[]` baja a un hijo `<nodo>__malla` para que la cuantización no mueva su pivote. Opcional: el glb sin comprimir sigue valiendo |
+
 Dependencias de Node (versión fijada en [package.json](package.json)): `npm ci` o `npm i` en esta carpeta. La lógica pura (`nombres.mjs`, `piezas.py`, `maquinas_def.py`, `sonda.py`) y `capas.json` los vigila `pruebas/guardianes/interiores_blender.test.js`.
 
 Los `obra.json`, `luces.json`, `maquinas.json` y `repasos.json` llevan cotas o datos del sitio: son privados y viven junto al `.blend`, no aquí (su formato está en la cabecera de cada guion). El sol se pone con `prepara.py --solo-luz --azimut A --elevacion E [--norte N]`: mientras no se sepa hacia dónde cae el norte en el modelo, la nota del sol dice **[SUPUESTO]**; la luz horneada es ilustrativa en todo caso (regla 5).

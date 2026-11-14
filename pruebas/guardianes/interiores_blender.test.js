@@ -54,7 +54,7 @@ test("nombraImagenes: nombre por material y ranura, sin acentos, único y determ
 
 test("los guiones de Blender y Node no llevan rutas locales y las dependencias van con versión fijada", () => {
   const fich = fs.readdirSync(DIR).filter(f => /\.(py|mjs)$/.test(f));
-  for (const f of ["descomprime.mjs", "separa.py", "prepara.py", "hornea.py", "planta.py", "puertas.py", "vista.py", "obra.py", "luces.py", "envejece.py", "texturas.py", "cuenta.py", "recuento.py", "sol.mjs", "exporta.py", "exporta.mjs", "inventario.py", "piezas.py", "maquinas.py", "maquinas_def.py", "sonda.py"]) assert.ok(fich.includes(f), "falta " + f);
+  for (const f of ["descomprime.mjs", "separa.py", "prepara.py", "hornea.py", "planta.py", "puertas.py", "vista.py", "obra.py", "luces.py", "envejece.py", "texturas.py", "cuenta.py", "recuento.py", "sol.mjs", "exporta.py", "exporta.mjs", "comprime.mjs", "inventario.py", "piezas.py", "maquinas.py", "maquinas_def.py", "sonda.py"]) assert.ok(fich.includes(f), "falta " + f);
   for (const f of fich) {
     const s = fs.readFileSync(path.join(DIR, f), "utf8");
     assert.doesNotMatch(s, /[A-Za-z]:\\?Users|\/Users\/|AppData/, f + " lleva una ruta local");
@@ -114,7 +114,11 @@ test("la exportación cumple el contrato por construcción: luz en el color base
   assert.ok(py.includes('("AUXILIAR", "DESCARTES", "EFECTOS")'), "los efectos y los descartes no se exportan");
   assert.ok(py.includes('"export_lights": False') && py.includes('"export_cameras": False'), "sin luces ni cámaras");
   assert.doesNotMatch(py, /draco_mesh_compression_enable"\s*:\s*True|meshopt|ktx|basisu|webp/i, "nada que pida un decodificador (contrato v1)");
-  assert.ok(mjs.includes("KHR_materials_unlit") && !/draco|meshopt|KHRTextureBasisu|EXTTextureWebP/i.test(mjs.replace(/\/\/.*$/gm, "")), "el remate solo añade unlit");
+  // el remate solo añade unlit; la compresión (v1.3, ADR-0035) es aparte, en comprime.mjs, y solo con --comprime
+  const remata = mjs.slice(mjs.indexOf("export async function remata"), mjs.indexOf("if (process.argv[1]"));
+  assert.ok(remata.includes("KHR_materials_unlit") && !/draco|meshopt|KHRTextureBasisu|EXTTextureWebP|comprime/i.test(remata.replace(/\/\/.*$/gm, "")), "el remate solo añade unlit");
+  assert.match(mjs, /if \(process\.argv\.includes\('--comprime'\)\) \{\s*const \{ comprime, banderas \} = await import\('\.\/comprime\.mjs'\)/, "--comprime delega en comprime.mjs");
+  assert.doesNotMatch(lee("tuberia/interiores/blender/comprime.mjs").replace(/\/\/.*$/gm, ""), /draco|EXTTextureWebP|webp\(/i, "comprime.mjs no usa Draco ni WebP (el contrato no los admite)");
   // el origen sale del manifiesto y es el umbral de la puerta principal; las zonas, de la cota medida del suelo
   assert.ok(py.includes('pl["origen"]') && py.includes("suelo_en("));
   // v1.1: las paradas y las fuentes de la visita pasan de la plantilla al mundo.json, sin las notas «_…» de quien la escribe

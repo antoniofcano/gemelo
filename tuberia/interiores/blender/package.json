@@ -3,14 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Base de los mundos interiores en Blender (eje B): descomprime un glb (meshopt, KTX2) a PNG con @gltf-transform y el transcodificador Basis de three, y los guiones de Blender que separan, preparan y hornean. Ver README.md",
+  "description": "Base de los mundos interiores en Blender (eje B): descomprime un glb (meshopt, KTX2) a PNG con @gltf-transform y el transcodificador Basis de three, los guiones de Blender que separan, preparan y hornean, y comprime el glb rematado (meshopt y KTX2 con ktx2-encoder, contrato v1.3). Ver README.md",
   "scripts": {
-    "descomprime": "node descomprime.mjs"
+    "descomprime": "node descomprime.mjs",
+    "comprime": "node comprime.mjs"
   },
   "dependencies": {
     "@gltf-transform/core": "4.5.1",
     "@gltf-transform/extensions": "4.5.1",
     "@gltf-transform/functions": "4.5.1",
+    "ktx2-encoder": "0.6.0",
     "meshoptimizer": "1.3.0",
     "sharp": "0.35.5",
     "suncalc": "2.1.4",

@@ -3,12 +3,16 @@
 //   - todos los materiales pasan a KHR_materials_unlit: la luz ya va horneada en el color base (o en COLOR_0 las hojas);
 //   - los materiales con textura con alfa (las hojas) van en MASK con corte 0,5 y a dos caras; el vidrio, en BLEND;
 //   - COLOR_0 se queda solo en las hojas (lleva su luz); en lo demás se quita;
-//   - quita lo que no se usa y lo repetido; no comprime nada (v1 del contrato no admite meshopt, Draco ni KTX2).
+//   - quita lo que no se usa y lo repetido; el remate no comprime nada (la compresión de la v1.3 es aparte: --comprime, comprime.mjs).
 // Con --luz (exporta.py --modo aparte, contrato v1.2 §1c): cada material del JSON lleva su mapa de luz en occlusionTexture con
 // texCoord 1 (la imagen RGB de verdad, el JPEG del atlas: el exportador de Blender solo pone una de oclusión); es unlit salvo
 // los de las máquinas con luz propia («unlit»: false), que guardan su metal y su rugosidad; y COLOR_0 (el envejecido, que
 // multiplica al albedo) se queda en todos.
 // Escribe el glb en su sitio y un resumen por la salida. Después: node tuberia/interiores/valida.js <carpeta>.
+// Con --comprime (contrato v1.3, ADR-0035), además lo comprime con comprime.mjs (meshopt y KTX2, protegiendo los nodos de las máquinas del
+// mundo.json que está junto al glb) y escribe solo el comprimido (para comparar, otra exportación sin --comprime, o comprime.mjs sobre una copia).
+// El modo del mapa de luz va en --luz-ktx2 (--luz ya es el JSON de la luz aparte); --color y --calidad, como en comprime.mjs. El remate en sí no
+// comprime nada.
 import { NodeIO } from '@gltf-transform/core';
 import { KHRMaterialsUnlit } from '@gltf-transform/extensions';
 import { prune, dedup } from '@gltf-transform/functions';
@@ -56,11 +60,21 @@ export async function remata(bytes, luz = null, leeFichero = f => fs.readFileSyn
 
 if (process.argv[1] && process.argv[1].endsWith('exporta.mjs')) {
   const ruta = process.argv[2], k = process.argv.indexOf('--luz');
-  if (!ruta) { console.error('uso: node exporta.mjs <mundo.glb> [--luz <luz_aparte.json>]'); process.exit(1); }
+  if (!ruta) { console.error('uso: node exporta.mjs <mundo.glb> [--luz <luz_aparte.json>] [--comprime [--color etc1s|uastc] [--luz-ktx2 etc1s|uastc]]'); process.exit(1); }
   const luz = k > 0 ? JSON.parse(fs.readFileSync(process.argv[k + 1], 'utf8')) : null;
   const base = k > 0 ? path.dirname(process.argv[k + 1]) : '.';
   const antes = fs.statSync(ruta).size;
   const { bytes, resumen } = await remata(new Uint8Array(fs.readFileSync(ruta)), luz, f => fs.readFileSync(path.resolve(base, f)));
   fs.writeFileSync(ruta, bytes);
   console.log('REMATA ' + JSON.stringify({ ...resumen, mb_antes: +(antes / 2 ** 20).toFixed(1), mb: +(bytes.length / 2 ** 20).toFixed(1) }));
+  if (process.argv.includes('--comprime')) {
+    const { comprime, banderas } = await import('./comprime.mjs');
+    const man = path.join(path.dirname(ruta), 'mundo.json'), protege = fs.existsSync(man) ? (JSON.parse(fs.readFileSync(man, 'utf8')).maquinas || []).map(m => m.nodo) : [];
+    if (!fs.existsSync(man)) console.warn('aviso: no hay mundo.json junto al glb: sin nodos de máquinas que proteger');
+    // --luz ya es el JSON de la luz aparte: aquí el modo del mapa de luz va en --luz-ktx2
+    const argv = process.argv.map(a => (a === '--luz-ktx2' ? '--luz' : a === '--luz' ? '--luz-json' : a));
+    const { bytes: c, resumen: rc } = await comprime(bytes, { ...banderas(argv), protege });
+    fs.writeFileSync(ruta, c);
+    console.log('COMPRIME ' + JSON.stringify({ meshopt: rc.meshopt, protegidos: rc.protegidos, ktx2: rc.texturas.length, uv_float: rc.uv_float, mb: +(c.length / 2 ** 20).toFixed(1) }));
+  }
 }
