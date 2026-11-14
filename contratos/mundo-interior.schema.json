@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://gemelo.invalid/contratos/mundo-interior.schema.json",
-  "$comment": "Contrato de ENTRADA de un mundo interior (contratos/mundo-interior.md, ADR-0033, PLAN MU0-7): el manifiesto mundo.json que acompaña a su glb. JSON Schema 2020-12 estándar; lo valida ajv en tuberia/interiores/valida.js y en pruebas/guardianes/mundo_interior.test.js. Las reglas del glb (materiales estándar, sin luces ni cámaras, extensiones admitidas, presupuesto por perfil) no caben en un esquema: las comprueba el mismo validador con gltf-validator (Khronos) y @gltf-transform/core. $defs.presupuesto es la única fuente de los topes por perfil. v1.2 añade luz (el mapa de luz aparte del color) y maquinas[] (piezas con eje que mueve el motor), opcionales y aditivos (ADR-0034).",
+  "$comment": "Contrato de ENTRADA de un mundo interior (contratos/mundo-interior.md, ADR-0033, PLAN MU0-7): el manifiesto mundo.json que acompaña a su glb. JSON Schema 2020-12 estándar; lo valida ajv en tuberia/interiores/valida.js y en pruebas/guardianes/mundo_interior.test.js. Las reglas del glb (materiales estándar, sin luces ni cámaras, extensiones admitidas, presupuesto por perfil) no caben en un esquema: las comprueba el mismo validador con gltf-validator (Khronos) y @gltf-transform/core. $defs.presupuesto es la única fuente de los topes por perfil. v1.2 añade luz (el mapa de luz aparte del color) y maquinas[] (piezas con eje que mueve el motor), opcionales y aditivos (ADR-0034). v1.3 admite el glb comprimido (EXT_meshopt_compression y KHR_texture_basisu, KTX2) sin cambiar el manifiesto (ADR-0035).",
   "title": "mundo-interior",
   "type": "object",
   "required": ["v", "id", "nombre", "fuente", "licencia", "glb", "unidades", "arriba", "zonas", "puertas"],
@@ -37,8 +37,14 @@
           "movil": { "triangulos": 300000, "llamadas": 150, "texturas_mb": 96, "lado_max": 2048, "materiales": 64 },
           "pantalla": { "triangulos": 1000000, "llamadas": 400, "texturas_mb": 256, "lado_max": 4096, "materiales": 128 }
         },
-        "extensiones": ["KHR_materials_unlit", "KHR_materials_emissive_strength", "KHR_texture_transform", "KHR_mesh_quantization"],
-        "imagenes": ["image/png", "image/jpeg"]
+        "extensiones": ["KHR_materials_unlit", "KHR_materials_emissive_strength", "KHR_texture_transform", "KHR_mesh_quantization", "EXT_meshopt_compression", "KHR_texture_basisu"],
+        "imagenes": ["image/png", "image/jpeg", "image/ktx2"],
+        "ktx2_bloque": {
+          "$comment": "v1.3: bytes por bloque de 4 × 4 téxeles en la GPU de un KTX2 (Basis Universal) ya transcodificado, por perfil: el formato que elige el KTX2Loader de three 0.186 por prioridad. quest y movil: ETC1S → ETC2 RGB (8; con alfa, ETC2 RGBA, 16), UASTC → ASTC 4x4 (16). pantalla: los dos → BC7 (16). Sin ninguno de esos formatos, el aparato recibe RGBA8 (64): lo dice el validador, no lo cuenta.",
+          "quest": { "etc1s": 8, "etc1s_alfa": 16, "uastc": 16 },
+          "movil": { "etc1s": 8, "etc1s_alfa": 16, "uastc": 16 },
+          "pantalla": { "etc1s": 16, "etc1s_alfa": 16, "uastc": 16 }
+        }
       }
     },
     "licencia": {

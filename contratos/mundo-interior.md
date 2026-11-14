@@ -1,4 +1,4 @@
-# Contrato `mundo-interior` (v = 1; v1.1 añade `anclaje`, `paradas` y `fuentes`; v1.2, `luz` y `maquinas`; todo opcional)
+# Contrato `mundo-interior` (v = 1; v1.1 añade `anclaje`, `paradas` y `fuentes`; v1.2, `luz` y `maquinas`; todo opcional; v1.3, el glb comprimido)
 
 Qué tiene que entregar quien modela un interior (la bodega, la fábrica) para que entre en el gemelo. Es la frontera entre los dos ejes del [PLAN](../doc/rumbo/PLAN.md#mundos-múltiples-adr-0033): el eje B (modelado, a su ritmo) entrega un glb y un manifiesto que pasan el validador, y el eje A (el motor) los carga sin preguntar más. Decisión: [ADR-0033](../doc/adr/0033-mundos.md); interfaces del lado del motor (`World`, `Puerta`, `Ambiente`): [MUNDOS](../doc/sistema/MUNDOS.md).
 
@@ -110,10 +110,20 @@ Opcional y aditivo. Cada entrada de `maquinas[]` es una pieza rígida con su nod
 - **Autocontenido:** un solo `.glb`, sin ficheros ni direcciones externas. Pasa el validador oficial de Khronos (`gltf-validator`) sin errores; los avisos se informan.
 - **Metros y +Y arriba.** El modelo cabe en una caja de 200 m por lado; si no, casi siempre son centímetros o milímetros.
 - **Sin luces ni cámaras.** La luz va **horneada**: en el color base (v1) o en un mapa aparte (v1.2, §1d), con `KHR_materials_unlit`, que además es lo más barato en el Quest; lo que se mueve con luz propia la recibe de la sonda.
-- **Materiales estándar de glTF** (metal-rugosidad) y solo estas extensiones en v1: `KHR_materials_unlit`, `KHR_materials_emissive_strength`, `KHR_texture_transform` y `KHR_mesh_quantization`. Nada de compresión que pida un decodificador (Draco, meshopt, KTX2/Basis) ni de WebP: se abrirán cuando el motor los cargue.
-- **Imágenes:** PNG o JPEG.
+- **Materiales estándar de glTF** (metal-rugosidad) y solo estas extensiones: `KHR_materials_unlit`, `KHR_materials_emissive_strength`, `KHR_texture_transform` y `KHR_mesh_quantization`; desde v1.3, también la compresión que el motor sabe descomprimir: `EXT_meshopt_compression` (la geometría) y `KHR_texture_basisu` (texturas KTX2), con las reglas de [§2b](#2b-el-glb-comprimido-v13). Draco y WebP no ([ADR-0035](../doc/adr/0035-interiores-comprimidos-meshopt-y-ktx2.md)).
+- **Imágenes:** PNG o JPEG; desde v1.3, KTX2 (§2b).
 - **Solo triángulos**, sin esqueletos ni morph targets en v1.
 - **Animaciones:** solo mueven nodos (traslación, giro, escala). Una prensa de viga o una rueda son piezas rígidas, y basta con eso. Desde v1.2, las piezas con eje pueden ir en `maquinas[]` (§1e) en vez de en clips.
+
+## 2b. El glb comprimido (v1.3)
+
+Opcional: un glb sin comprimir sigue valiendo igual, y el manifiesto no cambia (`v` sigue siendo 1; el motor mira las extensiones del propio glb). Para qué: la fábrica 1.1 bajó de 13,0 MB a 5,6 MB de descarga y de 78,4 a 9,8 MB de texturas en la GPU del perfil quest (medida y cuenta en [ADR-0035](../doc/adr/0035-interiores-comprimidos-meshopt-y-ktx2.md)).
+
+- **La geometría, con `EXT_meshopt_compression`** (y `KHR_mesh_quantization`): el motor la descomprime con el `MeshoptDecoder` de three (WebAssembly dentro del módulo, sin peticiones). Las dos van en `extensionsRequired`: el contrato no admite el respaldo sin comprimir dentro del glb.
+- **Las texturas, en KTX2 (`KHR_texture_basisu`)**, Basis Universal ETC1S o UASTC, 2D y **con todos sus mipmaps** dentro (three no puede generarlos para una textura comprimida: sin ellos se vería negra). El color (`baseColorTexture`) y el mapa de luz (`occlusionTexture`, `texCoord` 1, §1d) van en sRGB, como sus JPEG. El motor las transcodifica con el `KTX2Loader` de three y el transcodificador Basis servido del mismo origen (`<página>/basis/`), al formato que admite la tarjeta.
+- **Las máquinas:** el origen de su nodo sigue siendo el pivote (§1e). La cuantización pone su corrección en la matriz del nodo que lleva la malla; por eso, en una máquina, la malla va en un nodo hijo sin transformación y el nodo de la máquina queda donde estaba. Lo comprueba el validador (el pivote, ±1 cm), como siempre.
+- **Lo que se comprueba:** gltf-validator (2.0.0-dev.3.10) no conoce estas dos extensiones; el validador lee la geometría con el decodificador de `meshoptimizer` (si no se descomprime, no pasa) y cada KTX2 con `ktx-parse` (Basis Universal, 2D, todos los mipmaps).
+- **Cómo se hace:** `node tuberia/interiores/blender/comprime.mjs <carpeta> <salida>` sobre una carpeta ya rematada, o `exporta.mjs … --comprime` al rematar ([README de la tubería](../tuberia/interiores/blender/README.md)). ETC1S por defecto en todo; UASTC (`--color uastc`, `--luz uastc`) donde haga falta más fidelidad.
 
 ## 3. Presupuesto por perfil (perfil objetivo: **quest**)
 
@@ -126,7 +136,7 @@ Lo que dibuja el interior entero; mientras tanto, el exterior está congelado. E
 | pantalla | 1.000.000 | 400 | 256 | 4096 | 128 |
 
 - **Triángulos y llamadas:** se cuentan por instancia en la escena, así que un nodo que repite una malla cuenta cada vez. Una llamada es una primitiva dibujada.
-- **Memoria de texturas:** RGBA8 con mipmaps (ancho × alto × 4 × 4/3). Es una estimación, no una medida de la GPU.
+- **Memoria de texturas:** una imagen PNG o JPEG, RGBA8 con mipmaps (ancho × alto × 4 × 4/3). Un KTX2 (v1.3), por bloques de 4 × 4 en cada uno de sus niveles, con los bytes por bloque del formato al que lo transcodifica three en ese perfil (`$defs.presupuesto.ktx2_bloque`): en quest y movil, ETC1S → ETC2 (8 bytes; con alfa, 16) y UASTC → ASTC 4x4 (16); en pantalla, los dos → BC7 (16). Un aparato sin ninguno de esos formatos recibe RGBA8 (64 por bloque). Es una estimación, no una medida de la GPU.
 - **Los valores son de partida [SUPUESTO], sin medir en el Quest.** El exterior de Hituelo en el escalón 3 dio 1,43 M de triángulos y un p95 de 23 ms en un Quest 3 ([MEDIDAS](../doc/sistema/MEDIDAS.md)). Por eso 300.000 deja margen. Se calibran con el visor de interiores (PLAN, MU0-8) en las gafas, y cambiarlos es cambiar este contrato: el esquema (`$defs.presupuesto`), esta tabla y el guardián, en el mismo commit.
 
 ## 4. Lo que queda abierto
@@ -134,4 +144,4 @@ Lo que dibuja el interior entero; mientras tanto, el exterior está congelado. E
 - **Sonido** de las máquinas: irá en una v2 del manifiesto, con MU4.
 - **Idiomas** de las fichas de la visita y **resaltar el nodo** de la pieza (`ancla.nodo`): cuando haga falta; hoy las fichas van en español y el ancla es un punto.
 - **Splats:** solo si pasa la prueba de humo de MU4-0 (decisión 223).
-- **Texturas comprimidas** (KTX2) y **mallas comprimidas** (meshopt): cuando el motor tenga sus decodificadores, medido en el Quest.
+- **El glb comprimido en el Quest:** la v1.3 está medida en Chrome con SwiftShader (descarga, memoria de texturas por cuenta, recuentos y tiempo de leer); en las gafas, el tiempo de transcodificar y la memoria real están **sin probar** ([ADR-0035](../doc/adr/0035-interiores-comprimidos-meshopt-y-ktx2.md)).

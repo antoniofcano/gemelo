@@ -47,3 +47,4 @@ Cada decisión con alternativas reales se escribe una vez, con su porqué y su c
 | [0032](0032-voz-por-cercania-en-la-visita-libre.md) | Voz por cercanía en la visita libre (F3k): corros con aceptación | Aceptado (210, 211 y 213; 205-209 y 212 provisionales) |
 | [0033](0033-mundos.md) | Mundos: varias salas en un solo PWA, con fronteras tipadas y migración strangler | Aceptado |
 | [0034](0034-mapa-de-luz-aparte-y-maquinas.md) | Mapa de luz aparte del color y máquinas con eje en los interiores (contrato mundo-interior v1.2) | Aceptado (la tubería y el contrato; el motor aún no lo carga) |
+| [0035](0035-interiores-comprimidos-meshopt-y-ktx2.md) | Interiores comprimidos: meshopt para la geometría y KTX2 (Basis Universal) para las texturas (contrato mundo-interior v1.3) | Propuesto (la tubería, el contrato, el validador y el motor están hechos en la rama `eje-b-compresion`; publicar la fábrica comprimida lo decide Antonio: ver «Comprobación») |
