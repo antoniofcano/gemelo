@@ -27,5 +27,20 @@ La v1.3 del contrato admite, de forma opcional, **`EXT_meshopt_compression`** (c
 - **Contrato y validador:** [`mundo_interior_comprimido.test.js`](../../pruebas/guardianes/mundo_interior_comprimido.test.js): el ejemplo sintético [`modelos/interiores/ejemplo-comprimido/`](../../modelos/interiores/ejemplo-comprimido/) (ejemplo-luz pasado por `comprime.mjs`) pasa sin avisos y su generador es determinista; la cuenta de memoria de un KTX2 es por bloques del perfil (`$defs.presupuesto.ktx2_bloque`); un KTX2 sin mipmaps, la compresión fuera de `extensionsRequired`, Draco y WebP son error; sin proteger las máquinas, la cuantización cambia la matriz de su nodo.
 - **Tubería:** `interiores_blender.test.js` (el remate no comprime; `--comprime` delega en `comprime.mjs`; sin rutas locales y con versiones fijadas).
 - **Motor:** Vitest en `apps/web/src/mundos/interior/interior.test.ts` (qué decodificadores pide un glb; el `KTX2Loader` se suelta aunque falle la lectura; sin decodificadores, un glb comprimido no entra) y [`interior_comprimido_chrome.test.js`](../../pruebas/guardianes/interior_comprimido_chrome.test.js) por el banco (CSP, mismo origen, texturas comprimidas, luz aparte y máquinas como sin comprimir, nada en memoria al salir).
-- **Medida con la fábrica real** (privada, fuera del repo; 2026-11-14): ver la tabla de abajo.
+- **Medida con la fábrica real** (privada, fuera del repo; 2026-11-14, rama `eje-b-compresion`). El glb de quest de la 1.1, sin comprimir y comprimido con `comprime.mjs` (ETC1S en todo; y con `--luz uastc`). Fichero y GPU «validador»: `valida.js` (cuenta por bloques en quest; en pantalla, BC7). Lo demás, **una vez por el banco**, en Chrome sin pantalla con **SwiftShader** (960 × 540, `?olivos=0&debug`, el exterior del fixture «hituelo», el glb servido como `/fabrica/pantalla/` con la CSP), dos repeticiones por variante: «GPU en escena» suma, tras entrar y parar las máquinas, los bytes de cada textura de la escena (comprimida: lo que sube de sus mipmaps; si no, RGBA8 × 4/3; las que comparten imagen cuentan cada vez, y 5 texturas del motor que no son del glb van en las tres) y de cada geometría (atributos e índices); «leer» es `__interior().comprimido.msLectura` (parse, descompresión, transcodificación y mapas de luz); «entrar», lo que tarda `__cambiaMundo("fabrica")` con sus fundidos. SwiftShader transcodificó ETC1S a ETC2 RGB (`0x9274`) y UASTC a ASTC 4x4 (`0x93B0`), los mismos formatos que elegiría three en el Quest.
+
+  | | sin comprimir | meshopt + ETC1S | meshopt + ETC1S, mapas de luz UASTC |
+  |---|---|---|---|
+  | glb (MiB) | 13,0 | **5,6** | 11,6 |
+  | texturas en GPU, validador, quest / pantalla (MB) | 78,4 / 78,4 | **9,8** / 19,6 | 17,0 / 19,6 |
+  | texturas en GPU en escena, SwiftShader (MB) | 97,0 | **14,4** | 23,0 |
+  | geometría en GPU en escena (MB) | 40,3 | **9,5** | 9,5 |
+  | triángulos / llamadas (glb entero) | 168.928 / 54 | igual | igual |
+  | dibujado en la vista de prueba (llamadas / triángulos) | 23 / 134.586 | igual | igual |
+  | leer el glb (ms, SwiftShader, i5) | 361 · 316 | 1258 · 635 | 903 · 962 |
+  | entrar con fundidos (ms) | 4893 · 4743 | 5794 · 3503 | 3274 · 4738 |
+  | al volver al exterior (geometrías / texturas) | 52 / 17 | 52 / 17 | 52 / 17 |
+  | errores, avisos de CSP, peticiones a otro origen | ninguno | ninguno | ninguno |
+
+  Calidad: PSNR de cada textura frente a su JPEG (transcodificada a RGBA con el Basis de three): ETC1S, de 27,1 dB (la piedra en mosaico) a 50,4; el mapa de luz de 2048, 34,8 dB (UASTC: 42,9). En el motor, la misma vista sin comprimir y con ETC1S: 43,4 y 41,5 dB en dos encuadres, y a ojo no se distinguen (lado a lado a 960 × 540; la diferencia ×8 enseña ruido de bloques de 4 × 4 en las paredes y lo que se paró en otra postura). La de pantalla comprimida: 15,3 → 8,4 MiB y 198,4 → 49,6 MB (BC7) en el validador.
 - **No probado:** el Quest y el iPhone (ni el tiempo de transcodificar, ni la memoria real, ni si se nota la pérdida de ETC1S en las gafas); los fps (SwiftShader no los da). La memoria de texturas del validador es una cuenta por bloques del formato que elegiría three, no una medida de la GPU.

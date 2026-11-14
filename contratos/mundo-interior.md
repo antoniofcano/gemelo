@@ -117,7 +117,7 @@ Opcional y aditivo. Cada entrada de `maquinas[]` es una pieza rígida con su nod
 
 ## 2b. El glb comprimido (v1.3)
 
-Opcional: un glb sin comprimir sigue valiendo igual, y el manifiesto no cambia (`v` sigue siendo 1; el motor mira las extensiones del propio glb). Para qué: la fábrica 1.1 bajó de 13,0 MB a 5,6 MB de descarga y de 78,4 a 9,8 MB de texturas en la GPU del perfil quest (medida y cuenta en [ADR-0035](../doc/adr/0035-interiores-comprimidos-meshopt-y-ktx2.md)).
+Opcional: un glb sin comprimir sigue valiendo igual, y el manifiesto no cambia (`v` sigue siendo 1; el motor mira las extensiones del propio glb). Para qué: la fábrica 1.1 bajó de 13,0 MB a 5,6 MB de descarga y de 78,4 a 9,8 MB de texturas en la GPU del perfil quest, por la cuenta del validador; 40,3 → 9,5 MB de geometría en la GPU, medido en Chrome (detalle en [ADR-0035](../doc/adr/0035-interiores-comprimidos-meshopt-y-ktx2.md)).
 
 - **La geometría, con `EXT_meshopt_compression`** (y `KHR_mesh_quantization`): el motor la descomprime con el `MeshoptDecoder` de three (WebAssembly dentro del módulo, sin peticiones). Las dos van en `extensionsRequired`: el contrato no admite el respaldo sin comprimir dentro del glb.
 - **Las texturas, en KTX2 (`KHR_texture_basisu`)**, Basis Universal ETC1S o UASTC, 2D y **con todos sus mipmaps** dentro (three no puede generarlos para una textura comprimida: sin ellos se vería negra). El color (`baseColorTexture`) y el mapa de luz (`occlusionTexture`, `texCoord` 1, §1d) van en sRGB, como sus JPEG. El motor las transcodifica con el `KTX2Loader` de three y el transcodificador Basis servido del mismo origen (`<página>/basis/`), al formato que admite la tarjeta.
