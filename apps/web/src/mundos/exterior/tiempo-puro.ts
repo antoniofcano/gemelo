@@ -166,8 +166,8 @@ export type Formatos = ReturnType<typeof creaFormatos>;
 export function num1(v: A, d?: A): string { return v == null ? "—" : Number(v).toLocaleString("es-ES", { minimumFractionDigits: d == null ? 1 : d, maximumFractionDigits: d == null ? 1 : d }); }
 export function rumbo(g: number): string { var n = ["N", "NE", "E", "SE", "S", "SO", "O", "NO"]; return n[Math.round(((g % 360) + 360) % 360 / 45) % 8] as string; }
 export function esc(s: A): string { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" } as A)[c]; }); }
-/** «hace N min» o «hace N h» desde iso, con el reloj que se dé (Date.now por defecto) */
-export function hace(iso: A, ahora?: () => number): string { if (!iso) return ""; var h = ((ahora ? ahora() : Date.now()) - Date.parse(iso)) / 3600000; return h < 1 ? "hace " + Math.max(1, Math.round(h * 60)) + " min" : "hace " + num1(h, 1) + " h"; }
+/** «hace N min», «hace N h» o «hace N días» desde iso, con el reloj que se dé (Date.now por defecto) */
+export function hace(iso: A, ahora?: () => number): string { if (!iso) return ""; var h = ((ahora ? ahora() : Date.now()) - Date.parse(iso)) / 3600000; return h < 1.5 ? "hace " + Math.max(1, Math.round(h * 60)) + " min" : h < 36 ? "hace " + Math.round(h) + " h" : "hace " + Math.round(h / 24) + " días"; }   // L3-22: los mismos umbrales que mundo-hoy, carteles e historia (min hasta 90, horas enteras hasta 36 h, luego días)
 
 // --- el reloj del mundo
 // ?hora=HH[:MM] fija la hora del reloj del mundo (hoy, hora local; el sol, el día y la noche, y con ellos la vida: la bandada solo vuela de día); ?hora=AAAA-MM-DDTHH:MM, también la fecha.

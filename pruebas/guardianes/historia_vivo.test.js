@@ -88,6 +88,8 @@ test("el aviso dice de dónde, de cuándo y si está incompleto; la atención va
   const a = P.aviso(EJEMPLO, ahora);
   assert.match(a.texto, /^Datos de PRUEBA sintéticos/); assert.match(a.texto, /hace 12 min/); assert.match(a.texto, /incompleto$/);
   assert.strictEqual(a.tipo, "parcial");
+  // L3-22: pasadas 36 h se dice en días, no «hace 100 h»
+  assert.match(P.aviso(EJEMPLO, Date.parse(EJEMPLO.consultadoEn) + 100 * 3600000).texto, /hace 4 días/);
   const real = Object.assign(copia(EJEMPLO), { origen: { ot: "olivartrack", vigia: "vigia" }, completo: true });
   assert.deepStrictEqual(P.aviso(real, ahora).tipo, "vivo"); assert.match(P.aviso(real, ahora).texto, /^En vivo · OlivarTrack, leído por el servidor hace 12 min · Vigía/);
   assert.match(P.atencion(EJEMPLO.atencion), /^Pendiente hoy en OlivarTrack: 1 incidencia grave.*\(incompleto: no es el total\)\.$/);
