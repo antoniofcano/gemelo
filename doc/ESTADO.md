@@ -82,7 +82,7 @@ Fuentes: LiDAR PNOA 3.ª cobertura (vuelo 2024), MDT 0,5 m, ortofoto PNOA 2022 (
 
 ## Pendiente
 
-- **Auditoría de noviembre** ([re-verificación del 2026-11-14](auditoria-noviembre2026/REVERIFICACION-2026-11-14-tarde.md)): sin críticos, altos ni medios abiertos; 14 aceptados firmados y 3 bajos abiertos (L1-09 y L1-12 piden medir en aparato; L10-24, una versión). Los arreglos de ese día están en `main` **sin subir**: falta la puerta pesada sobre ese árbol, el push (que estrena gitleaks en la CI) y el despliegue.
+- **Auditoría de noviembre** ([re-verificación del 2026-11-14](auditoria-noviembre2026/REVERIFICACION-2026-11-14-tarde.md)), con la ampliación a la api: sin críticos, altos ni medios abiertos; 14 aceptados firmados y 3 bajos abiertos (L1-09 y L1-12 piden medir en aparato; L10-24, una versión). Subido a GitHub y al VPS el 2026-11-15 (subida 24, migración 0028), con la puerta pesada en verde y gitleaks limpio en todo el historial (en local: la CI de GitHub no corre, la cuenta está bloqueada por facturación).
 - **Prueba en aparatos** (decisión 57): navegador, móvil y Quest, cada uno por su cuenta en Hituelo real con los olivos generados. Falta el código corto para entrar en las Quest (decisión 61).
 - **Medir 10 olivos en campo con cinta** (plantilla de `tuberia/factores_campo.py`, rama del constructor): cierra el paso a `factorR8 = 1` (decisión 48) y los factores reales del LiDAR (49).
 - Fundido entre niveles de olivos (decisión 168).

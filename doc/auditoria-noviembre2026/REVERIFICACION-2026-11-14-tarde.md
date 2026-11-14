@@ -62,8 +62,8 @@ De ellos, L5-03, L3-02 y L8-07 son medios.
 
 - **Los arreglos de la api (A-01 a A-12) y los de la segunda mirada** tienen sus pruebas en verde, pero no una revisión independiente posterior.
 - **L9-06** queda resuelto con matiz. Un expulsado que vuelve con un token anterior sale en 20 s como mucho, no al instante: cerrarlo del todo pide un webhook de LiveKit (MU3-2). No está probado contra LiveKit real.
-- **El paso de gitleaks de la CI** no se ha ejecutado nunca: se estrena en el primer push.
-- **La puerta pesada** (Docker, PostGIS, LiveKit) no se ha pasado sobre el árbol final. Las pruebas de integración nuevas de la api están escritas y sin ejecutar.
+- **El paso de gitleaks de la CI** no se ha ejecutado en GitHub (la cuenta tiene las Actions bloqueadas por facturación). La misma versión, con su suma comprobada y la configuración del repo, pasó en local el 2026-11-15 por todo el historial (1.491 commits): sin fugas.
+- **La puerta pesada** pasó en verde el 2026-11-15, tras arreglar cinco rojos (tres eran fallos reales de la api: la palabra que no vencía, el centinela que se adelantaba a la ruta de expulsar, y un fallo del cliente al salir de un corro). Subido a GitHub y al VPS (subida 24).
 - **Nada de lo de hoy se ha visto en iPhone ni en Quest.** Los cambios de interacción y de VR están probados con dobles y, en parte, en Chrome sin pantalla.
 - **Sigue sin revisar:** el constructor de olivos (`apps/web/olivo/`), `prototipos/` y lo que la auditoría de la api lista como no revisado.
 
@@ -71,9 +71,8 @@ De ellos, L5-03, L3-02 y L8-07 son medios.
 
 No hay ningún crítico, alto ni medio abierto, y los bajos están arreglados o aceptados por escrito salvo tres. Por la definición de la skill aún no es un «10 de software». Faltan:
 
-1. pasar la puerta pesada sobre este árbol;
-2. sacar la versión que cierre L10-24;
-3. medir L1-09 y L1-12 en un aparato o aceptarlos;
-4. revisar lo que queda fuera (constructor de olivos y el resto de la api).
+1. sacar la versión que cierre L10-24;
+2. medir L1-09 y L1-12 en un aparato o aceptarlos;
+3. revisar lo que queda fuera (constructor de olivos y el resto de la api).
 
 El «10 de producto» lo da el uso real en iPhone, Quest y el campo.
