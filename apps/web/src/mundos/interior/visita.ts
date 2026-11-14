@@ -10,6 +10,10 @@
 //     textContent); en VR, dos filas del panel de VR de siempre (PanelVR, pestaña «Mundo»), que se abre solo al llegar.
 //   · «Siguiente parada» gira a quien visita hacia ella (sin moverlo: en VR, como un giro por saltos); «Mirar la pieza», hacia su ancla. La última parada
 //     sigue por su puerta (parada.puerta): si lleva a un mundo que aún no está (la bodega), «próximamente».
+//   · En una visita guiada (decisiones 234 y 238; seguimiento.ts): vaA(k) abre la ficha de k desde fuera («Ir» al aviso del guía); la lectura automática
+//     se apaga (la voz del guía manda; el botón de leer sigue para quien lo quiera con cascos); y el guía tiene «Llevar al grupo a la parada N» (en
+//     pantalla, la de la ficha o la siguiente y, plegadas, todas; en VR, una fila del panel con la de la ficha o la siguiente), que pide a la api por
+//     guiada:pide el mundo y la parada.
 // three no trae tipos en el repo: lo que se usa va como T (como porton.ts).
 import type { MundoInterior, Parada } from "../../datos/contratos/mundo-interior.ts";
 import type { Pose2 } from "../../nucleo/mundos.ts";
@@ -19,6 +23,7 @@ import { creaVoz } from "./voz.ts";
 import type { Voz } from "./voz.ts";
 import { VozPuro } from "./voz-puro.ts";
 import type { LineaFicha } from "./visita-puro.ts";
+import type { GuiadaParaInterior } from "./seguimiento.ts";
 
 /** las marcas: lado (m), cota sobre el suelo (m) y cuánto crece la siguiente [SUPUESTO: a ojo, sin probar andando] */
 const LADO = 0.7, SOBRE = 0.015, CRECE = 1.35, CELDA = 128, REJILLA = 4;
@@ -41,13 +46,22 @@ export interface DepsVisita extends DepsVisitaUI {
   pose: { lee(): Pose2; pon(p: Pose2): void };
   vr(): boolean;
   existe(a: string): boolean;
+  /** el id del interior (para «Llevar al grupo»: el mundo y la parada van juntos a la api) */
+  mundo?: string;
+  /** la visita guiada (seguimiento.ts); sin ella, la visita de siempre */
+  guiada?: GuiadaParaInterior | null;
 }
 
 export function creaVisita(d: DepsVisita) {
   const V = VisitaPuro, P = (d.man.paradas || []) as Parada[], n = P.length, rec = V.creaRecorrido(P);
   let grupo: T = null, mats: T[] = [], tex: T = null, lienzo: T = null, raiz: T = null, aviso: T = null, cuerpo: T = null, pagina = 0, montada = false;
   const quitar: Array<() => void> = [];
-  const est = { ofertas: 0, empezadas: 0, abiertas: 0, giros: 0, lecturas: 0 };
+  const est = { ofertas: 0, empezadas: 0, abiertas: 0, giros: 0, lecturas: 0, impuestas: 0, llevadas: 0 };
+  // la visita guiada: ¿estás en una? (entonces, sin lectura automática) ¿eres su guía? (entonces, «Llevar al grupo»)
+  const enGuiada = (): boolean => !!(d.guiada && d.guiada.enGuiada());
+  const esGuia = (): boolean => enGuiada() && !!d.guiada && d.guiada.soyGuia();
+  /** la parada a la que el guía llevaría al grupo: la de la ficha abierta o la siguiente (−1 si ninguna) */
+  const foco = (): number => (rec.abierta() >= 0 ? rec.abierta() : rec.sig() < n ? rec.sig() : -1);
   // la lectura en voz alta (ficha abierta): la automática, apagada por defecto; al cambiar de parada o salir, se calla
   let voz: Voz | null = null, auto = false;
   const hayVoz = (): boolean => !!voz && voz.api();
@@ -99,6 +113,7 @@ export function creaVisita(d: DepsVisita) {
 
   // ---- lo que se puede hacer (los botones de pantalla y de VR llaman a lo mismo)
   function accion(a: string): void {
+    if (a.startsWith("lleva:")) { lleva(Number(a.slice(6))); return; }
     if (voz && a !== "leer" && a !== "auto" && a !== "pag+" && a !== "pag-" && a !== "mira" && a !== "puerta") voz.calla();   // cambiar de parada o de modo calla lo anterior
     if (a === "leer") { if (voz) { if (voz.leyendo()) voz.calla(); else leeFicha(); } }
     else if (a === "auto") { auto = !auto; if (auto && voz && !voz.leyendo() && abierta()) leeFicha(); }
@@ -114,6 +129,28 @@ export function creaVisita(d: DepsVisita) {
   }
   function cambia(): void { marcas(); pinta(); if (d.PanelVR && d.PanelVR.repinta) d.PanelVR.repinta(); }
 
+  // ---- la visita guiada
+  /** «Ir» al aviso del guía: la ficha de k abierta (la visita en marcha si no lo estaba); quien llama ya te ha puesto en tu puesto */
+  function vaA(k: number): boolean {
+    if (!montada) return false;
+    const ev = rec.vaA(k);
+    if (!ev) return false;
+    if (voz) voz.calla();
+    creaMarcas(); est.impuestas++; est.abiertas++; pagina = 0;
+    if (voz && auto && !enGuiada()) leeFicha();
+    if (aviso) aviso.textContent = "Parada " + (k + 1) + ": " + P[k]!.ficha.titulo;
+    if (d.vr() && d.abrePanel) d.abrePanel();
+    cambia();
+    return true;
+  }
+  /** el guía: «Llevar al grupo a la parada k» (a la api, con el mundo: si el grupo está fuera, entra y va a ella) */
+  function lleva(k: number): void {
+    if (!d.guiada || !Number.isInteger(k) || k < 0 || k >= n) return;
+    est.llevadas++;
+    const ok = d.guiada.pide(d.mundo ? { mundo: d.mundo, parada: k } : { parada: k });
+    if (aviso) aviso.textContent = ok ? "Llevas al grupo a la parada " + (k + 1) + ": " + P[k]!.ficha.titulo : "No se ha podido pedir: no estás en la visita guiada";
+  }
+
   // ---- cada fotograma (desde actualiza() del interior): ¿se llega a una parada o se aleja de la abierta?
   function cada(): void {
     if (!montada || rec.modo() !== "visita") return;
@@ -123,7 +160,7 @@ export function creaVisita(d: DepsVisita) {
     if (ev.abre !== undefined) {
       est.abiertas++; pagina = 0;
       const p = P[ev.abre]!;
-      if (voz && auto) leeFicha();
+      if (voz && auto && !enGuiada()) leeFicha();   // en la guiada, la voz del guía manda (decisión 238)
       if (aviso) aviso.textContent = "Parada " + (ev.abre + 1) + ": " + p.ficha.titulo;
       if (d.vr() && d.abrePanel) d.abrePanel();
     }
@@ -146,7 +183,7 @@ export function creaVisita(d: DepsVisita) {
     b.setAttribute("aria-label", e === "sin_voz" ? "Leer la ficha en voz alta: no hay voz en español en este navegador" : e === "leyendo" ? "Callar la lectura de la ficha" : "Leer la ficha en voz alta");
     if (e === "sin_voz") { b.disabled = true; b.setAttribute("aria-disabled", "true"); }
     caja.appendChild(b);
-    if (e === "sin_voz") return;
+    if (e === "sin_voz" || enGuiada()) return;   // en la guiada, sin lectura automática: el botón de leer sigue
     const a = el("button", VozPuro.etiquetaAuto(auto)); a.type = "button"; a.setAttribute("data-accion", "auto"); a.setAttribute("aria-pressed", auto ? "true" : "false");
     a.setAttribute("aria-label", "Leer la ficha en voz alta al llegar a cada parada");
     caja.appendChild(a);
@@ -195,6 +232,17 @@ export function creaVisita(d: DepsVisita) {
       boton(bot, "orienta", "Mirar hacia ella", true); boton(bot, "sal", "Salir de la visita");
     }
     cuerpo.appendChild(bot);
+    if (esGuia()) pintaGuia();
+  }
+  /** el guía: «Llevar al grupo a la parada N» (la de la ficha o la siguiente) y, plegadas, todas las paradas */
+  function pintaGuia(): void {
+    const g = el("div", undefined, "visita-botones"), k = foco();
+    if (k >= 0) boton(g, "lleva:" + k, "Llevar al grupo a la parada " + (k + 1), true);
+    cuerpo.appendChild(g);
+    const det = el("details"), lista = el("div", undefined, "visita-botones");
+    det.appendChild(el("summary", "Llevar al grupo a otra parada"));
+    P.forEach((p, i) => { boton(lista, "lleva:" + i, (i + 1) + " · " + p.ficha.titulo); });
+    det.appendChild(lista); cuerpo.appendChild(det);
   }
   function alPulsar(e: T): void {
     const b = e && e.target && e.target.closest ? e.target.closest("button[data-accion]") : null;
@@ -261,15 +309,22 @@ export function creaVisita(d: DepsVisita) {
     // la fila de la voz: con una ficha abierta y la API (sin voz española, un botón que lo dice y no hace nada)
     const q3 = hayVoz() ? PV.filas("mundo", {
       id: "visita-voz", orden: 6, alto: ALTO_FILA, visible: () => rec.abierta() >= 0,
-      firma: () => voz!.estado() + ":" + auto,
+      firma: () => voz!.estado() + ":" + auto + ":" + enGuiada(),
       pinta: (_cx: T, y: number, _W: T, h: T) => { h.fila("Voz (la ficha, leída)", y); },
       botones: (b: T, y: number) => {
         const e = voz!.estado();
         b("vis-voz", 250, y, 380, 64, VozPuro.etiquetaVoz(e), () => { if (e !== "sin_voz") accion("leer"); }, e === "leyendo");
-        if (e !== "sin_voz") b("vis-voz-auto", 646, y, 338, 64, VozPuro.etiquetaAuto(auto), () => accion("auto"), auto);
+        if (e !== "sin_voz" && !enGuiada()) b("vis-voz-auto", 646, y, 338, 64, VozPuro.etiquetaAuto(auto), () => accion("auto"), auto);
       },
     }) : null;
-    for (const q of [q1, q2, q3]) if (q) quitar.push(q);
+    // el guía en VR: «Llevar al grupo a la parada N» (la de la ficha o la siguiente), con el rayo y el gatillo como los demás botones del panel
+    const q4 = d.guiada ? PV.filas("mundo", {
+      id: "visita-guia", orden: 7, alto: ALTO_FILA, visible: () => esGuia() && foco() >= 0,
+      firma: () => String(foco()),
+      pinta: (_cx: T, y: number, _W: T, h: T) => { h.fila("Guía", y); },
+      botones: (b: T, y: number) => { const k = foco(); if (k >= 0) b("vis-lleva", 250, y, 734, 64, "Llevar al grupo a la parada " + (k + 1), () => lleva(k), true); },
+    }) : null;
+    for (const q of [q1, q2, q3, q4]) if (q) quitar.push(q);
     if (PV.tapa) quitar.push(PV.tapa(() => rec.abierta() >= 0));   // con la ficha en el panel, no sale la ficha con botones de otra cosa
   }
 
@@ -296,6 +351,6 @@ export function creaVisita(d: DepsVisita) {
   function estado() {
     return { ...est, modo: rec.modo(), paradas: n, siguiente: rec.sig(), abierta: rec.abierta(), pagina, marcas: grupo ? grupo.children.length : 0, marcasVisibles: !!(grupo && grupo.visible), recuadro: !!raiz, voz: voz ? { api: voz.api(), hayVoz: voz.hayVoz(), estado: voz.estado(), auto } : null };
   }
-  return { monta, cada, libera, accion, estado };
+  return { monta, cada, libera, accion, estado, vaA, repinta: cambia };
 }
 export type Visita = ReturnType<typeof creaVisita>;

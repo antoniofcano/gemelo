@@ -26,6 +26,9 @@
 // a la vez la luz difusa y los brillos (un LightProbe más el entorno sumaría dos veces la difusa: lights_fragment_end suma iblIrradiance), y salen del
 // tone mapping como los unlit (su luz ya viene «revelada» como la horneada). Sin luz, o con modo «base», todo como en v1.
 // Las máquinas (v1.2, maquinas[]): maquinas.ts (lo puro en maquinas-puro.ts); actualiza(dt) las mueve.
+// La visita guiada compartida (decisiones 233-238; deps.guiada, seguimiento.ts): el interior le ofrece sus paradas (titulos), tu puesto en el anillo de una
+// (puesto: GuiadaPuro.puesto con sus zonas), abrir su ficha (vaA) y el estado del guía (alGuiada: las máquinas y los botones). Al entrar con «Ir» desde
+// otro mundo, entra() pide la parada pendiente y te deja ya en tu puesto, a oscuras, con la ficha abierta.
 // El glb comprimido (v1.3, ADR-0035): lee() mira las extensiones del glb (InteriorPuro.extensionesGlb) y, SOLO si las usa, pide los decodificadores
 // (deps.decodificadores: import() escritos en el arranque, como el GLTFLoader): EXT_meshopt_compression → el MeshoptDecoder de three (un módulo con su
 // WebAssembly dentro, sin workers ni peticiones); KHR_texture_basisu → un KTX2Loader con el transcodificador Basis del mismo origen (<página>/basis/,
@@ -45,6 +48,9 @@ import { VisitaPuro } from "./visita-puro.ts";
 import { creaMaquinas } from "./maquinas.ts";
 import type { Maquinas } from "./maquinas.ts";
 import { MaquinasPuro } from "./maquinas-puro.ts";
+import { GuiadaPuro } from "./guiada-puro.ts";
+import type { VisitaGuiada } from "./guiada-puro.ts";
+import type { GuiadaParaInterior, InteriorGuiado } from "./seguimiento.ts";
 
 export { InteriorPuro };
 export type { PerfilInterior };
@@ -130,6 +136,8 @@ export interface DepsInterior {
   decodificadores?: DecodificadoresInterior | null;
   /** reloj en ms (performance.now), para contar lo que tarda leer el glb (con su descompresión); sin él, 0 */
   ahora?(): number;
+  /** la visita guiada compartida (seguimiento.ts); sin ella, todo como siempre */
+  guiada?: GuiadaParaInterior | null;
 }
 
 /** MUNDOS §4: el fondo de un interior (lo que se ve por un hueco o sobre el patio abierto) [SUPUESTO: a ojo, un cielo claro y neutro] */
@@ -165,7 +173,7 @@ function materialesDe(o: Nodo3D): Material3D[] { return !o.material ? [] : Array
 export function creaInterior(deps: DepsInterior): MundoBase & {
   readonly sala: null; readonly marco: "local"; presupuesto(p: { clase: "pantalla" } | { clase: "vr"; nivel: number }): { triangulos: number; llamadas: number; puntos: number; texturasMb: number };
   ambiente(): Ambiente; estado(): EstadoInterior; visita(): Visita | null; maquinas(): Maquinas | null;
-} {
+} & InteriorGuiado {
   const P = InteriorPuro, id = deps.id;
   let man: MundoInterior | null = null, raiz: Nodo3D | null = null, zonas: Zonas | null = null, puertas: PuertaPose[] = [], vigia: ReturnType<typeof P.creaVigia> | null = null;
   let luces: Array<LuzAmbiente & { dispose?(): void }> | null = null, colgado = false, liberado = false;
@@ -334,13 +342,25 @@ export function creaInterior(deps: DepsInterior): MundoBase & {
     if (deps.visita && deps.pose && man.paradas) {
       const err = VisitaPuro.valida(man);
       if (err.length) { if (deps.consola) deps.consola.warn("[interior " + id + "] sin visita: " + err.join("; ")); }
-      else { visita = creaVisita({ ...deps.visita, man, escena: deps.escena, pose: deps.pose, vr: deps.vr, existe: deps.existe }); visita.monta(); }
+      else { visita = creaVisita({ ...deps.visita, man, escena: deps.escena, pose: deps.pose, vr: deps.vr, existe: deps.existe, mundo: id, guiada: deps.guiada || null }); visita.monta(); }
+    }
+    // la visita guiada: si se viene con «Ir» a una parada de este mundo, al puesto de cada uno (aún a oscuras) y con su ficha abierta
+    const k = deps.guiada ? deps.guiada.pendiente(id) : null;
+    if (k !== null && visita && deps.pose) {
+      const q = puesto(k, deps.guiada!.identidad());
+      if (q) { deps.pose.pon(q); if (vigia) vigia.arma(q.x, q.y); }
+      visita.vaA(k);
     }
     // las máquinas: en marcha (salvo reducir movimiento) y su interruptor, con lo de la UI de la visita (documento y panel de VR)
     if (maquinas) {
       const v = deps.visita, r = deps.reducido;
-      maquinas.monta({ documento: v ? v.documento : null, PanelVR: v && v.PanelVR ? v.PanelVR : null, ...(r ? { reducido: r } : {}) });
+      maquinas.monta({ documento: v ? v.documento : null, PanelVR: v && v.PanelVR ? v.PanelVR : null, ...(r ? { reducido: r } : {}), guiada: deps.guiada || null, ...(deps.aviso ? { aviso: deps.aviso } : {}) });
     }
+  }
+  /** la visita guiada: tu puesto en el anillo de la parada k (las zonas de este interior), o null */
+  function puesto(k: number, identidad: string): Pose2 | null {
+    const p = man && man.paradas ? man.paradas[k] : undefined;
+    return p && zonas ? GuiadaPuro.puesto(p, identidad, (x, y) => zonas!.dentro(x, y)) : null;
   }
   function sueltaVisita(): void { if (visita) { visita.libera(); visita = null; } }
 
@@ -422,6 +442,11 @@ export function creaInterior(deps: DepsInterior): MundoBase & {
     visita: (): Visita | null => visita,
     /** v1.2: las máquinas (para las pruebas y ?debug: __maquinas) */
     maquinas: (): Maquinas | null => maquinas,
+    // la visita guiada compartida (seguimiento.ts): solo con la visita montada (dentro y con paradas)
+    titulos: (): string[] => (visita && man && man.paradas ? man.paradas.map(p => p.ficha.titulo) : []),
+    puesto: (k: number, identidad: string): Pose2 | null => (visita ? puesto(k, identidad) : null),
+    vaA: (k: number): boolean => (visita ? visita.vaA(k) : false),
+    alGuiada(v: VisitaGuiada | null): void { if (maquinas && colgado) maquinas.alGuiada(v); if (visita) visita.repinta(); },
   };
 }
 export type Interior = ReturnType<typeof creaInterior>;

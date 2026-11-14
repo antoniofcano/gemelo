@@ -85,3 +85,25 @@ describe("MaquinasPuro.creaMarcha", () => {
     expect(max).toBeLessThanOrEqual(0.3 + 1e-12); expect(max).toBeGreaterThan(0.29);
   });
 });
+
+describe("la marcha de la visita guiada (fija, aCero, sincroniza)", () => {
+  it("fija(t) deja las fases de quien arrancó desde parado hace t s (la rampa, como rampa/2 s a toda marcha)", () => {
+    const ref = M.creaMarcha(EJ), otra = M.creaMarcha(EJ);
+    ref.objetivo(true); for (let i = 0; i < 400; i++) ref.avanza(0.025);   // 10 s con su rampa
+    otra.fija(10);
+    expect(otra.enMarcha()).toBe(true); expect(otra.marcha()).toBe(1);
+    for (let i = 0; i < EJ.length; i++) { expect(otra.valor(i)).toBeCloseTo(ref.valor(i), 1); expect(otra.valorV(i)).toBeCloseTo(ref.valorV(i), 1); }   // la rampa en pasos de 25 ms: menos de 1° de diferencia
+  });
+  it("fija con t menor que media rampa deja las fases en cero; aCero solo pone a cero si está parada", () => {
+    const m = M.creaMarcha([giro()]);
+    m.fija(0.2); expect(m.valor(0)).toBe(0);
+    m.avanza(1); expect(m.valor(0)).toBeGreaterThan(0);
+    m.aCero(); expect(m.valor(0)).toBeGreaterThan(0);
+    m.objetivo(false); for (let i = 0; i < 100; i++) m.avanza(0.05);
+    m.aCero(); expect(m.valor(0)).toBe(0);
+  });
+  it("sincroniza: hace rato, fija; recién puesta, desde cero si estaba parada y sin salto si ya se movía", () => {
+    expect(M.sincroniza(0, 60)).toBe("fija"); expect(M.sincroniza(1, 3.1)).toBe("fija");
+    expect(M.sincroniza(0, 0.4)).toBe("cero"); expect(M.sincroniza(0.5, 0.4)).toBe("nada");
+  });
+});

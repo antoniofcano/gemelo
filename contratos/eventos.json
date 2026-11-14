@@ -313,6 +313,49 @@
         "mundos/comun/presencia"
       ]
     },
+    "guiada:pide": {
+      "descripcion": "Visita compartida (decisiones 233-238): el guía pide desde el interior un cambio de la visita para todo el grupo («Llevar al grupo a la parada N» en la ficha o en el panel de VR; «Máquinas para todos» en el interruptor de las máquinas). Lo atiende la guiada de la interfaz (ui/guiada), que lo lleva a POST /api/presencia/guiadas/:evento/visita con el mismo cuerpo; el resultado vuelve a todos por guiada:visita. Sin nadie que escuche, el interior dice que no se ha podido pedir.",
+      "datos": {
+        "type": "object",
+        "additionalProperties": false,
+        "minProperties": 1,
+        "properties": {
+          "mundo": {
+            "enum": [
+              "exterior",
+              "patios",
+              "fabrica"
+            ]
+          },
+          "parada": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 63
+          },
+          "maquinas": {
+            "type": "object",
+            "required": [
+              "marcha"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "marcha": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      },
+      "emiten": [
+        "mundos/interior/seguimiento"
+      ],
+      "escuchan": [
+        "ui/guiada"
+      ]
+    },
     "guiada:palabra": {
       "descripcion": "F3f: en la sala guiada cambia quién tiene la palabra (leído del atributo palabra_hasta que pone la api): identidad (\"\" si ya nadie), los segundos que le quedan al empezar y si eres tú. La tira, la cuenta atrás y los avisos ya los pone 46_guiada; es para quien quiera reaccionar (F3e: el botón Hablar, la háptica).",
       "datos": {
@@ -420,7 +463,7 @@
       "emiten": [
         "mundos/comun/presencia"
       ],
-      "escuchan": []
+      "escuchan": ["mundos/interior/seguimiento", "ui/guiada"]
     },
     "habla:alterna": {
       "descripcion": "EV2-A4: el botón «Hablar» de lo tuyo en pantalla (HUD; EV2-A3: y el de la muñeca en VR): abre o cierra el micrófono de esta sesión, como el botón de la caja de la visita guiada en modo «pulsar» (con su aviso de voz si falta el consentimiento). Fuera de una visita guiada, o sin la palabra, nadie hace nada.",
@@ -730,7 +773,9 @@
       ],
       "escuchan": [
         "mundos/interior/porton",
-        "nucleo/componentes"
+        "mundos/interior/seguimiento",
+        "nucleo/componentes",
+        "ui/guiada"
       ]
     },
     "mundo:hoy": {

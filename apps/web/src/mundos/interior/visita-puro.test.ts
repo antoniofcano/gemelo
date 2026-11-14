@@ -179,3 +179,48 @@ describe("la visita en VR, con dobles", () => {
     expect(b.abiertos()).toBe(0);
   });
 });
+
+describe("la visita guiada en el recorrido y en la visita (vaA, lectura automática, «Llevar al grupo»)", () => {
+  const P = MAN.paradas!;
+  it("Recorrido.vaA: abre k desde fuera (también en la oferta), cierra la que hubiera y la siguiente es la de después; k que no existe, null", () => {
+    const r = V.creaRecorrido(P);
+    expect(r.vaA(1)).toMatchObject({ abre: 1, cierra: undefined });
+    expect(r.modo()).toBe("visita"); expect(r.abierta()).toBe(1); expect(r.sig()).toBe(2); expect(r.vista(1)).toBe(true);
+    expect(r.vaA(0)).toMatchObject({ abre: 0, cierra: 1 });
+    expect(r.vaA(9)).toBeNull(); expect(r.vaA(-1)).toBeNull(); expect(r.vaA(0.5)).toBeNull();
+    // desarmada hasta alejarse: quedarse en ella no la reabre ni la cierra
+    expect(r.paso(P[0]!.pos[0], -P[0]!.pos[2])).toBeNull(); expect(r.abierta()).toBe(0);
+  });
+  function conGuiada(guia: boolean) {
+    const filas: Record<string, any> = {}, pedidas: unknown[] = [], pp: Pose2 = { x: 0, y: 1.5, ang: 0 };
+    let leidas = 0;
+    const synth = { speaking: false, getVoices: () => [{ lang: "es-ES", name: "x", localService: true }], speak: () => { leidas++; }, cancel() {}, addEventListener() {}, removeEventListener() {} };
+    const guiada = { enGuiada: () => true, soyGuia: () => guia, estado: () => null, pendiente: () => null, identidad: () => "x", pide: (c: unknown) => { pedidas.push(c); return true; } };
+    const v = creaVisita({
+      man: copia(MAN), THREE: null, documento: null, PanelVR: { filas: (_p: string, f: any) => { filas[f.id] = f; return () => { delete filas[f.id]; }; } }, abrePanel() {},
+      escena: { add() {}, remove() {} }, pose: { lee: () => pp, pon: p => { Object.assign(pp, p); } }, vr: () => true, existe: () => false,
+      voz: { synth, Utterance: function (this: any, t: string) { this.text = t; } }, mundo: "fabrica", guiada,
+    });
+    const botones = (id: string) => { const B: any[] = []; if (filas[id]) filas[id].botones((bid: string, _x: number, _y: number, _w: number, _h: number, txt: string, fn: () => void) => B.push({ id: bid, txt, fn }), 0); return B; };
+    return { v, filas, pedidas, botones, leidas: () => leidas };
+  }
+  it("vaA abre la ficha; en la guiada no hay lectura automática (el botón de leer sigue)", () => {
+    const b = conGuiada(false); b.v.monta();
+    expect(b.v.vaA(1)).toBe(true);
+    expect(b.v.estado()).toMatchObject({ modo: "visita", abierta: 1, impuestas: 1 });
+    const ids = b.botones("visita-voz").map(q => q.id);
+    expect(ids).toContain("vis-voz"); expect(ids).not.toContain("vis-voz-auto");
+    expect(b.leidas()).toBe(0);
+    expect(b.filas["visita-guia"].visible()).toBe(false);   // la familia no lleva al grupo
+  });
+  it("el guía en VR: «Llevar al grupo a la parada N» (la de la ficha o la siguiente), que pide el mundo y la parada", () => {
+    const b = conGuiada(true); b.v.monta();
+    expect(b.filas["visita-guia"].visible()).toBe(true);
+    expect(b.botones("visita-guia").map(q => q.txt)).toEqual(["Llevar al grupo a la parada 1"]);
+    b.v.vaA(1);
+    const q = b.botones("visita-guia")[0]; expect(q.txt).toBe("Llevar al grupo a la parada 2"); q.fn();
+    expect(b.pedidas).toEqual([{ mundo: "fabrica", parada: 1 }]);
+    b.v.accion("lleva:2"); b.v.accion("lleva:7");
+    expect(b.pedidas).toEqual([{ mundo: "fabrica", parada: 1 }, { mundo: "fabrica", parada: 2 }]);
+  });
+});

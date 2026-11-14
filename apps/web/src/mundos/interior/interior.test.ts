@@ -198,7 +198,7 @@ describe("guardianes del interior (MUNDOS §8; regla 13)", () => {
     expect(ComponentesPuro.MUNDOS).toContain("patios"); expect(ComponentesPuro.MUNDOS).toContain("fabrica");
   });
   it("interiores sin sombreadores propios: el mundo interior no escribe onBeforeCompile, ShaderMaterial, RawShaderMaterial ni NodeMaterial (ADR-0033 §5)", () => {
-    expect(Object.keys(fuentes).sort()).toEqual(["./cableado.ts", "./index.ts", "./maquinas-puro.ts", "./maquinas.ts", "./porton.ts", "./puro.ts", "./visita-puro.ts", "./visita.ts", "./voz-puro.ts", "./voz.ts"]);
+    expect(Object.keys(fuentes).sort()).toEqual(["./cableado.ts", "./guiada-puro.ts", "./index.ts", "./maquinas-puro.ts", "./maquinas.ts", "./porton.ts", "./puro.ts", "./seguimiento.ts", "./visita-puro.ts", "./visita.ts", "./voz-puro.ts", "./voz.ts"]);
     for (const [f, txt] of Object.entries(fuentes)) expect(txt.replace(/\/\/.*$/gm, ""), f).not.toMatch(/onBeforeCompile|ShaderMaterial|RawShaderMaterial|NodeMaterial/);
   });
 });
