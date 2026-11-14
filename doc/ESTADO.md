@@ -62,7 +62,7 @@ Fuentes: LiDAR PNOA 3.ª cobertura (vuelo 2024), MDT 0,5 m, ortofoto PNOA 2022 (
 
 ## No probado (honesto)
 
-- **Interiores (eje B)** en Quest e iPhone: fábrica y patios, máquinas, luz aparte, visita y su lectura en voz alta; solo Chrome sin pantalla. La visita guiada compartida, solo en tres Chrome con LiveKit y micrófono simulado: sin audio real, sin VR y con la familia que sigue al guía guardando ~20 geometrías de más en la GPU tras la primera vuelta (no crece; sin explicar). Dentro de la fábrica los VRM se ven oscuros (sin luces de escena).
+- **Interiores (eje B)** en Quest e iPhone: fábrica y patios, máquinas, luz aparte, visita y su lectura en voz alta; solo Chrome sin pantalla. La visita guiada compartida, solo en tres Chrome con LiveKit y micrófono simulado: sin audio real y sin VR. Los VRM dentro de los interiores, «sin luz» (emisivo), vistos solo en Chrome sin pantalla.
 - **Aparatos reales**: fps, comodidad y mareo en iPhone, Android y Quest (avatares VRM, voz, panel VR, mandos, escalera de olivos, juego en VR); Firefox y Safari.
 - **Servicios reales**: Vigía y OlivarTrack sin tokens (todo con grabaciones y datos sintéticos; [contratos/mcp.md](../contratos/mcp.md)), correo real de OVH (solo Mailpit), llaves de acceso físicas, LiveKit fuera del equipo.
 - **VPS sin copias automáticas ni `age`/`rclone` reales** (V2b), ni el RUNBOOK ensayado fuera de local.

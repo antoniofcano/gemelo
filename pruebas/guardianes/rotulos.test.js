@@ -8,7 +8,11 @@ const path = require("path"), { pathToFileURL } = require("url");
 const { lee, ficheros, RAIZ } = require("./_util");
 
 const PL = lee("apps/web/plantilla.html");
-const FUENTES = ficheros().filter(f => /^(apps\/web\/(motor|oficina)\/[^/]+\.(js|html)|apps\/web\/plantilla\.html|apps\/api\/src\/.+\.ts)$/.test(f));
+// el cliente vive en apps/web/src/ desde A3-8c (motor/ ya no existe: hasta el 2026-11-14 esta regla no miraba el código del cliente; re-verificación de la auditoría)
+const FUENTES = ficheros().filter(f => /^(apps\/web\/src\/.+\.ts|apps\/web\/oficina\/[^/]+\.(js|html)|apps\/web\/plantilla\.html|apps\/api\/src\/.+\.ts)$/.test(f) && !/\.test\.ts$/.test(f));
+test("la regla mira el código de verdad: hay fuentes del cliente (apps/web/src) entre las que revisa", () => {
+  assert.ok(FUENTES.filter(f => f.startsWith("apps/web/src/")).length > 50, "pocas fuentes del cliente: ¿se ha movido apps/web/src?");
+});
 
 test("plantilla.html no lleva cifras de hectáreas ni de olivos escritas a mano (la cabecera sale del índice)", () => {
   const malas = [...PL.matchAll(/\d[\d.,]*\s*(?:ha\b|hect[áa]reas|olivos)/gi)].map(m => m[0]);

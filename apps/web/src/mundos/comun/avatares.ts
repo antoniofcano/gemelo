@@ -342,6 +342,30 @@ export function creaAvatares(dp: DepsAvatares, n?: any, Presencia?: any) {
     materiales.encadena(m, MATERIAL_VRM_FUNDIDO, parcheVrmFundido(uni), MATERIAL_VRM_FUNDIDO);
     m.needsUpdate = true;
   }
+  // ADR-0036: dentro de un interior la luz va horneada y su Ambiente puede no traer luces (la fábrica: solo el entorno de la sonda, y MToon no lee envMap), y el VRM
+  // saldría negro. Una luz global no vale: sumaría dos veces la difusa de las máquinas con luz propia (ADR-0034). Como los muñecos (MeshBasicMaterial), el VRM pasa a
+  // «sin luz»: su color y su mapa van al emisivo y el color difuso a negro, así sale igual con o sin luces (en los patios la ambiental ya no lo dobla). Al salir, como estaba.
+  // Cambiar el emissiveMap recompila el programa una vez por material (no por fotograma). Ilustrativo: el VRM no recibe la luz horneada del sitio.
+  var sinLuz: any = false;
+  function luzHorneada(m?: any, si?: any) {
+    if (!m || !m.color || !m.emissive || !("emissiveMap" in m)) return;
+    var g: any = m.userData.vrmLuz;
+    if (si && !g) {
+      m.userData.vrmLuz = { color: m.color.getHex(), emisivo: m.emissive.getHex(), mapa: m.emissiveMap || null, k: m.emissiveIntensity };
+      m.emissive.copy(m.color); m.color.setHex(0); m.emissiveIntensity = 1;
+      if (m.emissiveMap !== (m.map || null)) { m.emissiveMap = m.map || null; m.needsUpdate = true; }
+    } else if (!si && g) {
+      m.color.copy(m.emissive); m.emissive.setHex(g.emisivo); m.emissiveIntensity = g.k;
+      if (m.emissiveMap !== g.mapa) { m.emissiveMap = g.mapa; m.needsUpdate = true; }
+      delete m.userData.vrmLuz;
+    }
+  }
+  function ponSinLuz(si?: any) {
+    if (!!si === sinLuz) return;
+    sinLuz = !!si;
+    function cada(inst?: any) { if (inst) inst.vrm.scene.traverse(function (o?: any) { if (o.isMesh) [].concat(o.material).forEach(function (m?: any) { luzHorneada(m, sinLuz); }); }); }
+    regs.forEach(function (r?: any) { cada(r.inst); }); if (mio) cada(mio.inst);
+  }
   function monta(e?: any, vrm?: any, compartida?: any) {
     var id: any = e.id, raiz: any = new THREE.Group(), giro: any = new THREE.Group(), h: any = {}, uni: any = { value: 0 };
     raiz.name = "vrm:" + id; giro.rotation.y = Math.PI;   // el VRM está vuelto hacia +Z; el muñeco y los ejes del motor, a −Z
@@ -352,7 +376,7 @@ export function creaAvatares(dp: DepsAvatares, n?: any, Presencia?: any) {
     // (v2) van a su tamaño de verdad (MPFB, en metros: cada edad con su altura, criterio C1) por la altura de la receta (viste)
     var s: any = e.cuerpo ? 1 : 1.5 / Math.max(0.3, yCab);
     giro.scale.setScalar(s); giro.add(vrm.scene); raiz.add(giro);
-    vrm.scene.traverse(function (o?: any) { if (o.isMesh) { o.frustumCulled = false; [].concat(o.material).forEach(function (m?: any) { parcheFundido(m, uni); }); } });   // el volumen de una malla con esqueleto es el de reposo
+    vrm.scene.traverse(function (o?: any) { if (o.isMesh) { o.frustumCulled = false; [].concat(o.material).forEach(function (m?: any) { parcheFundido(m, uni); if (sinLuz) luzHorneada(m, true); }); } });   // el volumen de una malla con esqueleto es el de reposo
     raiz.visible = false;
     return { id: id, vrm: vrm, raiz: raiz, giro: giro, h: h, s: s, yCad: yCad, L: yCad * s, cadera0: h.hips ? h.hips.position.y : 0, v0: !!(vrm.meta && vrm.meta.metaVersion === "0"), uni: uni, blink: {}, boca: {}, sinAa: null, compartida: compartida,
       cuerpo: !!e.cuerpo, conMirada: !e.cuerpo || e.mirada !== "ninguna" };
@@ -372,7 +396,7 @@ export function creaAvatares(dp: DepsAvatares, n?: any, Presencia?: any) {
       if (pieza === o) o.visible = !!pz.mallas[o.userData.name];
       if (!o.isMesh) return;
       [].concat(o.material).forEach(function (m?: any) {
-        var c: any = AvataresPuro.colorMaterial(m.name, col, pz.colorSombrero); if (c != null && m.color) m.color.setHex(c);
+        var c: any = AvataresPuro.colorMaterial(m.name, col, pz.colorSombrero); if (c != null && m.color) (m.userData.vrmLuz ? m.emissive : m.color).setHex(c);   // sin luz, el color va en el emisivo
         if (!pieza && /^ropa_/.test(m.name)) o.visible = !pz.cubre;   // con la ropa de faena, la ropa base del cuerpo (que va debajo) no se dibuja
       });
     });
@@ -604,7 +628,7 @@ export function creaAvatares(dp: DepsAvatares, n?: any, Presencia?: any) {
     materiales.libera();   // lo que la fábrica guarde aún de este dueño (los VRM ya soltados salen solos de su lista)
   }
   gVrm = new THREE.Group(); gVrm.name = "avatares-vrm"; gVrm.userData.deTodoMundo = true; scene.add(gVrm);   // ADR-0036: congelar el exterior no lo oculta (lo decide la presencia)
-  var gancho: any = { muestra: function (v?: any) { if (gVrm) gVrm.visible = !!v; }, coloca: coloca, oculta: oculta, sale: quitaReg, actualiza: actualiza, estado: estado, libera: libera };
+  var gancho: any = { muestra: function (v?: any) { if (gVrm) gVrm.visible = !!v; }, sinLuz: ponSinLuz, coloca: coloca, oculta: oculta, sale: quitaReg, actualiza: actualiza, estado: estado, libera: libera };
   Presencia.enganchaVRM(gancho);   // la presencia llama a coloca/oculta/sale por cada persona y a actualiza al final de su fase
   return gancho;
 }

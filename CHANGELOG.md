@@ -339,6 +339,8 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 
 
 ### Corregido
+- Avatares VRM dentro de los interiores: en la fábrica (sin luces de escena: su luz es horneada y la de las máquinas viene de la sonda) se veían casi negros. Ahora, como los muñecos, van «sin luz» mientras se está dentro: su color y su textura pasan al emisivo y salen igual con o sin luces; al salir, como estaban. Comprobado en Chrome sin pantalla (materiales y captura); iPhone y Quest sin probar.
+- La e2e de la visita guiada compartida ya no da por buena una memoria de GPU «parecida» al volver: un inventario de lo subido a la GPU mostró que las ~20 geometrías de más de quien sigue al guía eran contenido del exterior recargado (olivos y carteles de haza a la vista), no restos del interior; ahora la prueba exige que nada nuevo quede vivo fuera de la escena.
 - El validador de interiores lee las extensiones del trozo JSON del glb: una extensión no admitida que gltf-validator no conoce ya no pasa sin error.
 - Presencia: dentro de un interior (patios, fábrica) ya no se publica la pose con las coordenadas del interior a la sala del exterior (quien estaba fuera veía un «fantasma» cerca del origen de la finca) ni se dibuja a nadie; al volver al exterior se reanuda. La visita compartida en los interiores queda para su ADR. Deducido y probado en Vitest y Node; navegador, Quest e iPhone, no probados.
 - `?fecha=AAAA-MM-DD` ya no salta al día siguiente entre las 23:00 y las 24:00 cuando el día pedido tiene otro horario (invierno ↔ verano): se corrige la hora del cambio. Lo destapó la puerta rápida pasada a medianoche; prueba con el reloj fijado.

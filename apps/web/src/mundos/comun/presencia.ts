@@ -867,7 +867,7 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
   if (variante) registraPersona();
 
   // ADR-0036: dentro de un interior la luz va horneada (materiales sin luz) y su Ambiente puede no traer luces (la fábrica: una sonda solo para lo PBR): los muñecos
-  // Lambert se verían negros. Se cambian a MeshBasicMaterial con el mismo color por instancia (instanceColor), y de vuelta al salir. Los VRM conservan su MToon (anotado).
+  // Lambert se verían negros. Se cambian a MeshBasicMaterial con el mismo color por instancia (instanceColor), y de vuelta al salir. Los VRM conservan su MToon, sin luz (avatares.ts, ponSinLuz).
   function ponSinLuz(si?: any) {
     if (!!si === sinLuz || !mCuerpo) return;
     sinLuz = !!si;
@@ -878,6 +878,7 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
   function actualiza(dt?: any) {
     if (!activo) return;
     var t0: any = performance.now(), tMs: any = Math.round(t0), nc: any = 0, i: any;
+    if (vrmG && vrmG.sinLuz) vrmG.sinLuz(!enExterior());   // los VRM, sin luz en un interior (avatares.ts: color y mapa al emisivo); antes de aqui(): el tuyo se ve también fuera de una guiada
     if (!aqui()) {   // T0: dentro de un interior fuera de una guiada (o mientras se cambia de mundo) no se dibuja a nadie (los grupos, también el de los VRM, ocultos); la red sigue su tic sin pose y Gente se repinta
       if (fueraOculto !== true) { fueraOculto = true; if (grupo) grupo.visible = false; if (vrmG && vrmG.muestra) vrmG.muestra(false); }
       if (variante === "red") { SalaPose.tic(SP, t0, null); tGente += dt; if (tGente >= 0.5) { tGente = 0; pintaGente(t0); } }

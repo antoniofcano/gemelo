@@ -130,6 +130,30 @@ test("e2e T9: la visita guiada compartida en los interiores con tres Chrome (gu�
         pg.on("response", r => { if (r.status() >= 400 && /\/teselas\//.test(r.url())) errores.push(nombre + " HTTP " + r.status() + " " + r.url().slice(0, 120)); });
         await pg.goto(base + "/finca/?presencia=red&olivos=0");
         await pg.waitForFunction(() => window.__g && window.__g.listo() && window.__agenda && window.__presencia, null, { timeout: 300000, polling: 1000 });
+        // el inventario de la GPU (diagnóstico de la memoria): three, al subir una geometría o una textura, le pone una escucha «dispose» y se la quita al soltarla;
+        // se engancha el addEventListener/removeEventListener del prototipo común (EventDispatcher) y se apunta quién la subió (las líneas de la pila) hasta que se suelta
+        await pg.evaluate(() => {
+          let pr = Object.getPrototypeOf(window.__g.scene); while (pr && !Object.prototype.hasOwnProperty.call(pr, "addEventListener")) pr = Object.getPrototypeOf(pr);
+          const vivas = new Map(), add = pr.addEventListener, rem = pr.removeEventListener;
+          const clase = o => o.isBufferGeometry ? "geo " + o.type : o.isTexture ? "tex " + (o.isRenderTargetTexture ? "rt" : o.isCanvasTexture ? "canvas" : o.isDataTexture ? "data" : o.isCompressedTexture ? "comprimida" : "img") + (o.name ? " " + o.name : "") : null;
+          pr.addEventListener = function (t, f) {
+            const c = t === "dispose" && clase(this);
+            if (c && !vivas.has(this.uuid)) vivas.set(this.uuid, { c, pila: String(new Error().stack).split("\n").slice(2, 9).map(s => s.trim().replace(/https?:\/\/[^/]+/, "").slice(0, 110)).join(" < ") });
+            return add.call(this, t, f);
+          };
+          pr.removeEventListener = function (t, f) { if (t === "dispose" && vivas.has(this.uuid)) vivas.delete(this.uuid); return rem.call(this, t, f); };
+          // dónde cuelga cada una en la escena (la ruta de nombres del objeto que la usa), o «fuera de la escena»; y el tamaño de los lienzos
+          const donde = () => {
+            const r = new Map(), ruta = o => { const n = []; for (let p = o; p && n.length < 6; p = p.parent) n.push(p.name || p.type); return n.reverse().join("/"); };
+            window.__g.scene.traverse(o => {
+              if (o.geometry) r.set(o.geometry.uuid, ruta(o) + (o.visible ? "" : " (oculto)"));
+              for (const mt of [].concat(o.material || [])) for (const k in mt) { const t = mt[k]; if (t && t.isTexture) r.set(t.uuid, ruta(o) + " ." + k); }
+            });
+            return r;
+          };
+          window.__invGeo = { foto: () => [...vivas.keys()], nuevas: antes => { const a = new Set(antes), d = donde(), m = {}; for (const [k, v] of vivas) if (!a.has(k)) { const c = v.c + " @ " + (d.get(k) || "fuera de la escena"); m[c] = (m[c] || 0) + 1; } return m; } };
+          pr.addEventListener = (function (f0) { return function (t, f) { const r = f0.call(this, t, f); const v = vivas.get(this.uuid); if (v && this.isTexture && this.image && this.image.width && !v.tam) { v.tam = this.image.width + "×" + this.image.height; v.c += " " + v.tam; } return r; }; })(pr.addEventListener);
+        });
         const llama = (f, a) => pg.evaluate(([n, a]) => Promise.resolve(window[n] ? window[n](a) : null), [f, a]);
         return { nombre, ctx, pg, errores, pres: () => llama("__presencia"), puntos: () => pg.evaluate(() => window.__presencia("puntos")), vis: a => llama("__visita", a), maq: a => llama("__maquinas", a),
           seg: a => llama("__seguimiento", a), voz: a => llama("__voz", a), gui: () => llama("__guiada"), int: () => llama("__interior"), gesto: () => pg.mouse.click(5, 5),
@@ -182,6 +206,7 @@ test("e2e T9: la visita guiada compartida en los interiores con tres Chrome (gu�
         for (const X of [A, B]) await hasta(async () => (await X.voz()).voces === 1, 45000, X.nombre + " oye a la guía");
         await asienta();
         memAntes = { G: await G.mide(), A: await A.mide(), B: await B.mide() };
+        for (const X of Xs) X.invAntes = await X.pg.evaluate(() => window.__invGeo.foto());
         tt.diagnostic("memoria de GPU de partida " + JSON.stringify({ G: memAntes.G, A: memAntes.A, B: memAntes.B }));
       });
 
@@ -302,6 +327,8 @@ test("e2e T9: la visita guiada compartida en los interiores con tres Chrome (gu�
         await espera(8000);
         const mem2 = { G: await G.mide(), A: await A.mide(), B: await B.mide() };
         tt.diagnostic("memoria de GPU 8 s después " + JSON.stringify(mem2));
+        const nuevas = {};
+        for (const X of Xs) { nuevas[X.nombre] = await X.pg.evaluate(a => window.__invGeo.nuevas(a), X.invAntes); tt.diagnostic("geometrías y texturas subidas tras la partida y aún vivas en " + X.nombre + " (qué @ dónde cuelga: cuántas): " + JSON.stringify(nuevas[X.nombre])); }
         // segunda vuelta (entrar en la fábrica y salir otra vez): lo que sea carga perezosa se queda igual; una fuga sigue creciendo
         for (const X of Xs) { const r = await X.pg.evaluate(() => window.__cambiaMundo("fabrica").then(r => r.ok)); assert.ok(r); }
         for (const X of Xs) await hasta(async () => (await X.int()).colgado, 60000, "otra vez dentro en " + X.nombre);
@@ -313,13 +340,17 @@ test("e2e T9: la visita guiada compartida en los interiores con tres Chrome (gu�
         const mem3 = { G: await G.mide(), A: await A.mide(), B: await B.mide() };
         tt.diagnostic("memoria de GPU tras la segunda vuelta " + JSON.stringify(mem3));
         for (const k of ["G", "A", "B"]) assert.deepStrictEqual({ g: mem3[k].geometrias, t: mem3[k].texturas }, { g: mem2[k].geometrias, t: mem2[k].texturas }, "la segunda vuelta no suma memoria de GPU en " + k + " (no hay fuga)");
-        // Al volver al exterior, lo del interior se suelta, pero el exterior no es idéntico al de partida: su carga por teselas (olivos, LOD) varía entre una medida y otra
-        // (la partida de la guía varió entre 86 y 93 geometrías en cinco pasadas, sin interior de por medio). Por eso la prueba exacta es la segunda vuelta (arriba: no suma
-        // nada) y la primera se acota: la de A (que sigue a la guía con «Ir» y abre la visita) volvió con +17..+22 geometrías y +3..+4 texturas, sin localizar su causa (pendiente).
-        for (const k of ["G", "A", "B"]) {
-          const dg = mem2[k].geometrias - memAntes[k].geometrias, dt = mem2[k].texturas - memAntes[k].texturas;
-          tt.diagnostic("memoria de GPU de " + k + ", vuelta frente a partida: " + (dg >= 0 ? "+" : "") + dg + " geometrías, " + (dt >= 0 ? "+" : "") + dt + " texturas");
-          assert.ok(dg <= 25 && dt <= 4 && dg >= -10 && dt >= -4, "la memoria de GPU de " + k + " vuelve (≈) a la de antes: " + dg + " geometrías, " + dt + " texturas");
+        // La primera vuelta frente a la partida no es comparable en número: el exterior que se recarga al volver no es idéntico al de partida (la carga por teselas
+        // varía; la partida de la guía varió entre 86 y 93 geometrías en cinco pasadas). El inventario de subidas a la GPU (arriba) lo explicó el 2026-11-14: lo que A
+        // tenía de más (+17..+28 geometrías, +4..+5 texturas) colgaba todo de la escena del exterior (puntos y mallas de «arboles», carteles de haza, un sprite): contenido
+        // cargado, no restos del interior. Por eso aquí se comprueba lo que sí sería una fuga: ninguna geometría subida tras la partida sigue viva FUERA de la escena, y
+        // fuera de ella solo queda alguna textura de datos de tesela (258 × 258, en los tres por igual: la caché del exterior). La prueba exacta de fuga es la segunda vuelta.
+        for (const X of Xs) {
+          const fuera = Object.entries(nuevas[X.nombre]).filter(([c]) => / @ fuera de la escena$/.test(c));
+          const geoFuera = fuera.filter(([c]) => /^geo /.test(c)), texFuera = fuera.filter(([c]) => /^tex /.test(c) && !/^tex data 258×258 /.test(c));
+          assert.deepStrictEqual(geoFuera.concat(texFuera), [], "en " + X.nombre + ", nada de lo subido tras la partida queda vivo fuera de la escena (sería una fuga)");
+          const datos = fuera.filter(([c]) => /^tex data 258×258 /.test(c)).reduce((n, [, k]) => n + k, 0);
+          assert.ok(datos <= 2, "en " + X.nombre + ", texturas de tesela fuera de la escena: " + datos);
         }
         for (const s of await rs.listRooms()) assert.ok(!s.activeRecording, "sin grabación en " + s.name);
         assert.deepStrictEqual(Xs.flatMap(X => X.errores).filter(x => !ruido.test(x)), [], "errores de consola o de página");
