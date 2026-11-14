@@ -65,7 +65,7 @@ Documentación por pregunta: `doc/rumbo/` (¿hacia dónde vamos?: PLAN, DECISION
 | Servir el gemelo en local (web, api, Caddy) | `npm run dev:arriba` ([DESARROLLO-LOCAL](doc/operacion/DESARROLLO-LOCAL.md)) |
 | Exportar Hituelo y generar su tileset | `python tuberia/finca_8_teselas.py --finca hituelo` y `node tuberia/tiles3d/genera.mjs` (necesita los intermedios, que no están en el repo: [DATOS.md](doc/operacion/DATOS.md)) |
 | Medir carga y presupuesto | `node pruebas/prueba3.js <url> <prefijo>` |
-| VR con sesión simulada | `GEMELO_URL=<url> node pruebas/vr_mock.js` |
+| VR con sesión simulada (guion de mano: imprime cuánto se anda y se corre, no afirma nada; las pruebas de VR son `pruebas/guardianes/vr_*.test.js`) | `GEMELO_URL=<url> node pruebas/vr_mock.js` |
 | Ver fps, ms de JS, llamadas y triángulos | añadir `?debug` a la URL |
 
 Servir en local: el entorno de `infra/dev` (`npm run dev:arriba`) o la web construida con Vite; la escena necesita el tileset, así que `file://` y un servidor de ficheros sin él no bastan. Dependencias: `npm ci` (las `devDependencies` de `package.json`, `playwright-core` entre ellas) y Chrome (variable `CHROME` si no está en la ruta por defecto).
