@@ -1,4 +1,4 @@
-// EV2 (doc/sistema/VIABILIDAD-INTERACCION.md §A.5): la interfaz espacial en capas con el WebXR de mentira (mock_xr.js), tras ?ui=capas.
+// EV2 (doc/historico/VIABILIDAD-INTERACCION.md §A.5): la interfaz espacial en capas con el WebXR de mentira (mock_xr.js), tras ?ui=capas.
 // Uso: node pruebas/prueba_vr_capas.js <url de la página> [prefijo_capturas]   (por el banco: una sola Chrome a la vez; npm run banco:encarga)
 // Comprueba la LÓGICA (dónde se cuelgan las fichas, que sustituyen a las de siempre, el cupo de 3, el panel que nace y se queda) y cuenta llamadas y
 // triángulos con y sin fichas; NO dice nada de legibilidad, nitidez, mareo ni comodidad en un casco real (no probado en unas Quest).

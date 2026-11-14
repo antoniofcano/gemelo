@@ -67,7 +67,7 @@ export function creaVrPanel(c: CtxVr) {
   }
   // el panel (1 × 1,06 m; 1.024 px por metro), la ficha de un olivo y la de una baliza (I5: con «Ir a esta baliza» pulsable; 1.239 px por metro)
   var vrMed: T = VrFichaPuro.MEDIDAS;
-  // EV2 (doc/sistema/VIABILIDAD-INTERACCION.md §A.5): la interfaz espacial en capas, solo con ?ui=capas (apagada por defecto). Aquí: el rayo ilumina los
+  // EV2 (doc/historico/VIABILIDAD-INTERACCION.md §A.5): la interfaz espacial en capas, solo con ?ui=capas (apagada por defecto). Aquí: el rayo ilumina los
   // botones de las láminas del mundo que lo piden (Laminas.apunta; las fichas en el mundo, EV2-A1) y el panel nace y se queda (EV2-A2). Sin la bandera, lo de siempre.
   var VR_CAPAS = ComponentesPuro.valorUrl(d.busqueda, "ui", "capas") === true;
   function creaDe(q: T) { return creaLamina(q.W, q.H, q.pw, q.ph); }

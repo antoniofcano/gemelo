@@ -16,7 +16,7 @@ export interface DepsMuneca {
 export interface ContextoMuneca { on(ev: string, fn: (d?: any) => void): () => void; emite(ev: string, d?: unknown): number }
 export const ID_MUNECA = "muneca-vr";
 
-// ---------- EV2-A3: el menú de muñeca en VR (doc/sistema/VIABILIDAD-INTERACCION.md §A.5, paso 4; tanda 9, 2026-11-05). Al girar la muñeca hacia la cara
+// ---------- EV2-A3: el menú de muñeca en VR (doc/historico/VIABILIDAD-INTERACCION.md §A.5, paso 4; tanda 9, 2026-11-05). Al girar la muñeca hacia la cara
 // (como quien mira un reloj: el dorso o la palma hacia los ojos, y mirándola) aparece pegado a ella una lámina pequeña con lo tuyo: «hora · tu haza ·
 // hablar · volver», los mismos cuatro de la capa personal de pantalla (EV2-A4, 31b_hud_personal.js), con sus textos (HudPersonalPuro). Se pulsa con el
 // rayo y el gatillo del OTRO mando o tocándola con la punta del otro mando («dedo»). Desaparece al bajar la muñeca o dejar de mirarla. No sustituye al

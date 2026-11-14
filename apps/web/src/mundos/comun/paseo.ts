@@ -80,7 +80,7 @@ export function creaPaseo(d: DepsPaseo) {
     g.userData = { pi: miembro(0.17, 0.86, 0.2, pant, -0.12, 0.86, 0), pd: miembro(0.17, 0.86, 0.2, pant, 0.12, 0.86, 0), bi: miembro(0.11, 0.58, 0.12, camisa, -0.3, 1.46, 0), bd: miembro(0.11, 0.58, 0.12, camisa, 0.3, 1.46, 0) };
     return g;
   }
-  // ---------- la palanca (EV2-B1, doc/sistema/VIABILIDAD-INTERACCION.md §B): lo puro para andar con un pulgar, sin THREE ni DOM (lo evalúa en Node pruebas/guardianes/palanca.test.js).
+  // ---------- la palanca (EV2-B1, doc/historico/VIABILIDAD-INTERACCION.md §B): lo puro para andar con un pulgar, sin THREE ni DOM (lo evalúa en Node pruebas/guardianes/palanca.test.js).
   // Una palanca da un vector (x a la derecha, y hacia delante, de −1 a 1 sobre su radio). Aquí se vuelve «cuánto avanzo, cuánto me desplazo de lado»:
   // zona muerta del 15 % (el pulgar tiembla), después velocidad proporcional al desplazamiento (0 en el borde de la zona muerta, 1 al saturar el radio)
   // y la dirección es la del dedo relativa a la cámara de seguimiento, que va siempre detrás del paseante (mira hacia pp.ang).

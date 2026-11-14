@@ -23,7 +23,7 @@ Punto de partida: la auditoría de noviembre ([RESUMEN](../auditoria-noviembre20
 - **Dos builds y una bifurcación detrás de la versión de three.**
   - Pantalla: three 0.186.1. Quest: super-three 0.185.0 con el parche de multiview (`apps/web/package.json:27-28`, ADR-0031).
   - Consultado en npm el 2026-11-06: three 0.187.0 está publicado desde el 2026-10-30, y la última super-three sigue siendo la 0.185.0.
-  - El mantenedor de super-three dice tener los arreglos en una rama r187 ([MULTIVIEW §7](../sistema/MULTIVIEW.md#texturas-en-negro-2026-11-05-corregido-en-el-build)) **[NO VERIFICADO]**.
+  - El mantenedor de super-three dice tener los arreglos en una rama r187 ([MULTIVIEW §7](../historico/MULTIVIEW.md#texturas-en-negro-2026-11-05-corregido-en-el-build)) **[NO VERIFICADO]**.
 - **Las reglas vigentes que esto toca.**
   - CLAUDE.md §5 dice: «Estilo del motor: `var`, `"use strict"`, sin módulos por dentro». La regla 2 dice que el orden alfabético de `motor/` es el orden de montaje.
   - [ADR-0010](0010-monorepo-y-build-con-vite.md) fijó la concatenación. [ADR-0023](0023-componentes-del-mundo.md) dejó escrito que un componente podría vivir como módulo ES cargado con `import()` (su alternativa D).
@@ -98,7 +98,7 @@ Lo concreto (el diseño de las interfaces está en [MUNDOS.md](../sistema/MUNDOS
    - Los mundos no hablan con `renderer` ni con `scene`. Hablan con `Render` (tipo, build, info de dibujo, `compila`, estado XR) y con su raíz.
    - `Render` y la fábrica de materiales (`02i_materiales.js`) son los únicos sitios que saben qué renderer hay.
    - **three 0.187 va en un commit aparte** (es la tarea AG-0.4 del PLAN, con el proceso del [ADR-0016](0016-actualizacion-de-three.md)), nunca junto a un cambio de renderer.
-     - Como pronto el 2026-11-13: dos semanas después de su publicación, como pide [MULTIVIEW §5](../sistema/MULTIVIEW.md#5-qué-versión-de-three).
+     - Como pronto el 2026-11-13: dos semanas después de su publicación, como pide [MULTIVIEW §5](../historico/MULTIVIEW.md#5-qué-versión-de-three).
      - Hoy lo bloquea a propósito `pruebas/guardianes/builds_f1.test.js:62`, que exige la 0.186.1.
      - La build del Quest sigue en super-three 0.185.0 hasta que se publique su r187. Hasta entonces, las dos builds van a dos versiones distintas (decisión 224).
    - No se escribe TSL hasta tener fijada la versión de three, porque en r187 TSL cambia nombres.
@@ -109,7 +109,7 @@ Lo concreto (el diseño de las interfaces está en [MUNDOS.md](../sistema/MUNDOS
   - un fallo del filtro pinta a alguien en el sitio equivocado;
   - en la bodega no sirve: una reunión privada no puede depender de que el cliente filtre.
   - La sala por mundo reusa lo que ya hacen las guiadas y los corros, y aísla en el servidor.
-- **Cada mundo, una página (URL) aparte.** Cambiar de documento corta la sesión WebXR. El Quest Browser permite seguir la sesión en la página siguiente (`sessiongranted`, [IWSDK.md](../sistema/IWSDK.md)), pero no es estándar, no está en todos los navegadores (**[NO VERIFICADO]** en el Quest Browser 154) y se perdería todo lo que hay en memoria: teselas, avatares y voz. Descartada.
+- **Cada mundo, una página (URL) aparte.** Cambiar de documento corta la sesión WebXR. El Quest Browser permite seguir la sesión en la página siguiente (`sessiongranted`, [IWSDK.md](../historico/IWSDK.md)), pero no es estándar, no está en todos los navegadores (**[NO VERIFICADO]** en el Quest Browser 154) y se perdería todo lo que hay en memoria: teselas, avatares y voz. Descartada.
 - **Una `THREE.Scene` por mundo.**
   - Aislaría mejor. Pero `29_vr.js` cuelga de la escena el rig, los paneles y el velo, y 27 ficheros llaman a `scene.add`.
   - Cambiar de objeto `scene` con la sesión XR abierta obliga a volver a colgarlo todo.
@@ -122,7 +122,7 @@ Lo concreto (el diseño de las interfaces está en [MUNDOS.md](../sistema/MUNDOS
   - Y obligaría a mantener dos versiones de cada material.
   - Descartada: los materiales estándar valen para los dos renderers sin escribir nada.
 - **Gaussian splatting (Spark) para la nave del molino en la v1.** Spark exige `WebGLRenderer` y `antialias: false`, y nadie lo ha probado con super-three ni con multiview. Aplazada, no descartada: decisión 223 y una prueba de humo de un día antes de usarlo.
-- **Un marco o motor ajeno para las salas** (A-Frame, React Three Fiber, IWSDK, Unity). Otro motor de dibujo y otra forma de trabajar ([IWSDK.md](../sistema/IWSDK.md): no se adopta). Unity rompe el WebXR sin tienda. Descartada.
+- **Un marco o motor ajeno para las salas** (A-Frame, React Three Fiber, IWSDK, Unity). Otro motor de dibujo y otra forma de trabajar ([IWSDK.md](../historico/IWSDK.md): no se adopta). Unity rompe el WebXR sin tienda. Descartada.
 - **Liberar del todo el exterior (`dispose` real) antes de hacer ninguna sala.** Es más limpio en memoria, pero retrasa las salas lo que tarden 15 o más módulos en saber liberarse. Es la decisión 218: la recomendación es congelar primero, medir en el Quest y adelantar la liberación si la medida no cabe.
 
 ## Consecuencias

@@ -1,6 +1,6 @@
 # Humo multiview (F2b) — página desechable
 
-Responde con números a la pregunta de F2 ([MULTIVIEW.md](../../doc/sistema/MULTIVIEW.md), [ADR-0031](../../doc/adr/0031-migrar-al-webgpurenderer-con-multiview.md)): **¿cuánto ahorra el multiview en el Quest 3 con una escena como la nuestra?** Es una página aparte, **sin datos de la finca** (el repo es público): una escena sintética e **ilustrativa** con un número fijo de llamadas de dibujo y de triángulos, tres renderizadores y un medidor dentro de VR. Es desechable: cuando F2 se cierre, se borra o se archiva.
+Responde con números a la pregunta de F2 ([MULTIVIEW.md](../../doc/historico/MULTIVIEW.md), [ADR-0031](../../doc/adr/0031-migrar-al-webgpurenderer-con-multiview.md)): **¿cuánto ahorra el multiview en el Quest 3 con una escena como la nuestra?** Es una página aparte, **sin datos de la finca** (el repo es público): una escena sintética e **ilustrativa** con un número fijo de llamadas de dibujo y de triángulos, tres renderizadores y un medidor dentro de VR. Es desechable: cuando F2 se cierre, se borra o se archiva.
 
 **No probada en el Quest** (regla 7). En este equipo solo se ha comprobado que las tres builds se construyen y llevan cada una su renderizador (`pruebas/guardianes/humo_multiview.test.js`, solo Node). Que la escena se vea bien en un navegador no se ha mirado aún (no se abrió Chrome).
 
@@ -29,7 +29,7 @@ Repite 1, 2 y 3 tres veces (gatillo). Con **OVR Metrics Tool** a la vez, apunta 
 
 **C. Qué copiar y dónde pegarlo.** Cada texto trae «Caso: …», la sonda, la línea «Sesión XR: multiview activo sí/no» (con la capa y su `textureArrayLength`; es la prueba de que `OVR_multiview2` está activo de verdad y no solo pedido), mediana, p95, p99 y peor del fotograma, ms de JS y de `render()`, llamadas y triángulos. Pega todos en la conversación con el agente (o en una sección nueva de [MEDIDAS](../../doc/sistema/MEDIDAS.md)), con las notas de OVR Metrics y de la imagen. Si la línea dice «multiview activo no» en un caso con multiview pedido, esa medida **no** es de multiview: no la cuentes.
 
-**D. Cómo decidir (de [MULTIVIEW](../../doc/sistema/MULTIVIEW.md#criterios-de-f2-fijados-antes-de-medir), con N = 200)**
+**D. Cómo decidir (de [MULTIVIEW](../../doc/historico/MULTIVIEW.md#criterios-de-f2-fijados-antes-de-medir), con N = 200)**
 - **Adelante** (F3-F4): «nuevo con multiview» baja el ms de `render()` al menos un 30 % y el p95 al menos 1 ms frente al clásico, sin empeorar la mediana ni la imagen.
 - **Abandono**: el casco no da `OVR_multiview2` sin banderas; o «nuevo con multiview» no mejora al clásico en ≥ 1 ms de p95; o la imagen sale mal (ojo corrido, texturas negras, MSAA roto).
 - **Ambiguo** (< 1 ms): se repite con la escena real a medio migrar.
@@ -147,7 +147,7 @@ Lo que dice cada comparación: **clásico frente a nuevo sin multiview** = lo qu
 
 ## Criterios de F2 (de MULTIVIEW.md, fijados antes de medir)
 
-Copiados tal cual de [MULTIVIEW.md](../../doc/sistema/MULTIVIEW.md#criterios-de-f2-fijados-antes-de-medir); si cambian allí, manda allí.
+Copiados tal cual de [MULTIVIEW.md](../../doc/historico/MULTIVIEW.md#criterios-de-f2-fijados-antes-de-medir); si cambian allí, manda allí.
 
 - **Éxito (se sigue a F3-F4):** con 200 llamadas por ojo, «nuevo con multiview» baja el **ms de `render()`** al menos un **30 %** frente al clásico y el **p95** al menos **1 ms**, sin empeorar la mediana ni la imagen. Tres repeticiones por caso, la misma vista y la línea «Caso: …» del texto anotada.
 - **Abandono (se para, el clásico sigue y el ADR pasa a rechazado con la medida):** el Quest no tiene `OVR_multiview2` usable sin banderas; o «nuevo con multiview» no mejora al clásico en ≥ 1 ms de p95 a 200 llamadas; o la imagen sale mal (ojo corrido, MSAA roto) sin arreglo en 0.187.x.

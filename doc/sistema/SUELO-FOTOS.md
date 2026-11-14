@@ -1,6 +1,6 @@
 # Suelo de fotos y paleta del atardecer (EV-1s)
 
-El suelo de cerca puede llevar texturas sacadas de fotos de una finca de Cano & Damas. Las fotos las tomó Antonio el 2026-11-04. La paleta del atardecer sale de 4 fotos de cielo de esa misma tarde. Todo va detrás de la bandera **`?suelo=fotos`**, que está **apagada por defecto**. Cubre las tareas EV-1a, EV-1b, EV-1c y parte de EV-1e de [PLAN](../rumbo/PLAN.md), sobre el estudio [VIABILIDAD-REALISMO](VIABILIDAD-REALISMO.md). Cómo regenerar las texturas: [DATOS](../operacion/DATOS.md#texturas-de-suelo-y-paleta-del-cielo-ev-1s).
+El suelo de cerca puede llevar texturas sacadas de fotos de una finca de Cano & Damas. Las fotos las tomó Antonio el 2026-11-04. La paleta del atardecer sale de 4 fotos de cielo de esa misma tarde. Todo va detrás de la bandera **`?suelo=fotos`**, que está **apagada por defecto**. Cubre las tareas EV-1a, EV-1b, EV-1c y parte de EV-1e de [PLAN](../rumbo/PLAN.md), sobre el estudio [VIABILIDAD-REALISMO](../historico/VIABILIDAD-REALISMO.md). Cómo regenerar las texturas: [DATOS](../operacion/DATOS.md#texturas-de-suelo-y-paleta-del-cielo-ev-1s).
 
 ## Medido, deducido e ilustrativo (regla 5)
 | Qué | Naturaleza | De dónde |

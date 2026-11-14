@@ -1,5 +1,5 @@
 "use strict";
-// EV2-A2 (doc/sistema/VIABILIDAD-INTERACCION.md §A.5, paso 3): el panel VR que nace delante y se queda en el mundo, tras ?ui=capas (apps/web/motor/29_vr.js).
+// EV2-A2 (doc/historico/VIABILIDAD-INTERACCION.md §A.5, paso 3): el panel VR que nace delante y se queda en el mundo, tras ?ui=capas (apps/web/motor/29_vr.js).
 // En Node y sin navegador: la decisión pura (VrFichaPuro.queda: nace, se queda o espera al fotograma siguiente tras un salto), el giro en torno a la
 // cabeza (el mismo que el del rig en un giro por saltos) y, leyendo el código, que sin la bandera el panel sigue a la cabeza como siempre (vrSigue).
 // La comprobación con el WebXR simulado está en pruebas/prueba_vr_capas.js (escrita, sin ejecutar). Nada de esto está probado en unas Quest.

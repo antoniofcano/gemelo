@@ -212,7 +212,7 @@ function arranca(): void {
   // [paso: 03_escena]
   // ---- escena
   var lienzo = $("lienzo"), visor = $("visor");
-  // F2a (doc/sistema/MULTIVIEW.md, ADR-0031): en la build de VR (super-three) se pide el multiview del WebGLRenderer clásico, `multiviewStereo`, salvo con la perilla xrmv a 0 (02f);
+  // F2a (doc/historico/MULTIVIEW.md, ADR-0031): en la build de VR (super-three) se pide el multiview del WebGLRenderer clásico, `multiviewStereo`, salvo con la perilla xrmv a 0 (02f);
   // super-three solo lo enciende en una sesión XR con capas de proyección y OCULUS_multiview (29_vr pide «layers»). En la build de pantalla no se pasa nada:
   // el renderer se crea exactamente como siempre
   var opcionesRd: any = { canvas: lienzo, antialias: XrPerillas.aa }, MV = XrPerillas.multiview(Render.build);   // el MSAA lo decide la perilla de pruebas VR (02f)
@@ -869,7 +869,7 @@ function arranca(): void {
   });
   Componentes.registra(Interfaz.manifiestoHud(Hud));
   // [paso: 31b_hud_personal]
-  // ---------- lo tuyo en pantalla (EV2-A4, doc/sistema/VIABILIDAD-INTERACCION.md): «hora · tu haza · hablar · volver» juntos, bajo el tiempo del HUD (#hudPersonal).
+  // ---------- lo tuyo en pantalla (EV2-A4, doc/historico/VIABILIDAD-INTERACCION.md): «hora · tu haza · hablar · volver» juntos, bajo el tiempo del HUD (#hudPersonal).
   // MU5-n (A3-7a): migrado a TypeScript; el código vive en apps/web/src/ui/hud-personal.ts (HudPersonalPuro, que también usa el menú de muñeca de VR), componente
   // «hud-personal» de TODOS los mundos con un libera() que para su reloj (L2-11) y quita sus escuchas. Aquí solo se cablea lo del legado: paseando cambia.
   // [talón] apps/web/src/ui/hud-personal.ts
@@ -1137,7 +1137,7 @@ function arranca(): void {
     paseando: function () { return typeof Paseo !== "undefined" && Paseo.E.paseando; }, VRX: typeof VRX !== "undefined" ? VRX : null, ventana: window as any, Componentes: Componentes
   }, function () { return import("three/addons/utils/BufferGeometryUtils.js"); }));
   // [paso: 51_fichas_mundo] Talón (MU5-n, A3-7b1) de apps/web/src/mundos/exterior/fichas-mundo.ts: FichasMundoPuro y el componente «fichas-mundo» de los mundos ["exterior"] (EV2-A1, ?ui=capas, apagado por defecto), con su libera() (presentador de «vr», tapa del panel, láminas colgadas y window.__fichasMundo). En VR, la ficha de un olivo o de una baliza colgada junto a lo que describe con Laminas (encima de la copa, girándose hacia quien mira, como mucho 3), en lugar de las láminas de 29_vr que siguen a la cabeza (presentador «vr» encadenado delante del de 29_vr y PanelVR.tapa). Los trozos [puro] y el resto los evalúa en Node pruebas/guardianes/fichas_mundo.test.js (que lee el .ts como JavaScript, _fuente.js).
-  // ---------- EV2-A1: las fichas en el mundo (doc/sistema/VIABILIDAD-INTERACCION.md §A.5, paso 2), solo con ?ui=capas (apagado por defecto): en VR, la ficha de un olivo o de una
+  // ---------- EV2-A1: las fichas en el mundo (doc/historico/VIABILIDAD-INTERACCION.md §A.5, paso 2), solo con ?ui=capas (apagado por defecto): en VR, la ficha de un olivo o de una
   // baliza colgada junto a lo que describe, con Laminas. MU5-n (A3-7b1): migrado a TypeScript; el código vive en apps/web/src/mundos/exterior/fichas-mundo.ts (FichasMundoPuro y el
   // componente «fichas-mundo» de los mundos ["exterior"], con su libera()). Aquí solo se cablea lo del legado; todo lo que usa se monta antes que este módulo.
   // [talón] apps/web/src/mundos/exterior/fichas-mundo.ts

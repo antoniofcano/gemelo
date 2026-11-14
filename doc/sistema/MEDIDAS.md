@@ -16,7 +16,7 @@ Una medida de VR sin las perillas con las que se hizo no se puede comparar con o
 3. Escribe el aparato (Quest 3, versión del navegador) y marca lo no probado como **no probado**. Las advertencias de comodidad de las perillas están en [VR.md](VR.md#perillas-de-rendimiento-por-url).
 
 ## Prueba de humo del multiview en el Quest 3 (F2b, 2026-11-07, foto, no se mantiene)
-Medida por Antonio en su Quest 3 (Oculus Browser 154.1, Chrome 154, 72 Hz) con `prototipos/multiview/` servido por la Wi-Fi (`npm run sirve:red`). Una corrida de 60 s por caso, tras 3 s de calentamiento, sin moverse; MSAA sí, escala 0,9, foveación pedida 1. La sonda: WebGL2, `OVR_multiview2` y `OCULUS_multiview` disponibles **sin banderas y con MSAA**. Criterios de decisión: [MULTIVIEW F2](MULTIVIEW.md).
+Medida por Antonio en su Quest 3 (Oculus Browser 154.1, Chrome 154, 72 Hz) con `prototipos/multiview/` servido por la Wi-Fi (`npm run sirve:red`). Una corrida de 60 s por caso, tras 3 s de calentamiento, sin moverse; MSAA sí, escala 0,9, foveación pedida 1. La sonda: WebGL2, `OVR_multiview2` y `OCULUS_multiview` disponibles **sin banderas y con MSAA**. Criterios de decisión: [MULTIVIEW F2](../historico/MULTIVIEW.md).
 
 | Modo | n por ojo | `render()` mediana · p95 (ms) | Intervalo mediana · p95 · p99 (ms) | Fotogramas en 60 s | Llamadas (dos ojos) | Foveación de la capa |
 |---|---|---|---|---|---|---|

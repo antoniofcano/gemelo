@@ -3,7 +3,7 @@
 //   ?xraa=0|1 (MSAA del lienzo; defecto 1; se lee antes de crear el renderer) · ?xrnivel=0..3 (fija un VR_PERFILES y APAGA el controlador adaptativo)
 //   ?xrnear=0.05..0.3 (plano cercano de la cámara en VR; defecto 0,1) · ?xrjs=4..16 (umbral de ms de JS por fotograma con que el controlador adaptativo baja de nivel; defecto 8, AG-2.3)
 //   ?xrjssube=2..10 (Q0c-b: ms de JS por debajo de los que el controlador SUBE de nivel; defecto 5) · ?xrestable=2..120 (Q0c-b: segundos seguidos por debajo de eso antes de subir; defecto 10)
-//   ?xrmv=0|1 (F2a, doc/sistema/MULTIVIEW.md: multiview de super-three, `multiviewStereo`; SOLO existe en la build de VR, con defecto 1 (URL, luego el ajuste «vr.multiview», luego 1); en la de pantalla
+//   ?xrmv=0|1 (F2a, doc/historico/MULTIVIEW.md: multiview de super-three, `multiviewStereo`; SOLO existe en la build de VR, con defecto 1 (URL, luego el ajuste «vr.multiview», luego 1); en la de pantalla
 //   se ignora y se dice; se lee antes de crear el renderer, como xraa)
 //   ?xrtri=0|20000..2000000 (Q0k: tope de triángulos del tileset en VR; 0 apaga el lazo; sin ella, el tri de cada nivel) · ?xrtrierr=16..256 (Q0k: error máximo del tileset, px; defecto 128) · ?xrolivos=0|0.1..0.7 (Q0n, 02m: parte del tope para los olivos del motor; 0 la apaga; defecto 0,3)
 // Sin ninguna, nada cambia. Es el ÚNICO sitio que lee estas banderas de la URL. Presupuesto (regla 6): no dibuja ni reserva nada.

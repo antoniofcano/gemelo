@@ -1,5 +1,5 @@
 "use strict";
-// AG-3b / F2a (ADR-0031, doc/sistema/MULTIVIEW.md §4.1 y «Estado de F2a»): la build de VR con super-three DE VERDAD (apps/web/node_modules/super-three).
+// AG-3b / F2a (ADR-0031, doc/historico/MULTIVIEW.md §4.1 y «Estado de F2a»): la build de VR con super-three DE VERDAD (apps/web/node_modules/super-three).
 //   · super-three va con la versión exacta de BUILDS.vr (apps/web/herramientas/builds.mjs), MIT, y su multiview está donde el motor lo pide
 //     (multiviewStereo en el WebGLRenderer, isMultiview con OCULUS_multiview y la capa «texture-array» en el WebXRManager): si una versión nueva lo mueve, salta aquí;
 //   · el guardián de sombreadores contra super-three, como el de web.test.js contra three: cada `#include <trozo>` del motor y de la biblioteca de olivos

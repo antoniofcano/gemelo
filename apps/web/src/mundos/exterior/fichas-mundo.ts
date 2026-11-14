@@ -1,4 +1,4 @@
-// EV2-A1: las fichas en el mundo (doc/sistema/VIABILIDAD-INTERACCION.md §A.5, paso 2; MU5-n, A3-7b1: antes apps/web/motor/51_fichas_mundo.js, que queda como talón), solo con ?ui=capas
+// EV2-A1: las fichas en el mundo (doc/historico/VIABILIDAD-INTERACCION.md §A.5, paso 2; MU5-n, A3-7b1: antes apps/web/motor/51_fichas_mundo.js, que queda como talón), solo con ?ui=capas
 // (apagado por defecto). En VR, la ficha de un olivo o de una baliza deja de ir pegada a la cara (las láminas ficha y fichaB de 29_vr.js, que siguen a la cabeza) y se cuelga JUNTO a lo
 // que describe: en el borde de su copa (o de su columna de luz) que da hacia quien mira, a la altura de los ojos, girándose despacio hacia él (Laminas: se vuelve, no se mueve). Es OTRO
 // PRESENTADOR de la misma ficha de Entidades (texto llano, mismas acciones): no hay modelo de datos nuevo ni sabe de olivos. Es del EXTERIOR: los tipos que cuelga, el olivo y la baliza,

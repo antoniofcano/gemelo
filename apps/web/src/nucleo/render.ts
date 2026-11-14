@@ -1,5 +1,5 @@
 // El renderizador elegido y la lectura de lo dibujado (antes apps/web/motor/02h_render.js; MUNDOS §6 y §9.4, pieza 2).
-// AG-3a / F1 (doc/sistema/MULTIVIEW.md §4, ADR-0031): qué renderizador y qué build, y la lectura de lo dibujado con la misma forma para los dos.
+// AG-3a / F1 (doc/historico/MULTIVIEW.md §4, ADR-0031): qué renderizador y qué build, y la lectura de lo dibujado con la misma forma para los dos.
 // Hoy siempre el WebGLRenderer clásico (03_escena); la build la fija el empaquetado: pantalla (three 0.186.1) o, en el Quest, VR (super-three 0.185.0, publicada). Lo que ofrece:
 //   Render.pedido / Render.tipo   ?render=nuevo (o ?renderer=webgpu, el nombre de MU5/MU6: MATERIALES.md §4) queda RESERVADO para el WebGPURenderer (MU6): se apunta y se avisa de que aún no existe; tipo sigue «clasico»
 //   Render.build                  «pantalla» (three) o «vr» (super-three, la build del Quest: apps/web/herramientas/builds.mjs); lo inyecta Vite (__GEMELO_BUILD__)

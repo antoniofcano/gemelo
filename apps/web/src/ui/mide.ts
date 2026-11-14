@@ -120,7 +120,7 @@ export var MideEst: T = (function () {
       }
       var lc: T = lineaCausas(e.causas, corto); if (lc) L.push(lc);   // Q0g: que se movio en los fotogramas lentos
       L.push("JS por fotograma (ms): mediana " + f1(e.js.mediana) + " · p95 " + f1(e.js.p95) + " · peor " + f1(e.js.peor));
-      if (e.rd && e.resto) {   // F0: el techo del multiview (doc/sistema/MULTIVIEW.md): cuánto del JS es renderer.render() y cuánto el resto del fotograma
+      if (e.rd && e.resto) {   // F0: el techo del multiview (doc/historico/MULTIVIEW.md): cuánto del JS es renderer.render() y cuánto el resto del fotograma
         if (corto) L[L.length - 1] += " · render() " + f1(e.rd.mediana) + "/" + f1(e.rd.p95) + " · resto " + f1(e.resto.mediana) + "/" + f1(e.resto.p95);
         else { L.push("  de ellos, renderer.render() (ms): mediana " + f1(e.rd.mediana) + " · p95 " + f1(e.rd.p95) + " · peor " + f1(e.rd.peor)); L.push("  de ellos, el resto del JS (ms): mediana " + f1(e.resto.mediana) + " · p95 " + f1(e.resto.p95) + " · peor " + f1(e.resto.peor)); }
       }
@@ -306,7 +306,7 @@ export function manifiestoMide(dp: DepsMide): Manifiesto {
     function engancha() { if (!quitaCuadro) quitaCuadro = n.on("cuadro:fin", function (d?: T) { if (api.on) fotograma(d.t, d); }); }
     function desengancha() { if (quitaCuadro) { quitaCuadro(); quitaCuadro = null; } }
     function alVisibilidad() { prev = -1; }   // el intervalo que cruza un cambio de pestaña no es un fotograma
-    // F0 (doc/sistema/MULTIVIEW.md): la sonda del multiview. Solo lee (extensiones del contexto y, con sesión, si una capa de proyección admite «texture-array»); no cambia el dibujo.
+    // F0 (doc/historico/MULTIVIEW.md): la sonda del multiview. Solo lee (extensiones del contexto y, con sesión, si una capa de proyección admite «texture-array»); no cambia el dibujo.
     // Se calcula una vez (y otra si hay sesión y antes no la había) y se guarda: ni por fotograma ni con reservas.
     var sonda: T = "", sondaConSesion: T = false;
     // «Dibujo: tono neutro (defecto) · alphaToCoverage no (defecto)»: con qué se dibujó y de dónde viene cada elección (url, ajuste o defecto); una medida dice con qué se tomó (regla 7)

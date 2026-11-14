@@ -1,5 +1,5 @@
 "use strict";
-// EV2-A1 (doc/sistema/VIABILIDAD-INTERACCION.md §A.5, paso 2): las fichas de olivo y baliza colgadas en el mundo, tras ?ui=capas (apps/web/motor/51_fichas_mundo.js).
+// EV2-A1 (doc/historico/VIABILIDAD-INTERACCION.md §A.5, paso 2): las fichas de olivo y baliza colgadas en el mundo, tras ?ui=capas (apps/web/motor/51_fichas_mundo.js).
 // En Node y sin navegador: la parte pura (dónde se cuelga, a qué escala, la maqueta, el cupo de 3, los topes angulares) y, con Laminas, Entidades,
 // Usables y PanelVR de mentira, que el componente sustituye a las fichas de 29_vr para esos tipos (y solo para esos), que como mucho hay 3 vivas, que
 // «Cerrar» y alejarse las cierran y que liberar el componente lo suelta todo. Lo que NO dice: nada de legibilidad, nitidez ni comodidad en un casco

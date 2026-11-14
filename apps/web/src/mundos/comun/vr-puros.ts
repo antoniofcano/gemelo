@@ -85,7 +85,7 @@ export var VrGentePuro = (function () {
 
 // [puro:fin]
 
-// ----- 8) Q2c: entrar en VR sin pulsar, SOLO con ?mide o ?debug (medidas automáticas desde adb, doc/sistema/IWSDK.md §2.2-B). Lo prueba en Node pruebas/guardianes/vr_sessiongranted.test.js.
+// ----- 8) Q2c: entrar en VR sin pulsar, SOLO con ?mide o ?debug (medidas automáticas desde adb, doc/historico/IWSDK.md §2.2-B). Lo prueba en Node pruebas/guardianes/vr_sessiongranted.test.js.
 // [puro:inicio] (sin THREE ni DOM)
 export var VrConcedidaPuro = (function () {
   function pideMedir(busqueda: string) { return /[?&](mide|debug)\b/.test(String(busqueda || "")); }   // ?mide, ?mide=60, ?debug (o varios)

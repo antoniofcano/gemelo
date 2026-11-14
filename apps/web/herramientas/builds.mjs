@@ -1,4 +1,4 @@
-// Las dos builds del mismo motor (ADR-0031, decisión de Antonio del 2026-11-04; doc/sistema/MULTIVIEW.md «Dos builds»). La de VR está publicada en el VPS
+// Las dos builds del mismo motor (ADR-0031, decisión de Antonio del 2026-11-04; doc/historico/MULTIVIEW.md «Dos builds»). La de VR está publicada en el VPS
 // (AG-3c, 2026-11-05) y la elige la página al cargar (cargador.mjs, F2c):
 //   · «pantalla» (por defecto, la de siempre): three (apps/web/package.json, hoy 0.186.1) → apps/web/dist/. Escritorio y móvil; más adelante, el
 //     WebGPURenderer + TSL material a material (F4).
