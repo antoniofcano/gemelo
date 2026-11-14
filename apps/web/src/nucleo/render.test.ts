@@ -101,6 +101,21 @@ describe("Render.info, memoria y compila (MUNDOS §6)", () => {
     expect(r.info()).toMatchObject({ renderizador: "nuevo", llamadas: 83 });
     expect(r.memoria()).toMatchObject({ geometrias: 12, texturas: 7 });
   });
+  it("L1-07: memoria().bytesEstimados suma, sin repetir, los búferes de las geometrías y las texturas que cuelgan de la escena", () => {
+    const at = (n: number) => ({ array: new Float32Array(n) });
+    const geo = { attributes: { position: at(30), normal: at(30) }, index: { array: new Uint16Array(10) } };   // 120 + 120 + 20 bytes
+    const img = { isTexture: true, image: { width: 16, height: 8 }, generateMipmaps: false };                  // 16 × 8 × 4 = 512
+    const datos = { isTexture: true, image: { data: new Uint8Array(100), width: 5, height: 5 }, generateMipmaps: true };   // 100 × 4/3 ≈ 133
+    const ktx = { isTexture: true, image: { width: 4, height: 4 }, mipmaps: [{ data: new Uint8Array(64) }, { data: new Uint8Array(16) }] };   // 80
+    const mat = { map: img, normalMap: datos }, mat2 = { uniforms: { t: { value: ktx }, u: { value: img } } };
+    const hijos = [{ geometry: geo, material: mat }, { geometry: geo, material: [mat, mat2], instanceMatrix: { array: new Float32Array(16) } }];
+    const escena = { background: img, traverse(fn: (o: unknown) => void) { fn(escena); hijos.forEach(fn); } };
+    const esperado = 260 + 512 + 133 + 80 + 64;
+    expect(RenderPuro.bytesEscena(escena)).toBe(esperado);
+    const r = creaRender({}); r.enlaza({ rd: clasico(), escena });
+    expect(r.memoria()).toEqual({ geometrias: 12, texturas: 7, bytesEstimados: esperado });
+    expect(RenderPuro.bytesEscena(null)).toBe(0);
+  });
   it("compila(obj): compileAsync con la cámara XR si hay sesión, la de pantalla si no; sin compileAsync usa compile; si falla, sigue", async () => {
     const llamadas: unknown[][] = []; let xr: unknown = null;
     const rd: RenderizadorMinimo = { compileAsync: (o, c, e) => { llamadas.push([o, c, e]); return Promise.resolve(); } };
