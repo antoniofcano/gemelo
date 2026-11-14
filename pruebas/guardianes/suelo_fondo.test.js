@@ -62,6 +62,22 @@ test("sigue la exageración vertical; no existe sin escena activa; dispose liber
   assert.strictEqual(SF.malla(), null); assert.deepStrictEqual([g, mt, tx], [1, 1, 0]); assert.strictEqual(scene.children.length, 0);
 });
 
+test("L8-07: el hundimiento es necesario y su coste está acotado: donde el paseante pisa el relieve grueso sin tesela, los pies quedan BAJA·exag por encima del fondo, y no más", t => {
+  if (SALTO) return t.skip(SALTO);
+  // MOTIVO de BAJA (M6, commit 935d8e1d): el relieve grueso (8 m, interpolado) puede quedar hasta ~1,5 m POR ENCIMA del fino en una loma; sin hundirlo, el fondo asomaría
+  // sobre el tileset (z-fighting). El precio: donde no hay tesela con dato, suelo() da el grueso (lo que pisa el paseante) y el fondo dibujado está BAJA·exag por debajo.
+  // El clamp del paseo (Exterior.obstaculo: la caja D.ext menos 3 m, vigilado en exterior.test.ts) mantiene al paseante dentro de la caja del NDVI, normalmente cubierta
+  // por teselas con dato; con datos reales de una tesela vacía dentro de ext, no probado (el banco).
+  const { SF, ex } = monta(); SF.actualiza();
+  for (const e of [1, 2, 3]) {
+    ex.v = e; SF.actualiza(); const m = SF.malla(); m.updateMatrixWorld(true);
+    const pos = m.geometry.attributes.position; let peor = 0;
+    for (let i = 0; i < pos.count; i += 53) { const dibujado = pos.getY(i) * m.matrixWorld.elements[5], pisado = grueso(pos.getX(i), -pos.getZ(i)) * e; peor = Math.max(peor, pisado - dibujado); }
+    assert.ok(Math.abs(peor - SF.BAJA * e) < 1e-3, "desfase pies-fondo = BAJA·exag (" + peor + " con exag " + e + ")");
+    assert.ok(peor <= 1.5 * 3 + 1e-3, "como mucho 4,5 m con exag 3");
+  }
+});
+
 test("su sustitución del sombreador encuentra su trozo en la three instalada", t => {
   if (SALTO) return t.skip(SALTO);
   const { SF } = monta(); SF.actualiza();
