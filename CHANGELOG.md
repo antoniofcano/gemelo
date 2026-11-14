@@ -339,6 +339,11 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 
 
 ### Corregido
+- Remates de la re-verificación de la auditoría (2026-11-14):
+  - Expulsiones: un reinicio de la api ya no deja volver con un token anterior a quien se expulsó en los últimos 15 min (las marcas se recuperan de la auditoría), y un fallo de LiveKit en una sala no corta el centinela para las demás.
+  - CI: la puerta pasa gitleaks por todo el historial (versión fijada; sin ejecutar aún: se estrena en el primer push), y el guardián de secretos rechaza también la coordenada UTM este de la zona.
+  - «Hace N»: sale de una sola regla (`nucleo/hace.ts`); las fichas del tiempo pasan de horas hasta 48 h a hasta 36 h, como el resto.
+  - «Movimiento: Reducido»: manda también en «Reproducir» de la previsión, en los juegos, en las aves posadas, los conejos y los perros (no arrancan carreras nuevas); las bandadas siguen girando. Probado en Vitest y Node; pantalla real, iPhone y Quest no probados.
 - VR, olivos y rendimiento (auditoría de noviembre, lentes 7, 5, 1 y 2). Probado con dobles en Vitest y Node; Quest e iPhone no probados:
   - Precompilado en VR: al entrar, los sombreadores se precompilan con la cámara y el destino de la sesión (multiview).
   - Salto a zona sin cargar: el fundido espera a negro al relieve fino, 2 s como mucho.
