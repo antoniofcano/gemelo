@@ -1,6 +1,6 @@
 # Publicación
 
-El gemelo **solo se sirve desde un servidor**: el entorno local de `infra/dev` y, más adelante, el VPS de OVH ([ADR-0011](../adr/0011-alojamiento-en-el-vps-de-ovh.md)). La salida artefacto (una página para claude.ai) se retiró ([ADR-0021](../adr/0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md)); lo que ya estaba publicado en claude.ai queda como última foto, sin mantener. **Desplegar lo decide Antonio** (CLAUDE.md regla 9): un agente prepara, lista lo que sube y espera el OK.
+El gemelo **solo se sirve desde un servidor**: el entorno local de `infra/dev` y el VPS de OVH, donde está desplegado desde el 2026-11-02 ([ADR-0011](../adr/0011-alojamiento-en-el-vps-de-ovh.md)). La salida artefacto (una página para claude.ai) se retiró ([ADR-0021](../adr/0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md)); lo que ya estaba publicado en claude.ai queda como última foto, sin mantener. **Desplegar lo decide Antonio** (CLAUDE.md regla 9): un agente prepara, lista lo que sube y espera el OK.
 
 ## Qué se sirve
 - La web construida con Vite (`apps/web/dist/`): la página, el motor empaquetado y three 0.186.1 incluido (sin CDN).
@@ -27,7 +27,7 @@ El motor tiene dos builds ([MULTIVIEW §4.1](../sistema/MULTIVIEW.md)): **pantal
 `npm run dev:arriba` ([DESARROLLO-LOCAL](DESARROLLO-LOCAL.md)): web, api y Caddy con https en `localhost:8743`; la escena la da `GEMELO_DEV_TILESET`. No es producción.
 
 ## En el VPS
-Contrato de lo que se despliega: [`contratos/publicacion-vps.json`](../../contratos/publicacion-vps.json). El primer despliegue, paso a paso: [DESPLIEGUE-V2](DESPLIEGUE-V2.md). Referencia de operación, copias y vuelta atrás: [RUNBOOK-VPS](RUNBOOK-VPS.md). El CI de hoy (`puerta.yml`) no despliega: el primer despliegue es a mano y, más adelante, irá por CI **con aprobación manual**. **Nada se ha ejecutado todavía en el VPS.**
+Contrato de lo que se despliega: [`contratos/publicacion-vps.json`](../../contratos/publicacion-vps.json). El primer despliegue, paso a paso: [DESPLIEGUE-V2](DESPLIEGUE-V2.md). Referencia de operación, copias y vuelta atrás: [RUNBOOK-VPS](RUNBOOK-VPS.md). El CI de hoy (`puerta.yml`) no despliega: las subidas se hacen a mano y, más adelante, irán por CI **con aprobación manual**. **Qué hay subido hoy:** [ESTADO](../ESTADO.md#publicado).
 
 ## Receta resumida
 1. Puerta en verde (`npm run puerta`).

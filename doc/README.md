@@ -60,9 +60,9 @@
 - [operacion/PUBLICACION.md](operacion/PUBLICACION.md) — cómo se sirve el gemelo (local y VPS; la salida artefacto se retiró).
 - [operacion/DATOS.md](operacion/DATOS.md) — fuentes, hojas LiDAR/MDT por finca, cómo regenerar, licencias.
 - [operacion/DESARROLLO-LOCAL.md](operacion/DESARROLLO-LOCAL.md) — el mundo y los servicios base (Caddy, PostGIS, LiveKit, buzón) en local con Docker: `npm run dev:arriba`.
-- [operacion/RUNBOOK-VPS.md](operacion/RUNBOOK-VPS.md) — servidor F1a en el VPS: puesta en marcha, operación, copias cifradas y ensayo de restauración (aún sin ejecutar en el VPS).
+- [operacion/RUNBOOK-VPS.md](operacion/RUNBOOK-VPS.md) — servidor F1a en el VPS: puesta en marcha, operación, copias cifradas y ensayo de restauración (el VPS está en marcha; las copias automáticas con `age`/`rclone` reales, sin ejecutar allí).
 - [operacion/LLAVES-RECUPERACION.md](operacion/LLAVES-RECUPERACION.md) — guía corta para la oficina: una familia pierde el móvil, la oficina pierde su llave, qué decir por teléfono (OF13b-11).
-- [operacion/DESPLIEGUE-V2.md](operacion/DESPLIEGUE-V2.md) — **el primer despliegue en el VPS, paso a paso**: qué hace Antonio, comprobación y vuelta atrás de cada paso, y qué bloquea enseñarlo o abrirlo a familias.
+- [operacion/DESPLIEGUE-V2.md](operacion/DESPLIEGUE-V2.md) — **el primer despliegue en el VPS (hecho el 2026-11-02), paso a paso**: qué hace Antonio, comprobación y vuelta atrás de cada paso, y qué bloquea enseñarlo o abrirlo a familias.
 - [operacion/TESTING.md](operacion/TESTING.md) — qué prueba cada cosa y qué significa cada rojo.
 
 ## Auditoría en curso — `auditoria-noviembre2026/` (viva mientras tenga algo abierto; luego a `historico/`)
