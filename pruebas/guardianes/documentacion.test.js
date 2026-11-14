@@ -107,3 +107,11 @@ test("skills: cada .claude/skills/<n>/SKILL.md tiene name (= carpeta) y descript
     assert.ok(claude.includes("`" + dir + "`"), "CLAUDE.md no nombra la skill `" + dir + "`");
   }
 });
+
+test("ARCHITECTURE.md nombra todos los pasos del arranque (L10-07: el mapa no puede dejar pasos sin contar)", () => {
+  const pasos = [...lee("apps/web/src/arranque.ts").matchAll(/\/\/ \[paso: (\w+)\]/g)].map(m => m[1]);
+  assert.ok(pasos.length >= 80, "se esperaban ≥ 80 pasos y se leyeron " + pasos.length + " (¿cambió la marca «// [paso: NN_nombre]»?)");
+  const arq = lee("doc/sistema/ARCHITECTURE.md");
+  const sin = pasos.filter(p => !arq.includes(p));
+  assert.deepStrictEqual(sin, [], "pasos de arranque.ts que ARCHITECTURE.md no nombra (añade su fila a la tabla de la sección 2)");
+});
