@@ -2,7 +2,7 @@
 
 El único documento que hay que seguir, en orden, para desplegar por primera vez en el VPS de OVH. La referencia de operación sigue en [RUNBOOK-VPS](RUNBOOK-VPS.md) y el porqué en [ADR-0011](../adr/0011-alojamiento-en-el-vps-de-ovh.md) y [ADR-0027](../adr/0027-livekit-en-produccion-puertos-publicados.md).
 
-> **Nada de esto se ha ejecutado.** Cuándo se despliega lo decide Antonio, paso a paso (CLAUDE.md, regla 9). Este repo es público: aquí van **nombres de variables, nunca valores**, y ni la dirección del servidor ni las rutas de Oficultor. Lo que salga de las lecturas se anota fuera del repo.
+> **Ejecutado:** el primer despliegue se hizo el 2026-11-02 y desde entonces hay más subidas ([ESTADO](../ESTADO.md#publicado)). Este documento queda como el guion y la lista de comprobaciones de ese primer despliegue (y de rehacerlo en otra máquina); la operación del día a día, en [RUNBOOK-VPS](RUNBOOK-VPS.md) y [PUBLICACION](PUBLICACION.md). Lo que se escribió «antes de ejecutar» (fases, «falta», «se hará») es la foto de aquel momento. Cuándo se despliega lo decide Antonio, paso a paso (CLAUDE.md, regla 9). Este repo es público: aquí van **nombres de variables, nunca valores**, y ni la dirección del servidor ni las rutas de Oficultor. Lo que salga de las lecturas se anota fuera del repo.
 
 ## La máquina
 

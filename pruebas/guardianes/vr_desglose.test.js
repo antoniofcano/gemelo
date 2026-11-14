@@ -1,5 +1,5 @@
 "use strict";
-// F0 (doc/sistema/MULTIVIEW.md, §plan): qué objetos ponen las llamadas de dibujo EN VR, por ojo y en total. Con el WebXR simulado (pruebas/mock_xr.js) se entra en VR
+// F0 (doc/historico/MULTIVIEW.md, §plan): qué objetos ponen las llamadas de dibujo EN VR, por ojo y en total. Con el WebXR simulado (pruebas/mock_xr.js) se entra en VR
 // con el fixture y, durante UN fotograma XR, se envuelve renderer.renderBufferDirect (como desgloseLlamadas de _navegador.js, pero con el ojo: el índice de la
 // cámara en renderer.xr.getCamera().cameras). Es una MEDIDA (recuentos de SwiftShader, que valen; no fps): imprime la tabla y solo afirma lo que no depende del aparato
 // (hay dos ojos, el total del espía coincide con renderer.info.render.calls y no hay errores). Opcional (GEMELO_VR=1), por el banco, un Chrome a la vez:

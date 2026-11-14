@@ -1,4 +1,4 @@
-// F2b (doc/sistema/MULTIVIEW.md, F2; ADR-0031): construye las tres builds de la página de humo, una por renderizador, porque dos three no
+// F2b (doc/historico/MULTIVIEW.md, F2; ADR-0031): construye las tres builds de la página de humo, una por renderizador, porque dos three no
 // pueden convivir en la misma página (clases distintas). Cada una sale en <salida>/<modo>/humo.js con nombre fijo; <salida>/index.html y
 // <salida>/elige.js (de pagina/) cargan la que pida ?modo=.
 //   clasico → three 0.186.1, WebGLRenderer sin multiview          (src/entrada_clasico.js)

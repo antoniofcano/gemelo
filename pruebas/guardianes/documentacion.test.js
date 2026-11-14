@@ -35,11 +35,12 @@ test("los enlaces relativos de todos los .md apuntan a ficheros y anclas que exi
 });
 
 test("las rutas de ficheros citadas entre comillas inversas en los .md existen", () => {
-  const re = /`((?:src|pruebas|doc|contratos|datos|\.claude)\/[A-Za-z0-9_./\-]+\.(?:js|py|md|json|html))`/g, mal = [];
+  const re = /`((?:src|pruebas|doc|contratos|datos|apps|tuberia|infra|\.claude)\/[A-Za-z0-9_./\-]+\.(?:js|py|md|json|html))`/g, mal = [];
   for (const f of MD) {
-    if (f.startsWith("doc/historico/") || f === "CHANGELOG.md") continue;   // las fotos y el CHANGELOG citan cosas de su momento
+    if (f.startsWith("doc/historico/") || f.startsWith("doc/auditoria-") || f === "CHANGELOG.md") continue;   // las fotos, los informes de auditoría y el CHANGELOG citan cosas de su momento
     for (const m of lee(f).matchAll(re)) {
       if (/(^|\/)salida\//.test(m[1]) || m[1].includes("<")) continue;     // generados
+      if (m[1].startsWith("apps/web/motor/") || m[1].startsWith("tuberia/salida_artefacto/")) continue;   // el motor legado (A3-8c) y la salida artefacto (ADR-0021): los docs los nombran como lo que fueron
       if (!existe(m[1])) mal.push(f + " cita " + m[1]);
     }
   }
@@ -106,4 +107,12 @@ test("skills: cada .claude/skills/<n>/SKILL.md tiene name (= carpeta) y descript
     assert.match(fm[1], /^description: .{40,}/m, f + ": description demasiado corta (debe decir cuándo se dispara)");
     assert.ok(claude.includes("`" + dir + "`"), "CLAUDE.md no nombra la skill `" + dir + "`");
   }
+});
+
+test("ARCHITECTURE.md nombra todos los pasos del arranque (L10-07: el mapa no puede dejar pasos sin contar)", () => {
+  const pasos = [...lee("apps/web/src/arranque.ts").matchAll(/\/\/ \[paso: (\w+)\]/g)].map(m => m[1]);
+  assert.ok(pasos.length >= 80, "se esperaban ≥ 80 pasos y se leyeron " + pasos.length + " (¿cambió la marca «// [paso: NN_nombre]»?)");
+  const arq = lee("doc/sistema/ARCHITECTURE.md");
+  const sin = pasos.filter(p => !arq.includes(p));
+  assert.deepStrictEqual(sin, [], "pasos de arranque.ts que ARCHITECTURE.md no nombra (añade su fila a la tabla de la sección 2)");
 });

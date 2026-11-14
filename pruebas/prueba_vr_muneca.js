@@ -1,4 +1,4 @@
-// EV2-A3 (doc/sistema/VIABILIDAD-INTERACCION.md §A.5, paso 4): el menú de muñeca con el WebXR de mentira (mock_xr.js).
+// EV2-A3 (doc/historico/VIABILIDAD-INTERACCION.md §A.5, paso 4): el menú de muñeca con el WebXR de mentira (mock_xr.js).
 // Uso: node pruebas/prueba_vr_muneca.js <url de la página>   (por el banco: una sola Chrome a la vez; npm run banco:encarga)
 // Comprueba la LÓGICA en la página: con la muñeca izquierda bajada no hay menú; al subirla con el dorso hacia los ojos y mirarla, aparece (y se crea UNA
 // lámina); el rayo derecho resalta y el gatillo pulsa «Volver»; al bajarla, se va; ?xrmuneca=0 lo apaga; al salir de VR se libera. Cuenta llamadas con y sin

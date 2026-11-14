@@ -121,7 +121,7 @@ export function creaVrSesion(c: CtxVr) {
     if (paseando()) salePaseo();
     VRX.vuelo = false; VRX.mirador = false; vrEstado("soportado (sesión terminada)"); Bus.emite("vr:sale"); tamano(); pideFotograma();
   }
-  // ----- 8) entrar en VR sin pulsar (Q2c; lo puro, VrConcedidaPuro, en vr-puros.ts), SOLO con ?mide o ?debug (medidas automáticas desde adb, doc/sistema/IWSDK.md §2.2-B): el Quest Browser emite «sessiongranted» en navigator.xr cuando la página
+  // ----- 8) entrar en VR sin pulsar (Q2c; lo puro, VrConcedidaPuro, en vr-puros.ts), SOLO con ?mide o ?debug (medidas automáticas desde adb, doc/historico/IWSDK.md §2.2-B): el Quest Browser emite «sessiongranted» en navigator.xr cuando la página
   // se abre ya dentro de una sesión inmersiva (arranque por adb) y entonces deja pedir la sesión sin gesto. Entra por el MISMO camino que el botón (entraVR). En una visita normal no escucha nada.
   var vrDeteccion: T = null;
   var alConcedida: T = null;   // A3-6c: la escucha «sessiongranted», para quitarla en libera()

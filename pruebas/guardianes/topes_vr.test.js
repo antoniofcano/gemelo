@@ -1,5 +1,5 @@
 "use strict";
-// EV2-A0 (doc/sistema/VIABILIDAD-INTERACCION.md §A.2 y §A.5): topes angulares de lo que se lee y se pulsa en las láminas VR, en Node y sin navegador.
+// EV2-A0 (doc/historico/VIABILIDAD-INTERACCION.md §A.2 y §A.5): topes angulares de lo que se lee y se pulsa en las láminas VR, en Node y sin navegador.
 // Los topes (LaminasPuro.TOPES: texto ≥ 1,5° por línea, objetivos ≥ 2,5°, ≥ 12 mm entre botones vistos a 1 m) son CIFRAS PROPIAS DEL GEMELO, no
 // verificadas contra la guía de Meta ni la de Apple ni en un casco. Se calculan desde las constantes del código (px del lienzo, metros de la lámina,
 // distancia a los ojos), no se miden en las Quest. Las láminas que siguen a la cabeza (las de siempre, sin ?ui=capas) no llegan al tope de texto: se

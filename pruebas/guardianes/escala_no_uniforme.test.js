@@ -1,5 +1,5 @@
 "use strict";
-// AG-1.11 (doc/sistema/ESCALA-NO-UNIFORME.md): fija en Node, sin navegador, (1) las propiedades de la cuenta que reproduce pruebas/medida_escala_no_uniforme.js y
+// AG-1.11 (doc/historico/ESCALA-NO-UNIFORME.md): fija en Node, sin navegador, (1) las propiedades de la cuenta que reproduce pruebas/medida_escala_no_uniforme.js y
 // (2) que el motor sigue aplicando la exageración como escala no uniforme en la matriz del grupo; si eso cambia, el documento hay que revisarlo.
 const test = require("node:test"), assert = require("node:assert");
 const fs = require("node:fs"), path = require("node:path");

@@ -1,4 +1,4 @@
-// Lo tuyo en pantalla (EV2-A4, doc/sistema/VIABILIDAD-INTERACCION.md; MU5-n, A3-7a: antes apps/web/motor/31b_hud_personal.js, que queda como talón): «hora · tu haza ·
+// Lo tuyo en pantalla (EV2-A4, doc/historico/VIABILIDAD-INTERACCION.md; MU5-n, A3-7a: antes apps/web/motor/31b_hud_personal.js, que queda como talón): «hora · tu haza ·
 // hablar · volver» juntos, bajo el tiempo del HUD. Es HTML (#hudPersonal en plantilla.html): 0 llamadas de dibujo. Componente «hud-personal» de TODOS los mundos (es de
 // la página): su libera() para su reloj de 500 ms (L2-11: antes no lo paraba nadie), quita las escuchas de sus cuatro botones y se borra del Bus («voz:estado»).
 // Código movido tal cual (solo se tipan parámetros y variables, y «x.addEventListener(» pasa a «escucha(x, »); lo que el legado reescribe (paseando) entra por getter.
@@ -11,7 +11,7 @@ export const ID_HUD_PERSONAL = "hud-personal";
 /** Lo que el talón de 31b le da: $ y el Bus; Hazas (13b), horaMundoTexto (15_tiempo), objetivo (09_camara), pp (12_paseo), Usables (02e) y Hud (31); paseando, por getter */
 export interface DepsHudPersonal { $(id: string): T; Bus: T; Hazas: T; horaMundoTexto(): string; objetivo: T; pp: T; Usables: T; Hud: T; readonly paseando: boolean }
 
-  // ---------- lo tuyo en pantalla (EV2-A4, doc/sistema/VIABILIDAD-INTERACCION.md): «hora · tu haza · hablar · volver» juntos, bajo el tiempo del HUD.
+  // ---------- lo tuyo en pantalla (EV2-A4, doc/historico/VIABILIDAD-INTERACCION.md): «hora · tu haza · hablar · volver» juntos, bajo el tiempo del HUD.
   // Es HTML (#hudPersonal en plantilla.html, clases en plantilla.css): 0 llamadas de dibujo y 0 estilos en línea. No reinventa nada: la hora es la del mundo
   // (15_tiempo.js), la haza es la de 13b_hazas.js (la misma ficha que la tecla H), hablar es el micrófono de 47_habla.js (por el Bus, «habla:alterna») y
   // volver es lo que ya hacen Inicio y 0 (Hud.alInicio). Se oculta con el ajuste «Mostrar hora, tu haza, hablar y volver» (vista.personal, 33_ajustes.js).

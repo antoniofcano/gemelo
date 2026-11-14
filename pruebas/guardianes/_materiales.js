@@ -1,6 +1,6 @@
 "use strict";
 // La fábrica de materiales (02i_materiales.js) y el renderizador elegido (02h_render.js) y los estáticos (02j_estaticos.js) evaluados en Node, para las pruebas que ejecutan un módulo
-// del motor en un vm y necesitan `Materiales` (F1 de doc/sistema/MULTIVIEW.md). Es el código de verdad, no un doble: devuelve lo mismo que en la página.
+// del motor en un vm y necesitan `Materiales` (F1 de doc/historico/MULTIVIEW.md). Es el código de verdad, no un doble: devuelve lo mismo que en la página.
 //   const { fabrica } = require("./_materiales");  const { Materiales, Render, InfoDibujo, RenderPuro, Estaticos } = fabrica(THREE, { busqueda: "?render=nuevo" });
 const vm = require("vm");
 const { lee } = require("./_util");

@@ -1,5 +1,7 @@
 # Escala no uniforme del grupo de teselas (AG-1.11)
 
+> 🗄️ Estudio del 2026-11-04: foto, no se mantiene. Lo vigente: [TILES3D](../sistema/TILES3D.md) y [ARCHITECTURE](../sistema/ARCHITECTURE.md). Los nombres de módulos `NN_*.js` que cita son los de antes de la refactorización a mundos (ADR-0033).
+
 Estudio de solo lectura: qué hace 3DTilesRendererJS 0.5.3 con la exageración vertical, que el motor aplica como `makeScale(1, exag, 1)` en la matriz del grupo (`colocaGrupo`, `apps/web/motor/04b_escena3d.js`). **No cambia el comportamiento.** Las cifras de abajo son un **modelo calculado en Node** (`node pruebas/medida_escala_no_uniforme.js`), no una medida en pantalla; en iPhone y Quest, **no probado**.
 
 ## Qué hace la librería

@@ -1,6 +1,6 @@
 # Gemelo — manual de operación
 
-Gemelo digital en 3D de fincas de olivar (three.js 0.186.1, teselas de 256 m, LiDAR/ortofoto/NDVI, modo VR) para Cano & Damas Oleicultores. Es la primera lectura de quien llega, persona o agente. Pacto: *si algo deja de ser cierto, se corrige en el mismo commit que lo cambia.*
+Gemelo digital en 3D de fincas de olivar (three.js 0.186.1 en pantalla, `super-three` 0.185.0 en la build del Quest y `three` 0.128.0 en el constructor de olivos; teselas de 256 m, LiDAR/ortofoto/NDVI, modo VR) para Cano & Damas Oleicultores. Es la primera lectura de quien llega, persona o agente. Pacto: *si algo deja de ser cierto, se corrige en el mismo commit que lo cambia.*
 
 **Versión: v0.2.0** — prototipo (la fase 1 de una visión multiusuario: [doc/sistema/ARQUITECTURA-MULTIUSUARIO.md](doc/sistema/ARQUITECTURA-MULTIUSUARIO.md)). Dónde estamos y qué falta: [doc/ESTADO.md](doc/ESTADO.md). Qué se hizo: [CHANGELOG.md](CHANGELOG.md). Índice de toda la documentación: [doc/README.md](doc/README.md).
 
@@ -33,7 +33,11 @@ Gemelo digital en 3D de fincas de olivar (three.js 0.186.1, teselas de 256 m, Li
 ```
 CLAUDE.md  CHANGELOG.md  VERSION  package.json  Makefile
 apps/web/                cliente web (ADR-0010): src/ (el cliente en TypeScript, con su entrada src/arranque.ts; ver ARCHITECTURE), plantilla.html,
-                         herramientas/genera_motor.mjs y vite.config.js (build con Vite, three 0.186.1)
+                         herramientas/genera_motor.mjs y vite.config.js (build con Vite, three 0.186.1); la build de VR del Quest (super-three) y, aparte,
+                         oficina/ (la oficina, otro Vite), portada/ (la entrada pública) y olivo/ (el constructor de olivos, three 0.128.0)
+apps/api/                la api (Node/TypeScript, Postgres+PostGIS): sesiones, hazas, presencia y voz, vida de las hazas, lecturas de OlivarTrack y Vigía;
+                         migraciones/ (SQL) y pruebas/ propias
+infra/                   producción en el VPS: compose.yml, Caddyfile, LiveKit, respaldos y comprobar-despliegue.sh; infra/dev, el entorno local (npm run dev:arriba)
 tuberia/                 de los datos a las teselas: finca_8_teselas.py (exportador), hituelo_conv.py, datos/hituelo/ (Hituelo, el único mundo: decisiones 22 y 229)
                          y tiles3d/ (genera el tileset 3D Tiles de cada finca)
 prototipos/              maquetas de UX (sin datos reales)
@@ -64,7 +68,7 @@ Documentación por pregunta: `doc/rumbo/` (¿hacia dónde vamos?: PLAN, DECISION
 | VR con sesión simulada | `GEMELO_URL=<url> node pruebas/vr_mock.js` |
 | Ver fps, ms de JS, llamadas y triángulos | añadir `?debug` a la URL |
 
-Servir en local: el entorno de `infra/dev` (`npm run dev:arriba`) o la web construida con Vite; la escena necesita el tileset, así que `file://` y un servidor de ficheros sin él no bastan. Dependencias: `npm i` (solo `playwright-core`) y Chrome (variable `CHROME` si no está en la ruta por defecto).
+Servir en local: el entorno de `infra/dev` (`npm run dev:arriba`) o la web construida con Vite; la escena necesita el tileset, así que `file://` y un servidor de ficheros sin él no bastan. Dependencias: `npm ci` (las `devDependencies` de `package.json`, `playwright-core` entre ellas) y Chrome (variable `CHROME` si no está en la ruta por defecto).
 
 ---
 
@@ -95,7 +99,7 @@ Ejecuta la [skill `release`](.claude/skills/release/SKILL.md); no la redefine. R
 - **El estado vive en el repo, no en la conversación.** `doc/ESTADO.md` es la memoria viva; `doc/historico/` archiva lo cerrado. Nada importante vive solo en un chat.
 - Trabajo incremental, en rama, con su comprobación, y commits en español con `Co-Authored-By`.
 - **Rama de trabajo: `main`** (decisión de Antonio, 2026-10-28); sin ramas por ahora. Commits pequeños y puerta antes de cada uno.
-- **Agente `arquitecto-multiusuario`** (`.claude/agents/`): estudia la visión multiusuario ([ARQUITECTURA-MULTIUSUARIO](doc/sistema/ARQUITECTURA-MULTIUSUARIO.md), [ADR-0009](doc/adr/0009-plataforma-multiusuario-cuarenta-hazas.md)) frente al repo. Solo lectura; ejecutarlo antes de cualquier código de la fase 2 en adelante.
+- **Agente `arquitecto-multiusuario`** (`.claude/agents/`): estudia la visión multiusuario ([ARQUITECTURA-MULTIUSUARIO](doc/sistema/ARQUITECTURA-MULTIUSUARIO.md), [ADR-0009](doc/adr/0009-plataforma-multiusuario-cuarenta-hazas.md)) frente al repo. Solo lectura; ejecutarlo antes de abrir una fase nueva o un ADR nuevo de esa visión (las fases 1 a 3 ya están hechas o en marcha: PLAN).
 - Decisiones técnicas: el agente decide y lo cuenta. Decisiones de Antonio (licencia, qué se publica, ramas, datos de la explotación): se preguntan o van a [DECISIONS-PENDING](doc/rumbo/DECISIONS-PENDING.md).
 - Lo que no está en el repo ni en `doc/` se marca **[SUPUESTO]** o se pregunta; nunca se inventa.
 - Agentes largos: cerrarlos en primer plano y verificar su resultado; lo publicado hay que comprobar que es lo nuevo.

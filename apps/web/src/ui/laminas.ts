@@ -61,7 +61,7 @@ export var LaminasPuro: T = (function () {
       ["firma", "alTocar", "alApuntar", "alCierra"].forEach(function (k?: T) { if (o[k] !== undefined && typeof o[k] !== "function") e.push(k + ": función"); });
       return e;
     }
-    // EV2-A0: los topes angulares de lo que se lee y se pulsa en una lámina VR (doc/sistema/VIABILIDAD-INTERACCION.md §A.2). Son CIFRAS PROPIAS DEL GEMELO,
+    // EV2-A0: los topes angulares de lo que se lee y se pulsa en una lámina VR (doc/historico/VIABILIDAD-INTERACCION.md §A.2). Son CIFRAS PROPIAS DEL GEMELO,
     // no verificadas en la guía de Meta ni en la de Apple ni en un casco: texto ≥ 1,5° por línea (el interlineado, no la altura de la x), objetivos ≥ 2,5°
     // por su lado menor y ≥ 12 mm entre botones vistos a 1 m (12 mm a 1 m = 0,69°). grados(mm, m): ángulo que ocupa un tamaño a una distancia.
     var TOPES: T = { textoGrados: 1.5, objetivoGrados: 2.5, huecoMmA1m: 12 };

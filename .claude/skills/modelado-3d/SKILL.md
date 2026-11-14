@@ -36,7 +36,7 @@ No hay `logarithmicDepthBuffer` aquí (se usa `near` dinámico, `far = max(5000,
 ## Lista antes de dar por buena una geometría
 - [ ] Triángulos por nivel dentro de su cifra; instancias con `count` ajustado, no con el máximo.
 - [ ] Normales sin costura entre teselas (margen de 1 celda); sin grietas entre niveles.
-- [ ] Sombras: el diseño preveía una por árbol en L0–L1 y ninguna en L2 (**sin comprobar en el código**; mírelo antes de afirmarlo).
+- [ ] Sombras: el motor **no enciende `renderer.shadowMap`** (comprobado en O8c con `renderer.info`; [MATERIALES](../../../doc/sistema/MATERIALES.md), L5-12), así que no hay sombras proyectadas por árbol aunque algunas mallas lleven `castShadow`. Si se encienden, es una decisión con su ADR y su medida.
 - [ ] Sin geometría nueva por fotograma (reutilizar y `setDrawRange`).
 - [ ] Medido / deducido / ilustrativo bien rotulado en la página.
 - [ ] Recuentos medidos con `?debug` o SwiftShader y anotados; fps = **no probado** salvo dispositivo real.

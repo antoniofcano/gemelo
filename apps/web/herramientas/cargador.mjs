@@ -1,4 +1,4 @@
-// El cargador que elige build (ADR-0031, F2c; doc/sistema/MULTIVIEW.md «Dos builds»). La página de la finca no carga un bundle fijo: un script
+// El cargador que elige build (ADR-0031, F2c; doc/historico/MULTIVIEW.md «Dos builds»). La página de la finca no carga un bundle fijo: un script
 // CLÁSICO y externo (assets/cargador-<huella>.js, 'self': la CSP no cambia, sin scripts en línea) decide ANTES de cargar three cuál de las dos builds
 // inyecta, porque dos three no pueden convivir en una página. Reglas:
 //   · la decisión es eligeBuild() de builds.mjs (la misma función, copiada tal cual al cargador) con la clase de AparatoPuro.clasifica

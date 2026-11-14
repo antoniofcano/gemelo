@@ -1,4 +1,4 @@
-// Parches de super-three 0.185.0 en la build de VR (ADR-0031, doc/sistema/MULTIVIEW.md §«Texturas en negro»). Con multiview encendido, en el Quest 3
+// Parches de super-three 0.185.0 en la build de VR (ADR-0031, doc/historico/MULTIVIEW.md §«Texturas en negro»). Con multiview encendido, en el Quest 3
 // (2026-11-05, consola remota de Antonio) NINGÚN material de three compilaba (Lambert, Basic, Standard, Sprite, Points, Line…): terreno y olivos en
 // negro, mandos y rótulos invisibles; solo se veían los sombreadores propios sin <common> (lindes, haces, cielo). Tres fallos, los tres de super-three:
 //  1. textures: render() aplaza las subidas de texturas (setDeferTextureUploads(true)) y nadie llama a runDeferredUploads() → se suben justo tras el dibujo.

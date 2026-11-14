@@ -1,5 +1,5 @@
 "use strict";
-// AG-3a / F1 (doc/sistema/MULTIVIEW.md §4, ADR-0031): la fábrica única de materiales (apps/web/motor/02i_materiales.js), en Node y con el three de verdad.
+// AG-3a / F1 (doc/historico/MULTIVIEW.md §4, ADR-0031): la fábrica única de materiales (apps/web/motor/02i_materiales.js), en Node y con el three de verdad.
 //   · equivalencia: lo que da la fábrica es lo mismo que daba el código de antes (el mismo ShaderMaterial con sus uniformes, defines y código; el mismo
 //     parche con la misma clave de programa; encadena con el mismo contrato que la de la biblioteca de olivos, apps/web/olivo/materiales.js);
 //   · el punto de la versión nueva (TSL, F4): solo se usa con Render.tipo «nuevo», que hoy no existe;

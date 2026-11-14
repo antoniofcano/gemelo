@@ -1,6 +1,6 @@
 # Materiales: la fábrica `nucleo/materiales` y sus sombreadores (MU5-0)
 
-La fábrica de materiales del motor y la lista de trabajo de MU5 para los materiales. Viene de la F1 de [MULTIVIEW §4](MULTIVIEW.md#4-el-plan-por-fases) (la fábrica `02i_materiales.js`, 2026-11-04) y de los «tres pájaros en MU5» del [ADR-0033](../adr/0033-mundos.md): cada módulo del exterior sale a TypeScript, como componente, y con sus materiales por esta fábrica, que ya trae la variante TSL apagada. El cambio de renderer queda para MU6, en un solo paso ([ADR-0031](../adr/0031-migrar-al-webgpurenderer-con-multiview.md)).
+La fábrica de materiales del motor y la lista de trabajo de MU5 para los materiales. Viene de la F1 de [MULTIVIEW §4](../historico/MULTIVIEW.md#4-el-plan-por-fases) (la fábrica `02i_materiales.js`, 2026-11-04) y de los «tres pájaros en MU5» del [ADR-0033](../adr/0033-mundos.md): cada módulo del exterior sale a TypeScript, como componente, y con sus materiales por esta fábrica, que ya trae la variante TSL apagada. El cambio de renderer queda para MU6, en un solo paso ([ADR-0031](../adr/0031-migrar-al-webgpurenderer-con-multiview.md)).
 
 - **Código:** `apps/web/src/nucleo/materiales.ts`. `apps/web/motor/02i_materiales.js` queda como talón (`var Materiales = Nucleo.creaMateriales({ … })`) con el mismo nombre y el mismo comportamiento.
 - **Pruebas:**
@@ -11,7 +11,7 @@ La fábrica de materiales del motor y la lista de trabajo de MU5 para los materi
 
 ## 1. Inventario de los sombreadores propios (2026-11-06)
 
-Es la lista de trabajo de MU5-n: el tercer commit de cada módulo escribe aquí su variante TSL. Puesta al día respecto a [MULTIVIEW §2.2](MULTIVIEW.md#22-los-sombreadores-propios-26-por-orden-de-migración) (recuento del 2026-11-04). La dificultad en TSL (**B** ≤ ½ día, **M** 1 día, **A** 2-4 días) es la de allí y es una **[ESTIMACIÓN]**.
+Es la lista de trabajo de MU5-n: el tercer commit de cada módulo escribe aquí su variante TSL. Puesta al día respecto a [MULTIVIEW §2.2](../historico/MULTIVIEW.md#22-los-sombreadores-propios-26-por-orden-de-migración) (recuento del 2026-11-04). La dificultad en TSL (**B** ≤ ½ día, **M** 1 día, **A** 2-4 días) es la de allí y es una **[ESTIMACIÓN]**.
 
 ### 1.1 Lo que significa cada columna
 

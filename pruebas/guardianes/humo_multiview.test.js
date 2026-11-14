@@ -1,5 +1,5 @@
 "use strict";
-// F2b (doc/sistema/MULTIVIEW.md, F2; ADR-0031): la página de humo desechable de prototipos/multiview/, en Node (sin Chrome: lo que mide, lo
+// F2b (doc/historico/MULTIVIEW.md, F2; ADR-0031): la página de humo desechable de prototipos/multiview/, en Node (sin Chrome: lo que mide, lo
 // mide el Quest). Comprueba:
 //   · que las tres builds (clasico, super, nuevo) construyen con Vite y salen con nombre fijo, una sola three cada una;
 //   · que cada modo lleva el renderizador que dice, por las marcas de su bundle (la REVISION de su three, `multiviewStereo` de super-three,

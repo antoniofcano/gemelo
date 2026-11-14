@@ -2,7 +2,7 @@
 
 ## 1. Requisitos
 - Node ≥ 24 (`.nvmrc`), Python ≥ 3.10 (probado con 3.14), Chrome (ruta por defecto `C:/Program Files/Google/Chrome/Application/chrome.exe`; otra con la variable `CHROME`).
-- `npm i` (solo `playwright-core`) y `cd apps/web && npm i` (Vite y three 0.186.1). Para el constructor de olivos, `cd apps/web/olivo && npm i` (three 0.128.0 fijado como `three-gen`, three 0.186.1 para la prueba de compatibilidad y Vite). Para **regenerar datos reales** además `pip install -r requirements.txt` y las fuentes descargadas ([DATOS.md](DATOS.md)); para la puerta no hace falta.
+- `npm ci` en la raíz (las `devDependencies` de `package.json`: `playwright-core`, `ajv`, `fast-check`, `@gltf-transform/*`, `gltf-validator`, `meshoptimizer`, `ktx-parse`, `acorn`, `proper-lockfile` y `yaml`) y `cd apps/web && npm i` (Vite y three 0.186.1). Para el constructor de olivos, `cd apps/web/olivo && npm i` (three 0.128.0 fijado como `three-gen`, three 0.186.1 para la prueba de compatibilidad y Vite). Para **regenerar datos reales** además `pip install -r requirements.txt` y las fuentes descargadas ([DATOS.md](DATOS.md)); para la puerta no hace falta.
 
 ## 2. Primer vistazo
 1. Lee [CLAUDE.md](../../CLAUDE.md) (reglas de oro) y [ESTADO.md](../ESTADO.md).
@@ -91,7 +91,7 @@
 
 En CI la misma puerta corre en GitHub Actions (`.github/workflows/puerta.yml`); no despliega nada.
 
-**Duración medida (2026-10-29):** ≈ 4 min 30 s con `npm run puerta` (151 comprobaciones, de ellas 18 saltadas con aviso en una copia sin `npm i` en `apps/web` ni dependencias de `apps/api` y `tuberia/tiles3d`; la presencia suma unos 2 min de navegador; antes, 2026-10-28: ≈ 2 min 30 s, 90 comprobaciones, 1 opcional saltada; las de navegador en serie, `--test-concurrency=1`, porque en paralelo se estorban; 2 fincas montadas y cargadas en Chrome 131 con SwiftShader; Windows 10, Node 24, Python 3.14). Casi todo es el arranque de Chrome y la carga del fixture; sin Chrome, esas dos comprobaciones se saltan con aviso y la puerta baja a unos segundos (pero entonces la carga **no** está comprobada).
+**Duración:** la de la línea de arriba (≈ 11-12 min medidos con la escena única; es la única cifra vigente: las de octubre, de una puerta mucho más corta, se quitaron). Las comprobaciones de navegador van en serie (`--test-concurrency=1`), porque en paralelo se estorban. Casi todo es el arranque de Chrome y la carga del fixture; sin Chrome, esas comprobaciones se saltan con aviso y la puerta baja a unos segundos (pero entonces la carga **no** está comprobada).
 
 Si falla una comprobación, [TESTING.md](TESTING.md) dice qué significa cada rojo y cómo se arregla. Una prueba que no se puede ejecutar (p. ej. sin Chrome) **se salta con aviso explícito, no pasa en silencio**.
 

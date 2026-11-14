@@ -1,13 +1,13 @@
 # Gemelo
 
-Gemelo digital en 3D de fincas de olivar, para el navegador (three.js 0.186.1): terreno, copas y troncos de cada olivo medidos con LiDAR,
+Gemelo digital en 3D de fincas de olivar, para el navegador (three.js 0.186.1 en pantalla; la build del Quest usa `super-three` 0.185.0 y el constructor de olivos, `three` 0.128.0: [PUBLICACION](doc/operacion/PUBLICACION.md#las-dos-builds-adr-0031-f2c)): terreno, copas y troncos de cada olivo medidos con LiDAR,
 suelo con ortofoto y NDVI, tiempo, vida, sonido, paseo en primera persona, vuelo, minimapa y modo VR (WebXR, Meta Quest).
 Nace como mockup de [OlivarTrack](https://github.com/antoniofcano/olivartrack) para Cano & Damas Oleicultores.
 
 Un mundo: **Hituelo** (4 fincas, 27 parcelas, 95 ha, ~5.900 olivos). Cerro Velasco, la primera finca del gemelo, salió del mundo el 2026-11-06 (decisión 229).
 
-> Estado: prototipo. Funciona en Chrome (probado con renderizado por software) y sin errores de consola, pero el rendimiento
-> en iPhone y Quest **no está medido**. Mira [doc/ESTADO.md](doc/ESTADO.md) y [doc/sistema/MEDIDAS.md](doc/sistema/MEDIDAS.md). **Versión: v0.2.0.** Método de trabajo: [CLAUDE.md](CLAUDE.md); índice: [doc/README.md](doc/README.md).
+> Estado: prototipo. Funciona en Chrome (probado con renderizado por software) y sin errores de consola. En el Quest 3 hay medidas de Antonio
+> ([MEDIDAS](doc/sistema/MEDIDAS.md); tras el refactor a mundos, **sin repetir**); en iPhone, **no medido**. Mira [doc/ESTADO.md](doc/ESTADO.md) y [doc/sistema/MEDIDAS.md](doc/sistema/MEDIDAS.md). **Versión: v0.2.0.** Método de trabajo: [CLAUDE.md](CLAUDE.md); índice: [doc/README.md](doc/README.md).
 
 ## Qué hay aquí
 
@@ -43,7 +43,7 @@ node tuberia/tiles3d/genera.mjs --salida <carpeta del tileset>
 cd apps/web && npm i && GEMELO_DATOS=<ruta a indice.json> npm run build && cd ../..
 ```
 
-El gemelo se sirve solo desde el servidor: el entorno local (`npm run dev:arriba`, [DESARROLLO-LOCAL](doc/operacion/DESARROLLO-LOCAL.md)) o, más adelante, el VPS. La salida artefacto de claude.ai se retiró ([ADR-0021](doc/adr/0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md)).
+El gemelo se sirve solo desde el servidor: el entorno local (`npm run dev:arriba`, [DESARROLLO-LOCAL](doc/operacion/DESARROLLO-LOCAL.md)) o el VPS de OVH, donde está desplegado ([PUBLICACION](doc/operacion/PUBLICACION.md), [DESPLIEGUE-V2](doc/operacion/DESPLIEGUE-V2.md)). La salida artefacto de claude.ai se retiró ([ADR-0021](doc/adr/0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md)).
 
 Los scripts de `tuberia/datos/` leen sus rutas de variables de entorno (`GEMELO_DATOS`, `GEMELO_DESCARGAS`, `GEMELO_LIDAR`, `GEMELO_IMAGEN`,
 `GEMELO_HITUELO`, `GEMELO_PARCELAS`, `GEMELO_MDS`, `GEMELO_SUELO`); los valores por defecto son carpetas relativas. Requieren Python con
@@ -52,8 +52,8 @@ Los scripts de `tuberia/datos/` leen sus rutas de variables de entorno (`GEMELO_
 ## Probar
 
 ```bash
-npm i && npm run puerta                    # la puerta: guardianes con un fixture sintético (≈2-3 min con Chrome)
-npm i playwright-core                      # y Chrome instalado (variable CHROME si no está en la ruta por defecto)
+npm i && npm run puerta                    # la puerta: guardianes con un fixture sintético (duración: ONBOARDING#la-puerta)
+# hace falta Chrome instalado (variable CHROME si no está en la ruta por defecto); npm i ya trae playwright-core
 # con la web servida (npm run dev:arriba) o una página de pruebas/salida/paginas/
 node pruebas/prueba3.js <url de la página> salida/h     # carga, presupuesto, capturas
 GEMELO_URL=<url de la página> node pruebas/vr_mock.js   # VR con sesión simulada
@@ -64,8 +64,9 @@ Añade `?debug` a la URL para ver fps, milisegundos de JS por fotograma, llamada
 ## Modo VR (Meta Quest)
 
 El botón «Entrar en VR» solo aparece si `navigator.xr` soporta `immersive-vr`. Controles: palanca izquierda andar, derecha giro por saltos de 30°,
-gatillo derecho teletransporte, **A** vuelo, **B** mirador, **Y** panel flotante, grip correr. Probado únicamente con un mock de WebXR: los fps,
-el mareo y la comodidad del panel **no se han probado en un casco real**.
+palanca derecha hacia delante (mantener) y soltar: teletransporte, gatillo derecho: pulsar botones y abrir fichas, **A** vuelo, **B** mirador, **Y** panel flotante,
+grip izquierdo correr (el grip, apuntando a una lámina, la agarra). Lo completo, en [VR.md](doc/sistema/VR.md). Probado con un mock de WebXR y, en el Quest 3,
+por Antonio en varias subidas (rendimiento medido; la comodidad y el mareo, solo lo que anota VR.md); tras el refactor a mundos, **sin repetir en el casco**.
 
 ## Qué es medido y qué es deducido
 

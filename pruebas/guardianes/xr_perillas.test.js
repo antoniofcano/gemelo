@@ -67,7 +67,7 @@ test("29_vr: near efectivo al entrar y restaurado al salir; el controlador baja 
   assert.match(vr, /xr: \{ near: XrPerillas\.efectivas\.near, topeJs: XrPerillas\.js\(\)/);
 });
 
-// ---------- F2a (doc/sistema/MULTIVIEW.md): ?xrmv=0|1, el multiview de super-three, SOLO en la build de VR (defecto 1); en la de pantalla no existe
+// ---------- F2a (doc/historico/MULTIVIEW.md): ?xrmv=0|1, el multiview de super-three, SOLO en la build de VR (defecto 1); en la de pantalla no existe
 test("cableado F2a: 03_escena pide multiviewStereo solo si XrPerillas.multiview(Render.build) lo activa; 29_vr pide «layers» solo entonces y apunta si está en uso; la sonda lo dice", () => {
   const e = pasoArranque("03_escena.js");
   assert.match(e, /MV = XrPerillas\.multiview\(Render\.build\)/);

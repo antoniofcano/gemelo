@@ -99,7 +99,7 @@ async function lanza() {
  *  un fotograma y agrupa por «pasada · #i hijo de la escena [pista] › objeto · material». La pista dice si el hijo es el grupo de la escena
  *  3D Tiles o el de los árboles; el resto, por su posición en scene.children (el orden de montaje de apps/web/motor/).
  *  Devuelve { total, info, filas: [[clave, llamadas]] } (info = renderer.info.render.calls del mismo fotograma, para contrastar).
- *  SOLO el WebGLRenderer clásico: el nuevo no tiene renderBufferDirect (en él se espiará el backend o onBeforeRender: doc/sistema/MULTIVIEW.md §6, F2+). */
+ *  SOLO el WebGLRenderer clásico: el nuevo no tiene renderBufferDirect (en él se espiará el backend o onBeforeRender: doc/historico/MULTIVIEW.md §6, F2+). */
 function desgloseLlamadas() {
   const g = window.__g, R = g.renderer, S = g.scene, orig = R.renderBufferDirect, cuenta = {}, tri = {};
   const tiles = g.Escena3D && g.Escena3D.grupo ? g.Escena3D.grupo() : null, pista = t => t === tiles ? " [3dtiles]" : g.Arboles && g.Arboles.grupo === t ? " [arboles]" : "";

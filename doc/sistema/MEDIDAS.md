@@ -1,6 +1,6 @@
 # Medidas del motor por teselas (Chrome headless con SwiftShader, 1000×900; los fps reales faltan: solo un iPhone los da)
 
-> Referencia viva: se actualiza al volver a medir (protocolo: [skill `medir`](../../.claude/skills/medir/SKILL.md)). Cifras de octubre de 2026; solo SwiftShader, los fps reales faltan.
+> Libro de registro de medidas, de octubre a noviembre de 2026: se añade una sección al volver a medir (protocolo: [skill `medir`](../../.claude/skills/medir/SKILL.md)) y las secciones marcadas «foto, no se mantiene» valen para su fecha, no para hoy; para la cifra vigente de un tema, la sección más reciente. SwiftShader da recuentos, no fps; los fps reales solo los dan el Quest o un iPhone.
 
 > **Invalidadas el 2026-10-30 (T8 fase 2, [ADR-0021](../adr/0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md)).** Todas las cifras medidas con la **escena de siempre** (`Terreno`, `?escena=clasica`, topes `fixture` de `pruebas/presupuesto.json`) o con la **salida artefacto / modo embebido** ya no se pueden reproducir: se conservan como historia, no como referencia. Son las de «Cerro Velasco, antes y después», «Escala», «three 0.128.0 → 0.186.1», «Presencia simulada», «Hituelo real con `?olivos=gen`» y las comparaciones «escena de siempre frente a 3D Tiles» de «Criterios 2, 3 y 4 del ADR-0015». Las cifras de la escena 3D Tiles (secciones de Hituelo en 3D Tiles) siguen siendo las de la única escena, pero el banco debe volver a medir con la página de Vite antes de afirmar nada nuevo Topes nuevos en `pruebas/presupuesto.json` (`fixture.cerro` y `fixture.hituelo`, SwiftShader): lejos 124 llamadas medidas / tope 155, cerca 54 / 70, nube 73-80 / 100; la puerta tarda ≈ 11-12 min (683 y 740 s).
 >
@@ -16,7 +16,7 @@ Una medida de VR sin las perillas con las que se hizo no se puede comparar con o
 3. Escribe el aparato (Quest 3, versión del navegador) y marca lo no probado como **no probado**. Las advertencias de comodidad de las perillas están en [VR.md](VR.md#perillas-de-rendimiento-por-url).
 
 ## Prueba de humo del multiview en el Quest 3 (F2b, 2026-11-07, foto, no se mantiene)
-Medida por Antonio en su Quest 3 (Oculus Browser 154.1, Chrome 154, 72 Hz) con `prototipos/multiview/` servido por la Wi-Fi (`npm run sirve:red`). Una corrida de 60 s por caso, tras 3 s de calentamiento, sin moverse; MSAA sí, escala 0,9, foveación pedida 1. La sonda: WebGL2, `OVR_multiview2` y `OCULUS_multiview` disponibles **sin banderas y con MSAA**. Criterios de decisión: [MULTIVIEW F2](MULTIVIEW.md).
+Medida por Antonio en su Quest 3 (Oculus Browser 154.1, Chrome 154, 72 Hz) con `prototipos/multiview/` servido por la Wi-Fi (`npm run sirve:red`). Una corrida de 60 s por caso, tras 3 s de calentamiento, sin moverse; MSAA sí, escala 0,9, foveación pedida 1. La sonda: WebGL2, `OVR_multiview2` y `OCULUS_multiview` disponibles **sin banderas y con MSAA**. Criterios de decisión: [MULTIVIEW F2](../historico/MULTIVIEW.md).
 
 | Modo | n por ojo | `render()` mediana · p95 (ms) | Intervalo mediana · p95 · p99 (ms) | Fotogramas en 60 s | Llamadas (dos ojos) | Foveación de la capa |
 |---|---|---|---|---|---|---|

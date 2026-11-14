@@ -1,6 +1,6 @@
 # ADR-0035 — Interiores comprimidos: meshopt para la geometría y KTX2 (Basis Universal) para las texturas (contrato mundo-interior v1.3)
 
-- **Estado:** Propuesto (la tubería, el contrato, el validador y el motor están hechos en la rama `eje-b-compresion`; publicar la fábrica comprimida lo decide Antonio: ver «Comprobación»)
+- **Estado:** Aceptado (la fábrica comprimida se publicó en el VPS el 2026-11-14, con la confirmación de Antonio: ESTADO, «Publicado»)
 - **Fecha:** 2026-11-14
 
 ## Contexto

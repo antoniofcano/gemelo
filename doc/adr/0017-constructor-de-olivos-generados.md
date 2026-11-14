@@ -1,6 +1,6 @@
 # ADR-0017 — Constructor de olivos generados: un árbol por olivo, con semilla, desde lo medido
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (implementado en `apps/web/olivo/` y en el motor, y en producción; los ADR 0018 y 0019 se apoyan en él)
 - **Fecha:** 2026-10-29
 
 ## Contexto

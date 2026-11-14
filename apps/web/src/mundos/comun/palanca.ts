@@ -1,4 +1,4 @@
-// La palanca flotante (EV2-B2, doc/sistema/VIABILIDAD-INTERACCION.md §B; MU5-n, A3-6c: antes apps/web/motor/34b_palanca.js, que queda como talón): andar con el pulgar, encendida por defecto
+// La palanca flotante (EV2-B2, doc/historico/VIABILIDAD-INTERACCION.md §B; MU5-n, A3-6c: antes apps/web/motor/34b_palanca.js, que queda como talón): andar con el pulgar, encendida por defecto
 // en pantalla táctil. Nace donde apoyas el dedo (nipplejs 1.0.4, modo «dynamic», MIT; regla 12) en la mitad del pulgar (#palanca en plantilla.html: la izquierda, la derecha con mano zurda);
 // arrastrar la otra mitad gira al paseante. Alimenta el paseo por el camino que ya hay: ponPalanca/giraPalanca de 12_paseo, que actualizaPaseo suma al teclado y a la cruceta (la física, los
 // troncos, el quad y el dron son los de siempre). La cuenta (zona muerta, curva, dirección) es PalancaPuro (paseo.ts). Apagada con el ajuste «controles.palanca» o con ?palanca=0; en

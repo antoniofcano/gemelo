@@ -11,7 +11,7 @@ import { quitaPasos, ARRANQUE } from "./herramientas/pasos.mjs";
 
 const WEB = path.dirname(fileURLToPath(import.meta.url));
 // ADR-0031 (enmienda 2026-11-04): dos builds del mismo motor. Sin GEMELO_BUILD, la de pantalla, exactamente la de siempre (three de package.json, dist/);
-// GEMELO_BUILD=vr cambia «three» por super-three (preparada, no activada: herramientas/builds.mjs y pruebas/guardianes/builds_f1.test.js)
+// GEMELO_BUILD=vr cambia «three» por super-three (publicada para el Quest: herramientas/builds.mjs, publica_builds.mjs y pruebas/guardianes/builds_f1.test.js)
 const BUILD = buildPedida(process.env);
 // A3-8c: la entrada del cliente (src/arranque.ts), que importa la que escribe genera_motor.mjs (`import "@gemelo/arranque"`)
 export { ARRANQUE };

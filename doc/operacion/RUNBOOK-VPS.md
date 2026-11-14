@@ -4,7 +4,7 @@
 
 Cómo se pone en marcha y se opera el servidor del gemelo en el VPS de OVH, como inquilino del borde de Oficultor ([ADR-0011](../adr/0011-alojamiento-en-el-vps-de-ovh.md)). Contrato de lo que se despliega: [contratos/publicacion-vps.json](../../contratos/publicacion-vps.json). Sesión: [ADR-0013](../adr/0013-enlace-magico-y-sesiones.md); ficha: [ADR-0014](../adr/0014-proyeccion-publica-por-haza.md).
 
-> **Nada de esto se ha ejecutado todavía en el VPS.** Todo lo de abajo está probado en local con Docker (ver «Qué está probado») salvo lo marcado **[NO PROBADO]**. Lo marcado **[SUPUESTO]** no se ha comprobado en la máquina ni en el proveedor: se comprueba en la lista previa antes de seguir. Cada paso que despliega, publica o toca el borde **lo decide Antonio** (regla de oro 9), y no se despliega hasta tener el recorrido completo probado en local (decisión 21: tareas A5 y A6 del [tablero](../rumbo/PLAN.md#tablero-de-tareas-desde-el-2026-10-29)).
+> **El VPS está en marcha desde el 2026-11-02** ([ESTADO](../ESTADO.md#publicado)). Lo de abajo se probó en local con Docker (ver «Qué está probado») salvo lo marcado **[NO PROBADO]**; lo no marcado como ejecutado en el VPS (copias con `age`/`rclone` reales, SMTP de OVH) sigue sin ejecutarse allí. Lo marcado **[SUPUESTO]** no se ha comprobado en la máquina ni en el proveedor: se comprueba en la lista previa antes de seguir. Cada paso que despliega, publica o toca el borde **lo decide Antonio** (regla de oro 9). (La decisión 21, no desplegar hasta tener el recorrido probado en local, se cumplió antes del 2026-11-02.)
 
 ## Piezas
 

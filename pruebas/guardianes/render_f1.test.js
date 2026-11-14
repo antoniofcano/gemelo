@@ -1,5 +1,5 @@
 "use strict";
-// AG-3a / F1 (doc/sistema/MULTIVIEW.md §4, ADR-0031): lo que prepara 02h_render.js sin cambiar nada visible, en Node.
+// AG-3a / F1 (doc/historico/MULTIVIEW.md §4, ADR-0031): lo que prepara 02h_render.js sin cambiar nada visible, en Node.
 //   · InfoDibujo: la lectura de renderer.info con la misma forma para el WebGLRenderer clásico (info.render.calls, info.render.frame, info.programs = lista)
 //     y para el WebGPURenderer (info.render.drawCalls, info.frame, info.memory.programs = número), con un renderer de mentira de cada forma y con el
 //     WebGLInfo de verdad de three 0.186.1;

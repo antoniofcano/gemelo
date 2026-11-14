@@ -367,7 +367,7 @@ test("Q0g: la autopsia solo se paga midiendo: sin &mide ni botón no hay observa
   assert.ok(/lotes: function \(\) \{ return nLotes; \}/.test(gen) && /nLotes\+\+;/.test(gen));
 });
 
-// F0 (doc/sistema/MULTIVIEW.md): el techo del multiview. Cuánto del JS es renderer.render() y cuánto el resto; y la sonda del multiview
+// F0 (doc/historico/MULTIVIEW.md): el techo del multiview. Cuánto del JS es renderer.render() y cuánto el resto; y la sonda del multiview
 test("F0: el informe separa los ms de renderer.render() del resto del JS, y la tarjeta de VR sigue cabiendo", () => {
   const m = serie(Array.from({ length: 400 }, (_, i) => 10 + (i % 5)), 3, 0.05);
   m.js = m.ms.map(() => 6); m.rd = m.ms.map((_, i) => 2 + (i % 3));   // js 6 ms de los que render() 2-4 ms

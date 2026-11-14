@@ -24,7 +24,6 @@
 - [sistema/CONTRATOS.md](sistema/CONTRATOS.md) — datos exportador→motor, interfaces del motor, MCP, publicación (esquemas en [../contratos/](../contratos/)).
 - [sistema/GLOSARIO.md](sistema/GLOSARIO.md) — tesela, nivel, copa, r8, foco, MDS/MDT/CHM…
 - [sistema/MEDIDAS.md](sistema/MEDIDAS.md) — cifras medidas de dibujo y memoria.
-- [sistema/ESCALA-NO-UNIFORME.md](sistema/ESCALA-NO-UNIFORME.md) — AG-1.11: qué hace 3DTilesRendererJS con la exageración vertical (escala no uniforme del grupo), cómo sesga la selección de teselas, coste y alternativas.
 - [sistema/TILES3D.md](sistema/TILES3D.md) — prototipo F1d: la escena en 3D Tiles 1.1 (formato, marco de coordenadas, cómo regenerar, medidas).
 - [sistema/VR.md](sistema/VR.md) — modo VR (Meta Quest): controles, perfiles, qué se probó y qué no.
 - [sistema/UX.md](sistema/UX.md) — propuesta de UX: acceso, configuración e interacción (pendiente de revisión); maqueta en [../prototipos/ux/](../prototipos/ux/).
@@ -37,11 +36,7 @@
 - [sistema/TONE-MAPPING.md](sistema/TONE-MAPPING.md) — AG-2.5: la perilla `?tono=agx|aces|neutral` (y `?expo=`) para comparar el tone mapping; qué hace cada opción, qué pasa con el cielo y la niebla, las dos builds y la orden de capturas. Sin probar en Quest ni iPhone.
 - [sistema/ALPHA-A-COBERTURA.md](sistema/ALPHA-A-COBERTURA.md) — AG-2.1: `?a2c=0|1`, los recortes alfa (hierba, follaje, ramitas, impostores) a `alphaToCoverage` con el MSAA del contexto; qué materiales, cómo compararlo y la orden de capturas. Sin probar en Quest ni iPhone.
 - [sistema/CARTULINAS.md](sistema/CARTULINAS.md) — AG-2.2: `?cartulina=rect|silueta` (defecto `rect`), las cartulinas con recorte alfa (ramitas, relleno, tarjetas, impostores, sustitutos) dibujadas con el hexágono que abraza lo opaco; inventario con el área transparente medida, triángulos y la orden para el banco. Sin probar en Quest ni iPhone.
-- [sistema/VIABILIDAD-REALISMO.md](sistema/VIABILIDAD-REALISMO.md) — estudio EV-1 (no se implementa): suelo con fotos propias (texturas repetibles, KTX2, fundido con la ortofoto, hierba con recortes, unión suelo-olivo) y biodiversidad con datos abiertos (GBIF, xeno-canto, MITECO…) y grabador propio; coste, política por aparato, licencias, honestidad, versiones mínimas, tareas y preguntas.
-- [sistema/VIABILIDAD-INTERACCION.md](sistema/VIABILIDAD-INTERACCION.md) — estudio EV-2: interfaz espacial en tres capas (fichas en el mundo, muñeca, panel pequeño; uikit y troika frente al lienzo) y palanca táctil del móvil (nipplejs, toque para ir); viabilidad, coste, riesgos y tareas.
-- [sistema/IWSDK.md](sistema/IWSDK.md) — estudio Q2: el Immersive Web SDK de Meta (no se adopta), cómo medir en el Quest desde un agente con `adb`, CDP y `sessiongranted`, IWER frente a `mock_xr.js`, mirar y pellizcar, licencias y telemetría, y la prueba de una hora.
 - [sistema/MATERIALES.md](sistema/MATERIALES.md) — la fábrica de materiales `nucleo/materiales` (MU5-0): inventario de los sombreadores propios del motor (niebla, NDVI, viento, hora y dificultad en TSL), la API (registro por nombre, estándar, `libera(dueño)`), cómo se elige el renderer en MU6 (`?renderer=webgpu`, `GEMELO_BUILD`) y la receta de los tres commits de cada MU5-n.
-- [sistema/MULTIVIEW.md](sistema/MULTIVIEW.md) — estudio y plan AG-3a/AG-3b: migrar al `WebGPURenderer` (backend WebGL) con multiview para VR; qué ofrece three, inventario de sombreadores, puntos y pasada de salida, versión de three, 3d-tiles-renderer, fases F0-F6 con criterios de abandono y qué medir en el Quest (ADR-0031, Propuesto).
 - [sistema/MUNDOS.md](sistema/MUNDOS.md) — diseño (ADR-0033): mundos múltiples (exterior, molino, bodega) en un solo PWA; interfaces `World`, `WorldManager`, `Ambiente`, `Puerta`, `Contexto` y `Render` en TypeScript, contratos nuevos (sala por mundo, pose con mundo, pizarra), guardianes, la fase 1 al detalle y los riesgos.
 - [sistema/OFICINA.md](sistema/OFICINA.md) — propuesta: `/oficina`, la herramienta de la oficina (familias, hazas, bandeja, mundo en modo oficina, agenda, directos, constructor y parámetros de la escalera versionados, sistema), con plan OF0-OF13 y decisiones; maqueta en [../prototipos/oficina/](../prototipos/oficina/).
 - [sistema/LLAVES-DE-ACCESO.md](sistema/LLAVES-DE-ACCESO.md) — diseño aceptado y estado de implementación (OF13b, ADR-0029): llaves de acceso para todas las cuentas; recorridos, amenazas y mitigaciones, qué se guarda, recuperación, plan y preguntas para Antonio.
@@ -52,7 +47,7 @@
 - [sistema/AVATARES-FAMILIA.md](sistema/AVATARES-FAMILIA.md) — propuesta: avatares para toda la familia (fuentes abiertas, criterios de inclusión comprobables, muñeco teñido ya y creador por piezas después, silla/andador/bastón, peques y la decisión 45); maqueta en [../prototipos/avatares/](../prototipos/avatares/).
 - [sistema/COMPONENTES.md](sistema/COMPONENTES.md) — componentes del mundo («plugins»): diagnóstico del acoplamiento de hoy, contrato de un componente, puntos de extensión y lo que falta para el Agro-Verse (propuesta, ADR-0023).
 - [sistema/JUEGOS.md](sistema/JUEGOS.md) — juegos casuales (C9a): la pausa del mundo, el anfitrión de juegos, «Cae la cosecha» (reglas, controles, dibujo), el récord de la familia en la api y su nota de comodidad.
-- [sistema/ARQUITECTURA-MULTIUSUARIO.md](sistema/ARQUITECTURA-MULTIUSUARIO.md) — «Cuarenta hazas»: la visión multiusuario que da sentido al proyecto (propuesta, pendiente de estudio).
+- [sistema/ARQUITECTURA-MULTIUSUARIO.md](sistema/ARQUITECTURA-MULTIUSUARIO.md) — «Cuarenta hazas»: la visión multiusuario que da sentido al proyecto (aceptada, ADR-0009: sus fases se van haciendo; el estado, en el PLAN).
 
 ## Cómo se opera — `operacion/`
 - [operacion/ONBOARDING.md](operacion/ONBOARDING.md) — alta y la puerta.
@@ -60,9 +55,9 @@
 - [operacion/PUBLICACION.md](operacion/PUBLICACION.md) — cómo se sirve el gemelo (local y VPS; la salida artefacto se retiró).
 - [operacion/DATOS.md](operacion/DATOS.md) — fuentes, hojas LiDAR/MDT por finca, cómo regenerar, licencias.
 - [operacion/DESARROLLO-LOCAL.md](operacion/DESARROLLO-LOCAL.md) — el mundo y los servicios base (Caddy, PostGIS, LiveKit, buzón) en local con Docker: `npm run dev:arriba`.
-- [operacion/RUNBOOK-VPS.md](operacion/RUNBOOK-VPS.md) — servidor F1a en el VPS: puesta en marcha, operación, copias cifradas y ensayo de restauración (aún sin ejecutar en el VPS).
+- [operacion/RUNBOOK-VPS.md](operacion/RUNBOOK-VPS.md) — servidor F1a en el VPS: puesta en marcha, operación, copias cifradas y ensayo de restauración (el VPS está en marcha; las copias automáticas con `age`/`rclone` reales, sin ejecutar allí).
 - [operacion/LLAVES-RECUPERACION.md](operacion/LLAVES-RECUPERACION.md) — guía corta para la oficina: una familia pierde el móvil, la oficina pierde su llave, qué decir por teléfono (OF13b-11).
-- [operacion/DESPLIEGUE-V2.md](operacion/DESPLIEGUE-V2.md) — **el primer despliegue en el VPS, paso a paso**: qué hace Antonio, comprobación y vuelta atrás de cada paso, y qué bloquea enseñarlo o abrirlo a familias.
+- [operacion/DESPLIEGUE-V2.md](operacion/DESPLIEGUE-V2.md) — **el primer despliegue en el VPS (hecho el 2026-11-02), paso a paso**: qué hace Antonio, comprobación y vuelta atrás de cada paso, y qué bloquea enseñarlo o abrirlo a familias.
 - [operacion/TESTING.md](operacion/TESTING.md) — qué prueba cada cosa y qué significa cada rojo.
 
 ## Auditoría en curso — `auditoria-noviembre2026/` (viva mientras tenga algo abierto; luego a `historico/`)
@@ -81,3 +76,8 @@ Primera auditoría por lentes ([skill `auditoria`](../.claude/skills/auditoria/S
 
 ## Histórico — `historico/` (foto, no se mantiene)
 - [historico/DISENO-2026-10.md](historico/DISENO-2026-10.md) — diseño de la refactorización por teselas (27-oct-2026). Lo vigente: ADR 0015, 0021 y ARCHITECTURE.
+- [historico/ESCALA-NO-UNIFORME.md](historico/ESCALA-NO-UNIFORME.md) — AG-1.11: qué hace 3DTilesRendererJS con la exageración vertical (escala no uniforme del grupo), cómo sesga la selección de teselas, coste y alternativas.
+- [historico/VIABILIDAD-REALISMO.md](historico/VIABILIDAD-REALISMO.md) — estudio EV-1 (no se implementa): suelo con fotos propias (texturas repetibles, KTX2, fundido con la ortofoto, hierba con recortes, unión suelo-olivo) y biodiversidad con datos abiertos (GBIF, xeno-canto, MITECO…) y grabador propio; coste, política por aparato, licencias, honestidad, versiones mínimas, tareas y preguntas.
+- [historico/VIABILIDAD-INTERACCION.md](historico/VIABILIDAD-INTERACCION.md) — estudio EV-2: interfaz espacial en tres capas (fichas en el mundo, muñeca, panel pequeño; uikit y troika frente al lienzo) y palanca táctil del móvil (nipplejs, toque para ir); viabilidad, coste, riesgos y tareas.
+- [historico/IWSDK.md](historico/IWSDK.md) — estudio Q2: el Immersive Web SDK de Meta (no se adopta), cómo medir en el Quest desde un agente con `adb`, CDP y `sessiongranted`, IWER frente a `mock_xr.js`, mirar y pellizcar, licencias y telemetría, y la prueba de una hora.
+- [historico/MULTIVIEW.md](historico/MULTIVIEW.md) — estudio y plan AG-3a/AG-3b: migrar al `WebGPURenderer` (backend WebGL) con multiview para VR; qué ofrece three, inventario de sombreadores, puntos y pasada de salida, versión de three, 3d-tiles-renderer, fases F0-F6 con criterios de abandono y qué medir en el Quest (ADR-0031, Propuesto).
