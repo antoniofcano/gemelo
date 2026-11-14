@@ -1170,7 +1170,7 @@ paths:
     put:
       summary: "Carga el contorno de la finca (sale de tuberia/contorno/contorno_finca.py) y retira el vigente. Devuelve 201 con el límite nuevo (como GET …/limite)"
       description: >
-        Solo admin, con confirmación reciente (403 sin_permiso / confirmacion_requerida). PostGIS valida (400 contorno_no_valido). La historia no se
+        Solo admin, con confirmación reciente (403 sin_permiso / confirmacion_requerida). PostGIS valida (400 contorno_no_valido; `motivo` solo con la razón de la propia validación, como ST_IsValidReason, nunca un error interno de PostgreSQL: auditoría A-08). La historia no se
         borra: el anterior queda retirado. No lleva las referencias de las parcelas, solo cuántas. Auditoría admin.contorno_cargado.
       security: [{ sesion: [] }]
       parameters:
