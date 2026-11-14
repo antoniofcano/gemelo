@@ -95,7 +95,12 @@ test("visita del museo: oferta sin bloquear, marcas, fichas con procedencia y fu
     await p.evaluate(([x, y]) => window.__g.paseoEn(x, y, 0), en(2));
     await p.waitForFunction(() => { const h = document.querySelector("#visitaMuseo h3"); return h && /^3\./.test(h.textContent); }, null, { timeout: 5000, polling: 100 });
     const bot = await p.evaluate(() => [...document.querySelectorAll("#visitaMuseo button")].map(b => [b.textContent, b.disabled]));
-    assert.deepStrictEqual(bot, [["Mirar la pieza", false], ["Bodega: próximamente", true], ["Terminar la visita", false]]);
+    // los de la voz (Web Speech) dependen de las voces del equipo: con voz española, «Leer en voz alta» y «Lectura automática: no»;
+    // sin ella, «Sin voz en español» desactivado y sin el automático; sin la API, ninguno
+    const voz = bot.filter(([t]) => /voz|Lectura automática/.test(t));
+    assert.ok(voz.length === 0 || (voz[0][0] === "Leer en voz alta" && !voz[0][1] && voz.length === 2 && voz[1][0] === "Lectura automática: no")
+      || (voz[0][0] === "Sin voz en español" && voz[0][1]), "los botones de la voz: " + JSON.stringify(voz));
+    assert.deepStrictEqual(bot.filter(([t]) => !/voz|Lectura automática/.test(t)), [["Mirar la pieza", false], ["Bodega: próximamente", true], ["Terminar la visita", false]]);
     await p.click("#visitaMuseo button[data-accion='sal']");
     const fin = await p.evaluate(() => window.__visita());
     assert.deepStrictEqual([fin.modo, fin.marcasVisibles], ["libre", false]);
