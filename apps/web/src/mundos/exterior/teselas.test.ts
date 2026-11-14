@@ -21,13 +21,13 @@ function monta(o: { n?: number; conCola?: boolean } = {}) {
   const n = o.n || 2, teselas: Record<string, { kx: number; ky: number; v: number[]; np: number }> = {};
   for (let i = 0; i < n; i++) teselas["k" + i] = { kx: i, ky: 0, v: [i * TS, 0, (i + 1) * TS, TS], np: 2 };
   let reloj = 0;
-  const pendientes: Array<{ url: string; resuelve: (r: RespuestaMin) => void }> = [], imagenes: ImagenMin[] = [];
+  const pendientes: Array<{ url: string; resuelve: (r: RespuestaMin) => void }> = [], imagenes: ImagenMin[] = [], lienzos: unknown[] = [];
   let tic = 0;   // el reloj de la Cola avanza 1 ms en cada lectura: corre(1.5) hace exactamente una rebanada
   const cola = creaCola({ ahora: () => ++tic }), colaExt = creaColaDeMundo(cola, "exterior");
   const deps: DepsMundo = {
     D: { ts: TS, srs: 2, centro_utm: [0, 0], teselas, grueso: { b64: aB64(new Int16Array(4).fill(700)), x0: 0, yN: 8, res: 8, w: 2, h: 2 }, mosaico: { jpg: "m.jpg", x0: 0, yN: TS, res: 1, w: 1, h: 1 } },
     RES: 1, b64, i16, busqueda: "", ortoMaxDefecto: () => 20, ahora: () => reloj,
-    lienzo: () => ({ width: 2, height: 2, getContext: () => ({ drawImage() {}, getImageData: () => ({ data: new Uint8ClampedArray(16) }) }) }),
+    lienzo: () => { const l = { width: 2, height: 2, getContext: () => ({ drawImage() {}, getImageData: () => ({ data: new Uint8ClampedArray(16) }) }) }; lienzos.push(l); return l; },
     imagen: () => { const im: ImagenMin = { onload: null, onerror: null, src: "", complete: true, naturalWidth: 2, width: 2, height: 2 }; imagenes.push(im); return im; },
     trae: (url) => new Promise<RespuestaMin>((resuelve) => { pendientes.push({ url, resuelve }); }),
     cola: o.conCola === false ? null : () => colaExt, consola: { error() {} }
@@ -40,7 +40,7 @@ function monta(o: { n?: number; conCola?: boolean } = {}) {
     for (let k = 0; k < 5; k++) await Promise.resolve();
   }
   const imagenesListas = (): void => { for (const im of imagenes.splice(0)) if (im.onload) im.onload(); };
-  return { M, cola, colaExt, pendientes, responde, imagenesListas, avanza: (ms: number) => { reloj += ms; } };
+  return { M, cola, colaExt, pendientes, responde, imagenesListas, lienzos, avanza: (ms: number) => { reloj += ms; } };
 }
 
 describe("L1-05: la tesela se decodifica en la Cola del exterior, a rebanadas", () => {
@@ -81,6 +81,18 @@ describe("L1-05: la tesela se decodifica en la Cola del exterior, a rebanadas", 
     for (let k = 0; k < 5; k++) await Promise.resolve();
     expect(() => cola.corre(1e6)).not.toThrow();
     expect((M.lista[0] as Tesela).estado).toBe(3);
+  });
+});
+
+describe("L2-07: una ortofoto decodificada ocupa lo que cuenta ortoEstado (sin el lienzo guardado aparte)", () => {
+  it("decodificar guarda los píxeles, no el lienzo; el lienzo se vacía; ortoEstado().mb suma solo los píxeles", async () => {
+    const { M, cola, responde, imagenesListas, lienzos } = monta({ n: 1 });
+    M.actualiza(2, 50, -2); await responde(0, 5); cola.corre(1e6); imagenesListas(); cola.corre(1e6);
+    const t = M.lista[0] as Tesela;
+    M.decodificaOrto(t);
+    expect(t.ortPix).not.toBeNull(); expect(t.ortCv).toBeNull();
+    const l = lienzos[lienzos.length - 1] as { width: number; height: number }; expect([l.width, l.height]).toEqual([0, 0]);
+    expect(M.ortoEstado().vivas).toBe(1);
   });
 });
 

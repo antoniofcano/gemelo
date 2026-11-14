@@ -164,8 +164,10 @@ export function creaMundo(deps: DepsMundo) {
     const g = c.getContext("2d", { willReadFrequently: true }) as Contexto2DMin; g.drawImage(img, 0, 0);
     return { cv: c, px: (g.getImageData as NonNullable<Contexto2DMin["getImageData"]>)(0, 0, c.width, c.height).data };
   }
+  // L2-07: el lienzo de la decodificación no se guarda (antes, t.ortCv: con willReadFrequently su memoria va en la CPU, W×H×4, el doble de lo que contaba ortoEstado);
+  // se vacía en el acto (ancho y alto 0 sueltan su almacén) y el minimapa pinta con la imagen (t.ortImg), que ya estaba. ortCv se queda en el tipo, siempre null
   function decodificaOrto(t: Tesela): Uint8ClampedArray {
-    const r = pixeles(t.ortImg as ImagenMin); t.ortCv = r.cv; t.ortPix = r.px; t.ortW = r.cv.width; t.ortH = r.cv.height; t.uso = ahoraMs(); nDec++;
+    const r = pixeles(t.ortImg as ImagenMin); t.ortPix = r.px; t.ortW = r.cv.width; t.ortH = r.cv.height; t.ortCv = null; r.cv.width = 0; r.cv.height = 0; t.uso = ahoraMs(); nDec++;
     desalojaOrto(); return t.ortPix;
   }
   // M4: tope de ortofotos decodificadas a la vez (cada una ~2,4 MB de píxeles). Pasado el tope se suelta la MENOS USADA recientemente (t.uso = el último muestreo), salvo
