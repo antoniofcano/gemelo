@@ -246,6 +246,34 @@ test("los alias heredados suelo, copaAlta, colorSuelo y orto siguen apuntando a 
   assert.match(pasoArranque("02_mundo.js"), /var suelo = Mundo\.suelo, copaAlta = Mundo\.copaAlta, colorSuelo = Mundo\.colorSuelo, orto = Mundo\.orto;/);
 });
 
+// L4-08: contratos/olivo-generado.schema.json se compila y valida datos de verdad: la entrada de cada caso de las huellas del oráculo
+// (pruebas/olivo/huellas-olivo-2.json) y la columna copas_param del fixture; y su fila de copas_param es la MISMA que la de indice.schema.json
+// (las dos copias del contrato no pueden divergir sin que esto falle).
+const ESQ_OLIVO = json("contratos/olivo-generado.schema.json");
+const sinComentarios = o => JSON.parse(JSON.stringify(o, (k, v) => k === "$comment" ? undefined : v));
+test("olivo-generado.schema.json compila y valida la entrada de los casos de las huellas y el copas_param del fixture", () => {
+  const V = ajv.compile(ESQ_OLIVO);
+  const casos = json("pruebas/olivo/huellas-olivo-2.json").casos;
+  assert.ok(casos.length > 0, "las huellas no traen casos");
+  for (const c of casos) assert.deepStrictEqual(valida(V, { entrada: { tipo: c.tipo, epoca: c.epoca, semilla: c.semilla } }), [], "entrada del caso " + JSON.stringify([c.tipo, c.epoca, c.semilla]));
+  const I = jsonFx("hituelo", "indice.json");
+  assert.ok(Array.isArray(I.copas_param) && I.copas_param.length > 0, "el fixture de hituelo debe traer copas_param");
+  assert.deepStrictEqual(valida(V, { copas_param: I.copas_param }), [], "copas_param del fixture contra olivo-generado.schema.json");
+  const malos = {
+    "época desconocida": { entrada: { epoca: "otoño", semilla: 1 } },
+    "semilla negativa": { entrada: { epoca: "flor", semilla: -1 } },
+    "semilla de más de 32 bits": { entrada: { epoca: "flor", semilla: 2 ** 32 } },
+    "campo de más en la entrada": { entrada: { epoca: "flor", semilla: 1, otra: 1 } },
+    "fila de copas_param con 9 campos": { copas_param: [[1, 1, 0, 0, 0.5, 0.2, 0.1, 0, 9]] },
+    "rumbo de más de 360": { copas_param: [[1, 1, 0, 400, 0.5, 0.2, 0.1, 0]] },
+  };
+  for (const [n, d] of Object.entries(malos)) assert.notDeepStrictEqual(valida(V, d), [], "olivo-generado.schema.json debería rechazar: " + n);
+});
+test("la fila de copas_param es la misma en olivo-generado.schema.json y en indice.schema.json", () => {
+  assert.deepStrictEqual(sinComentarios(ESQ_OLIVO.$defs.copas_param_fila), sinComentarios(ESQ_INDICE.properties.copas_param.items),
+    "las dos copias de la fila de copas_param divergen: cámbialas a la vez (contratos/olivo-generado.md §3)");
+});
+
 // L4-07: el motor georreferencia el NDVI y el suelo-NDVI con ext (arranque.ts: x0, yN, ANCHO, ALTO), y Hituelo lo toma de la caja del NDVI;
 // CONTRATOS lo dice así (antes decía «la caja de teselas/ventana»). La comprobación del exportador está en exportadores.test.js.
 test("CONTRATOS dice que ext es la caja del NDVI (lo que consume el motor), no la de teselas", () => {
