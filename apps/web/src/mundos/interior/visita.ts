@@ -15,6 +15,9 @@ import type { MundoInterior, Parada } from "../../datos/contratos/mundo-interior
 import type { Pose2 } from "../../nucleo/mundos.ts";
 import type { T } from "../comun/tipos.ts";
 import { VisitaPuro } from "./visita-puro.ts";
+import { creaVoz } from "./voz.ts";
+import type { Voz } from "./voz.ts";
+import { VozPuro } from "./voz-puro.ts";
 import type { LineaFicha } from "./visita-puro.ts";
 
 /** las marcas: lado (m), cota sobre el suelo (m) y cuánto crece la siguiente [SUPUESTO: a ojo, sin probar andando] */
@@ -29,6 +32,8 @@ export interface DepsVisitaUI {
   PanelVR?: { filas(p: string, f: T): (() => void) | null; tapa?(fn: () => boolean): () => void; repinta?(): void } | null;
   /** en VR: el panel abierto en la pestaña «Mundo» (donde van las filas de la visita) */
   abrePanel?(): void;
+  /** la lectura en voz alta (speechSynthesis y SpeechSynthesisUtterance de la ventana); sin ello, ni botón ni fila */
+  voz?: { synth: T | null; Utterance: T | null } | null;
 }
 export interface DepsVisita extends DepsVisitaUI {
   man: MundoInterior;
@@ -42,7 +47,11 @@ export function creaVisita(d: DepsVisita) {
   const V = VisitaPuro, P = (d.man.paradas || []) as Parada[], n = P.length, rec = V.creaRecorrido(P);
   let grupo: T = null, mats: T[] = [], tex: T = null, lienzo: T = null, raiz: T = null, aviso: T = null, cuerpo: T = null, pagina = 0, montada = false;
   const quitar: Array<() => void> = [];
-  const est = { ofertas: 0, empezadas: 0, abiertas: 0, giros: 0 };
+  const est = { ofertas: 0, empezadas: 0, abiertas: 0, giros: 0, lecturas: 0 };
+  // la lectura en voz alta (ficha abierta): la automática, apagada por defecto; al cambiar de parada o salir, se calla
+  let voz: Voz | null = null, auto = false;
+  const hayVoz = (): boolean => !!voz && voz.api();
+  const leeFicha = (): void => { const p = abierta(); if (p && voz && voz.lee(VozPuro.textoLectura(p.ficha))) est.lecturas++; };
 
   // ---- las marcas
   function creaMarcas(): void {
@@ -90,7 +99,10 @@ export function creaVisita(d: DepsVisita) {
 
   // ---- lo que se puede hacer (los botones de pantalla y de VR llaman a lo mismo)
   function accion(a: string): void {
-    if (a === "empieza") { rec.empieza(); est.empezadas++; creaMarcas(); pagina = 0; }
+    if (voz && a !== "leer" && a !== "auto" && a !== "pag+" && a !== "pag-" && a !== "mira" && a !== "puerta") voz.calla();   // cambiar de parada o de modo calla lo anterior
+    if (a === "leer") { if (voz) { if (voz.leyendo()) voz.calla(); else leeFicha(); } }
+    else if (a === "auto") { auto = !auto; if (auto && voz && !voz.leyendo() && abierta()) leeFicha(); }
+    else if (a === "empieza") { rec.empieza(); est.empezadas++; creaMarcas(); pagina = 0; }
     else if (a === "libre" || a === "sal") rec.deja();
     else if (a === "orienta") { const k = rec.sig(); if (k < n) mira(P[k]!.pos); else rec.deja(); }
     else if (a === "siguiente") { const k = rec.siguiente(); if (k >= 0) mira(P[k]!.pos); else rec.deja(); }
@@ -107,9 +119,11 @@ export function creaVisita(d: DepsVisita) {
     if (!montada || rec.modo() !== "visita") return;
     const q = d.pose.lee(), ev = rec.paso(q.x, q.y);
     if (!ev) return;
+    if (ev.cierra !== undefined && voz) voz.calla();
     if (ev.abre !== undefined) {
       est.abiertas++; pagina = 0;
       const p = P[ev.abre]!;
+      if (voz && auto) leeFicha();
       if (aviso) aviso.textContent = "Parada " + (ev.abre + 1) + ": " + p.ficha.titulo;
       if (d.vr() && d.abrePanel) d.abrePanel();
     }
@@ -124,6 +138,18 @@ export function creaVisita(d: DepsVisita) {
     const b = el("button", txt, primario ? "visita-primario" : undefined); b.type = "button"; b.setAttribute("data-accion", accionId);
     if (desactivado) { b.disabled = true; b.setAttribute("aria-disabled", "true"); }
     caja.appendChild(b);
+  }
+  /** «Leer en voz alta» / «Callar» (aria-pressed) y el interruptor de la lectura automática; sin voz española, uno desactivado que lo dice */
+  function botonVoz(caja: T): void {
+    const e = voz!.estado(), b = el("button", VozPuro.etiquetaVoz(e)); b.type = "button"; b.setAttribute("data-accion", "leer");
+    b.setAttribute("aria-pressed", e === "leyendo" ? "true" : "false");
+    b.setAttribute("aria-label", e === "sin_voz" ? "Leer la ficha en voz alta: no hay voz en español en este navegador" : e === "leyendo" ? "Callar la lectura de la ficha" : "Leer la ficha en voz alta");
+    if (e === "sin_voz") { b.disabled = true; b.setAttribute("aria-disabled", "true"); }
+    caja.appendChild(b);
+    if (e === "sin_voz") return;
+    const a = el("button", VozPuro.etiquetaAuto(auto)); a.type = "button"; a.setAttribute("data-accion", "auto"); a.setAttribute("aria-pressed", auto ? "true" : "false");
+    a.setAttribute("aria-label", "Leer la ficha en voz alta al llegar a cada parada");
+    caja.appendChild(a);
   }
   function pinta(): void {
     if (!cuerpo) return;
@@ -156,6 +182,7 @@ export function creaVisita(d: DepsVisita) {
         det.appendChild(lista); cuerpo.appendChild(det);
       }
       boton(bot, "mira", "Mirar la pieza");
+      if (hayVoz()) botonVoz(bot);
       if (s) boton(bot, "puerta", s.texto, false, !s.abierta);
       if (i + 1 < n) { boton(bot, "siguiente", "Siguiente parada", true); boton(bot, "sal", "Salir de la visita"); }
       else boton(bot, "sal", "Terminar la visita", true);
@@ -194,7 +221,7 @@ export function creaVisita(d: DepsVisita) {
     const PV = d.PanelVR; if (!PV) return;
     const q1 = PV.filas("mundo", {
       id: "visita", orden: 4, alto: ALTO_FILA,
-      firma: () => rec.modo() + ":" + rec.abierta() + ":" + rec.sig() + ":" + pagina,
+      firma: () => rec.modo() + ":" + rec.abierta() + ":" + rec.sig() + ":" + pagina + ":" + (voz ? voz.estado() + auto : ""),
       pinta: (_cx: T, y: number, _W: T, h: T) => {
         const m = rec.modo(), k = rec.abierta();
         h.fila(m !== "visita" ? "Visita del museo" : k >= 0 ? "Parada " + (k + 1) + " de " + n : rec.fin() ? "Visita: vista" : "Siguiente: " + (rec.sig() + 1) + " de " + n, y);
@@ -231,18 +258,31 @@ export function creaVisita(d: DepsVisita) {
         });
       },
     });
-    for (const q of [q1, q2]) if (q) quitar.push(q);
+    // la fila de la voz: con una ficha abierta y la API (sin voz española, un botón que lo dice y no hace nada)
+    const q3 = hayVoz() ? PV.filas("mundo", {
+      id: "visita-voz", orden: 6, alto: ALTO_FILA, visible: () => rec.abierta() >= 0,
+      firma: () => voz!.estado() + ":" + auto,
+      pinta: (_cx: T, y: number, _W: T, h: T) => { h.fila("Voz (la ficha, leída)", y); },
+      botones: (b: T, y: number) => {
+        const e = voz!.estado();
+        b("vis-voz", 250, y, 380, 64, VozPuro.etiquetaVoz(e), () => { if (e !== "sin_voz") accion("leer"); }, e === "leyendo");
+        if (e !== "sin_voz") b("vis-voz-auto", 646, y, 338, 64, VozPuro.etiquetaAuto(auto), () => accion("auto"), auto);
+      },
+    }) : null;
+    for (const q of [q1, q2, q3]) if (q) quitar.push(q);
     if (PV.tapa) quitar.push(PV.tapa(() => rec.abierta() >= 0));   // con la ficha en el panel, no sale la ficha con botones de otra cosa
   }
 
   function monta(): void {
     if (montada || !n) return;
     montada = true; est.ofertas++;
+    if (d.voz && d.voz.synth && d.voz.Utterance) voz = creaVoz({ synth: d.voz.synth, Utterance: d.voz.Utterance as never, alCambiar: cambia });
     creaRecuadro(); filasVR(); pinta();
     if (d.vr() && d.abrePanel) d.abrePanel();
   }
   function libera(): void {
     montada = false;
+    if (voz) { voz.libera(); voz = null; }
     for (const q of quitar.splice(0)) { try { q(); } catch (e) { /* ya suelto */ } }
     if (raiz) { raiz.removeEventListener("click", alPulsar); if (raiz.parentNode) raiz.parentNode.removeChild(raiz); }
     raiz = null; cuerpo = null; aviso = null;
@@ -254,7 +294,7 @@ export function creaVisita(d: DepsVisita) {
     if (d.PanelVR && d.PanelVR.repinta) d.PanelVR.repinta();
   }
   function estado() {
-    return { ...est, modo: rec.modo(), paradas: n, siguiente: rec.sig(), abierta: rec.abierta(), pagina, marcas: grupo ? grupo.children.length : 0, marcasVisibles: !!(grupo && grupo.visible), recuadro: !!raiz };
+    return { ...est, modo: rec.modo(), paradas: n, siguiente: rec.sig(), abierta: rec.abierta(), pagina, marcas: grupo ? grupo.children.length : 0, marcasVisibles: !!(grupo && grupo.visible), recuadro: !!raiz, voz: voz ? { api: voz.api(), hayVoz: voz.hayVoz(), estado: voz.estado(), auto } : null };
   }
   return { monta, cada, libera, accion, estado };
 }
