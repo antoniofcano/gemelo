@@ -58,13 +58,16 @@ export const Aspecto: any = (function () {
 // Sala de verdad (?presencia=red): a quién se manda la pose en cada tic (10 Hz a los cercanos, 2 Hz a toda la sala), quién está cerca (entra a 55 m y sale a 65 m),
 // a qué ritmo le llega cada uno (y por tanto con qué retardo se dibuja) y quién está «en vista aérea» (conectado y sin pose reciente: decisión 60).
 // No sabe nada de LiveKit: la presencia le pasa lo que recibe por la red (37_red.js) y publica lo que devuelve tic(). Los metadatos de la sala se leen como DATOS (leeInfo()).
+// ADR-0036 (visita guiada en los interiores): cada pose trae el mundo de quien la publica (bits 6-7, PoseCodec.MUNDOS). La cercanía solo cuenta entre los del mismo mundo
+// (las coordenadas de otro mundo no son comparables); y, si quien mira pasa su mundo (miMundo, el código 0-3: en una guiada), seVe() y gente() solo dan por «en el mundo»
+// a los de su mundo, y a los de otro los ponen «en la fábrica», «en los patios» o «fuera». Sin miMundo (fuera de una guiada), como siempre.
 export const SalaPose: any = (function () {
   var TICK: any = 100, CADA_LEJOS: any = 5, ENTRA: any = 55, SALE: any = 65, SIN_POSE: any = 2000, RAPIDO: any = 300, RET_CERCA: any = 150, RET_LEJOS: any = 650;
   var ROLES: any = ["hogar", "guia", "corresponsal", "oficina", "admin"], OFICIALES: any = ["oficina", "admin"], DISPOSITIVOS: any = ["escritorio", "movil", "quest"], SOMBREROS: any = ["ninguno", "paja", "gorra"];
   function crea(seq?: any) { return { otros: Object.create(null), seq: (seq | 0) & 0xffff, nTick: 0, tTick: null, enviados: 0, recibidos: 0, viejos: 0, malos: 0 }; }
   function entra(s?: any, id?: any, info?: any) {
     var o: any = s.otros[id];
-    if (!o) o = s.otros[id] = { id: id, info: info || null, buf: BufferPose.crea(), tUlt: null, intervalo: 500, cerca: false, cab: null, tipo: 0, modo: 0 };
+    if (!o) o = s.otros[id] = { id: id, info: info || null, buf: BufferPose.crea(), tUlt: null, intervalo: 500, cerca: false, cab: null, tipo: 0, modo: 0, mundo: 0 };
     else if (info) o.info = info;
     return o;
   }
@@ -76,7 +79,7 @@ export const SalaPose: any = (function () {
     if (o.tUlt !== null && ahora - o.tUlt > SIN_POSE) { o.buf = BufferPose.crea(); o.tUlt = null; o.intervalo = 500; }   // vuelve tras un rato (vista aérea o recarga): se empieza de cero
     if (!BufferPose.recibe(o.buf, p, ahora)) { s.viejos++; return false; }
     if (o.tUlt !== null) o.intervalo = o.intervalo * 0.7 + Math.min(2000, Math.max(0, ahora - o.tUlt)) * 0.3;
-    o.tUlt = ahora; o.cab = p.cab.p; o.tipo = p.tipo; o.modo = p.modo; s.recibidos++;
+    o.tUlt = ahora; o.cab = p.cab.p; o.tipo = p.tipo; o.modo = p.modo; o.mundo = p.mundo | 0; s.recibidos++;
     return true;
   }
   function conPose(o?: any, ahora?: any) { return o.tUlt !== null && ahora - o.tUlt <= SIN_POSE; }
@@ -88,7 +91,7 @@ export const SalaPose: any = (function () {
     var cerca: any = [], id: any, o: any, d: any;
     for (id in s.otros) {
       o = s.otros[id];
-      if (!pose || !conPose(o, ahora)) { o.cerca = false; continue; }
+      if (!pose || !conPose(o, ahora) || o.mundo !== (pose.mundo | 0)) { o.cerca = false; continue; }   // ADR-0036: de otro mundo, nunca cerca (le llega a 2 Hz)
       d = Math.hypot(pose.cab.p[0] - o.cab[0], pose.cab.p[2] - o.cab[2]);
       o.cerca = o.cerca ? d < SALE : d < ENTRA;
       if (o.cerca) cerca.push(id);
@@ -100,18 +103,26 @@ export const SalaPose: any = (function () {
     return [{ bytes: PoseCodec.codifica(pose), destinos: todos ? null : cerca }];
   }
   function retardo(o?: any) { return o.intervalo < RAPIDO ? RET_CERCA : RET_LEJOS; }
-  // el apartado Gente: quien tiene pose reciente «pasea» (o va con gafas); quien no, está «en vista aérea» (no se dibuja)
-  function gente(s?: any, ahora?: any) {
+  // ADR-0036: dónde está quien está en otro mundo, para Gente (el exterior es «fuera»: el grupo está dentro de un interior)
+  var EN_MUNDO: any = ["fuera", "en los patios", "en la fábrica", "en otro sitio"];
+  function otroMundo(o?: any, miMundo?: any) { return miMundo !== undefined && miMundo !== null && o.mundo !== miMundo; }
+  // el apartado Gente: quien tiene pose reciente «pasea» (o va con gafas); quien no, está «en vista aérea» (no se dibuja). Con miMundo (en una guiada), quien
+  // está en otro mundo sale con ese mundo («en la fábrica») y no está «en el mundo» (no se dibuja ni se puede ir con él)
+  function gente(s?: any, ahora?: any, miMundo?: any) {
     var l: any = [], id: any, o: any;
-    for (id in s.otros) { o = s.otros[id]; l.push({ id: id, info: o.info, enMundo: conPose(o, ahora), estado: conPose(o, ahora) ? (o.tipo === PoseCodec.QUEST ? "con gafas" : o.modo === PoseCodec.QUAD ? "en quad" : o.modo === PoseCodec.DRON ? "con el dron" : "paseando") : "en vista aérea" }); }
+    for (id in s.otros) {
+      o = s.otros[id]; var cp: any = conPose(o, ahora), om: any = cp && otroMundo(o, miMundo);
+      l.push({ id: id, info: o.info, enMundo: cp && !om, mundo: cp ? PoseCodec.nombreMundo(o.mundo) : null, estado: !cp ? "en vista aérea" : om ? EN_MUNDO[o.mundo & 3] : (o.tipo === PoseCodec.QUEST ? "con gafas" : o.modo === PoseCodec.QUAD ? "en quad" : o.modo === PoseCodec.DRON ? "con el dron" : "paseando") });
+    }
     // la oficina, primera (OF10, OFICINA.md §6); luego por alias
     return l.sort(function (a?: any, b?: any) {
       var oa: any = a.info && a.info.oficial ? 0 : 1, ob: any = b.info && b.info.oficial ? 0 : 1; if (oa !== ob) return oa - ob;
       var x: any = (a.info && a.info.alias) || "", y: any = (b.info && b.info.alias) || ""; return x < y ? -1 : x > y ? 1 : 0;
     });
   }
-  // a quién se dibuja (avatar, minimapa, «Ir con»): a quien está en la sala, con pose reciente (no «en vista aérea») y no has bloqueado tú
-  function seVe(s?: any, id?: any, ahora?: any, bloqueados?: any) { var o: any = s.otros[id]; return !!o && !(bloqueados && bloqueados[id]) && conPose(o, ahora); }
+  // a quién se dibuja (avatar, minimapa, «Ir con»): a quien está en la sala, con pose reciente (no «en vista aérea») y no has bloqueado tú; con miMundo (en una guiada,
+  // ADR-0036), además, en tu mismo mundo
+  function seVe(s?: any, id?: any, ahora?: any, bloqueados?: any, miMundo?: any) { var o: any = s.otros[id]; return !!o && !(bloqueados && bloqueados[id]) && conPose(o, ahora) && !otroMundo(o, miMundo); }
   function entero(v?: any, a?: any, b?: any, def?: any) { return typeof v === "number" && v % 1 === 0 && v >= a && v <= b ? v : def; }
   // metadatos del token (los pone la api): se comprueban tipo y límites de cada campo; lo que no cuadra toma un valor neutro
   function leeInfo(txt?: any) {
@@ -133,7 +144,7 @@ export const SalaPose: any = (function () {
       aspecto: Aspecto.lee(av)   // AV2: tono, ropa, altura, complexión y apoyo (opcionales; ver Aspecto)
     };
   }
-  return { TICK: TICK, SIN_POSE: SIN_POSE, crea: crea, entra: entra, sale: sale, recibe: recibe, tic: tic, retardo: retardo, gente: gente, conPose: conPose, seVe: seVe, leeInfo: leeInfo };
+  return { TICK: TICK, SIN_POSE: SIN_POSE, crea: crea, entra: entra, sale: sale, recibe: recibe, tic: tic, retardo: retardo, gente: gente, conPose: conPose, seVe: seVe, leeInfo: leeInfo, EN_MUNDO: EN_MUNDO };
 })();
 
 // Chat de la sala (tema «chat», fiable, decisión 40: no se guarda en ningún sitio). Texto UTF-8 de como mucho 280 caracteres; se quitan los caracteres

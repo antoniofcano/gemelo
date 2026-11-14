@@ -19,6 +19,21 @@ describe("SalaPose", () => {
     expect(SalaPose.tic(s, ahora += 100, null)).toEqual([]);   // vista aérea: no se publica
   });
 
+  it("ADR-0036: la cercanía solo entre los del mismo mundo; con miMundo (en una guiada), solo se ve a los de tu mundo y Gente dice dónde están los demás", () => {
+    const s = SalaPose.crea(0); let ahora = 1000;
+    const llega = (id: string, mundo: number) => SalaPose.recibe(s, id, PoseCodec.codifica({ tipo: 1, seq: ahora & 0xffff, t: ahora, cab: { p: [5, 1.6, 0], q: [0, 0, 0, 1] }, mundo }), ahora);
+    for (const id of ["fuera", "patio", "fab"]) SalaPose.entra(s, id, SalaPose.leeInfo(JSON.stringify({ alias: id })));
+    for (let i = 0; i < 4; i++, ahora += 100) { llega("fuera", 0); llega("patio", 1); llega("fab", 2); SalaPose.tic(s, ahora, { ...pose(0, 0), mundo: 2 }); }
+    expect([s.otros.fuera.cerca, s.otros.patio.cerca, s.otros.fab.cerca]).toEqual([false, false, true]);   // los tres a 5 m, pero solo es «cerca» quien está en tu mundo
+    expect(SalaPose.seVe(s, "fuera", ahora, null)).toBe(true);    // sin miMundo (fuera de una guiada): como siempre
+    expect(["fuera", "patio", "fab"].map(id => SalaPose.seVe(s, id, ahora, null, 2))).toEqual([false, false, true]);
+    const g = SalaPose.gente(s, ahora, 2), por = (id: string) => g.find((x: any) => x.id === id);
+    expect(por("fuera")).toMatchObject({ enMundo: false, estado: "fuera", mundo: "exterior" });
+    expect(por("patio")).toMatchObject({ enMundo: false, estado: "en los patios", mundo: "patios" });
+    expect(por("fab")).toMatchObject({ enMundo: true, estado: "paseando", mundo: "fabrica" });
+    expect(SalaPose.gente(s, ahora).every((x: any) => x.enMundo && x.estado === "paseando")).toBe(true);   // sin miMundo, como antes
+  });
+
   it("leeInfo: los metadatos de la api son DATOS; lo que no cuadra toma un valor neutro y nadie se hace pasar por la oficina", () => {
     expect(SalaPose.leeInfo("no es json")).toMatchObject({ alias: "Visitante", rol: "hogar", dispositivo: "escritorio", camisa: 0, piel: 1, sombrero: 1, vrm: null });
     expect(SalaPose.leeInfo(JSON.stringify({ alias: "0ficina", rol: "hogar" })).alias).toBe("Visitante");
