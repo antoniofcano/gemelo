@@ -65,3 +65,12 @@ test("L3-02: el pie dice que el olivo se dibuja a la mitad del radio medido (no 
   }
   assert.match(lee("apps/web/src/mundos/exterior/marcadores.ts"), /a la mitad del radio medido/);
 });
+
+test("L3-03 y L3-21: la nota del NDVI dice de dónde sale la escala y el desfase se rotula como mediana", () => {
+  assert.match(PL, /relativo a toda la ventana de la finca[^<]*toda la rejilla/);
+  assert.doesNotMatch(PL, /relativo dentro de esta parcela/);
+  // ndvi.ts calcula los percentiles de NDV.w * NDV.h (toda la rejilla): si deja de hacerlo, la nota miente
+  assert.match(lee("apps/web/src/mundos/exterior/ndvi.ts"), /const n = NDV\.w \* NDV\.h/);
+  assert.match(PL, /<dt>Desfase típico \(mediana\)<\/dt>/);
+  assert.doesNotMatch(PL, /Desfase medio/);
+});

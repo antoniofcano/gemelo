@@ -109,7 +109,7 @@
           <div><dt>Olivos <span class="pill p-detectado">detectado (LiDAR + regla)</span></dt><dd id="kCopas">–</dd></div>
           <div><dt>Guardados <span class="pill p-guardado">guardado</span></dt><dd id="kMarc">–</dd></div>
           <div><dt>Altura mediana</dt><dd id="kAlt">–</dd></div>
-          <div><dt>Desfase medio</dt><dd id="kDes">–</dd></div>
+          <div><dt>Desfase típico (mediana)</dt><dd id="kDes">–</dd></div>
         </dl>
         <p class="nota sep8" id="notaDesfase">Los puntos guardados caen al este de las copas del LiDAR, porque se marcaron sobre la ortofoto, que muestra las copas desplazadas según su altura. El LiDAR está bien georreferenciado.</p>
         <h3 id="suelo">Suelo · SoilGrids <span class="pill p-modelo">modelo</span></h3>
@@ -140,7 +140,7 @@
           <p class="sg-clase"><strong id="ndviFecha">–</strong> <span class="nota" id="ndviRango"></span></p>
           <div id="chispa" class="chispa"></div>
           <div class="ndvi-leyenda"><span>menos vigor</span><i></i><span>más vigor</span></div>
-          <p class="nota sep8">Sentinel-2 (10 m): cada cuadro de 10 × 10 m cubre varios árboles. El color es relativo dentro de esta parcela y de cada fecha: no se compara entre fechas ni con otras parcelas, como en Vigía. Modelo sin calibrar con observación de campo. La fecha es la del campo: se cambia en <button type="button" class="h-btn" data-abre="tiempo" data-pestana="olivo">Tiempo → El olivo</button>.</p>
+          <p class="nota sep8">Sentinel-2 (10 m): cada cuadro de 10 × 10 m cubre varios árboles. El color es relativo a toda la ventana de la finca (suelo, pastos y caminos incluidos; la escala sale de los percentiles 5 y 95 de toda la rejilla, no de una parcela) y a cada fecha: no se compara entre fechas ni con otras fincas, como en Vigía. Modelo sin calibrar con observación de campo. La fecha es la del campo: se cambia en <button type="button" class="h-btn" data-abre="tiempo" data-pestana="olivo">Tiempo → El olivo</button>.</p>
         </div>
         <h3>Ambiente</h3>
         <div>
