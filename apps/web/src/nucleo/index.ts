@@ -25,6 +25,7 @@ export { ComponentesPuro, creaComponentes } from "./componentes.ts";
 export { creaBus, creaReparto, creaPausa } from "./bus.ts";
 export type { Bus, Reparto, Pausa, ConsolaBus } from "./bus.ts";
 export { escuchaTema } from "./tema.ts";
+export { CONSULTA_MOVIMIENTO, movimientoReducido, sistemaReduceMovimiento } from "./movimiento.ts";
 export type { DepsTema } from "./tema.ts";
 export { creaTeclas } from "./teclas.ts";
 export type { Teclas, DepsTeclas, TeclaEvento } from "./teclas.ts";

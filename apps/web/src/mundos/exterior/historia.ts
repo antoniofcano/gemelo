@@ -10,6 +10,7 @@
 // L3-20: cifras y nombres fijos, una deducción que sale como dato) queda apuntado para el banco.
 import type { Manifiesto } from "../../nucleo/componentes.ts";
 import type { DefMaterial, Materiales, MaterialMin } from "../../nucleo/materiales.ts";
+import { haceDesde } from "../../nucleo/hace.ts";
 import { creaSoltador } from "../../nucleo/soltador.ts";
 import type { T } from "../comun/tipos.ts";
 import { esc } from "./tiempo-puro.ts";
@@ -107,7 +108,7 @@ export var HistoriaPuro: T = (function () {
       return { ot: ot, vivo: { vigia: v ? v.pidenUnaMirada : null, vigiaFrescura: f ? String(f).slice(11, 16) + " UTC" : null, calibrada: v ? v.calibrada : null, atencion: res.atencion, completo: res.completo } };
     }
     // «hace N min / h» de un instante ISO (para el aviso)
-    function haceIso(iso?: T, ahora?: T) { var t = Date.parse(iso); if (!isFinite(t)) return "?"; var m = Math.max(1, Math.round((ahora - t) / 60000)); return m < 90 ? "hace " + m + " min" : m < 36 * 60 ? "hace " + Math.round(m / 60) + " h" : "hace " + Math.round(m / 1440) + " días"; }   // L3-22: los mismos umbrales que mundo-hoy, carteles y fichas del tiempo (hasta 36 h en horas, luego días)
+    function haceIso(iso?: T, ahora?: T) { return haceDesde(iso, ahora) || "?"; }   // L3-22: la regla única (nucleo/hace.ts)
     // el aviso de la ventana: de dónde sale, de cuándo es y si está incompleto (texto plano: se pinta con textContent)
     function aviso(res?: T, ahora?: T) {
       var sint = res.origen.ot === "grabado" || res.origen.vigia === "fixture", l: T = [];

@@ -21,6 +21,7 @@
   // PanelVR.filas, PanelVR.tapa, Bus, Laminas); nadie lo nombra. Quitar este fichero del motor (genera_motor.mjs --sin) o apagarlo (?fichas=0) no rompe nada: el
   // botón de la ventana Tiempo se esconde (nadie escucha «prevision:alterna») y la pestaña Mundo del panel VR se queda sin su fila.
 import type { Manifiesto } from "../../nucleo/componentes.ts";
+import { haceMinutos } from "../../nucleo/hace.ts";
 import type { T } from "../comun/tipos.ts";
 
 export const ID_FICHAS_TIEMPO = "fichas-tiempo";
@@ -105,8 +106,7 @@ export var FichasTiempoPuro: T = (function () {
     // --- cuánto hace: «hace 25 min», «hace 3 h», «hace 2 días» (de frescura.generadoEn o, si no, horasDeAntiguedad)
     function haceTxt(fr?: T, ahora?: T) {
       if (!fr) return ""; var h = fr.generadoEn ? (ahora - Date.parse(fr.generadoEn)) / 3600000 : Number(fr.horasDeAntiguedad);
-      if (!isFinite(h)) return ""; if (h < 0) h = 0;
-      return h < 1 ? "hace " + Math.max(1, Math.round(h * 60)) + " min" : h < 48 ? "hace " + Math.round(h) + " h" : "hace " + Math.round(h / 24) + " días";
+      return haceMinutos(Math.max(0, h) * 60);   // L3-22: la regla única (nucleo/hace.ts): antes, horas hasta 48 h
     }
     var ORIGEN: T = { vigia: { txt: "Vigía", fondo: "#1d5f6b" }, fixture: { txt: "datos de prueba", fondo: "#4a5560" }, simulado: { txt: "SIMULADO · no es el tiempo real", fondo: "#8a5a12" } };
     function origenDe(o?: T) { return ORIGEN[o] ? o : "simulado"; }

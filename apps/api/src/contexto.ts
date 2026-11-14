@@ -7,6 +7,7 @@ import type { ServicioMundoHoy } from "./mundo/hoy.ts";
 import type { ServicioHoy } from "./ot/hoy.ts";
 import type { LectorOlivarTrack } from "./ot/lector.ts";
 import type { ModeradorSala, ModeradorVoz } from "./presencia/livekit.ts";
+import type { Temporizador } from "./presencia/reingreso.ts";
 import type { Reloj } from "./presencia/voz.ts";
 import type { ServicioTiempo } from "./vigia/servicio.ts";
 
@@ -22,6 +23,8 @@ export interface Contexto {
   moderadorVoz?: ModeradorVoz;
   /** F3c: el reloj de los turnos de palabra (las pruebas ponen uno que adelantan a mano) */
   relojVoz?: Reloj;
+  /** L9-06: el temporizador del centinela de reingresos (setInterval si falta; las pruebas ponen uno que disparan a mano) */
+  temporizador?: Temporizador;
   /** el tiempo de Vigía (GET /api/tiempo); null o ausente si está apagado (GEMELO_VIGIA=no) */
   tiempo?: ServicioTiempo | null;
   /** lo de hoy de OlivarTrack y Vigía en vivo (GET /api/ot/hoy, contratos/ot-hoy.md); null o ausente si los dos están apagados */

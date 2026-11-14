@@ -58,7 +58,7 @@ export interface DepsTiempo {
   prefijoApi: () => A;
   /** window.fetch (con su window) o null; window.__TIEMPO_PRUEBA o null */
   red: () => A; prueba: () => A;
-  /** location.search, el reloj de la máquina (Date.now) y prefers-reduced-motion */
+  /** location.search, el reloj de la máquina (Date.now) y «Movimiento: Reducido» al crearse (L6-03: después, calma(v)) */
   busqueda: string; reloj?: () => number; calma: boolean;
   /** la fábrica de materiales (nucleo/materiales): los del tiempo se piden con el dueño «tiempo-mundo» y libera() los suelta; el parche del tiempo, sin dueño */
   Materiales: Materiales;
@@ -172,6 +172,8 @@ export function creaTiempo(d: DepsTiempo) {
     parcheTiempo: parcheTiempo, nodosTsl: PT.nodosTsl, cur: cur, meta: meta, ins: paso.ins, tMundo: paso.tMundo, actualiza: paso.actualizaTiempo, temaBarrera: barreras.temaBarrera,
     colocaBarrera: barreras.colocaBarrera, fmtDia: fmtDia, fmtHora: fmtHora, fmtClaveDia: fmtClaveDia, objetivoMundoBase: objetivoMundoBase, pasoHoraMundo: fichas.pasoHoraMundo,
     horaMundoTexto: horaMundoTexto, aplicaMundo: aplicaMundo, TiempoVivo: TiempoVivo, lindes: lindes, lectura: lectura, libera: libera,
+    /** L6-03: «Movimiento: Reducido» (lo llama el oyente de 33_ajustes al arrancar y en cada cambio): nubes y viento quietos y sin «Reproducir» la previsión */
+    calma: function (v: boolean): void { paso.calma(v); fichas.calma(v); },
     // lo de dentro, para las pruebas y ?debug
     cielo: cielo, lluvia: ll, barreras: barreras, fichas: fichas, paso: paso, materiales: materiales
   };

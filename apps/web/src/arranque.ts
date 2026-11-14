@@ -582,7 +582,7 @@ function arranca(): void {
     $: $, lienzo: function () { return document.createElement("canvas"); }, Bus: Bus,
     prefijoApi: function () { return typeof HazasPuro !== "undefined" ? HazasPuro.prefijoApi(location.search, D.base) : null; },   // «/api/» si la página la sirve el servidor (o ?api=)
     red: function () { return window.fetch ? window.fetch.bind(window) : null; }, prueba: function () { return window.__TIEMPO_PRUEBA || null; },
-    busqueda: location.search, reloj: function () { return Date.now(); }, calma: !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches),
+    busqueda: location.search, reloj: function () { return Date.now(); }, calma: Nucleo.movimientoReducido(typeof Ajustes !== "undefined" ? Ajustes : null, window),   // L6-03: aún sin Configuración (33), el sistema; 33 lo corrige con Tiempo.calma
     temporizador: { setInterval: function (f, ms) { return setInterval(f, ms); }, clearInterval: function (id) { clearInterval(id); } }, Materiales: Materiales,
     alCambiarTema: function (fn) { return Nucleo.escuchaTema({ documento: document, ventana: window, Observador: MutationObserver }, fn); }   // A3-8a: data-theme y prefers-color-scheme (src/nucleo/tema.ts)
   });
@@ -625,7 +625,7 @@ function arranca(): void {
   // [talón] apps/web/src/mundos/exterior/fauna.ts
   Componentes.registra(Mundos.manifiestoFauna({
     THREE: THREE, Materiales: Materiales, camera: camera, D: D, copas: copas, cIn: cIn, geoSombra: geoSombra, matSombra: matSombra,
-    paseando: function () { return Paseo.E.paseando; }, pp: pp, cur: cur, nivelEn: nivelEn,   // 12_paseo y 15_tiempo
+    paseando: function () { return Paseo.E.paseando; }, pp: pp, cur: cur, nivelEn: nivelEn, reducido: function () { return Nucleo.movimientoReducido(typeof Ajustes !== "undefined" ? Ajustes : null, window); },   // 12_paseo y 15_tiempo; L6-03: «Movimiento»
     tVida: function () { return Vida.E.tVida; }, enQuad: function () { return Vida.E.enQuad; },   // 16_vida: el estado del paseo (cambian cada fotograma: por función)
     gFauna: gFauna, altSuelo: altSuelo, mira: mira, Estado: Estado, fusionaGeometrias: fusionaGeometrias,
     Minimapa: { capa: function (fn, orden) { return Minimapa.capa(fn, orden); } }   // 17_minimapa se carga después de 16b: se pide al montar, no al cargar
@@ -751,7 +751,7 @@ function arranca(): void {
     $: $, get paseando() { return Paseo.E.paseando; }, get Hud() { return typeof Hud !== "undefined" ? Hud : undefined; }, get tamano() { return tamano; }, ventana: window, documento: document
   });
   var Menu = MenuPantalla.Menu;
-  var Transicion = Mundos.creaTransicion({ THREE: THREE, camera: camera, pp: pp, altSuelo: altSuelo, sueloSeco: sueloSeco, Bus: Bus, get persona() { return Paseo.E.persona; }, reducido: function () { return typeof Ajustes !== "undefined" && !!Ajustes ? Ajustes.movimientoReducido() : !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } });   // L6-03
+  var Transicion = Mundos.creaTransicion({ THREE: THREE, camera: camera, pp: pp, altSuelo: altSuelo, sueloSeco: sueloSeco, Bus: Bus, get persona() { return Paseo.E.persona; }, reducido: function () { return Nucleo.movimientoReducido(typeof Ajustes !== "undefined" ? Ajustes : null, window); } });   // L6-03
   var TR = Transicion.TR, iniciaTransicion = Transicion.iniciaTransicion, transEntrada = Transicion.transEntrada, iniciaSalida = Transicion.iniciaSalida, transSalida = Transicion.transSalida;
   Componentes.registra(Interfaz.manifiestoPantalla(MenuPantalla));
   // [paso: 25_perros] TALÓN (MU5-n, A3-5): el código vive en apps/web/src/mundos/exterior/perros.ts (Mundos.manifiestoPerros). Publica además window.__perrosDebug (depuración).
@@ -766,7 +766,7 @@ function arranca(): void {
     paseando: function () { return Paseo.E.paseando; }, pp: pp,   // 12_paseo: paseando cambia
     tVida: function () { return Vida.E.tVida; }, enQuad: function () { return Vida.E.enQuad; }, enDron: function () { return Vida.E.enDron; },   // 16_vida: el estado del paseo (cambian cada fotograma: por función)
     gFauna: gFauna, altSuelo: altSuelo, pendienteRumbo: pendienteRumbo, sueloSeco: sueloSeco, Minimapa: Minimapa, fusionaGeometrias: fusionaGeometrias,
-    document: document, window: window,
+    document: document, window: window, reducido: function () { return Nucleo.movimientoReducido(typeof Ajustes !== "undefined" ? Ajustes : null, window); },   // L6-03: «Movimiento»
     reloj: { setTimeout: function (f, ms: any) { return setTimeout(f, ms); }, clearTimeout: function (id: any) { clearTimeout(id); } }
   }));
   // [paso: 26_presencia] No es un componente ni monta nada: el protocolo y la lógica pura de la presencia compartida (PoseCodec, BufferPose, Aspecto, SalaPose, Chat, Muneco, Encuentro) y sitioJunto. MU5-n (A3-6a): talón; el código vive en apps/web/src/red/pose.ts y sala.ts (lo que es red) y en apps/web/src/mundos/comun/muneco.ts (el muñeco, el encuentro y la cuenta). La presencia que los usa es el componente de 38_presencia_compartida.js (C5). Lo prueban pose.test.ts, sala.test.ts, muneco.test.ts y pruebas/guardianes/presencia.test.js, presencia_red.test.js y muneco_aspecto.test.js.
@@ -919,7 +919,7 @@ function arranca(): void {
   var AjustesPuro = Interfaz.AjustesPuro;
   var Ajustes = Interfaz.creaAjustes({
     $: $, fmt: fmt, Bus: Bus, Render: Render, renderer: renderer, get Hud() { return typeof Hud !== "undefined" ? Hud : undefined; },
-    get Movibles() { return typeof Movibles !== "undefined" ? Movibles : undefined; }, get tamano(): any { return typeof tamano !== "undefined" ? tamano : undefined; }, ventana: window, documento: document, movimiento: function (r) { if (typeof Tiempo !== "undefined" && Tiempo && Tiempo.paso) Tiempo.paso.calma(r); }   // L6-03: nubes y viento quietos con «Movimiento: Reducido»
+    get Movibles() { return typeof Movibles !== "undefined" ? Movibles : undefined; }, get tamano(): any { return typeof tamano !== "undefined" ? tamano : undefined; }, ventana: window, documento: document, movimiento: function (r) { if (typeof Tiempo !== "undefined" && Tiempo) Tiempo.calma(r); }   // L6-03: nubes y viento quietos y sin «Reproducir» con «Movimiento: Reducido»
   });
   Componentes.registra(Interfaz.manifiestoAjustes(Ajustes));
   // [paso: 34_movibles]
@@ -1008,7 +1008,7 @@ function arranca(): void {
   // [talón] apps/web/src/mundos/exterior/juegos.ts
   Componentes.registra(Mundos.manifiestoJuegos({
     D: D, Pausa: Pausa, ConfigPuro: ConfigPuro, Config: Config, Teclas: Teclas, Laminas: Laminas, Hud: Hud, Ventanas: Ventanas,
-    get VRX() { return typeof VRX !== "undefined" ? VRX : undefined; }, get PanelVR() { return typeof PanelVR !== "undefined" ? PanelVR : undefined; }
+    get VRX() { return typeof VRX !== "undefined" ? VRX : undefined; }, get PanelVR() { return typeof PanelVR !== "undefined" ? PanelVR : undefined; }, get Ajustes() { return typeof Ajustes !== "undefined" ? Ajustes : null; }   // L6-03
   }));
   // [paso: 41_cae_la_cosecha] Componente «cae-la-cosecha» (ADR-0023, C9a): el primer juego casual (diseño propio del género «piezas que caen»). Solo se registra; nadie lo nombra. Se ofrece al anfitrión por el Bus y pide sus sonidos con «sonido:juego». Los trozos [puro:…] (las reglas, con semilla) y [dibujo:…] los evalúa en Node pruebas/guardianes/juego_cosecha.test.js.
   // ---------- «Cae la cosecha» (C9a, decisiones 125 y 136; doc/sistema/JUEGOS.md). MU5-n (A3-7b2): migrado a TypeScript tal cual; el código y la explicación viven en

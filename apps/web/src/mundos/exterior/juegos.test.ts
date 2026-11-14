@@ -48,6 +48,18 @@ describe("el anfitrión de juegos y «Cae la cosecha»", () => {
     expect((s.m.ventana as A).__juegos().juegos).toEqual([]);
     expect(api.abierto()).toBeNull(); s.c.libera();
   });
+  it("L6-03: la partida recibe «reducido» del ajuste «Movimiento» de la aplicación (Ajustes), no solo del sistema", () => {
+    for (const red of [true, false]) {
+      const s = monta(() => J(null)), api = s.c.api() as A, vistos: unknown[] = [];
+      (s.dp as A).Ajustes = { movimientoReducido: () => red };
+      const err = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      s.bus.emite("juego:ofrece", { id: "prueba", titulo: "Prueba", descripcion: "Solo mira lo que recibe", crea: (ctx: A) => { vistos.push(ctx.reducido); throw new Error("solo se mira el ctx"); } });
+      api.abre("prueba");
+      err.mockRestore();
+      expect(vistos).toEqual([red]);
+      s.c.libera(); if (m) m.limpia(); m = null;
+    }
+  });
   it("con una partida abierta, libera() cancela lo que esté en vuelo, devuelve la pausa al mundo y no deja nada", async () => {
     const s = monta(() => new Promise(() => { /* la api no contesta */ })), api = s.c.api() as A;
     expect(api.abre("cae-la-cosecha")).toBe(true);

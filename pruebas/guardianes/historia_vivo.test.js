@@ -13,7 +13,7 @@ const EJEMPLO = JSON.parse(lee("contratos/ot-hoy-ejemplo.json"));
 function puro() {
   const i = FUENTE.indexOf("// [puro:inicio]"), f = FUENTE.indexOf("// [puro:fin]");
   assert.ok(i >= 0 && f > i, "14_historia.js debe marcar su trozo puro");
-  return new Function("\"use strict\";\n" + FUENTE.slice(i, f) + "\nreturn HistoriaPuro;")();
+  return require("./_mundos").HistoriaPuro;   // L3-22: el de verdad (usa la regla única de «hace N», nucleo/hace.ts), no su texto evaluado
 }
 const P = puro();
 const copia = o => JSON.parse(JSON.stringify(o));

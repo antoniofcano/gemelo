@@ -35,6 +35,8 @@ export interface DepsFauna extends Pick<LecturaVida, "tVida" | "enQuad">, Lectur
   fusionaGeometrias(partes: T3[], conUv?: boolean): T3;
   /** el azar (Math.random por defecto): las pruebas de equivalencia lo fijan con una semilla */
   aleatorio?: () => number;
+  /** L6-03: «Movimiento: Reducido» (Ajustes, por nucleo/movimiento.ts): las aves posadas no echan a volar y los conejos no salen huyendo; lo que ya se mueve acaba su gesto (nada se congela a medias) */
+  reducido?: () => boolean;
 }
 
 export const ID_FAUNA = "fauna-olivar";
@@ -44,7 +46,7 @@ export function creaFauna(d: DepsFauna, ctx: ContextoComponente) {
   const THREE = d.THREE, camera = d.camera, D = d.D, copas = d.copas, cIn = d.cIn, geoSombra = d.geoSombra, matSombra = d.matSombra, gFauna = d.gFauna, altSuelo = d.altSuelo, mira = d.mira;
   const Estado = d.Estado, Minimapa = d.Minimapa, fusionaGeometrias = d.fusionaGeometrias, pp = d.pp, cur = d.cur, nivelEn = d.nivelEn;
   const materiales = d.Materiales.de(ID_FAUNA);   // lo que cree este componente se libera con su libera()
-  const paseando = d.paseando, tVida = d.tVida, enQuad = d.enQuad, rnd = d.aleatorio || Math.random;
+  const paseando = d.paseando, tVida = d.tVida, enQuad = d.enQuad, rnd = d.aleatorio || Math.random, reducido = d.reducido;
   // lo que se engancha (la capa del minimapa) se suelta con libera(), una sola vez; el contexto también la llama al liberar el componente
   const sueltas: (() => void)[] = [];
   function limpia<F>(f: F): F { if (typeof f === "function") sueltas.push(f as unknown as () => void); return f; }
@@ -184,13 +186,13 @@ export function creaFauna(d: DepsFauna, ctx: ContextoComponente) {
       g.position.set(x, alt, -y); mira(g, bHx[u.b], -bHy[u.b]); g.rotation.z = bRz[u.b]; aleteo(g, false, false); escalaVista(g, 1);
     }
     if (!paseando()) { empacaAves(); empacaConejos(); return; }
-    var dq = enQuad() ? 16 : 9;
+    var dq = enQuad() ? 16 : 9, red = !!(reducido && reducido());
     // aves posadas: salen volando si te acercas, suben y se alejan; luego otra ocupa su sitio
     for (var ip2 = 0; ip2 < posadas.length; ip2++) {
       var a = posadas[ip2]; u = a.userData;
       if (u.est === "posada") {
         var dpx = u.cx - pp.x, dpy = u.cy - pp.y; a.visible = vuelan || dia > 0.02; aleteo(a, true);
-        if (menorQue(dpx, dpy, dq)) { u.est = "vuela"; u.t = 9; u.h = Math.atan2(u.cy - pp.y, u.cx - pp.x) + (rnd() - 0.5) * 1.2; u.vy = 0; u.px = u.cx; u.py = u.cy; u.pz = a.position.y; }
+        if (!red && menorQue(dpx, dpy, dq)) { u.est = "vuela"; u.t = 9; u.h = Math.atan2(u.cy - pp.y, u.cx - pp.x) + (rnd() - 0.5) * 1.2; u.vy = 0; u.px = u.cx; u.py = u.cy; u.pz = a.position.y; }
         else if (mayorQue(dpx, dpy, 120)) nacePosada(a);
       } else if (u.est === "vuela") {
         u.t -= dt; u.px += Math.cos(u.h) * 8 * dt; u.py += Math.sin(u.h) * 8 * dt; u.pz += Math.min(3.2, 7 - (u.pz - altSuelo(u.px, u.py))) * dt * 0.8;
@@ -204,7 +206,7 @@ export function creaFauna(d: DepsFauna, ctx: ContextoComponente) {
       if (u.est === "fuera") { if (!naceConejo(co)) continue; }
       if (mayorQue(u.x - pp.x, u.y - pp.y, 120)) { u.est = "fuera"; co.visible = false; continue; }
       // la pregunta a los perros solo si aún no huye (si ya huye, su respuesta no se usaba): un solo objeto de pregunta reutilizado, no uno por conejo y fotograma
-      var am = null; if (u.est !== "huye") { amq.x = u.x; amq.y = u.y; amq.res = null; n.emite("perros:amenaza", amq); am = amq.res; }
+      var am = null; if (u.est !== "huye" && !red) { amq.x = u.x; amq.y = u.y; amq.res = null; n.emite("perros:amenaza", amq); am = amq.res; }
       if (am) { u.est = "huye"; u.t = 2 + rnd() * 1.6; u.dir = Math.atan2(u.y - am.y, u.x - am.x) + (rnd() - 0.5) * 1.0; }
       var vel = 0;
       if (u.est === "huye") { vel = 6.5; u.t -= dt; if (u.t <= 0) { u.est = "pasta"; u.t = 1.5 + rnd() * 2; } }
@@ -249,7 +251,7 @@ export function creaFauna(d: DepsFauna, ctx: ContextoComponente) {
     while (sueltas.length) { const f = sueltas.pop() as () => void; try { f(); } catch (e) { /* una que falla no impide soltar las demás */ } }
   }
   ctx.limpia(libera);
-  return { actualiza: actualizaFauna, conejos: function () { return conejos; }, aves: function () { return aves; }, libera };
+  return { actualiza: actualizaFauna, conejos: function () { return conejos; }, aves: function () { return aves; }, posadas: function () { return posadas; }, libera };
 }
 export type Fauna = ReturnType<typeof creaFauna>;
 

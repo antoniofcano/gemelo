@@ -5,6 +5,7 @@
 // #menuAjustes. Los ajustes siguen leyéndose después (el almacén no se suelta): quien los lee no se rompe. Código movido tal cual (solo se tipan parámetros y
 // variables, y «x.addEventListener(» pasa a «escucha(x, »); lo que el legado reescribe o declara después (Hud, Movibles, tamano) entra por getter.
 import type { Manifiesto } from "../nucleo/componentes.ts";
+import { CONSULTA_MOVIMIENTO, sistemaReduceMovimiento } from "../nucleo/movimiento.ts";
 import { creaSoltador } from "./soltador.ts";
 import type { T } from "./tipos.ts";
 
@@ -50,7 +51,7 @@ export var AjustesPuro: T = (function () {
     // L1-10: lee() guarda en caché lo que devuelve (hay quien lee cada fotograma: graficos.ahorro, avanzado.contador, vista.altura); la vacían pon (wr/rm), restablece,
     // un cambio del esquema y olvida() (otra pestaña cambió el almacén: el evento «storage» de la ventana)
     function crea(almacen?: T, busqueda?: T) {
-      var mem: T = {}, oyentes: T = [], cache: T = {}, genCache = genEsq;
+      var mem: T = {}, oyentes: T = [], cache: T = {}, genCache = genEsq, conCache = true;
       function rd(clave?: T) {
         try { if (almacen) { var s: T = almacen.getItem(PREFIJO + clave); if (s != null) return JSON.parse(s); } } catch (e: T) {}
         return Object.prototype.hasOwnProperty.call(mem, clave) ? mem[clave] : undefined;
@@ -62,10 +63,12 @@ export var AjustesPuro: T = (function () {
       function lee(clave?: T) {
         if (!ESQUEMA[clave]) return undefined;
         if (genCache !== genEsq) { cache = {}; genCache = genEsq; }
-        if (Object.prototype.hasOwnProperty.call(cache, clave)) return cache[clave];
-        var f: T = forzado(clave); return (cache[clave] = f !== undefined ? f : guardado(clave));
+        if (conCache && Object.prototype.hasOwnProperty.call(cache, clave)) return cache[clave];
+        var f: T = forzado(clave), v: T = f !== undefined ? f : guardado(clave); if (conCache) cache[clave] = v; return v;
       }
       function olvida() { cache = {}; }
+      // L1-10: sin quien la vacíe (la Configuración se liberó y con ella la escucha de «storage»), la caché se apaga: cada lee() va al almacén, como antes de L1-10
+      function sinCache() { cache = {}; conCache = false; }
       function avisa(clave?: T, v?: T, antes?: T) { oyentes.slice().forEach(function (fn?: T) { try { fn(clave, v, antes); } catch (e: T) {} }); }
       function pon(clave?: T, v?: T) {
         if (!ESQUEMA[clave]) return false;
@@ -77,7 +80,7 @@ export var AjustesPuro: T = (function () {
       }
       function restablece() { Object.keys(ESQUEMA).forEach(function (k?: T) { var antes: T = lee(k); rm(k); if (lee(k) !== antes) avisa(k, lee(k), antes); }); }
       function alCambiar(fn?: T) { if (typeof fn === "function") oyentes.push(fn); return function () { var i: T = oyentes.indexOf(fn); if (i >= 0) oyentes.splice(i, 1); }; }
-      return { lee: lee, pon: pon, alCambiar: alCambiar, restablece: restablece, olvida: olvida, defecto: function (c?: T) { return ESQUEMA[c] && ESQUEMA[c].def; }, forzado: forzado, claves: function () { return Object.keys(ESQUEMA); } };
+      return { lee: lee, pon: pon, alCambiar: alCambiar, restablece: restablece, olvida: olvida, sinCache: sinCache, defecto: function (c?: T) { return ESQUEMA[c] && ESQUEMA[c].def; }, forzado: forzado, claves: function () { return Object.keys(ESQUEMA); } };
     }
     // superficie en hectáreas o metros cuadrados (decisión de Configuración → Vista); fmt: formateador (n, decimales) → texto
     function superficie(ha?: T, unidades?: T, fmt?: T) { return unidades === "m2" ? fmt(Math.round(ha * 10000), 0) + " m²" : fmt(ha, 1) + " ha"; }
@@ -113,7 +116,7 @@ export function creaAjustes(dp: DepsAjustes) {
     // L6-03: «Movimiento» (sistema, reducido o normal) es lo que leen también lo 3D (la transición al paseo, el tiempo, las máquinas de los interiores): movimientoReducido()
     // lo da sin consultar la media query en cada fotograma (se recalcula al cambiar el ajuste o el sistema) y alMovimiento(fn) avisa de cada cambio
     var reducidoYa: T = null, oyentesMov: T = [];
-    function calculaReducido() { var m: T = api.lee("acc.movimiento"); if (m === "sistema") return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); return m === "reducido"; }
+    function calculaReducido() { var m: T = api.lee("acc.movimiento"); if (m === "sistema") return sistemaReduceMovimiento(window); return m === "reducido"; }
     function movimientoReducido() { return reducidoYa !== null ? reducidoYa : calculaReducido(); }
     function alMovimiento(fn?: T) { if (typeof fn !== "function") return function () {}; oyentesMov.push(fn); try { fn(movimientoReducido()); } catch (e: T) {} return function () { var i: T = oyentesMov.indexOf(fn); if (i >= 0) oyentesMov.splice(i, 1); }; }
     function tactil() { var t: T = api.lee("controles.tactil"); if (t === "auto") return !!(window.matchMedia && matchMedia("(pointer: coarse)").matches); return t === "si"; }
@@ -301,7 +304,7 @@ export function creaAjustes(dp: DepsAjustes) {
     var cs: T = dp.$("cSonido"); if (cs) { var lab: T = cs.closest && cs.closest("label"); if (lab) lab.hidden = true; }   // la casilla vieja de Capas: el sonido tiene ahora su pestaña (la añade el componente, Ajustes.registra)
     ligaControl("exag", "vista.exag", "input"); ligaControl("corr", "vista.corr", "input");
     api.alCambiar(function (clave?: T) { aplica(clave); pinta(); });
-    if (window.matchMedia) { try { escucha(matchMedia("(prefers-reduced-motion: reduce)"), "change", function () { aplica("acc.movimiento"); }); escucha(matchMedia("(pointer: coarse)"), "change", function () { aplica("controles.tactil"); }); } catch (e: T) {} }
+    if (window.matchMedia) { try { escucha(matchMedia(CONSULTA_MOVIMIENTO), "change", function () { aplica("acc.movimiento"); }); escucha(matchMedia("(pointer: coarse)"), "change", function () { aplica("controles.tactil"); }); } catch (e: T) {} }
     api.claves().forEach(aplica);
     if (dp.movimiento) alMovimiento(dp.movimiento);   // L6-03
     api.pinta = function () { construye(); pinta(); };   // por si el menú se crea después
@@ -338,6 +341,8 @@ export function creaAjustes(dp: DepsAjustes) {
     // A3-7a: libera() quita las escuchas (controles, deslizadores de la página y media queries) y saca la interfaz pintada en #menuAjustes; el almacén sigue (Ajustes.lee vale)
     api.libera = function () {
       sol.suelta();
+      // L1-10: sin la escucha de «storage» (y de la media query), lo recordado ya no se entera de otra pestaña ni del sistema: se deja de recordar
+      api.sinCache(); reducidoYa = null;
       if (cont) { while (cont.firstChild) cont.removeChild(cont.firstChild); cont.removeAttribute("data-ajustes"); cont.classList.remove("ajustes"); if (cont.getAttribute("aria-label") === "Configuración" && !cont.children.length && cont.parentNode && cont.parentNode.id === "menu") cont.parentNode.removeChild(cont); }
       cont = null; lista = null; hojas = {};
     };

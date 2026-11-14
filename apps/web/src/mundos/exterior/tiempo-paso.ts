@@ -40,7 +40,7 @@ export interface DepsPasoTiempo {
   TiempoPuro: A; TM: A; fmtHora: A; num1: (v: A, d?: A) => string; rumbo: (g: number) => string;
   /** L8-05: ¿el mundo enseña otra fecha (la estación del olivo de 23_estacion.js, EST.activa)? Entonces la chapita dice «estimado». Sin ella, nunca */
   estimado?: () => boolean;
-  /** prefers-reduced-motion: nada se mueve con el tiempo (el reloj del mundo, sí) */
+  /** L6-03: «Movimiento: Reducido» al crearse: nada se mueve con el tiempo (el reloj del mundo, sí); después lo cambia calma(v) */
   calma: boolean;
 }
 
@@ -141,7 +141,7 @@ export function creaPasoTiempo(d: DepsPasoTiempo) {
     /** el reloj de lo que se mueve (s): lo leen 18_paisaje (el agua) y quien siga el mismo tiempo */
     tMundo: function (): number { return tMundo; },
     lluviaVis: function (): number { return lluviaVis; },
-    /** para las pruebas de equivalencia (antes, una variable del módulo): prefers-reduced-motion */
+    /** L6-03: «Movimiento: Reducido» en marcha (Tiempo.calma, desde 33_ajustes); también lo usan las pruebas de equivalencia */
     calma: function (v: boolean): void { calma = !!v; }
   };
 }

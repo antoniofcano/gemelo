@@ -19,7 +19,9 @@ function trozo(ini, fin) {
 }
 const sinPrimera = t => t.slice(t.indexOf("\n") + 1);
 const PURO = sinPrimera(trozo("// [puro:inicio]", "// [puro:fin]")), MOTOR = sinPrimera(trozo("// [motor:inicio]", "// [motor:fin]"));
-const P = new Function("\"use strict\";\n" + PURO + "\nreturn MundoHoyPuro;")();
+// L3-22: lo puro usa la regla única de «hace N» (nucleo/hace.ts): se toma el MundoHoyPuro de verdad (el de los mundos) en vez de evaluar su texto;
+// donde se evalúa el texto (el motor, abajo), recibe la regla de verdad como argumento, no una copia
+const P = require("./_mundos").MundoHoyPuro, { haceDesde } = require("../../apps/web/src/nucleo/hace.ts");
 const EJEMPLO = JSON.parse(lee("contratos/mundo-hoy-ejemplo.json"));
 const AHORA = Date.parse("2026-11-05T10:40:00Z");
 const PARCELAS = [{ id: "sintetica-1", nombre: "La Sintética" }];
@@ -98,11 +100,11 @@ function monta(o = {}) {
   const respuesta = o.respuesta === undefined ? EJEMPLO : o.respuesta;
   const fetchFn = (u, op) => { pedidas.push(u); return o.falla || reloj.cae ? Promise.reject(new Error("sin red")) : Promise.resolve({ status: o.status || 200, json: () => Promise.resolve(copia(respuesta)) }); };
   const reloj = { n: 0 };
-  const f = new Function("location", "window", "document", "HazasPuro", "D", "$", "Hud", "setInterval", "clearInterval",
+  const f = new Function("location", "window", "document", "HazasPuro", "D", "$", "Hud", "setInterval", "clearInterval", "haceDesde",
     "\"use strict\";\nvar MundoHoyPuro = (function(){" + PURO + "\nreturn MundoHoyPuro;})();\n" + MOTOR + "\nreturn MundoHoyMotor;");
   const api = f({ search: "" }, { fetch: fetchFn }, dom.doc, { prefijoApi: (b, base) => (/^\/teselas\//.test(base) ? "/api/" : null) },
     { base: o.base === undefined ? "/teselas/x/" : o.base, parcelas: PARCELAS }, dom.$, { aviso: (t, ms) => hud.push([t, ms]) },
-    (cb) => { reloj.cb = cb; return ++reloj.n; }, () => { reloj.parado = true; })({});
+    (cb) => { reloj.cb = cb; return ++reloj.n; }, () => { reloj.parado = true; }, haceDesde)({});
   return { api, dom, hud, pedidas, reloj };
 }
 

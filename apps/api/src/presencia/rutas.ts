@@ -11,7 +11,7 @@ import { AVATAR_POR_DEFECTO, type Avatar, type ClaveSala, CLAVES_SALA, DISPOSITI
 import { LigaduraVisita, puedeEntrar } from "./acceso_visita.ts";
 import { rutasOficinaMundo } from "./oficina_mundo.ts";
 import { ExpulsadosGuiada, rutasVoz } from "./voz_rutas.ts";
-import { vuelveAExpulsar } from "./reingreso.ts";
+import { arrancaCentinela, reconstruyeMarcas } from "./reingreso.ts";
 import { BARRIDO_MS } from "./corro.ts";
 import { creaCorros, rutasCorros } from "./corro_rutas.ts";
 import type { Corros } from "./corro.ts";
@@ -63,19 +63,23 @@ export async function rutasPresencia(app: FastifyInstance, ctx: Contexto): Promi
   const depsCorros = { lk: lk ?? null, voz, moderador, expulsados, permitida: ctx.config.vozCercania.permitida, ...(ctx.relojVoz ? { reloj: ctx.relojVoz } : {}) };
   const corros = creaCorros(bd, depsCorros, app.log);
   // L9-06: el centinela de reingresos (reingreso.ts): mientras dure una expulsión, cada BARRIDO_MS vuelve a sacar de las salas a quien entre con un token
-  // firmado antes de ella. Con un reloj de pruebas no se arranca (como el barrido de los corros); sin expulsados vivos no llama a LiveKit
+  // firmado antes de ella. Con un reloj de pruebas y sin temporizador de pruebas no se arranca (como el barrido de los corros); sin expulsados vivos no
+  // llama a LiveKit. Al arrancar, las marcas de los últimos TTL_S se reconstruyen desde la auditoría (un reinicio no las pierde)
   const expulsadosGuiada = new ExpulsadosGuiada();
-  let centinela: NodeJS.Timeout | null = null;
-  if (lk && moderador && !ctx.relojVoz) {
+  let paraCentinela: (() => void) | null = null;
+  if (lk && moderador && (ctx.temporizador || !ctx.relojVoz)) {
     const salasDelMundo = async () => [...CLAVES_SALA.map(k => SALAS[k]), ...(voz ? await voz.salasGuiadas() : []), ...(corros ? corros.salas() : [])];
-    centinela = setInterval(() => {
-      vuelveAExpulsar({ moderador, prefijo: h => prefijoHogar(lk, h), expulsados, guiada: expulsadosGuiada, salas: salasDelMundo })
-        .then(n => { if (n > 0) app.log.warn({ conexiones: n }, "presencia: un expulsado volvió a entrar con un token anterior; se le ha vuelto a sacar"); })
-        .catch(e => app.log.warn({ err: (e as Error).message }, "presencia: el centinela de reingresos falló"));
-    }, BARRIDO_MS);
-    centinela.unref();
+    paraCentinela = arrancaCentinela({ moderador, prefijo: h => prefijoHogar(lk, h), expulsados, guiada: expulsadosGuiada, salas: salasDelMundo, log: app.log }, BARRIDO_MS, ctx.temporizador);
   }
-  app.addHook("onClose", async () => { if (centinela) clearInterval(centinela); });
+  if (lk) {
+    app.addHook("onReady", async () => {
+      try {
+        const n = await reconstruyeMarcas(bd, { expulsados, guiada: expulsadosGuiada });
+        if (n > 0) app.log.info({ marcas: n }, "presencia: expulsiones vigentes recuperadas de la auditoría");
+      } catch (e) { app.log.error({ err: (e as Error).message }, "presencia: no se pudieron recuperar las expulsiones de la auditoría"); }
+    });
+  }
+  app.addHook("onClose", async () => { paraCentinela?.(); });
 
   // F2b: ¿hay presencia en red en este servidor? Barato y sin secretos (solo si LiveKit está configurado); con sesión, como el resto. El motor lo
   // pregunta una vez para activarse solo, sin ?presencia=red

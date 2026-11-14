@@ -22,7 +22,7 @@ function fusiona(partes: [any, any][]) {   // eslint-disable-line @typescript-es
   g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3)); return g;
 }
 
-function monta(extra: Partial<{ paseando: boolean; dia: number; lluvia: number }> = {}) {
+function monta(extra: Partial<{ paseando: boolean; dia: number; lluvia: number; reducido: boolean }> = {}) {
   const E = { paseando: true, enQuad: false, tVida: 0, dia: extra.dia ?? 1 }, rnd = semilla(7);
   const scene = new THREE.Scene(), gFauna = new THREE.Group(); scene.add(gFauna);
   E.paseando = extra.paseando ?? true;
@@ -34,7 +34,8 @@ function monta(extra: Partial<{ paseando: boolean; dia: number; lluvia: number }
     THREE, Materiales: creaMateriales({ THREE: THREE as unknown as ThreeMin, busqueda: "" }), camera: new THREE.PerspectiveCamera(), D: { ext: [-200, 200, 200, -200] }, copas, cIn, geoSombra, matSombra, gFauna,
     paseando: () => E.paseando, pp: { x: 0, y: 0, ang: 0, paso: 0 }, cur: { ms: 0, viento: 1, dir: 0, lluvia: extra.lluvia ?? 0, hr: 40 }, nivelEn: () => ({ s: { alt: 0, az: 0 }, d: E.dia }),
     tVida: () => E.tVida, enQuad: () => E.enQuad, altSuelo: () => 2, mira: (g: any, hx: number, hz: number) => { g.rotation.y = Math.atan2(-hx, -hz); },   // eslint-disable-line @typescript-eslint/no-explicit-any
-    Estado: { exag: 1 }, Minimapa: { capa: (fn) => { capas.push(fn); return () => { capas.pop(); quitadas.push("capa"); }; } }, fusionaGeometrias: fusiona, aleatorio: rnd
+    Estado: { exag: 1 }, Minimapa: { capa: (fn) => { capas.push(fn); return () => { capas.pop(); quitadas.push("capa"); }; } }, fusionaGeometrias: fusiona, aleatorio: rnd,
+    ...(extra.reducido !== undefined ? { reducido: () => !!extra.reducido } : {})
   };
   const n = { id: ID_FAUNA, parametros: {}, limpia: <F>(f: F) => f, emite: (ev: string, d?: unknown) => { emitidos.push(ev); (oyentes[ev] || []).forEach((f) => f(d)); return 0; }, api: () => null,
     on: (ev: string, fn: (d?: unknown) => void) => { (oyentes[ev] = oyentes[ev] || []).push(fn); return () => { quitadas.push(ev); oyentes[ev] = (oyentes[ev] || []).filter((f) => f !== fn); }; } } as ContextoComponente;
@@ -68,6 +69,18 @@ describe("fauna: el componente", () => {
     const c = api.conejos().find((x: any) => x.visible)!, q = { x: c.userData.x + 1, y: c.userData.y, radio: 50, res: null as unknown };   // eslint-disable-line @typescript-eslint/no-explicit-any
     emite("fauna:conejo-cerca", q); expect(q.res).toBe(c);
     expect(emitidos).toContain("perros:amenaza");
+  });
+  it("L6-03: con «Movimiento: Reducido» las aves posadas no echan a volar y los conejos no salen huyendo; sin él, sí", () => {
+    for (const reducido of [false, true]) {
+      const { api, emite, deps, oyentes } = monta({ reducido });
+      oyentes["perros:amenaza"] = [(q: any) => { q.res = { x: q.x + 1, y: q.y }; }];   // eslint-disable-line @typescript-eslint/no-explicit-any
+      emite("paseo:entra"); api.actualiza(0.016);
+      const ave = api.posadas().find((a: any) => a.userData.est === "posada")!;   // eslint-disable-line @typescript-eslint/no-explicit-any
+      expect(ave).toBeTruthy();
+      deps.pp.x = ave.userData.cx; deps.pp.y = ave.userData.cy; api.actualiza(0.016);
+      expect(ave.userData.est).toBe(reducido ? "posada" : "vuela");
+      expect(api.conejos().some((c: any) => c.userData.est === "huye")).toBe(!reducido);   // eslint-disable-line @typescript-eslint/no-explicit-any
+    }
   });
   it("los tres materiales salen de la fábrica con su dueño: Lambert estándar, con los colores de siempre", () => {
     const { deps, gFauna } = monta();

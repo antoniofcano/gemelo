@@ -20,6 +20,7 @@
 // Su libera() ya soltaba todo (geometría, materiales y texturas, y los lienzos a 1 × 1); se conserva y se prueba.
 // Del legado recibe por argumento lo que necesita (THREE, el documento, la escena, la cámara, Hazas, las lindes…); no lee globales.
 import type { ContextoComponente, Manifiesto } from "../../nucleo/componentes.ts";
+import { haceDesde } from "../../nucleo/hace.ts";
 
 // three no trae tipos en el repo (como en suelo-fondo.ts): de él solo se toca lo mínimo, sin tiparlo
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -122,11 +123,7 @@ export const CartelesPuro = (function () {
   // el tablón de la entrada. ctx = { hazas, olivos, hoy, bbch, origen }: nº de hazas con linde y olivos contados con LiDAR de toda la finca (detectados; sin dato fiable no se pone) y la época de hoy.
   // «Hoy en el olivar» (EV-3c): ctx.campo = { txt, de, cuando } (la línea que emite 53_mundo_hoy.js: trabajo de la semana agregado, o el aviso principal) y ctx.ahora (ms). Con datos
   // válidos pasa por delante de la época (solo caben dos pares); sin ellos, hoy queda vacío y no se pinta.
-  function haceHoy(iso: unknown, ahora: unknown): string {
-    const t = typeof iso === "string" ? Date.parse(iso) : NaN; if (!isFinite(t) || !num(ahora)) return "";
-    const m = Math.max(1, Math.round((ahora - t) / 60000));
-    return m < 90 ? "hace " + m + " min" : m < 36 * 60 ? "hace " + Math.round(m / 60) + " h" : "hace " + Math.round(m / 1440) + " días";
-  }
+  const haceHoy = haceDesde;   // L3-22: la regla única (nucleo/hace.ts)
   function lineaHoy(c: Cualquiera, ahora: unknown): { txt: string; de: string } | null {
     if (!c || typeof c !== "object") return null;
     const t = txt(c.txt, 40), de = txt(c.de, 20); if (!t || !de) return null;

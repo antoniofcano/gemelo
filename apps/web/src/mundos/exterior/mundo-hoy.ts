@@ -8,6 +8,7 @@
 // avisos la pone la api (fija) y aquí no se añade nada. Sin servidor no se pide nada (ni un 404 en la consola). Presupuesto (regla 6): nada en la escena 3D (una tarjeta del DOM).
 // Código movido tal cual (solo se tipan parámetros y variables), salvo L8-12: «Mañana» se busca por su fecha, no por su posición en la lista.
 import type { Manifiesto } from "../../nucleo/componentes.ts";
+import { haceDesde } from "../../nucleo/hace.ts";
 import type { T } from "../comun/tipos.ts";
 import { HazasPuro } from "./hazas.ts";
 
@@ -48,11 +49,7 @@ export var MundoHoyPuro: T = (function () {
         .catch(function () { return { ok: false, motivo: "red" }; });
     }
     // «hace N min / h / días» desde un instante ISO (o «» si no hay)
-    function haceTxt(iso?: T, ahora?: T) {
-      var t = typeof iso === "string" ? Date.parse(iso) : NaN; if (!isFinite(t)) return "";
-      var m = Math.max(1, Math.round((ahora - t) / 60000));
-      return m < 90 ? "hace " + m + " min" : m < 36 * 60 ? "hace " + Math.round(m / 60) + " h" : "hace " + Math.round(m / 1440) + " días";
-    }
+    function haceTxt(iso?: T, ahora?: T) { return haceDesde(iso, ahora); }   // L3-22: la regla única (nucleo/hace.ts)
     function fechaCorta(d?: T) { return typeof d === "string" && DIA.test(d) ? d.slice(8, 10) + "/" + d.slice(5, 7) : ""; }
     // el nombre de una parcela de OlivarTrack según el índice de la finca (D.parcelas: { id, nombre }); si no está, el id tal cual
     function nombre(id?: T, indice?: T) {
