@@ -339,6 +339,10 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 
 
 ### Corregido
+- Medidas y topes (auditoría de noviembre, L1-06, L1-07 y L2-06; ronda del banco del 2026-11-14 en Chrome sin pantalla: recuentos y memoria, no fps; Quest e iPhone no probados):
+  - Topes del fixture recalibrados con su medida al lado: «lejos» baja de 155 a 40 llamadas. `carga.test.js` falla si un tope pasa de 2× lo medido, y el banco mide siempre con la escala de olivos y la hora fijas.
+  - Nuevo tope de memoria de GPU por escenario (geometrías, texturas y MB estimados); `__g.memoria()` la estima.
+  - `memoria_vr_chrome` ya no es opcional: entrar y salir de VR no deja recursos colgando (WebXR simulado).
 - Remates de la re-verificación de la auditoría (2026-11-14):
   - Expulsiones: un reinicio de la api ya no deja volver con un token anterior a quien se expulsó en los últimos 15 min (las marcas se recuperan de la auditoría), y un fallo de LiveKit en una sala no corta el centinela para las demás.
   - CI: la puerta pasa gitleaks por todo el historial (versión fijada; sin ejecutar aún: se estrena en el primer push), y el guardián de secretos rechaza también la coordenada UTM este de la zona.
