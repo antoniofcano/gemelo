@@ -417,6 +417,7 @@ function arranca(): void {
     THREE: THREE, FACTOR_R8: FactorR8.E.r8, busqueda: location.search, Aparato: Aparato, Config: Config, Mundo: Mundo, Cola: Cola, ColaExt: ColaExt, CargaPuro: CargaPuro, XrPerillas: XrPerillas,
     VrControlPuro: VrControlPuro, InfoDibujo: InfoDibujo, Estaticos: Estaticos, TopeTilesPuro: TopeTilesPuro, TopeOlivos: TopeOlivos, OlivosTiles: OlivosTiles, Catalogo: Catalogo,
     Escalera: Escalera, Generados: Generados, Lejanos: Lejanos, renderer: renderer, camera: camera, Estado: Estado, suelo: suelo, copaAlta: copaAlta, aviva: aviva, hash: hash, copas: copas,
+    desfase: function (h, out) { TinteOrto.desfase(h, out); },   // L3-01: el color de los niveles 1 y 2 lleva el mismo desfase que el de la copa
     ALTO_MAX: ALTO_MAX, gArboles: gArboles, arbolesG: arbolesG, follajeG: follajeG, construyeSombras: construyeSombras, ventana: window, ahora: function () { return performance.now(); },
     get paseando() { return typeof Paseo !== "undefined" ? Paseo.E.paseando : false; }, get kcor() { return TinteOrto.E.kcor; }, get tinte() { return TinteOrto.E.tinte; }, get ndviIdx() { return typeof FechaNdvi !== "undefined" ? FechaNdvi.E.idx : 0; },
     get objetivo() { return typeof objetivo !== "undefined" ? objetivo : null; }, get orb() { return typeof orb !== "undefined" ? orb : null; }, get pp() { return typeof pp !== "undefined" ? pp : null; },

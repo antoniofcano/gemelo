@@ -20,7 +20,7 @@ function olivosEn9Celdas() {
   return copas;
 }
 
-function monta(opc: { busqueda?: string; triFot?: { v: number }; copas?: ReturnType<typeof olivosEn9Celdas> } = {}) {
+function monta(opc: { busqueda?: string; triFot?: { v: number }; copas?: ReturnType<typeof olivosEn9Celdas>; deps?: Partial<DepsArboles> } = {}) {
   const gArboles = new THREE.Group(); gArboles.visible = true;
   const copas = opc.copas ?? olivosEn9Celdas(), cola = { cancelados: [] as string[], puestos: [] as string[] }, geoCelda: { dispose(): void }[] = [], disp = { n: 0 };
   const ts = { estado: 2, pts: null, key: "t0" };
@@ -46,6 +46,7 @@ function monta(opc: { busqueda?: string; triFot?: { v: number }; copas?: ReturnT
     arbolesG: function* () { const g = new THREE.BufferGeometry(); geoCelda.push(g); g.addEventListener("dispose", () => { disp.n++; }); return [new THREE.Mesh(g, new THREE.MeshBasicMaterial())]; },
     follajeG: function* () { /* sin follaje */ }, construyeSombras() {}, ventana: {}, ahora: (() => { let t = 0; return () => (t += 600); })(),
     paseando: false, kcor: 1, tinte: false, ndviIdx: 0, objetivo: { x: 96, y: 0, z: -96 }, orb: { dist: 500 }, pp: { x: 0, y: 0 }, VRX: null, Ajustes: undefined,
+    ...(opc.deps || {}),
   };
   const api = creaArboles(deps);
   api.inicia();
@@ -102,5 +103,27 @@ describe("olivos del motor, tres niveles (componente del exterior)", () => {
     expect(api.componente.id).toBe(ID_ARBOLES); expect(api.componente.mundos).toEqual(["exterior"]);
     expect(api.componente.presupuesto.triangulos).toBe(TOPE_TRI);
     const m = api.componente.monta({} as never) as { libera(): void }; m.libera();
+  });
+});
+
+describe("L3-01: el color de los olivos de nivel 1 y 2 aplica el desfase de la copa, como el nivel 0", () => {
+  const desfase = (k: number) => (h: number, out: number[]) => { out[0] = k * (1.2 * Math.min(h, 1) + 0.42 * Math.max(h - 1, 0)); out[1] = k * 0.2 * Math.min(h / 2, 1); };   // el de TinteOrto.desfase
+  function conMosaico(extra: Partial<DepsArboles>) {
+    const visto: Array<[number, number]> = [], copas = olivosEn9Celdas();
+    const Mundo = { cx: 0, cy: 0, tesela: () => ({ estado: 2, pts: null, key: "t0" }), ortoGrueso: (x: number, y: number, c3: number[]) => { visto.push([x, y]); c3[0] = 0.3; c3[1] = 0.35; c3[2] = 0.2; }, aseguraOrto: function* () { /* sin ortofoto */ } };
+    return { ...monta({ copas, deps: { Mundo, ...extra } }), visto, copas };
+  }
+  it("Mundo.ortoGrueso se pide en (x + dx(h), y + dy(h)) con el desfase de TinteOrto; sin la dependencia, en (x, y)", () => {
+    const a = conMosaico({ desfase: desfase(1) }), o = a.copas.filter((c: { oliv: number }) => c.oliv)[0] as { x: number; y: number; h: number }, esp: number[] = [0, 0]; desfase(1)(o.h, esp);
+    expect(o.h).toBeGreaterThan(0.5);
+    expect(a.visto[0]).toEqual([o.x + (esp[0] as number), o.y + (esp[1] as number)]);
+    const b = conMosaico({}); expect(b.visto[0]).toEqual([o.x, o.y]);
+  });
+  it("si cambia kcor (el deslizador de corrección), el color se rehace con el desfase nuevo", () => {
+    let kc = 1; const a = conMosaico({ desfase: (h, out) => desfase(kc)(h, out) }), n0 = a.visto.length; kc = 2; (a.deps as { kcor: number }).kcor = 2;   // kcor y el desfase de TinteOrto cambian juntos
+    a.api.actualiza(0.016, true);
+    expect(a.visto.length).toBeGreaterThan(n0);
+    const o = a.copas.filter((c: { oliv: number }) => c.oliv)[0] as { x: number; y: number; h: number }, esp: number[] = [0, 0]; desfase(2)(o.h, esp);
+    expect(a.visto[n0]).toEqual([o.x + (esp[0] as number), o.y + (esp[1] as number)]);
   });
 });
