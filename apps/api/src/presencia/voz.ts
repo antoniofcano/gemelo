@@ -247,11 +247,17 @@ export class Palabra {
   private programa(evento: number, identidad: string, ms: number): unknown {
     return this.reloj.programa(Math.max(0, ms), () => this.vence(evento, identidad));
   }
-  /** El temporizador del turno: si sigue siendo el mismo turno y ya pasó su hora, se quita. Si LiveKit falla, se reintenta (el turno sigue en la vista). */
+  /**
+   * El temporizador del turno: si sigue siendo el mismo turno y ya pasó su hora, se quita. Si LiveKit falla, se reintenta (el turno sigue en la vista).
+   * Si salta ANTES de su hora se vuelve a programar por lo que falta: setTimeout mide con el reloj monótono y `hasta` es Date.now, y en el contenedor de
+   * la api 4 de cada 35 disparos llegan 1 ms antes (medido el 2026-11-14 en infra/dev); antes se volvía sin más y el turno no vencía nunca (voz_guiada_dev).
+   */
   vence(evento: number, identidad: string): Promise<void> {
     return this.enOrden(evento, async s => {
       const t = s.turno;
-      if (!t || t.identidad !== identidad || t.hasta > this.reloj.ahora()) return;
+      if (!t || t.identidad !== identidad) return;
+      const falta = t.hasta - this.reloj.ahora();
+      if (falta > 0) { t.temporizador = this.programa(evento, identidad, falta); return; }
       try { await this.quitaTurno(evento, s, null, "vencida"); }
       catch (e) {
         this.log.warn({ err: (e as Error).message, evento }, "voz: no se pudo quitar la palabra al vencer; se reintenta");

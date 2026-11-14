@@ -10,12 +10,16 @@ export class RelojFalso implements Reloj {
   programa(ms: number, fn: () => unknown) { const id = ++this.n; this.tareas.set(id, { en: this.t + ms, fn }); return id; }
   cancela(h: unknown) { this.tareas.delete(h as number); }
   get pendientes() { return this.tareas.size; }
+  /** El próximo disparo llega `ms` antes de su hora según ahora() (como setTimeout frente a Date.now, que puede adelantarse 1 ms); solo una vez. */
+  private adelanto = 0;
+  adelantaUnaVez(ms: number) { this.adelanto = ms; }
   async avanza(ms: number) {
     const fin = this.t + ms;
     for (;;) {
       const [id, x] = [...this.tareas].filter(([, v]) => v.en <= fin).sort((a, b) => a[1].en - b[1].en)[0] ?? [];
       if (id === undefined || !x) break;
-      this.t = Math.max(this.t, x.en); this.tareas.delete(id); await x.fn(); await vacia();   // se espera lo que vence (su promesa), no solo unas vueltas del bucle
+      this.t = Math.max(this.t, x.en - this.adelanto); this.adelanto = 0;
+      this.tareas.delete(id); await x.fn(); await vacia();   // se espera lo que vence (su promesa), no solo unas vueltas del bucle
     }
     this.t = fin; await vacia();
   }

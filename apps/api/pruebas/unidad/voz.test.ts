@@ -221,6 +221,16 @@ test("si LiveKit falla al vencer, el turno sigue en la vista y se reintenta solo
   assert.equal(filas.filter(f => f.accion === "guiada.palabra_quitada").length, 1);
 });
 
+test("si el temporizador salta 1 ms antes de su hora (setTimeout frente a Date.now), el turno se vuelve a programar y vence igual", async () => {
+  const { lk, reloj, p, filas } = monta();
+  await p.da(9, A, 1, 7);
+  reloj.adelantaUnaVez(1);   // el temporizador salta cuando ahora() aún marca 1 ms antes de `hasta`
+  await reloj.avanza(TURNO_S * 1000);
+  assert.equal(lk.p(SALA, A)!.micro, false, "vence a su hora (antes se volvía sin más y el turno no vencía nunca)"); assert.equal(p.vista(9).turno, null);
+  assert.equal(reloj.pendientes, 0);
+  assert.deepEqual(filas.filter(f => f.accion === "guiada.palabra_quitada").map(f => f.detalle), [{ evento: 9, hogar: 1, motivo: "vencida" }]);
+});
+
 test("manos: cola del servidor en orden de llegada, idempotente, con atributo «mano»; dar la palabra la baja; quien ya habla no la levanta; fuera de la sala, no", async () => {
   const { lk, reloj, filas, p } = monta();
   assert.deepEqual(await p.levanta(9, B, 2), { ok: true, puesto: 1 });
