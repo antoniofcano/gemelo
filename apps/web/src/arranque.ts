@@ -450,7 +450,7 @@ function arranca(): void {
   // Aquí solo se cablea lo del legado: lo que otros reescriben o se declara después (paseando, kcor, IrA, parcelaSel, elegirParcela, Ajustes) entra por función (parcelaSel, por Parcelas.parcelaSel(): A3-7b1).
   // [talón] apps/web/src/mundos/comun/camara.ts
   var Camara = Mundos.creaCamara({
-    THREE: THREE, camera: camera, lienzo: lienzo, Estado: Estado, $: $, fmt: fmt, DIST_MAX: DIST_MAX, DIST_INI: DIST_INI, Usables: Usables, aplica: aplica, capas: capas, aplicaLuego: aplicaLuego,
+    THREE: THREE, camera: camera, lienzo: lienzo, Estado: Estado, $: $, fmt: fmt, DIST_MAX: DIST_MAX, DIST_INI: DIST_INI, Usables: Usables, suelo: suelo, aplica: aplica, capas: capas, aplicaLuego: aplicaLuego,
     paseando: function () { return Paseo.E.paseando; }, ponKcor: function (v) { TinteOrto.E.kcor = v; }, IrA: function () { return IrA; }, parcelaSel: function () { return Parcelas.parcelaSel(); },
     elegirParcela: function (i) { elegirParcela(i); }, Ajustes: function () { return typeof Ajustes !== "undefined" ? Ajustes : null; }
   });
