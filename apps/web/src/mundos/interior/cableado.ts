@@ -57,6 +57,15 @@ export interface DepsCableaInteriores {
   /** el panel de VR: las filas (la puerta del cortijo y la visita), la tapa, repintar y abrirlo (la visita) */
   PanelVR?: (NonNullable<DepsPortones["PanelVR"]> & { tapa?(fn: () => boolean): () => void; repinta?(): void; abierto?(): boolean; conmutaPanel?(): void }) | null;
   Materiales?: T; suelo?(x: number, y: number): number; Estado?: { exag: number };
+  /** L6-03: Configuración (33_ajustes): «Movimiento» de la aplicación, que ya respeta «Como el sistema»; sin ella, la preferencia del sistema */
+  Ajustes?(): { movimientoReducido?(): boolean } | null | undefined;
+}
+
+/** L6-03: ¿se reduce el movimiento? Manda el ajuste de la aplicación (Ajustes.movimientoReducido, que ya respeta «Como el sistema»); sin Configuración, prefers-reduced-motion */
+export function movimientoReducido(aj: { movimientoReducido?(): boolean } | null | undefined, ventana: Record<string, unknown>): boolean {
+  try { if (aj && typeof aj.movimientoReducido === "function") return !!aj.movimientoReducido(); } catch (e) { /* sigue con el sistema */ }
+  const mm = ventana.matchMedia as ((q: string) => { matches: boolean }) | undefined;
+  try { return !!(mm && mm.call(ventana, "(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; }
 }
 
 /** v1.3: la carpeta del transcodificador Basis junto a la página (la copia vite.config.js, RUTA_BASIS; la misma que usa el suelo de fotos) */
@@ -181,7 +190,7 @@ export function cableaInteriores(d: DepsCableaInteriores) {
       decodificadores: d.cargaMeshopt && d.cargaKtx2 ? { meshopt: d.cargaMeshopt, ktx2: d.cargaKtx2, renderer: d.renderer, ruta: RUTA_BASIS } : null,
       ahora: () => (typeof performance !== "undefined" ? performance.now() : Date.now()),
       guiada: d.Componentes ? seguimiento : null,
-      reducido: () => { const mm = d.ventana.matchMedia as ((q: string) => { matches: boolean }) | undefined; try { return !!(mm && mm.call(d.ventana, "(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; } },
+      reducido: () => movimientoReducido(d.Ajustes ? d.Ajustes() : null, d.ventana),   // L6-03: el ajuste de la aplicación, no solo el sistema
     };
   }
   for (const id of d.ids) d.gm.registra(() => d.modulo().then(m => { const w = m.creaInterior(deps(id)); creados.set(id, w); ultimo = id; return w; }), id);

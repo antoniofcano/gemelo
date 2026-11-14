@@ -11,7 +11,9 @@ import type { T } from "./tipos.ts";
 export const ID_CONFIGURACION = "configuracion";
 
 /** Lo que el talón de 33 le da: $, fmt (01_datos), el Bus, Render (02h) y el renderer (03_escena); por getter, Hud (31), Movibles (34) y tamano (90_final) */
-export interface DepsAjustes { $(id: string): T; fmt(n: number, d?: number): string; Bus: T; Render: T; renderer: T; readonly Hud: T; readonly Movibles: T; readonly tamano: () => void; ventana: T; documento: T }
+export interface DepsAjustes { $(id: string): T; fmt(n: number, d?: number): string; Bus: T; Render: T; renderer: T; readonly Hud: T; readonly Movibles: T; readonly tamano: () => void; ventana: T; documento: T;
+  /** L6-03: quien mueve el mundo con el tiempo (el reloj de nubes y viento de 15_tiempo) y cambia con «Movimiento»: se le llama al arrancar y cada vez que cambia (el ajuste o, en «sistema», el sistema) */
+  movimiento?: (reducido: boolean) => void }
 
   // ---------- Configuración (UX-FINCA-JUEGO §4.5): los ajustes de la persona, guardados en localStorage (prefijo gemelo.ajustes.) con try/catch (si falla, duran la visita).
   // Una URL manda sobre el ajuste (?debug, &mide=). La UI se pinta por JS en #menuAjustes (lo crea la plantilla); si no existe y hay un <dialog id="menu">, se crea un <section> de respaldo.
@@ -98,9 +100,14 @@ export function creaAjustes(dp: DepsAjustes) {
   var Ajustes: T = (function () {
     var almacen: T = null; try { almacen = window.localStorage; } catch (e: T) { almacen = null; }
     var api: T = AjustesPuro.crea(almacen, location.search), E: T = AjustesPuro.ESQUEMA, raiz: T = document.documentElement;
-    function movimientoReducido() { var m: T = api.lee("acc.movimiento"); if (m === "sistema") return !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches); return m === "reducido"; }
+    // L6-03: «Movimiento» (sistema, reducido o normal) es lo que leen también lo 3D (la transición al paseo, el tiempo, las máquinas de los interiores): movimientoReducido()
+    // lo da sin consultar la media query en cada fotograma (se recalcula al cambiar el ajuste o el sistema) y alMovimiento(fn) avisa de cada cambio
+    var reducidoYa: T = null, oyentesMov: T = [];
+    function calculaReducido() { var m: T = api.lee("acc.movimiento"); if (m === "sistema") return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); return m === "reducido"; }
+    function movimientoReducido() { return reducidoYa !== null ? reducidoYa : calculaReducido(); }
+    function alMovimiento(fn?: T) { if (typeof fn !== "function") return function () {}; oyentesMov.push(fn); try { fn(movimientoReducido()); } catch (e: T) {} return function () { var i: T = oyentesMov.indexOf(fn); if (i >= 0) oyentesMov.splice(i, 1); }; }
     function tactil() { var t: T = api.lee("controles.tactil"); if (t === "auto") return !!(window.matchMedia && matchMedia("(pointer: coarse)").matches); return t === "si"; }
-    api.movimientoReducido = movimientoReducido; api.tactil = tactil;
+    api.movimientoReducido = movimientoReducido; api.alMovimiento = alMovimiento; api.tactil = tactil;
     api.superficie = function (ha?: T) { return AjustesPuro.superficie(ha, api.lee("vista.unidades"), dp.fmt); };
     // calidad de los olivos: null = automática (la escala adaptativa de 07b manda); si no, la escala que se fija. 07b la lee con Ajustes.escalaArboles() (ver el informe de U4)
     api.escalaArboles = function () { var c: T = api.lee("graficos.calidad"); return c === "auto" ? null : ({ "0": 0.7, "1": 1, "2": 1.6 } as T)[c]; };
@@ -134,7 +141,10 @@ export function creaAjustes(dp: DepsAjustes) {
       "controles.mano": function (v?: T) { raiz.setAttribute("data-mano", v); },
       "acc.texto": function (v?: T) { raiz.style.setProperty("--escala-texto", String(v / 100)); raiz.setAttribute("data-texto", v > 100 ? "mayor" : "normal"); },
       "acc.contraste": function (v?: T) { raiz.setAttribute("data-contraste", v ? "alto" : "normal"); },
-      "acc.movimiento": function () { raiz.setAttribute("data-movimiento", movimientoReducido() ? "reducido" : "normal"); },
+      "acc.movimiento": function () {
+        var antes: T = reducidoYa; reducidoYa = calculaReducido(); raiz.setAttribute("data-movimiento", reducidoYa ? "reducido" : "normal");
+        if (antes !== reducidoYa) oyentesMov.slice().forEach(function (fn?: T) { try { fn(reducidoYa); } catch (e: T) {} });
+      },
       "avanzado.contador": function () { dp.Bus.emite("medida:muestra", { on: !!api.lee("avanzado.contador") }); }
     };
     var started: T = false;   // el audio solo arranca con un gesto: el primer cambio hecho por la persona
@@ -171,7 +181,7 @@ export function creaAjustes(dp: DepsAjustes) {
       { id: "acc", t: "Accesibilidad", campos: [
         { k: "acc.texto", t: "Tamaño del texto", fmt: function (v?: T) { return v + " %"; } },
         { k: "acc.contraste", t: "Alto contraste en el HUD" },
-        { k: "acc.movimiento", t: "Movimiento", ops: [["sistema", "Como el sistema"], ["reducido", "Reducido"], ["normal", "Normal"]], nota: "Reducido: sin animaciones del HUD ni transiciones largas." } ] },
+        { k: "acc.movimiento", t: "Movimiento", ops: [["sistema", "Como el sistema"], ["reducido", "Reducido"], ["normal", "Normal"]], nota: "Reducido: sin animaciones del HUD, sin el vuelo de la cámara ni la caída al pasear, nubes y viento quietos y las máquinas de los interiores paradas al entrar." } ] },
       { id: "avanzado", t: "Avanzado", campos: [
         { k: "avanzado.contador", t: "Contador de rendimiento (lo mismo que ?debug)", nota: "Los fps solo valen en un aparato real; en Chrome sin GPU no son fps de nada." },
         { boton: "Medir 60 s", id: "ajMedir", solo: "contador", nota: "El medidor solo está con el contador encendido (o con &mide=N en la URL)." },
@@ -272,6 +282,7 @@ export function creaAjustes(dp: DepsAjustes) {
     api.alCambiar(function (clave?: T) { aplica(clave); pinta(); });
     if (window.matchMedia) { try { escucha(matchMedia("(prefers-reduced-motion: reduce)"), "change", function () { aplica("acc.movimiento"); }); escucha(matchMedia("(pointer: coarse)"), "change", function () { aplica("controles.tactil"); }); } catch (e: T) {} }
     api.claves().forEach(aplica);
+    if (dp.movimiento) alMovimiento(dp.movimiento);   // L6-03
     api.pinta = function () { construye(); pinta(); };   // por si el menú se crea después
     // punto de extensión (ADR-0023, C2): Ajustes.registra(prefijo, esquema, pestaña, aplica?) añade los ajustes de un componente (AjustesPuro.fusiona) y su
     // pestaña en Configuración, antes de «Avanzado»: pestaña = { id?, t, nota?, campos: [{ k (sin prefijo), t, ops?, fmt?, nota? } | { boton, id, alClic, activo?(), texto?(), nota? }] }. aplica(clave, valor), si

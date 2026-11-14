@@ -27,6 +27,17 @@ describe("Configuración", () => {
     expect(A.pon("acc.contraste", true)).toBe(true); expect(d.documentElement.getAttribute("data-contraste")).toBe("alto");
     expect(m!.ventana.localStorage.getItem("gemelo.ajustes.acc.contraste")).toBe("true");
   });
+  it("L6-03: «Movimiento» llega a lo 3D: movimientoReducido() y alMovimiento(fn) siguen el ajuste (y «sistema», la media query); el oyente de los deps se llama al arrancar y en cada cambio", () => {
+    m = creaMundo(); const d = m.documento, host = m.el("section", "menuAjustes"); d.body.appendChild(host);
+    const vistos: boolean[] = [];
+    const A = creaAjustes({ $: (id: string) => d.getElementById(id), fmt: (n: number) => String(n), Bus: { emite: () => 0, hay: () => false }, Render: { build: "pantalla" },
+      renderer: { getPixelRatio: () => 1, setPixelRatio() { /* doble */ } }, Hud: null, Movibles: null, tamano() { /* doble */ }, ventana: m.ventana, documento: d, movimiento: (r: boolean) => { vistos.push(r); } });
+    expect(A.movimientoReducido()).toBe(false); expect(vistos).toEqual([false]);   // «Como el sistema» y el sistema (el doble) no lo pide
+    A.pon("acc.movimiento", "reducido"); expect(A.movimientoReducido()).toBe(true); expect(d.documentElement.getAttribute("data-movimiento")).toBe("reducido");
+    A.pon("acc.movimiento", "normal"); expect(A.movimientoReducido()).toBe(false); expect(vistos).toEqual([false, true, false]);
+    const otros: boolean[] = [], quita = A.alMovimiento((r: boolean) => { otros.push(r); }); A.pon("acc.movimiento", "reducido"); quita(); A.pon("acc.movimiento", "normal");
+    expect(otros).toEqual([false, true]);
+  });
   it("?debug manda sobre el contador (y avisa al medidor)", () => {
     const { A, emitidos } = monta("?debug"); expect(A.lee("avanzado.contador")).toBe(true); expect(emitidos).toContain("medida:muestra");
   });
