@@ -10,7 +10,7 @@ import { VrConcedidaPuro } from "./vr-puros.ts";
 
 export function creaVrSesion(c: CtxVr) {
   var d = c.d, VRX = c.VRX, Nucleo = c.Nucleo, renderer = d.renderer, scene = d.scene, camera = d.camera, Estado = d.Estado, Bus = d.Bus, $ = d.$, Cola = d.Cola, Config = d.Config, VRP = d.VRP, UN = d.UN;
-  var XrPerillas = d.XrPerillas, VrControlPuro = d.VrControlPuro, VrPresupuesto = d.VrPresupuesto, Arboles = d.Arboles, Escena3D = d.Escena3D, Aparato = d.Aparato, InfoDibujo = d.InfoDibujo;
+  var Render = d.Render, XrPerillas = d.XrPerillas, VrControlPuro = d.VrControlPuro, VrPresupuesto = d.VrPresupuesto, Arboles = d.Arboles, Escena3D = d.Escena3D, Aparato = d.Aparato, InfoDibujo = d.InfoDibujo;
   var pon = d.pon, TR = d.TR, pp = d.pp, sol = d.sol, meta = d.meta, suelo = d.suelo, copas = d.copas, horaMundoTexto = d.horaMundoTexto, ndviIdx = d.ndviIdx, cuadro = d.cuadro, tamano = d.tamano;
   var paseando = d.paseando, primera = d.primera, ponPrimera = d.ponPrimera, persona = d.persona, entraPaseo = d.entraPaseo, salePaseo = d.salePaseo, pideFotograma = d.pideFotograma;
   var window: T = d.ventana, document: T = d.documento, navigator: T = d.navegador, location = { search: d.busqueda };
@@ -63,16 +63,13 @@ export function creaVrSesion(c: CtxVr) {
     var d = VrControlPuro.decide(VRX, dtMs, jsMs, dt, VRX.nivel, VR_PERFILES.length - 1, XrPerillas.js(), XrPerillas.jsSube(), XrPerillas.estable(), XrPerillas.fijo(), VrPresupuesto.suelo(XrPerillas.gente()));   // Q0c-c: el último, el nivel mínimo que pide la gente a la vista (0 sin gente). fijo: nivel fijado por la URL, sin controlador (Q0b, 02f)
     if (d > 0) { VRX.nBaj++; vrNivelPorCola(VRX.nivel + 1); } else if (d < 0) { VRX.nAlt++; vrNivelPorCola(VRX.nivel - 1); }
   }
-  // Q0c-b: al entrar en VR se precompilan los sombreadores de la escena con la cámara y el renderer ya en modo XR (con multiview el programa es otro y el primer
-  // fotograma compilaba todos: candidato al peor de 40-70 ms). compileAsync en las dos builds (three 0.186.1 y super-three 0.185.0 lo tienen); si no está, compile; si falla, sigue sin romper
+  // Q0c-b y L7-04: al entrar en VR se precompilan los sombreadores de la escena con la cámara XR y el destino de la sesión (con multiview el programa es otro, y el
+  // primer fotograma los compilaba todos: candidato al peor de 40-70 ms). Fuera del fotograma XR el destino activo es el lienzo: Render.compila (nucleo/render.ts) presta
+  // el destino XR (renderer.xr.getRenderTarget(), el WebGLMultiviewRenderTarget en la build del Quest) mientras compila. compileAsync en las dos builds; si falla, sigue sin romper.
+  // VRX.compila.mv dice si se compiló con el destino XR (__vrDebug().xr.compila). Quest: NO probado (el pico del primer fotograma está sin medir)
   function vrPrecompila() {
-    var c: T = VRX.compila = { via: "", ok: null, ms: null, t0: performance.now() };   // reserva-ok: una vez por entrada
-    try {
-      if (typeof renderer.compileAsync === "function") {
-        c.via = "compileAsync";
-        renderer.compileAsync(scene, camera).then(function () { c.ok = true; c.ms = performance.now() - c.t0; }, function () { c.ok = false; });
-      } else if (typeof renderer.compile === "function") { c.via = "compile"; renderer.compile(scene, camera); c.ok = true; c.ms = performance.now() - c.t0; }
-    } catch (e) { c.ok = false; }
+    var c: T = VRX.compila = { via: "", ok: null, ms: null, mv: null, t0: performance.now() };   // reserva-ok: una vez por entrada
+    Render.compila(scene).then(function (r: T) { c.via = r.via; c.ok = r.ok; c.mv = r.destinoXr; if (r.ok) c.ms = performance.now() - c.t0; });
   }
   function vrFin(dt: T, jsMs: T) { vrAdapta(dt * 1000, jsMs, dt); }
 

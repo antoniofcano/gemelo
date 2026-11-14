@@ -90,7 +90,7 @@ describe("Render.info, memoria y compila (MUNDOS §6)", () => {
     const r = creaRender({});
     expect(r.memoria()).toEqual({ geometrias: 0, texturas: 0, bytesEstimados: 0 });
     expect(r.info().llamadas).toBe(0);
-    await expect(r.compila({})).resolves.toBeUndefined();
+    await expect(r.compila({})).resolves.toEqual({ via: "", ok: null, destinoXr: false });
   });
   it("enlazado: info() y memoria() leen renderer.info del clásico y del nuevo", () => {
     const r = creaRender({});
@@ -110,7 +110,29 @@ describe("Render.info, memoria y compila (MUNDOS §6)", () => {
     expect(llamadas).toEqual([[obj, camP, esc], [obj, camXr, esc]]);
     const cs: unknown[][] = []; r.enlaza({ rd: { compile: (o, c) => { cs.push([o, c]); } }, camara: camP });
     await r.compila(obj); expect(cs).toEqual([[obj, camP]]);
-    r.enlaza({ rd: { compileAsync: () => Promise.reject(new Error("x")) } }); await expect(r.compila(obj)).resolves.toBeUndefined();
-    r.enlaza({ rd: { compileAsync: () => { throw new Error("y"); } } }); await expect(r.compila(obj)).resolves.toBeUndefined();
+    r.enlaza({ rd: { compileAsync: () => Promise.reject(new Error("x")) } }); await expect(r.compila(obj)).resolves.toMatchObject({ via: "compileAsync", ok: false });
+    r.enlaza({ rd: { compileAsync: () => { throw new Error("y"); } } }); await expect(r.compila(obj)).resolves.toMatchObject({ ok: false });
+  });
+  it("L7-04: con sesión XR compila con el destino XR (el multiview) como destino activo, y lo deja como estaba", async () => {
+    // como three: getRenderTarget es propiedad del renderizador y compile() lo lee (getParameters → numMultiviewViews); fuera del fotograma XR es el lienzo (null)
+    const mv = { isWebGLMultiviewRenderTarget: true, numViews: 2 }, vistos: unknown[] = [];
+    let destino: unknown = null;
+    const rd: RenderizadorMinimo = {
+      getRenderTarget: function () { return null; },
+      compile: function (this: RenderizadorMinimo) { vistos.push(this.getRenderTarget!()); },
+      compileAsync: function (this: RenderizadorMinimo, o, c, e) { this.compile!(o, c, e); return Promise.resolve(); }
+    };
+    const original = rd.getRenderTarget, r = creaRender({});
+    r.enlaza({ rd, escena: {}, camara: {}, camaraXr: () => (destino ? { xr: true } : null), destinoXr: () => destino });
+    await expect(r.compila({})).resolves.toEqual({ via: "compileAsync", ok: true, destinoXr: false });
+    destino = mv;
+    await expect(r.compila({})).resolves.toEqual({ via: "compileAsync", ok: true, destinoXr: true });
+    expect(vistos).toEqual([null, mv]);
+    expect(rd.getRenderTarget).toBe(original);
+    expect(rd.getRenderTarget!()).toBeNull();
+    // si compile lanza, el destino también se devuelve
+    rd.compileAsync = function () { throw new Error("z"); };
+    await expect(r.compila({})).resolves.toMatchObject({ ok: false });
+    expect(rd.getRenderTarget).toBe(original);
   });
 });

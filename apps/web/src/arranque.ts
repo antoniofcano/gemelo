@@ -222,7 +222,7 @@ function arranca(): void {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   Aparato.enlaza({ vr: function () { return renderer.xr.isPresenting; }, gl: function () { return renderer.getContext(); }, sesion: function () { return renderer.xr.getSession(); } });   // AG-0.3: el aparato mide en este contexto
   var scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(42, 1);   // MU2-7: el near/far, el fondo, la niebla y qué luces cuelgan son del Ambiente del mundo activo (src/nucleo/ambiente.ts; el del exterior, src/mundos/exterior.ts), que el gestor de 90_final aplica al entrar
-  Render.enlaza({ rd: renderer, escena: scene, camara: camera, camaraXr: function () { return renderer.xr.isPresenting ? renderer.xr.getCamera() : null; } });   // MUNDOS §6: Render.info(), .memoria() y .compila()
+  Render.enlaza({ rd: renderer, escena: scene, camara: camera, camaraXr: function () { return renderer.xr.isPresenting ? renderer.xr.getCamera() : null; }, destinoXr: function () { return renderer.xr.isPresenting && renderer.xr.getRenderTarget ? renderer.xr.getRenderTarget() : null; } });   // MUNDOS §6: Render.info(), .memoria() y .compila(); L7-04: el destino de la sesión (multiview en la build del Quest)
   // Color y luz modernos (three r152 y r155, ADR-0016): el motor calcula la luz en sRGB lineal y la salida se codifica en sRGB (outputColorSpace).
   // Convenio del motor: los colores escritos a mano en JS o en GLSL (por vértice, por instancia, literales de los sombreadores, multiplicadores de color)
   // son números «tal como se ven», en sRGB, y se pasan a lineal donde entran en la luz: Color.setRGB(r, g, b, SRGB), texColor(), ot_lin() o sRGBTransferEOTF().
@@ -826,7 +826,7 @@ function arranca(): void {
     THREE: THREE, renderer: renderer, scene: scene, camera: camera, Estado: Estado, sol: sol, texColor: texColor, D: D, $: $, fmt: fmt, VRP: VRP, Aparato: Aparato,
     suelo: suelo, copas: function () { return copas; }, Cola: Cola, ComponentesPuro: ComponentesPuro, Bus: Bus, Config: Config, LaminasPuro: LaminasPuro, Laminas: Laminas,
     EntidadesPuro: EntidadesPuro, Entidades: Entidades, Usables: Usables, XrPerillas: XrPerillas, VrControlPuro: VrControlPuro, VrPresupuesto: VrPresupuesto, InfoDibujo: InfoDibujo,
-    Materiales: Materiales, UN: UN, Arboles: Arboles, Escena3D: Escena3D, pon: function (m) { pon(m); },
+    Materiales: Materiales, UN: UN, Arboles: Arboles, Render: Render, Escena3D: Escena3D, pon: function (m) { pon(m); },
     NDV: function () { return NDV; }, ndviIdx: function () { return FechaNdvi.E.idx; }, parcelas: function () { return parcelas; }, fincas: function () { return fincas; }, meta: meta,
     pasoHoraMundo: function (d) { pasoHoraMundo(d); }, horaMundoTexto: function () { return horaMundoTexto(); },
     paseando: function () { return Paseo.E.paseando; }, primera: function () { return Paseo.E.primera; }, ponPrimera: function (v) { Paseo.E.primera = v; }, persona: function () { return Paseo.E.persona; },

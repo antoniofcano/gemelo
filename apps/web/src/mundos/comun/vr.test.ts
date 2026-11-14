@@ -13,6 +13,7 @@ import type { DepsVr } from "./vr-tipos.ts";
 import { creaMateriales } from "../../nucleo/materiales.ts";
 import type { ThreeMin } from "../../nucleo/materiales.ts";
 import { VrControlPuro } from "../../nucleo/presupuesto.ts";
+import { creaRender } from "../../nucleo/render.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type A = any;
@@ -45,7 +46,10 @@ function monta(opc?: { busqueda?: string }) {
   });
   let bucle: A = null;
   const renderer: A = { xr: { enabled: false, isPresenting: false, getController: (i: number) => ctl[i], getControllerGrip: (i: number) => grip[i], setReferenceSpaceType() { /* doble */ },
-    setFramebufferScaleFactor() { /* doble */ }, setSession: () => Promise.resolve(), getReferenceSpace: () => ({}) }, setAnimationLoop: (f: A) => { bucle = f; }, compileAsync: () => Promise.resolve() };
+    setFramebufferScaleFactor() { /* doble */ }, setSession: () => Promise.resolve(), getReferenceSpace: () => ({}) }, setAnimationLoop: (f: A) => { bucle = f; },
+    getRenderTarget: () => null, compilados: [] as A[], compileAsync(this: A, o: A, c: A) { this.compilados.push({ o, c, destino: this.getRenderTarget() }); return Promise.resolve(); } };
+  const mv = { isWebGLMultiviewRenderTarget: true, numViews: 2 }, camXr = { xr: true };
+  const Render = creaRender({}); Render.enlaza({ rd: renderer, escena: null, camara: null, camaraXr: () => (renderer.xr.enabled ? camXr : null), destinoXr: () => (renderer.xr.enabled ? mv : null) });
   const scene = new T.Scene(), camera = new T.PerspectiveCamera();
   const botones: Record<string, A> = {};
   const elemento = (tag: string) => {
@@ -70,7 +74,7 @@ function monta(opc?: { busqueda?: string }) {
       js: () => 8, jsSube: () => 6, estable: () => 10, gente: () => 0, linea: () => "", mv: null, aa: "" },
     VrControlPuro: VrControlPuro, VrPresupuesto: { ponEscalon() { /* doble */ }, mueve() { /* doble */ }, suelo: () => 0, escalonPorPasos: function* () { /* nada */ } },
     InfoDibujo: { fotograma: () => ({}) }, Materiales: creaMateriales({ THREE: T as unknown as ThreeMin, busqueda: "" }), UN: { uBumpK: { value: 1 } },
-    Arboles: { perfil() { /* doble */ }, resumen: () => ({}) }, Escena3D: { perfil() { /* doble */ }, resumen: () => ({ estado: "listo" }) }, pon: (m: string) => { d.Estado.modo = m; },
+    Arboles: { perfil() { /* doble */ }, resumen: () => ({}) }, Render, Escena3D: { perfil() { /* doble */ }, resumen: () => ({ estado: "listo" }) }, pon: (m: string) => { d.Estado.modo = m; },
     NDV: () => null, ndviIdx: () => 0, parcelas: () => [{ nombre: "Sintética", centro: [10, 20], finca: 0 }], fincas: () => [], meta: { ms: 0 }, pasoHoraMundo() { /* doble */ }, horaMundoTexto: () => "12:00",
     paseando: () => estado.paseando, primera: () => estado.primera, ponPrimera: (v: boolean) => { estado.primera = v; }, persona: () => persona, teclas: () => estado.teclas, pp: { x: 0, y: 0, ang: 0, paso: 0 },
     entraPaseo: () => { estado.paseando = true; }, salePaseo: () => { estado.paseando = false; }, actualizaPaseo() { /* doble */ },
@@ -79,7 +83,7 @@ function monta(opc?: { busqueda?: string }) {
     busqueda: (opc && opc.busqueda) || "", navegador, documento, ventana
   };
   const vr = creaVr(d);
-  return { vr, d, T, vivos, ctl, grip, bus, sesiones, scene, camera, botones, ventana, navegador, renderer, quitados, bucle: () => bucle };
+  return { vr, d, T, vivos, ctl, grip, bus, sesiones, scene, camera, botones, ventana, navegador, renderer, quitados, mv, camXr, bucle: () => bucle };
 }
 const espera = () => new Promise(r => setTimeout(r, 0));
 const escuchas = (o: A) => Object.values(o._listeners || {}).reduce((s: number, l: A) => s + l.length, 0);
@@ -152,6 +156,18 @@ describe("VR: el panel", () => {
     expect(m.vr.VRX.botones.find((b: A) => b.id === "sal").y).toBe(984);
     m.vr.VRX.pestana = "comodidad"; m.vr.partes.panel.vrPintaPanel();
     expect(m.vr.VRX.botones.map((b: A) => b.id)).toEqual(expect.arrayContaining(["vig", "giro", "e-", "e+"]));
+  });
+});
+
+describe("VR: L7-04, la precompilación al entrar", () => {
+  it("compila la escena con la cámara XR y el destino de la sesión (el multiview), no con el lienzo; __vrDebug lo cuenta", async () => {
+    const m = monta(); await espera();
+    await m.vr.entraVR(); await espera();
+    const c = (m.renderer as A).compilados;
+    expect(c.length).toBe(1);
+    expect(c[0].o).toBe(m.scene); expect(c[0].c).toBe(m.camXr); expect(c[0].destino).toBe(m.mv);
+    expect(m.renderer.getRenderTarget()).toBeNull();   // el destino prestado se devuelve
+    expect(m.vr.VRX.compila).toMatchObject({ via: "compileAsync", ok: true, mv: true });
   });
 });
 
