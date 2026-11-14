@@ -103,10 +103,59 @@ function lee(info?: InfoRd | null, o?: Partial<InfoDibujoLeida>): InfoDibujoLeid
   return s;
 }
 
-/** L1-07: lo que cuenta renderer.info.memory. bytesEstimados es 0 («no estimado») hasta que L1-07 lo alimente con los tamaños reales de las texturas: three no los da. */
-function memoria(info?: InfoRd | null): MemoriaRender {
+// L1-07: los bytes de GPU que la escena tiene apuntados, ESTIMADOS. three cuenta geometrías y texturas (renderer.info.memory) pero no su tamaño, así que se
+// recorre la escena (sin importar three: por forma) y se suman, sin repetir, (a) los búferes de cada geometría (atributos, índice, y instanceMatrix /
+// instanceColor de las mallas instanciadas) y (b) las texturas de cada material y el fondo/entorno de la escena: si traen sus datos (DataTexture, las
+// comprimidas por mipmap) se usa su byteLength; si son imágenes, ancho × alto × 4 (RGBA8) y × 4/3 si three genera mipmaps. No cuenta lo que no cuelga de la
+// escena (destinos de render, sombras, lo subido y ya desenganchado) ni el relleno del controlador: es una cota por abajo, para comparar en el tiempo, no la memoria real.
+// TextureUtils.getByteLength de three daría el tamaño exacto por formato, pero este módulo no importa three (se prueba en Node sin él); las de formato raro llevan sus datos.
+interface ObjEscena { traverse?: (fn: (o: ObjEscena) => void) => void; geometry?: unknown; material?: unknown; instanceMatrix?: unknown; instanceColor?: unknown; background?: unknown; environment?: unknown }
+type Dict = Record<string, unknown>;
+function bytesDe(v: unknown): number { const b = v && (v as Dict).array && ((v as Dict).array as Dict).byteLength; return typeof b === "number" ? b : 0; }
+function bytesTextura(t: Dict): number {
+  const datos = (x: unknown): number => { const d = x && (x as Dict).data; const b = d && (d as Dict).byteLength; return typeof b === "number" ? b : 0; };
+  const mips = Array.isArray(t.mipmaps) ? (t.mipmaps as unknown[]) : [];
+  if (mips.length && datos(mips[0])) return mips.reduce((s: number, m) => s + datos(m), 0);   // comprimidas (KTX2): cada nivel trae sus bytes
+  const im = t.image || t.source && (t.source as Dict).data, caras = Array.isArray(im) ? im.length : 1;   // las cúbicas traen seis imágenes
+  const img = (Array.isArray(im) ? im[0] : im) as Dict | undefined;
+  if (!img) return 0;
+  const conMips = t.generateMipmaps !== false ? 4 / 3 : 1;
+  if (datos(img)) return Math.round(datos(img) * conMips * caras);                        // DataTexture / Data3DTexture: los bytes que se suben
+  const an = num(img.width) || num(img.naturalWidth) || num(img.videoWidth), al = num(img.height) || num(img.naturalHeight) || num(img.videoHeight);
+  return Math.round(an * al * 4 * conMips * caras);
+}
+function bytesEscena(escena: unknown): number {
+  const e = escena as ObjEscena | null;
+  if (!e || typeof e.traverse !== "function") return 0;
+  const vistos = new Set<unknown>();
+  let n = 0;
+  const buf = (b: unknown): void => { if (!b || vistos.has(b)) return; vistos.add(b); n += bytesDe(b); };
+  const tex = (t: unknown): void => { if (!t || !(t as Dict).isTexture || vistos.has(t)) return; vistos.add(t); n += bytesTextura(t as Dict); };
+  const mat = (m: unknown): void => {
+    if (!m || vistos.has(m)) return; vistos.add(m);
+    for (const k of Object.keys(m as Dict)) { const v = (m as Dict)[k]; if (v && (v as Dict).isTexture) tex(v); }
+    const u = (m as Dict).uniforms as Record<string, Dict> | undefined;
+    if (u) for (const k of Object.keys(u)) { const v = u[k] && u[k].value; if (v && (v as Dict).isTexture) tex(v); }
+  };
+  tex(e.background); tex(e.environment);
+  e.traverse(function (o: ObjEscena) {
+    const g = o.geometry as Dict | undefined;
+    if (g && !vistos.has(g)) {
+      vistos.add(g);
+      const at = (g.attributes || {}) as Record<string, unknown>;
+      for (const k of Object.keys(at)) buf(at[k]);
+      buf(g.index);
+    }
+    buf(o.instanceMatrix); buf(o.instanceColor);
+    if (Array.isArray(o.material)) o.material.forEach(mat); else mat(o.material);
+  });
+  return n;
+}
+
+/** L1-07: lo que cuenta renderer.info.memory y, con la escena, los bytes estimados de lo que la escena tiene en la tarjeta (bytesEscena: cota por abajo; 0 sin escena) */
+function memoria(info?: InfoRd | null, escena?: unknown): MemoriaRender {
   const m = (info && info.memory) || {};
-  return { geometrias: num(m.geometries), texturas: num(m.textures), bytesEstimados: 0 };
+  return { geometrias: num(m.geometries), texturas: num(m.textures), bytesEstimados: bytesEscena(escena) };
 }
 
 // el primer fotograma: si el renderizador pide init() (el nuevo: render() lanza sin él) se espera; si no, fn corre ahora mismo, como siempre
@@ -115,7 +164,7 @@ function arranca(rd: RenderizadorMinimo | null | undefined, fn: () => void, alFa
   return Promise.resolve(rd.init()).then(function () { fn(); }, function (e: unknown) { if (alFallar) alFallar(e); else throw e; });
 }
 
-export const RenderPuro = { TIPOS, BUILDS, RENDERER, eligeTipo, TONOS, eligeTono, buildDe, esNuevo, fotograma, llamadas, triangulos, lee, arranca, memoria };
+export const RenderPuro = { TIPOS, BUILDS, RENDERER, eligeTipo, TONOS, eligeTono, buildDe, esNuevo, fotograma, llamadas, triangulos, lee, arranca, memoria, bytesEscena };
 
 export const InfoDibujo = {
   lee: function (rd?: RenderizadorMinimo | null, o?: Partial<InfoDibujoLeida>): InfoDibujoLeida { return lee(rd && rd.info, o); },
@@ -178,7 +227,7 @@ export function creaRender(deps: DepsRender) {
     /** guarda el renderizador (y la escena y las cámaras) para info(), memoria() y compila(); lo llama 03_escena tras crearlo */
     enlaza: function (en: EnlaceRender): void { enlace = en; },
     info: function (o?: Partial<InfoDibujoLeida>): InfoDibujoLeida { return lee(enlace && enlace.rd && enlace.rd.info, o); },
-    memoria: function (): MemoriaRender { return memoria(enlace && enlace.rd && enlace.rd.info); },
+    memoria: function (): MemoriaRender { return memoria(enlace && enlace.rd && enlace.rd.info, enlace && enlace.escena); },
     /** compileAsync con la cámara XR y el destino XR si hay sesión (L7-04: con multiview, la variante que usará el fotograma); sin compileAsync, compile;
      *  si falla, sigue sin romper. Resuelve con { via, ok, destinoXr } (ok null sin renderizador) */
     compila: function (obj: unknown): Promise<ResultadoCompila> {

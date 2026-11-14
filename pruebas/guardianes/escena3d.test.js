@@ -11,7 +11,7 @@
 const test = require("node:test"), assert = require("node:assert");
 const { RAIZ, propia, python, fixture, ejecuta, fs, path } = require("./_util");
 const { pasoArranque, nombresPasos } = require("./_pasos");   // A3-8c: los pasos de apps/web/src/arranque.ts (antes, los ficheros de apps/web/motor/)
-const { ESCENARIOS, motivoSalto, lanza, sirve, esCsp } = require("./_navegador");
+const { ESCENARIOS, motivoSalto, lanza, sirve, esCsp, conFijos } = require("./_navegador");
 const { montaPagina, saltoPagina } = require("./_pagina");
 const { vuela, cajaDatos, comparaRelieve } = require("./_recorrido");
 
@@ -245,7 +245,7 @@ async function abre(q, mockXR, k = "con") {
   p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 300)));
   p.on("console", x => { const s = x.text(); if (esCsp(s)) csp.push(s.slice(0, 300)); else if (x.type() === "error") errores.push("CONSOLE " + s.slice(0, 300)); else if (x.type() === "warning" && !CONOCIDOS.some(re => re.test(s))) avisos.push(s.slice(0, 300)); });
   p.on("response", r => { if (r.status() >= 400) errores.push(r.status() + " " + r.url()); });
-  await p.goto(base[k] + "index.html?debug&olivos=0" + q);   // la copa de siempre: O10a pone los olivos generados por defecto y estas pruebas miden el tileset y el presupuesto «fixture»
+  await p.goto(conFijos(base[k] + "index.html?debug&olivos=0" + q));   // conFijos (L1-06): arbsc y hora fijos, como mide(), porque compara con los mismos topes; la copa de siempre: O10a pone los olivos generados por defecto y estas pruebas miden el tileset y el presupuesto «fixture»
   await p.waitForFunction(() => window.__g && window.__g.listo() && (window.__g.Escena3D.resumen().estado === "sin" || window.__g.Escena3D.listo()), null, { timeout: 90000, polling: 500 });
   return { p, errores, avisos, csp };
 }

@@ -19,7 +19,7 @@ Los fps reales **solo** los da un dispositivo real. Una cifra de SwiftShader se 
 1. Servir la finca con su tileset (fixture: `npm run fixture` y la página de `montaPagina` de `_pagina.js` (guardianes); reales: según `DATOS.md` y el entorno local de `DESARROLLO-LOCAL.md`). Las cifras de la escena de siempre ya no se pueden reproducir: las anteriores a T8 fase 2 son historia.
 2. **Antes** (en la rama sin el cambio): `node pruebas/prueba3.js <url> <prefijo>` con escenarios fijos. Escenario = `{az, el, dist, ox, oy, modo}`; `modo` ∈ `nube|gem|orto`. Por defecto ejecuta inicial/medio/…; pasa un JSON como 3.º argumento para fijar los tuyos. Esperar a que `Cola.pendientes() === 0` (variable `ESPERA` en ms).
 3. **Después** (con el cambio), idénticos escenarios y datos.
-4. Para el fixture, el guardián `carga` hace lo mismo con tres escenarios (`lejos`, `cerca`, `nube`); `GEMELO_MIDE=1 node --test pruebas/guardianes/carga.test.js` imprime las cifras.
+4. Para el fixture, el guardián `carga` hace lo mismo con tres escenarios (`lejos`, `cerca`, `nube`); `GEMELO_MIDE=1 node --test pruebas/guardianes/carga.test.js` imprime las cifras (también geometrías, texturas y `gpuMB`, los MB estimados de `__g.memoria()`). `mide()` fija `arbsc=1` y la hora (`FIJOS_MEDIDA` de `_navegador.js`, L1-06) para que la medida no dependa de la escala adaptativa ni del reloj; quien quiera otra los pone en la URL.
 5. Repetir ≥ 2 veces: el heap fluctúa; llamadas/triángulos/puntos no (son deterministas con la misma cámara).
 
 ## Qué se reporta
@@ -27,6 +27,6 @@ Tabla con **antes / después** de: llamadas, triángulos (k), puntos, geometría
 
 ## Después de medir
 - Actualizar `doc/sistema/MEDIDAS.md` solo si se han re-medido las vistas de allí; dejar la fecha.
-- Si el cambio sube un recuento a propósito: subir el tope de `pruebas/presupuesto.json` **explicándolo en el commit**.
+- Si el cambio sube un recuento a propósito: subir el tope de `pruebas/presupuesto.json` **explicándolo en el commit**, con la medida nueva en su `medido` (mediana de ≥ 3 vueltas) y la fecha en `medido_el`: `carga.test.js` falla si un tope de `fixture` pasa de 2× su medida.
 - Si el cambio podría afectar a móviles/VR y no hay dispositivo: escribir en ESTADO «no medido en dispositivo».
 - Fugas: comparar `renderer.info.memory` al ir lejos → cerca → lejos; debe volver a su orden de magnitud.

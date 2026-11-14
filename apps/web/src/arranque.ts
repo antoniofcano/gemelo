@@ -801,7 +801,7 @@ function arranca(): void {
   // [talón] apps/web/src/ui/ganchos.ts
   var Ganchos = Interfaz.creaGanchos({
     Arboles: Arboles, Catalogo: Catalogo, Escena3D: Escena3D, OlivosTiles: OlivosTiles, Cola: Cola, SueloFotos: SueloFotos, Generados: Generados, Lejanos: Lejanos, Mundo: Mundo,
-    InfoDibujo: InfoDibujo, Estado: Estado, copas: copas, suelo: suelo, orb: orb, objetivo: objetivo, camera: camera, renderer: renderer, scene: scene, pon: pon, aplica: aplica,
+    InfoDibujo: InfoDibujo, Render: Render, Estado: Estado, copas: copas, suelo: suelo, orb: orb, objetivo: objetivo, camera: camera, renderer: renderer, scene: scene, pon: pon, aplica: aplica,
     entraPaseo: entraPaseo, salePaseo: salePaseo, pp: pp, get paseando() { return Paseo.E.paseando; }, get teclas() { return Paseo.E.teclas; }, get listo() { return Marcadores.listo(); }, ventana: window
   });
   // [paso: 28_depura]

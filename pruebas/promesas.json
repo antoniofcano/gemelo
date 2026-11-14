@@ -60,6 +60,7 @@
       "origen": "CLAUDE.md §1", "clave": "6", "titulo": "Presupuesto de dibujo explícito",
       "vigila": [
         { "fichero": "pruebas/guardianes/carga.test.js", "test": "carga sin errores con la escena 3D Tiles y cada escenario cabe en el presupuesto de dibujo" },
+        { "fichero": "pruebas/guardianes/carga.test.js", "test": "presupuesto.json: cada tope de «fixture» tiene su medida anotada y no pasa de 2× ella" },
         { "fichero": "pruebas/guardianes/componentes.test.js", "test": "la suma de los presupuestos de los encendidos por defecto cabe en el de diseño" }
       ],
       "falta": "«Medido antes y después en cada cambio gráfico» lo hace quien cambia: la prueba solo mira que lo de ahora cabe en los topes."
@@ -208,6 +209,7 @@
       "origen": "pruebas/presupuesto.json", "clave": "fixture.hituelo.lejos",
       "vigila": [
         { "fichero": "pruebas/guardianes/carga.test.js", "test": "carga sin errores con la escena 3D Tiles y cada escenario cabe en el presupuesto de dibujo" },
+        { "fichero": "pruebas/guardianes/carga.test.js", "test": "presupuesto.json: cada tope de «fixture» tiene su medida anotada y no pasa de 2× ella" },
         { "fichero": "pruebas/guardianes/escena3d.test.js", "test": "con D.tileset en el índice: carga el tileset sin errores" }
       ]
     },
@@ -215,6 +217,7 @@
       "origen": "pruebas/presupuesto.json", "clave": "fixture.hituelo.cerca",
       "vigila": [
         { "fichero": "pruebas/guardianes/carga.test.js", "test": "carga sin errores con la escena 3D Tiles y cada escenario cabe en el presupuesto de dibujo" },
+        { "fichero": "pruebas/guardianes/carga.test.js", "test": "presupuesto.json: cada tope de «fixture» tiene su medida anotada y no pasa de 2× ella" },
         { "fichero": "pruebas/guardianes/escena3d.test.js", "test": "con D.tileset en el índice: carga el tileset sin errores" }
       ]
     },
@@ -222,25 +225,29 @@
       "origen": "pruebas/presupuesto.json", "clave": "fixture.hituelo.nube",
       "vigila": [
         { "fichero": "pruebas/guardianes/carga.test.js", "test": "carga sin errores con la escena 3D Tiles y cada escenario cabe en el presupuesto de dibujo" },
+        { "fichero": "pruebas/guardianes/carga.test.js", "test": "presupuesto.json: cada tope de «fixture» tiene su medida anotada y no pasa de 2× ella" },
         { "fichero": "pruebas/guardianes/escena3d.test.js", "test": "con D.tileset en el índice: carga el tileset sin errores" }
       ]
     },
     {
       "origen": "pruebas/presupuesto.json", "clave": "fixture.cerro.lejos",
       "vigila": [
-        { "fichero": "pruebas/guardianes/carga.test.js", "test": "carga sin errores con la escena 3D Tiles y cada escenario cabe en el presupuesto de dibujo" }
+        { "fichero": "pruebas/guardianes/carga.test.js", "test": "carga sin errores con la escena 3D Tiles y cada escenario cabe en el presupuesto de dibujo" },
+        { "fichero": "pruebas/guardianes/carga.test.js", "test": "presupuesto.json: cada tope de «fixture» tiene su medida anotada y no pasa de 2× ella" }
       ]
     },
     {
       "origen": "pruebas/presupuesto.json", "clave": "fixture.cerro.cerca",
       "vigila": [
-        { "fichero": "pruebas/guardianes/carga.test.js", "test": "carga sin errores con la escena 3D Tiles y cada escenario cabe en el presupuesto de dibujo" }
+        { "fichero": "pruebas/guardianes/carga.test.js", "test": "carga sin errores con la escena 3D Tiles y cada escenario cabe en el presupuesto de dibujo" },
+        { "fichero": "pruebas/guardianes/carga.test.js", "test": "presupuesto.json: cada tope de «fixture» tiene su medida anotada y no pasa de 2× ella" }
       ]
     },
     {
       "origen": "pruebas/presupuesto.json", "clave": "fixture.cerro.nube",
       "vigila": [
-        { "fichero": "pruebas/guardianes/carga.test.js", "test": "carga sin errores con la escena 3D Tiles y cada escenario cabe en el presupuesto de dibujo" }
+        { "fichero": "pruebas/guardianes/carga.test.js", "test": "carga sin errores con la escena 3D Tiles y cada escenario cabe en el presupuesto de dibujo" },
+        { "fichero": "pruebas/guardianes/carga.test.js", "test": "presupuesto.json: cada tope de «fixture» tiene su medida anotada y no pasa de 2× ella" }
       ]
     },
     {

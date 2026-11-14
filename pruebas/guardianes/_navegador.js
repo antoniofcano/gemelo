@@ -10,6 +10,11 @@ const TIPOS = { ".html": "text/html; charset=utf-8", ".json": "application/json"
 const ESPERA_MS = Number(process.env.GEMELO_ESPERA || 45000);
 const ESPERA_GEN_MS = Number(process.env.GEMELO_ESPERA_GEN || 180000);   // con ?olivos=gen, lo que se espera a los generados en un escenario (en SwiftShader, una receta E0 tarda decenas de s)
 const TOPE_MEDIDA_MS = Number(process.env.GEMELO_TOPE_MEDIDA || 240000);   // una medida entera (carga + escenarios); si se pasa, sale «parcial»
+// L1-06 (MU0-5): lo que hacía variar la medida del banco, fijado. arbsc=1: la escala de los olivos de nivel 0 (en SwiftShader, a 1-3 fps, la adaptativa caía
+// a 0,7, la del «aparato lento»); hora: el reloj del mundo (de día pasa la bandada, de noche no; la estación del olivo sale de la fecha). mide() los añade
+// a la URL salvo que ya los traiga (una prueba que quiera otra hora o la escala adaptativa los pone ella: ?arbsc=auto no casa con el número y deja la adaptativa).
+const FIJOS_MEDIDA = { arbsc: "1", hora: "2026-06-15T12:00" };
+const conFijos = url => { let u = url; for (const [k, v] of Object.entries(FIJOS_MEDIDA)) if (!new RegExp("[?&]" + k + "=").test(u)) u += (u.includes("?") ? "&" : "?") + k + "=" + v; return u; };
 const ARGS_CHROME = ["--use-gl=swiftshader", "--enable-unsafe-swiftshader", "--no-sandbox", "--enable-precise-memory-info"];
 const ESCENARIOS = {
   lejos: { az: -0.55, el: 0.62, dist: 600, ox: 0, oy: -130, modo: "gem" },
@@ -148,7 +153,7 @@ async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDID
   const medidas = {};
   let parcial = false;
   try {
-  await p.goto(url + (url.includes("?") ? "&" : "?") + "debug");
+  await p.goto(conFijos(url + (url.includes("?") ? "&" : "?") + "debug"));
   await p.waitForFunction(() => window.__g && window.__g.listo(), null, { timeout: Math.min(ESPERA_MS, queda()) }).catch(e => {
     // sin esto, el tiempo agotado se traga lo que dijo la página: se cuenta con el error
     throw new Error(String(e.message).split("\n")[0] + " esperando a __g.listo() en " + url + "; errores: " + JSON.stringify(errores.slice(0, 8)) + "; fallos: " + JSON.stringify(fallos.slice(0, 8)));
@@ -162,7 +167,7 @@ async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDID
     // y la escena 3D Tiles (la única desde T8 fase 2): que termine de bajar teselas; si no hay escena (estado «sin»), no se la espera
     const acabo = await p.waitForFunction(() => { const g = window.__g, E = g.Escena3D; return (g.pendientes ? g.pendientes() : g.Cola.pendientes()) === 0 && (!E || E.resumen().estado !== "activo" || E.listo()); }, null, { timeout: Math.min(conGen ? ESPERA_GEN_MS : ESPERA_MS, queda()), polling: 500 }).then(() => true, () => false);
     await p.waitForTimeout(1500);
-    medidas[nombre] = await p.evaluate(() => { const g = window.__g, r = g.infoDibujo ? g.infoDibujo() : { llamadas: g.renderer.info.render.calls, triangulos: g.renderer.info.render.triangles, puntos: g.renderer.info.render.points, geometrias: g.renderer.info.memory.geometries, texturas: g.renderer.info.memory.textures }; return { llamadas: r.llamadas, triangulos: r.triangulos, puntos: r.puntos, geometrias: r.geometrias, texturas: r.texturas, heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : -1, olivos: g.Arboles.resumen(), js: g.depuraJs ? g.depuraJs() : undefined, generados: window.__olivosGen ? window.__olivosGen() : undefined, paseo: g.paseoEstado && g.paseoEstado().paseando ? g.paseoEstado() : undefined, vrm: window.__presencia && window.__presencia().vrm || undefined, escena3d: g.Escena3D ? g.Escena3D.resumen().estado : undefined }; });   // vrm: avatares VRM (P7c), solo con presencia
+    medidas[nombre] = await p.evaluate(() => { const g = window.__g, r = g.infoDibujo ? g.infoDibujo() : { llamadas: g.renderer.info.render.calls, triangulos: g.renderer.info.render.triangles, puntos: g.renderer.info.render.points, geometrias: g.renderer.info.memory.geometries, texturas: g.renderer.info.memory.textures }; return { llamadas: r.llamadas, triangulos: r.triangulos, puntos: r.puntos, geometrias: r.geometrias, texturas: r.texturas, heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : -1, gpuMB: g.memoria ? +(g.memoria().bytesEstimados / 1048576).toFixed(1) : -1, olivos: g.Arboles.resumen(), js: g.depuraJs ? g.depuraJs() : undefined, generados: window.__olivosGen ? window.__olivosGen() : undefined, paseo: g.paseoEstado && g.paseoEstado().paseando ? g.paseoEstado() : undefined, vrm: window.__presencia && window.__presencia().vrm || undefined, escena3d: g.Escena3D ? g.Escena3D.resumen().estado : undefined }; });   // vrm: avatares VRM (P7c), solo con presencia
     medidas[nombre].espera = { ms: Date.now() - t1, termino: acabo, pendientes: await p.evaluate(() => window.__g.pendientes ? window.__g.pendientes() : window.__g.Cola.pendientes()) };
     if (desglose) medidas[nombre].desglose = await p.evaluate(desgloseLlamadas);
     if (desglose) medidas[nombre].piezasGen = await p.evaluate(() => { const G = window.__g.Generados; return G && G.piezas ? G.piezas() : null; });   // O2: por pieza del lote de olivos generados (07ab piezas()); null sin ?olivos=gen
@@ -175,4 +180,4 @@ async function mide(navegador, url, { escenarios = ESCENARIOS, tope = TOPE_MEDID
   return { errores, fallos, medidas, parcial, csp };
 }
 
-module.exports = { VENTANA, VENTANA_CHICA, ventanaDe, ESCENARIOS, ESCENARIOS_PASEO, TODOS_ESCENARIOS, ARGS_CHROME, CSP, esCsp, sirve, motivoSalto, lanza, mide, desgloseLlamadas };
+module.exports = { FIJOS_MEDIDA, conFijos, VENTANA, VENTANA_CHICA, ventanaDe, ESCENARIOS, ESCENARIOS_PASEO, TODOS_ESCENARIOS, ARGS_CHROME, CSP, esCsp, sirve, motivoSalto, lanza, mide, desgloseLlamadas };

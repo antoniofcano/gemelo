@@ -17,9 +17,10 @@ function promesasDeClaude(s) {
   return r;
 }
 
-/** Los topes de un presupuesto: un objeto de solo números es un tope; un número suelto junto a objetos, otro. Las claves «$…» son comentarios. */
+/** Los topes de un presupuesto: un objeto de solo números es un tope; un número suelto junto a objetos, otro. Las claves «$…» son comentarios; «medido» (la medida
+ *  con la que se fijó el tope, L1-06), «medido_el» y «fijos» la acompañan y no son topes. */
 function topesDePresupuesto(o, pre) {
-  const claves = Object.keys(o).filter(k => !k.startsWith("$"));
+  const claves = Object.keys(o).filter(k => !k.startsWith("$") && k !== "medido" && k !== "medido_el" && k !== "fijos");
   const ruta = k => (pre ? pre + "." : "") + k;
   if (pre && claves.length && claves.every(k => typeof o[k] === "number")) return [pre];
   const r = [];

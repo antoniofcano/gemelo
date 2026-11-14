@@ -7,7 +7,7 @@ import type { T } from "./tipos.ts";
 
 /** Lo que el talón de 27 le da: lo del exterior y del motor por valor (como antes, al cargarse); por getter, lo que cambia (paseando, teclas, listo) */
 export interface DepsGanchos {
-  Arboles: T; Catalogo: T; Escena3D: T; OlivosTiles: T; Cola: T; SueloFotos: T; Generados: T; Lejanos: T; Mundo: T; InfoDibujo: T; Estado: T; copas: T; suelo: T;
+  Arboles: T; Catalogo: T; Escena3D: T; OlivosTiles: T; Cola: T; SueloFotos: T; Generados: T; Lejanos: T; Mundo: T; InfoDibujo: T; Render: T; Estado: T; copas: T; suelo: T;
   orb: T; objetivo: T; camera: T; renderer: T; scene: T; pon: T; aplica: T; entraPaseo: T; salePaseo: T; pp: T;
   readonly paseando: boolean; readonly teclas: T; readonly listo: T; ventana: T;
 }
@@ -26,10 +26,12 @@ export function creaGanchos(dp: DepsGanchos) {
     else if (!si && renderOriginal) { dp.renderer.render = renderOriginal; renderOriginal = null; }
     return !!renderOriginal;
   }
+  // memoria() (L1-07): renderer.info.memory y los bytes ESTIMADOS de lo que la escena tiene en la tarjeta (Render.memoria() de nucleo/render.ts)
   // infoDibujo(): lo dibujado con la misma forma para los dos renderizadores (InfoDibujo de 02h_render, F1 de ADR-0031)
   window.__g = {
     sinDibujo: sinDibujo,
     infoDibujo: function () { return dp.InfoDibujo.lee(dp.renderer); },
+    memoria: function () { return dp.Render.memoria(); },
     Arboles: dp.Arboles, Catalogo: dp.Catalogo, Escena3D: dp.Escena3D, OlivosTiles: dp.OlivosTiles, Cola: dp.Cola, SueloFotos: dp.SueloFotos, copas: dp.copas, suelo: dp.suelo, Mundo: dp.Mundo, orb: dp.orb, objetivo: dp.objetivo, camera: dp.camera, renderer: dp.renderer, scene: dp.scene, pon: dp.pon,
     listo: function () { return dp.listo; }, modo: function () { return dp.Estado.modo; }, Generados: dp.Generados,
     pendientes: function () { return dp.Cola.pendientes() + dp.Generados.pendientes() + dp.Lejanos.pendientes(); },

@@ -16,7 +16,7 @@ const { sirve, motivoSalto, lanza } = require("./_navegador");
 const { montaPagina, saltoPagina } = require("./_pagina");
 
 const MIDE = !!process.env.GEMELO_MIDE;
-// Opcional (GEMELO_TIRONES=1), como memoria_vr_chrome: la escalera tarda minutos en SwiftShader y no hace falta en cada puerta pesada, sino una vez para decidir.
+// Opcional (GEMELO_TIRONES=1): la escalera tarda minutos en SwiftShader y no hace falta en cada puerta pesada, sino una vez para decidir.
 // Lanzarla (por el banco, un Chrome a la vez; lanza() pide el turno):  GEMELO_TIRONES=1 GEMELO_MIDE=1 node --test pruebas/guardianes/tirones_olivos_chrome.test.js
 const SALTO = (process.env.GEMELO_TIRONES ? null : "opcional: define GEMELO_TIRONES=1 (medida de L1-09 y L1-12 para decidir; minutos en SwiftShader)") ||
   motivoSalto("los tirones de los olivos (L1-09, L1-12)") || saltoPagina("los tirones de los olivos (L1-09, L1-12)");

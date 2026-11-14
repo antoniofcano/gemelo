@@ -8,6 +8,32 @@
 >
 > **Hallazgo de C: las llamadas dependen de la hora.** De las 124 de «lejos», 98 son la bandada de `16_vida.js` (una malla por ave), que solo se dibuja de día y sin lluvia, con el reloj de la máquina: la misma medida a otra hora da otras cifras.
 
+## Ronda del banco MU0-5: topes del fixture, memoria de GPU y VR simulada (2026-11-14)
+
+Chrome sin pantalla con **SwiftShader** (900×650): recuentos y memoria, **no fps**. Fixture sintético (2 teselas, 140 olivos, escena 3D Tiles, `?olivos=0`), rama de la auditoría de noviembre (L1-06, L1-07, L2-06). **Quest e iPhone: no probado.**
+
+**Lo que hacía variar la medida, fijado** (`FIJOS_MEDIDA` de `pruebas/guardianes/_navegador.js`, que `mide()` añade a la URL salvo que ya los traiga): `arbsc=1` (antes, a 1-3 fps de SwiftShader, la escala adaptativa de los olivos caía a 0,7) y `hora=2026-06-15T12:00` (un mediodía de junio, sin depender del reloj de la máquina).
+
+| Escenario (las dos fincas iguales) | llamadas | triángulos | puntos | geometrías | texturas | heap MB | GPU MB estimados |
+|---|---|---|---|---|---|---|---|
+| lejos, antes (sin fijos: `esc` 0,7 y la hora de la máquina, por la tarde) | 29 | 24.308 | 0 | 28 | 7 | 28-30 | — |
+| lejos, con fijos (3 vueltas) | 29 | 24.308 | 0 | 28 | 7 | 27-29 | 10,6-11,7 |
+| cerca, antes | 49 | 176.892 | 2.001 | 61 | 20 | 27 | — |
+| cerca, con fijos | 52 | 178.476 | 2.143 | 64-66 | 19-20 | 26-27 | 12,3-12,5 |
+| nube, antes | 25 | 20.618 | 2.340 | 62 | 20 | 27 | — |
+| nube, con fijos | 25 | 20.618 | 2.340 | 65-67 | 19-20 | 27-29 | 12,0-12,2 |
+
+- Llamadas, triángulos y puntos son deterministas (iguales en las 3 vueltas y en las dos fincas); el heap oscila ±2 MB, y geometrías y texturas ±2 según las teselas del tileset que hayan bajado. Las de «cerca» y «nube» incluyen lo que quedó de los escenarios anteriores (se miden seguidos en la misma página).
+- **Topes nuevos** (`pruebas/presupuesto.json` → `fixture`, cada uno con su `medido` al lado): lejos 40 / 34.000 / 0 / 40 geo / 10 tex / 45 MB / 16 MB GPU; cerca 72 / 250.000 / 3.000 / 92 / 28 / 45 / 18; nube 35 / 29.000 / 3.300 / 94 / 28 / 45 / 17 (≈ 1,35-1,6× lo medido). Antes: lejos 155 llamadas (puestas para la bandada de 98 mallas que ya no existe), nube 100. `carga.test.js` falla si un tope pasa de 2× su medida (sin Chrome) y compara también geometrías, texturas y GPU.
+- **GPU MB estimados** (L1-07): `__g.memoria().bytesEstimados` (`Render.memoria()` de `apps/web/src/nucleo/render.ts`): los búferes de las geometrías y las texturas que cuelgan de la escena. Es una cota por abajo (no cuenta destinos de render, sombras ni lo subido y desenganchado), no la memoria real de la tarjeta; sirve para comparar en el tiempo. Que `usedJSHeapSize` excluya los `ArrayBuffer` sigue **sin confirmar** (no se midió con `measureUserAgentSpecificMemory`).
+- No se añadió una tesela densa al fixture: ningún tope del banco necesita que se dispare un regulador (`tope0`, `TOPE_TRI`, `PRESUPUESTO_NUBE`), que ya vigilan en Vitest con entradas densas `arboles.test.ts` y `nube.test.ts`; una tesela más encarecería todas las pruebas de Chrome.
+
+**VR simulada** (`memoria_vr_chrome.test.js`, WebXR de `pruebas/mock_xr.js`, Cerro, 10 sesiones, 3 vueltas): base 27 geometrías / 5 texturas / 24 MB de heap; tras la 1.ª sesión 56-57 / 11-12; tras la 2.ª 66-67 / 22-23, **y así hasta la 10.ª** (Δ 0 en geometrías y texturas; heap −2 a +2 MB). **El goteo de AG-P1b (≈ 3 geometrías y 1 textura por sesión, 2026-11-04) ya no está.** Lo que sube una vez entre la 1.ª y la 2.ª es lo que la vista de VR dibuja por primera vez (inventario por la escucha «dispose»: subidas desde `renderBufferDirect`: 10 `BufferGeometry`, 6 texturas de datos y 5 ortofotos) y se reutiliza en las siguientes.
+
+**Tirones de los olivos** (`tirones_olivos_chrome.test.js`, `GEMELO_TIRONES=1 GEMELO_MIDE=1`, fixture de Hituelo, 450×325, una vuelta; el JS de la CPU sí se mide en SwiftShader, el dibujo no):
+- **L1-09 / L1-11** (`?arbsc=1`): `Arboles.actualiza` barriendo la finca, 160 llamadas: máx. 3,7 ms, p95 0,3 ms, media 0,10 ms; con la cámara quieta 5 s, 96 llamadas: máx. 0,5 ms, 0 subidas de búferes. Por debajo del tope [SUPUESTO] de 4 ms, en un fixture de 140 olivos (Hituelo real tiene 5.882: no medido). Las tareas largas de la carga (≥ 50 ms) son muchas (de 50 a 586 ms), pero en SwiftShader cada fotograma dibuja en la CPU y no se pueden atribuir a la `Mascara` ni a `repartirT` sin más instrumentación: no concluyen nada.
+- **L1-12** (`?olivos=escalera`): la capa de lejanos **no apareció** en 480 s, así que el horneado **no se midió entero**; en el único fotograma con dibujo fuera del lienzo se registraron 8 `renderer.render` con destino que sumaron 265 ms (SwiftShader: dibujo por CPU, no representa al Quest). Indica que el horneado va de golpe en un fotograma, como dice la auditoría; la cifra para decidir sigue pendiente de un aparato.
+
 ## Cómo anotar una medida en el casco con sus perillas (Q0b)
 
 Una medida de VR sin las perillas con las que se hizo no se puede comparar con otra (regla 7). El informe de `?mide` (tarjeta, texto de «Copiar» y `window.__mide().texto`) trae una línea `VR: fov 1 · escala 0,9 · 72 Hz · MSAA sí · nivel auto` (con `ignorado: …` si una perilla se descartó o se recortó). Al anotar una medida en este fichero:
