@@ -50,7 +50,7 @@ Convenciones comunes: **x este, y norte**, en metros relativos a `centro_utm` (U
 
 ### 1.1 `indice.json` (va en la página como `D`)
 
-Campos obligatorios: `v, ts, res, srs, orto_px, finca_id, centro_utm, z0, ext, parcelas, copas, marcados, ot, avance, teselas, grueso, mosaico`. Opcionales: `fincas, textos, ndvi, suelo_ndvi, paisaje, zmax, cobertura_nube, base, tileset, copas_id, copas_tipo, copas_semilla, copas_param, biodiversidad, titulo_vr, config` (los vigila `contratos.test.js`: esta lista es la del esquema, y cada `D.<campo>` que lee el motor está en él; L4-09, L4-13).
+Campos obligatorios: `v, ts, res, srs, orto_px, finca_id, centro_utm, z0, ext, parcelas, copas, marcados, ot, avance, teselas, grueso, mosaico`. Opcionales: `fincas, textos, ndvi, suelo_ndvi, paisaje, zmax, cobertura_nube, base, tileset, copas_id, copas_tipo, copas_semilla, copas_param, biodiversidad, titulo_vr, config` (los vigila `contratos.test.js`: esta lista es la del esquema, y cada `D.<campo>` que lee el motor está en él; L4-09, L4-13). El esquema es **cerrado** en la raíz (`additionalProperties: false`): un campo que no está en él no entra en el índice, y `construye()` copia del intermedio solo estos (L4-10).
 
 | Campo | Contenido |
 |---|---|
