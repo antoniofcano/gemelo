@@ -983,7 +983,7 @@ function arranca(): void {
   Componentes.registra(Mundos.manifiestoPresencia({
     THREE: THREE, location: location, window: window, document: document, consola: console, fetch: function (u, o: any) { return fetch(u, o); },
     utilesGeometria: function () { return import("three/addons/utils/BufferGeometryUtils.js"); },
-    D: D, ConfigPuro: ConfigPuro, Aparato: Aparato, Materiales: Materiales, Entidades: Entidades, Componentes: Componentes, suelo: suelo, sitioJunto: sitioJunto,
+    D: D, ConfigPuro: ConfigPuro, Aparato: Aparato, Materiales: Materiales, Entidades: Entidades, Componentes: Componentes, suelo: function (x, y) { return typeof gm !== "undefined" && gm ? gm.suelo(x, y) : suelo(x, y); }, sitioJunto: sitioJunto, mundoActual: function () { return typeof gm !== "undefined" && gm ? gm.actual : "exterior"; },   // T0: suelo y mundo activo por función (gm se crea después)
     scene: scene, camera: camera, renderer: renderer, texColor: texColor, Estado: Estado, visor: visor, quad: quad, dron: dron,
     get objetivo() { return objetivo; }, get paseando() { return Paseo.E.paseando; }, get pp() { return pp; }, get enQuad() { return Vida.E.enQuad; }, get enDron() { return Vida.E.enDron; },
     get VRX() { return VRX; }, get Llegada() { return Llegada; }, get TR() { return TR; },

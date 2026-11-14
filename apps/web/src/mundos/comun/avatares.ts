@@ -589,7 +589,7 @@ export function creaAvatares(dp: DepsAvatares, n?: any, Presencia?: any) {
     materiales.libera();   // lo que la fábrica guarde aún de este dueño (los VRM ya soltados salen solos de su lista)
   }
   gVrm = new THREE.Group(); gVrm.name = "avatares-vrm"; scene.add(gVrm);
-  var gancho: any = { coloca: coloca, oculta: oculta, sale: quitaReg, actualiza: actualiza, estado: estado, libera: libera };
+  var gancho: any = { muestra: function (v?: any) { if (gVrm) gVrm.visible = !!v; }, coloca: coloca, oculta: oculta, sale: quitaReg, actualiza: actualiza, estado: estado, libera: libera };
   Presencia.enganchaVRM(gancho);   // la presencia llama a coloca/oculta/sale por cada persona y a actualiza al final de su fase
   return gancho;
 }

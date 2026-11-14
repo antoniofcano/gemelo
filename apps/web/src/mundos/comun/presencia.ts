@@ -27,6 +27,8 @@ export interface DepsPresencia {
   sitioJunto(t: unknown, desde: unknown, dists: unknown, rTronco: unknown): any;
   readonly objetivo: any; readonly paseando: boolean; readonly pp: any; readonly enQuad: boolean; readonly enDron: boolean;
   readonly VRX: any; readonly Ajustes: any; readonly Movibles: any; readonly Llegada: any; readonly TR: any;
+  /** el mundo activo del gestor (gm.actual; el gestor se crea después, va por función). Sin esto, o «exterior», la presencia es la de siempre; en cualquier otro (un interior, o null mientras se cambia) no publica pose ni dibuja a nadie: las poses van en coordenadas del exterior (T0, eje B) */
+  mundoActual?(): string | null;
 }
 export const ID_PRESENCIA = "presencia-compartida";
 
@@ -87,6 +89,7 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
   var observa: any = null;   // A3-6a: el MutationObserver del chat en móvil vertical, para desconectarlo al liberar
   Materiales.define(MATERIAL_NOMBRES, defNombres());   // (aquí y no al cargar: el manifiesto se pide sin dependencias para medirlo)
   const materiales = Materiales.de(ID_PRESENCIA);     // MU5-n (A3-6a): lo que cree este componente se libera con su libera()
+  var fueraOculto: any = false;   // T0: grupos ocultos porque quien mira está en un interior
   var vrmG: any = null;   // el gancho de los avatares VRM (26b_avatares.js), si están montados
   var variante: any = (/[?&]presencia=(sim|red)\b/.exec(location.search) || [])[1] || "", activo: any = !!variante, N: any = 0;
   // F2b: sin ?presencia= y con api, la presencia en red arranca sola si el servidor tiene LiveKit (GET /api/presencia -> { red: true }) y la casilla de Ajustes está marcada
@@ -584,8 +587,10 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
     }
   }
   // la pose propia en el sistema del contrato (cota SIN exagerar), o null si estás en vista aérea (órbita, vuelo o mirador de VR): entonces no se publica (decisión 60)
+  function enExterior() { return !dp.mundoActual || dp.mundoActual() === "exterior"; }   // las poses del contrato son del exterior: dentro de un interior (otras coordenadas, otro suelo) ni se publican ni se dibujan
   function poseLocal(tMs?: any) {
     var o: any = poseL, s: any;
+    if (!enExterior()) return null;   // en un interior: como en vista aérea (no se publica; los demás te ven «en vista aérea»), sin cambiar el contrato
     if (dp.VRX.on) {
       if (dp.VRX.vuelo || dp.VRX.mirador) return null;
       var h: any = dp.VRX.cab; s = suelo(h.x, -h.z);
@@ -733,7 +738,7 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
   // esta sala, con pose (no «en vista aérea») y sin bloquear por ti. No manda nada por la red: usa la pose que ya llega. Este módulo solo calcula el
   // punto (Encuentro, en el trozo puro); el salto, con su fundido en pantalla y en VR (nunca un vuelo de cámara), es el de 12b_llegada.js (Llegada.funde y Llegada.aparece)
   var puntosL: any = [];
-  function seVe(a?: any, tMs?: any) { return !!a && a.visto && (variante !== "red" || SalaPose.seVe(SP, a.id, tMs, bloqueados)); }
+  function seVe(a?: any, tMs?: any) { return !!a && enExterior() && a.visto && (variante !== "red" || SalaPose.seVe(SP, a.id, tMs, bloqueados)); }
   function idDe(a?: any) { return variante === "red" ? a.id : "sim" + a.k; }
   function busca(id?: any) { if (variante === "red") return porId[id] || null; var m: any = /^sim(\d+)$/.exec(String(id)); return m ? V[Number(m[1])] || null : null; }
   function puntos() {   // [{id, alias, x este, y norte, modo}] de los que se dibujan ahora mismo
@@ -815,6 +820,12 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
   function actualiza(dt?: any) {
     if (!activo) return;
     var t0: any = performance.now(), tMs: any = Math.round(t0), nc: any = 0, i: any;
+    if (!enExterior()) {   // T0: dentro de un interior no se dibuja a nadie (los grupos, también el de los VRM, ocultos); la red sigue su tic sin pose y el panel Gente se repinta
+      if (fueraOculto !== true) { fueraOculto = true; if (grupo) grupo.visible = false; if (vrmG && vrmG.muestra) vrmG.muestra(false); }
+      if (variante === "red") { SalaPose.tic(SP, t0, null); tGente += dt; if (tGente >= 0.5) { tGente = 0; pintaGente(t0); } }
+      return;
+    }
+    if (fueraOculto) { fueraOculto = false; if (grupo) grupo.visible = true; if (vrmG && vrmG.muestra) vrmG.muestra(true); }
     nVehQ = 0; nVehD = 0; tVeh += dt;
     if (variante === "red") actualizaRed(dt, t0);
     else {

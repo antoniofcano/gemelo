@@ -110,6 +110,24 @@ describe("presencia-compartida: de todo mundo y con libera() de verdad (A3-6a)",
     expect(r.quitados).toEqual(["persona"]);
   });
 
+  it("T0 (eje B): en un interior los grupos de presencia y VRM se ocultan y nadie se ve; al volver al exterior se reanudan", () => {
+    vi.useFakeTimers({ toFake: ["performance"] });
+    let mundo: string | null = "exterior";
+    const r = monta("?presencia=sim&n=6");
+    (r.deps as { mundoActual?: () => string | null }).mundoActual = () => mundo;
+    const gVrm = new THREE.Group(), gancho = { muestra: (v: boolean) => { gVrm.visible = v; }, coloca() {}, oculta() {}, sale() {}, actualiza() {}, estado: () => null, libera() {} };
+    r.api.enganchaVRM(gancho);
+    const grupo = r.scene.children.find((x: any) => x.name === "presencia");
+    const marcha = (n: number) => { for (let i = 0; i < n; i++) { vi.advanceTimersByTime(50); r.api.actualiza(0.05); } };
+    marcha(40); expect(grupo.visible).toBe(true); expect(r.api.puntos().length).toBeGreaterThan(0);
+    mundo = "patios"; marcha(2);
+    expect(grupo.visible).toBe(false); expect(gVrm.visible).toBe(false); expect(r.api.puntos()).toEqual([]);
+    mundo = null; marcha(1); expect(grupo.visible).toBe(false);   // mientras se cambia de mundo
+    mundo = "exterior"; marcha(2);
+    expect(grupo.visible).toBe(true); expect(gVrm.visible).toBe(true); expect(r.api.puntos().length).toBeGreaterThan(0);
+    r.api.libera();
+  });
+
   it("la variante TSL de los nombres (tercer commit): apagada; con three/webgpu y three/tsl de verdad es un MeshBasicNodeMaterial con sus nodos, y solo sale con el renderer nuevo", async () => {
     const rutaW = "three/webgpu", rutaT = "three/tsl";   // por variable: three no trae tipos (y así tampoco entra en el grafo de dependency-cruiser)
     const W = await import(/* @vite-ignore */ rutaW), T = await import(/* @vite-ignore */ rutaT);

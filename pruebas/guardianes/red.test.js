@@ -191,7 +191,7 @@ function motor({ busqueda = "", ficheros = ["red", "presencia", "avatares"], tok
     scene: { add: () => { cuenta.escena++; }, remove: () => { cuenta.escena--; } }, camera: { position: new V3(0, 20, 0), quaternion: new Q() }, renderer: cualquiera(), visor,
     Entidades: { registra: d => { cuenta.tipos.push(d.tipo); cuenta.defs[d.tipo] = d; return () => { cuenta.quitados++; }; } }, Llegada: { funde: fn => { fn(); return true; }, aparece() {} }, TR: {},
     Movibles: { hazMovible: () => ({ menuLlevar() {}, coloca() {} }) }, VRX: { on: false, cab: new V3(), rig: { yaw: 0 } }, paseando: true, pp: { x: 50, y: 50, ang: 0 },
-    enQuad: false, enDron: false, quad: cualquiera(), dron: cualquiera(), objetivo: new V3(50, 0, -50), persona: null, primera: false, Aparato: aparatoDe({ userAgent: "Node" }), navigator: { userAgent: "Node" },
+    gm: { actual: "exterior", suelo: () => 10 }, enQuad: false, enDron: false, quad: cualquiera(), dron: cualquiera(), objetivo: new V3(50, 0, -50), persona: null, primera: false, Aparato: aparatoDe({ userAgent: "Node" }), navigator: { userAgent: "Node" },
     fetch: (u, o) => { cuenta.fetch.push([u, o && o.method]);
       if (/\/api\/presencia$/.test(u)) {   // F2b: GET /api/presencia → { red }; hay: true | false | 401 | "falla" (el fetch se cae) | "rara" (otra forma)
         if (hay === "falla") return Promise.reject(new Error("sin red"));
@@ -230,6 +230,26 @@ test("componentes en Node: sin ?presencia los tres se montan y no crean nada; ?p
   r.ventana.__presencia("libera"); assert.deepStrictEqual(r.errores, []);
   r = motor({ busqueda: "?presencia=sim&n=2", ficheros: ["presencia"] }); r.Componentes.actualiza("mundo", 0.1, 0); assert.strictEqual(r.ventana.__presencia().n, 2); assert.deepStrictEqual(r.errores, []);
   r = motor({ busqueda: "?presencia=red&avatares=0" }); await espera(10); assert.deepStrictEqual(ACTIVOS(r), ["presencia-compartida", "red-salas"]); assert.strictEqual(r.ventana.__presencia().vrm, null);
+  r.ventana.__presencia("libera"); assert.deepStrictEqual(r.errores, []);
+});
+
+test("T0 (eje B): dentro de un interior la presencia no publica pose ni dibuja a nadie; al volver al exterior se reanuda", async () => {
+  const r = motor({ busqueda: "?presencia=red" });
+  await espera(10);
+  const room = r.LK.salas[0], ana = room.entra("h_ana", JSON.stringify({ alias: "Ana", rol: "guia" })), t0 = Math.round(performance.now());
+  const poses = () => room.publicados.filter(x => x.op.topic === "pose").length;
+  for (let k = 0; k < 4; k++) room.datos(ana, "pose", POSE(60 + k * 0.1, -60, k + 1, t0 + k * 100));
+  for (let i = 0; i < 4; i++) { r.Componentes.actualiza("mundo", 0.1, i); await espera(30); }
+  assert.strictEqual(r.ventana.__presencia("puntos").length, 1, "en el exterior se ve a Ana"); assert.ok(poses() >= 1, "y se publica la pose");
+  r.g.gm.actual = "patios"; const antes = poses();   // entra en un interior: sus coordenadas no son las del exterior
+  for (let i = 0; i < 6; i++) { r.Componentes.actualiza("mundo", 0.1, 10 + i); await espera(30); }
+  assert.strictEqual(poses(), antes, "dentro de un interior no se publica pose (no hay fantasma en el exterior)");
+  assert.deepStrictEqual(r.ventana.__presencia("puntos"), [], "ni se dibuja ni se puede ir con nadie");
+  r.g.gm.actual = null; r.Componentes.actualiza("mundo", 0.1, 20); assert.strictEqual(poses(), antes, "mientras se cambia de mundo, tampoco");
+  r.g.gm.actual = "exterior";
+  for (let k = 0; k < 4; k++) room.datos(ana, "pose", POSE(60 + k * 0.1, -60, k + 10, Math.round(performance.now()) + k * 100));
+  for (let i = 0; i < 8; i++) { r.Componentes.actualiza("mundo", 0.1, 30 + i); await espera(30); }
+  assert.ok(poses() > antes, "al volver al exterior se reanuda la pose"); assert.strictEqual(r.ventana.__presencia("puntos").length, 1, "y se vuelve a ver a Ana");
   r.ventana.__presencia("libera"); assert.deepStrictEqual(r.errores, []);
 });
 
