@@ -263,7 +263,7 @@ export function creaBalizas(d: DepsBalizas) {
     if (!avisoB) {
       const raiz = document.createElement("div"), txt = document.createElement("p"), ir = document.createElement("button"), no = document.createElement("button");
       raiz.id = "avisoBaliza"; raiz.setAttribute("role", "dialog"); raiz.setAttribute("aria-label", "Ir a la baliza"); raiz.hidden = true;   // A3-8b: con id, para esconderlo fuera del exterior
-      raiz.style.cssText = "position:absolute;left:12px;top:12px;z-index:31;max-width:min(300px,calc(100% - 24px));padding:10px;border-radius:12px;background:rgba(16,20,24,0.92);color:#fff;font:13px/1.35 system-ui,sans-serif;box-sizing:border-box";
+      raiz.style.cssText = "position:absolute;left:12px;top:12px;z-index:31;max-width:min(300px,calc(100% - 24px));padding:10px;border-radius:12px;background:rgba(16,20,24,0.92);color:#fff;font:.8125rem/1.35 system-ui,sans-serif;box-sizing:border-box";
       txt.style.margin = "0 0 8px"; txt.id = "avisoBalTxt"; raiz.setAttribute("aria-describedby", "avisoBalTxt");
       const bs = "font:inherit;color:inherit;border-radius:8px;padding:6px 14px;min-height:44px;min-width:44px;cursor:pointer;margin-right:8px;";
       ir.type = "button"; ir.textContent = "Ir"; ir.style.cssText = bs + "background:rgba(64,240,255,0.22);border:1px solid rgba(64,240,255,0.7)";

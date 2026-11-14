@@ -67,7 +67,7 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
   function el(tag?: any, props?: any, hijos?: any) { var e: any = document.createElement(tag); if (props) Object.keys(props).forEach(function (k?: any) { if (k === "style") e.style.cssText = props[k]; else if (k in e) e[k] = props[k]; else e.setAttribute(k, props[k]); }); (hijos || []).forEach(function (h?: any) { e.appendChild(typeof h === "string" ? document.createTextNode(h) : h); }); return e; }
   function vr() { return !!(typeof dp.VRX !== "undefined" && dp.VRX && dp.VRX.on); }
   function px() { return dp.Aparato.clase() === "quest" ? 56 : 44; }
-  var CSS_BTN: any = "font:600 15px/1.2 system-ui,sans-serif;color:#fff;border-radius:999px;padding:8px 16px;cursor:pointer;background:rgba(64,240,255,0.16);border:1px solid rgba(64,240,255,0.7);margin:2px 4px";
+  var CSS_BTN: any = "font:600 .9375rem/1.2 system-ui,sans-serif;color:#fff;border-radius:999px;padding:8px 16px;cursor:pointer;background:rgba(64,240,255,0.16);border:1px solid rgba(64,240,255,0.7);margin:2px 4px";
   var CSS_BTN2: any = CSS_BTN + ";background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.5)";
 
   // ---- la api (mismo origen; todo con la sesión). { status, j }; status 0 si no hubo respuesta
@@ -208,11 +208,11 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
   function abreDialogo(id?: any, titulo?: any, cuerpo?: any, bNo?: any, bSi?: any, alNo?: any, alSi?: any) {
     cierraDialogo();
     try { dlgFoco = document.activeElement || null; } catch (e: any) { dlgFoco = null; }
-    var h: any = px(), tit: any = el("h2", { id: id + "T", style: "margin:0 0 8px;font:700 18px/1.3 system-ui,sans-serif" }, [titulo]);
+    var h: any = px(), tit: any = el("h2", { id: id + "T", style: "margin:0 0 8px;font:700 1.125rem/1.3 system-ui,sans-serif" }, [titulo]);
     var err: any = el("p", { id: id + "Error", role: "alert", hidden: true, style: "margin:0 0 8px;color:#ffb4b4;font-weight:600" });
     var no: any = el("button", { id: id + "No", type: "button", style: CSS_BTN2 + ";min-height:" + h + "px;min-width:" + h + "px" }, [bNo]);
     var si: any = el("button", { id: id + "Si", type: "button", style: CSS_BTN + ";min-height:" + h + "px;min-width:" + h + "px" }, [bSi]);
-    var caja2: any = el("div", { style: "background:#101418;color:#fff;border:1px solid rgba(64,240,255,0.6);border-radius:16px;padding:16px 18px;max-width:min(520px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;box-sizing:border-box;font:15px/1.45 system-ui,sans-serif;text-align:left" },
+    var caja2: any = el("div", { style: "background:#101418;color:#fff;border:1px solid rgba(64,240,255,0.6);border-radius:16px;padding:16px 18px;max-width:min(520px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;box-sizing:border-box;font:.9375rem/1.45 system-ui,sans-serif;text-align:left" },
       [tit].concat(cuerpo, [err, el("div", { style: "display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end" }, [no, si])]));
     var raiz: any = el("div", { id: id, role: "dialog", "aria-modal": "true", "aria-labelledby": id + "T", tabindex: "-1", style: "position:absolute;left:0;top:0;right:0;bottom:0;z-index:62;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6)" }, [caja2]);
     dlg = { raiz: raiz, err: err, si: si, no: no, ocupado: false };
@@ -260,9 +260,9 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
     var ul: any = function (l?: any) { return el("ul", { style: "margin:0 0 8px;padding-left:20px" }, l.map(function (t?: any) { return el("li", { style: "margin:4px 0" }, [t]); })); };
     var casilla: any = el("input", { id: "corroAvisoDecl", type: "checkbox", style: "width:" + Math.round(h * 0.5) + "px;height:" + Math.round(h * 0.5) + "px;margin:0 10px 0 0;flex:none" });
     var decl: any = el("label", { style: "display:flex;align-items:center;min-height:" + h + "px;margin:6px 0;font-weight:600;cursor:pointer" }, [casilla, A.declaracion]);
-    var cuerpo: any = [el("h3", { style: "margin:8px 0 2px;font-size:15px" }, [A.tPasa]), ul(A.pasa), el("h3", { style: "margin:8px 0 2px;font-size:15px" }, [A.tNoPasa]), ul(A.noPasa), decl,
+    var cuerpo: any = [el("h3", { style: "margin:8px 0 2px;font-size:.9375rem" }, [A.tPasa]), ul(A.pasa), el("h3", { style: "margin:8px 0 2px;font-size:.9375rem" }, [A.tNoPasa]), ul(A.noPasa), decl,
       el("a", { id: "corroAvisoEnlace", href: A.enlace.href, target: "_blank", rel: "noopener noreferrer", style: "color:#7fe9ff;display:inline-block;min-height:" + h + "px;line-height:" + h + "px" }, [A.enlace.texto]),
-      el("p", { style: "margin:4px 0 10px;font-size:12px;opacity:0.75" }, [A.nota])];
+      el("p", { style: "margin:4px 0 10px;font-size:.75rem;opacity:0.75" }, [A.nota])];
     var d: any = abreDialogo("corroAviso", A.titulo, cuerpo, A.ahoraNo, A.activar, rechazaAviso, aceptaAviso);
     d.si._bloqueado = true; d.si.disabled = true;   // «Activar», deshabilitado hasta marcar la declaración
     casilla.addEventListener("change", function () { if (!avisoP) return; avisoP.decl = !!casilla.checked; d.si._bloqueado = !avisoP.decl; d.si.disabled = !avisoP.decl || avisoP.ocupado; });
@@ -280,11 +280,11 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
       r.addEventListener("change", function () { if (!avisarP) return; avisarP.motivo = m[0]; if (dlg) { dlg.si._bloqueado = false; dlg.si.disabled = avisarP.ocupado; } });
       grupo.appendChild(el("label", { style: "display:flex;align-items:center;min-height:" + h + "px;cursor:pointer" }, [r, m[1]]));
     });
-    var cuenta: any = el("span", { style: "font-size:12px;opacity:0.75" }, ["0/" + C.TEXTO_MAX]);
+    var cuenta: any = el("span", { style: "font-size:.75rem;opacity:0.75" }, ["0/" + C.TEXTO_MAX]);
     var area: any = el("textarea", { id: "corroAvisoTexto", maxLength: C.TEXTO_MAX, rows: 3, "aria-label": "Qué ha pasado (opcional, como mucho " + C.TEXTO_MAX + " caracteres)", style: "width:100%;box-sizing:border-box;font:inherit;border-radius:8px;border:1px solid rgba(255,255,255,0.3);background:rgba(0,0,0,0.3);color:inherit;padding:6px" });
     area.addEventListener("input", function () { if (!avisarP) return; avisarP.texto = String(area.value || "").slice(0, C.TEXTO_MAX); cuenta.textContent = avisarP.texto.length + "/" + C.TEXTO_MAX; });
     var cuerpo: any = [grupo, el("label", { style: "display:block;margin:0 0 2px" }, ["Qué ha pasado (opcional)"]), area, cuenta,
-      el("p", { style: "margin:6px 0 10px;font-size:13px;opacity:0.85" }, ["No se envía audio: llega a la oficina quién avisa, cuándo, en qué corro y el motivo. Al avisar sales del corro."])];
+      el("p", { style: "margin:6px 0 10px;font-size:.8125rem;opacity:0.85" }, ["No se envía audio: llega a la oficina quién avisa, cuándo, en qué corro y el motivo. Al avisar sales del corro."])];
     var d: any = abreDialogo("corroAvisar", "Avisar a la oficina sobre " + alias, cuerpo, "Cancelar", "Enviar aviso", cierraAvisar, enviaAvisar);
     d.si._bloqueado = true; d.si.disabled = true;   // hasta elegir un motivo
   }
@@ -352,9 +352,9 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
     var h: any = px(), no: any = el("button", { id: "corroInvNo", type: "button", style: CSS_BTN2 + ";min-height:" + h + "px;min-width:" + h + "px" }, ["Ahora no"]);
     var si: any = el("button", { id: "corroInvSi", type: "button", style: CSS_BTN + ";min-height:" + h + "px;min-width:" + h + "px" }, ["Aceptar"]);
     invEl = el("div", { id: "corroInvitacion", role: "alertdialog", "aria-modal": "false", "aria-labelledby": "corroInvT", "aria-describedby": "corroInvD",
-      style: "position:absolute;left:50%;top:120px;transform:translateX(-50%);z-index:61;width:max-content;max-width:min(420px,calc(100% - 24px));padding:12px 14px;border-radius:16px;background:rgba(16,20,24,0.95);border:1px solid rgba(64,240,255,0.6);color:#fff;font:15px/1.4 system-ui,sans-serif;box-sizing:border-box" },
+      style: "position:absolute;left:50%;top:120px;transform:translateX(-50%);z-index:61;width:max-content;max-width:min(420px,calc(100% - 24px));padding:12px 14px;border-radius:16px;background:rgba(16,20,24,0.95);border:1px solid rgba(64,240,255,0.6);color:#fff;font:.9375rem/1.4 system-ui,sans-serif;box-sizing:border-box" },
       [el("p", { id: "corroInvT", style: "margin:0 0 4px;font-weight:700" }, [i.quien.alias + " te invita a hablar en corro."]),
-        el("p", { id: "corroInvD", style: "margin:0 0 8px;font-size:13px;opacity:0.9" }, ["Solo os oiréis si aceptas. Puedes salir cuando quieras. Nada se graba."]),
+        el("p", { id: "corroInvD", style: "margin:0 0 8px;font-size:.8125rem;opacity:0.9" }, ["Solo os oiréis si aceptas. Puedes salir cuando quieras. Nada se graba."]),
         el("div", { style: "display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end" }, [no, si])]);
     invEl._id = i.id;
     no.addEventListener("click", function () { rechazaInv(i); });
@@ -369,13 +369,13 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
     if (!w.visible || vr()) { if (caja) caja.hidden = true; claveCaja = ""; return; }
     var k: any = JSON.stringify(w); if (caja && !caja.hidden && k === claveCaja) return; claveCaja = k;
     if (!caja) {
-      caja = el("section", { id: "corroCaja", "aria-label": "Tu corro con voz", style: "position:absolute;left:12px;top:56px;z-index:31;width:min(300px,calc(100% - 24px));max-height:46%;overflow:auto;padding:8px 10px;border-radius:12px;background:rgba(16,20,24,0.9);color:#fff;font:14px/1.4 system-ui,sans-serif;box-sizing:border-box" });
-      caja._t = el("h3", { style: "margin:0 0 4px;font-size:14px" }); caja._l = el("ul", { style: "list-style:none;margin:0;padding:0" });
+      caja = el("section", { id: "corroCaja", "aria-label": "Tu corro con voz", style: "position:absolute;left:12px;top:56px;z-index:31;width:min(300px,calc(100% - 24px));max-height:46%;overflow:auto;padding:8px 10px;border-radius:12px;background:rgba(16,20,24,0.9);color:#fff;font:.875rem/1.4 system-ui,sans-serif;box-sizing:border-box" });
+      caja._t = el("h3", { style: "margin:0 0 4px;font-size:.875rem" }); caja._l = el("ul", { style: "list-style:none;margin:0;padding:0" });
       caja._h = el("p", { id: "corroHablan", role: "status", "aria-live": "polite", "aria-atomic": "true", style: "margin:4px 0;font-weight:600;color:#ffd58a" });
       caja._e = el("ul", { style: "list-style:none;margin:4px 0 0;padding:0" });
       caja._s = el("button", { id: "corroSalir", type: "button", style: CSS_BTN + ";min-height:" + px() + "px;background:rgba(229,72,77,0.18);border-color:rgba(229,72,77,0.8)" }, ["Salir del corro"]);
       caja._s.addEventListener("click", function () { sale("salir"); });
-      caja._n = el("p", { style: "margin:4px 0 0;font-size:11px;opacity:0.75" }, ["Solo os oís quienes estáis en esta lista. Nada se graba."]);
+      caja._n = el("p", { style: "margin:4px 0 0;font-size:.6875rem;opacity:0.75" }, ["Solo os oís quienes estáis en esta lista. Nada se graba."]);
       [caja._t, caja._l, caja._h, caja._e, caja._s, caja._n].forEach(function (x?: any) { caja.appendChild(x); });
       (visor || document.body).appendChild(caja);
     }
@@ -384,14 +384,14 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
     w.filas.forEach(function (f?: any) {
       var hijos: any = [el("span", {}, [(f.habla ? "🔊 " : "") + f.alias + (f.habla ? " · habla" : "") + (f.callado ? " · silenciado por ti" : "")])];
       if (!f.yo) {
-        var b: any = el("button", { type: "button", style: "font:inherit;color:inherit;background:none;border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:1px 6px;margin-left:6px;cursor:pointer;min-height:32px", "aria-pressed": f.callado ? "true" : "false", title: "Solo en este aparato; nadie se entera" }, [f.callado ? "Volver a oír" : "Silenciar"]);
+        var b: any = el("button", { type: "button", style: "font:inherit;color:inherit;background:none;border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:1px 10px;margin-left:6px;cursor:pointer;min-height:" + px() + "px;min-width:" + px() + "px", "aria-pressed": f.callado ? "true" : "false", title: "Solo en este aparato; nadie se entera" }, [f.callado ? "Volver a oír" : "Silenciar"]);
         b.addEventListener("click", function () { silencia(f.prefijo, !f.callado); });
         hijos.push(b);
         var ids: any = identidadesDe(f.prefijo);   // bloquear y avisar piden su identidad en la sala libre: la de su avatar, si se le ve
         if (ids.length) {
-          var bb: any = el("button", { type: "button", style: "font:inherit;color:inherit;background:none;border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:1px 6px;margin-left:6px;cursor:pointer;min-height:32px" }, ["Bloquear"]);
+          var bb: any = el("button", { type: "button", style: "font:inherit;color:inherit;background:none;border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:1px 10px;margin-left:6px;cursor:pointer;min-height:" + px() + "px;min-width:" + px() + "px" }, ["Bloquear"]);
           bb.addEventListener("click", function () { bloquea(ids[0], f.alias); });
-          var ba: any = el("button", { type: "button", style: "font:inherit;color:inherit;background:none;border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:1px 6px;margin-left:6px;cursor:pointer;min-height:32px" }, ["Avisar"]);
+          var ba: any = el("button", { type: "button", style: "font:inherit;color:inherit;background:none;border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:1px 10px;margin-left:6px;cursor:pointer;min-height:" + px() + "px;min-width:" + px() + "px" }, ["Avisar"]);
           ba.addEventListener("click", function () { abreAvisar(ids[0], f.alias); });
           hijos.push(bb, ba);
         }
@@ -400,7 +400,7 @@ export function creaCorro(dp: DepsCorro, n?: any, R?: any, P?: any, Vz?: any) {
     });
     while (caja._e.firstChild) caja._e.removeChild(caja._e.firstChild);
     w.enviadas.forEach(function (i?: any) {
-      var r: any = el("button", { type: "button", style: "font:inherit;color:inherit;background:none;border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:1px 6px;margin-left:6px;cursor:pointer;min-height:32px" }, ["Retirar"]);
+      var r: any = el("button", { type: "button", style: "font:inherit;color:inherit;background:none;border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:1px 10px;margin-left:6px;cursor:pointer;min-height:" + px() + "px;min-width:" + px() + "px" }, ["Retirar"]);
       r.addEventListener("click", function () { retiraInv(i.id); });
       caja._e.appendChild(el("li", { style: "margin:3px 0;opacity:0.85" }, [el("span", {}, ["Esperando a " + i.alias + "…"]), r]));
     });

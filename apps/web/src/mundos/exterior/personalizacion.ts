@@ -310,10 +310,10 @@ export function PersonalizaMotor(dp: DepsPersonalizacion, n: T) {
     cierraPanel();
     recuadro = el("div", "position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);padding:12px");
     recuadro.setAttribute("id", "personalizaPanel"); recuadro.setAttribute("role", "dialog"); recuadro.setAttribute("aria-modal", "true"); recuadro.setAttribute("aria-labelledby", "personalizaPanelTitulo");   // L6-12: el diálogo se anuncia con su título
-    caja = el("div", "max-width:440px;width:100%;max-height:92vh;overflow:auto;background:rgba(20,28,24,0.97);color:#f1f4ee;border-radius:12px;padding:16px;font:16px/1.4 system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,0.6)");
+    caja = el("div", "max-width:440px;width:100%;max-height:92vh;overflow:auto;background:rgba(20,28,24,0.97);color:#f1f4ee;border-radius:12px;padding:16px;font:1rem/1.4 system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,0.6)");
     recuadro.appendChild(caja);
     var titulo: T = ({ nombrar: "Nombrar este olivo", foto: "Colgar una foto o un dibujo", decorar: "Decorar este olivo", quitardeco: "Quitar la decoración", quitar: "Quitar lo de este olivo", denunciar: "Denunciar", sugerir: "Sugerir a la oficina" } as T)[que] || "";
-    var h2: T = el("h2", "margin:0 0 10px;font-size:20px", titulo); h2.setAttribute("id", "personalizaPanelTitulo"); caja.appendChild(h2);
+    var h2: T = el("h2", "margin:0 0 10px;font-size:1.25rem", titulo); h2.setAttribute("id", "personalizaPanelTitulo"); caja.appendChild(h2);
     var msg: T = el("p", "margin:8px 0;min-height:1.4em;color:#ffd27a"); msg.setAttribute("role", "status"); msg.setAttribute("aria-live", "polite"); msg.setAttribute("data-msg", "1");
     var fila: T = el("div", "display:flex;gap:8px;flex-wrap:wrap;margin-top:12px");
     var ok: T = el("button", ESTILO_BOTON, "Guardar"), no: T = el("button", ESTILO_BOTON, "Cancelar"); ok.type = no.type = "button"; ok.setAttribute("data-ok", "1"); no.setAttribute("data-cancela", "1");
@@ -342,7 +342,7 @@ export function PersonalizaMotor(dp: DepsPersonalizacion, n: T) {
       var av: T = el("label", "display:flex;gap:10px;align-items:flex-start;margin:10px 0;padding:10px;border-radius:8px;background:rgba(255,210,122,0.12);border:1px solid rgba(255,210,122,0.5)");
       var chk: T = el("input", "min-width:24px;min-height:24px;margin-top:2px"); chk.type = "checkbox"; chk.name = "acepta-olivo"; chk.setAttribute("data-acepta", "1");
       av.appendChild(chk); av.appendChild(el("span", "", P.AVISO + " Marco que lo he leído y que lo cumplo."));
-      caja.appendChild(arch); caja.appendChild(tipo); caja.appendChild(av); caja.appendChild(el("p", "margin:4px 0;font-size:14px;opacity:.85", P.AVISO_PRUEBAS + " La foto se reduce en tu aparato antes de subirla y el servidor le quita la ubicación y los datos de la cámara."));
+      caja.appendChild(arch); caja.appendChild(tipo); caja.appendChild(av); caja.appendChild(el("p", "margin:4px 0;font-size:.875rem;opacity:.85", P.AVISO_PRUEBAS + " La foto se reduce en tu aparato antes de subirla y el servidor le quita la ubicación y los datos de la cámara."));
       ok.textContent = "Subir y colgar"; ok.disabled = true;
       chk.addEventListener("change", function () { ok.disabled = !chk.checked; });
       ok.addEventListener("click", function () {
@@ -433,7 +433,7 @@ export function PersonalizaMotor(dp: DepsPersonalizacion, n: T) {
   }
   function etiqueta(k?: T) {
     if (pool[k]) return pool[k];
-    var e: T = el("div", "position:absolute;left:0;top:0;white-space:nowrap;padding:2px 8px;border-radius:10px;font:600 14px/1.3 system-ui,sans-serif;color:#fff;background:rgba(0,0,0,0.55);text-shadow:0 1px 2px #000;will-change:transform;display:none");
+    var e: T = el("div", "position:absolute;left:0;top:0;white-space:nowrap;padding:2px 8px;border-radius:10px;font:600 .875rem/1.3 system-ui,sans-serif;color:#fff;background:rgba(0,0,0,0.55);text-shadow:0 1px 2px #000;will-change:transform;display:none");
     capa.appendChild(e); pool[k] = e; return e;
   }
   function ocultaRotulos() { for (var k = 0; k < pool.length; k++) pool[k].style.display = "none"; }

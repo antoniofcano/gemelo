@@ -688,28 +688,28 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
   function conMov(fn?: any) { if (typeof dp.Movibles !== "undefined" && dp.Movibles && dp.Movibles.hazMovible) fn(); else setTimeout(function () { if (typeof dp.Movibles !== "undefined" && dp.Movibles && dp.Movibles.hazMovible) fn(); }, 0); }   // el componente se monta con todo cargado (34_movibles.js ya está); si faltara, se espera un turno
   function montaPanel() {
     var boton: any = "font:inherit;color:inherit;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.3);border-radius:8px;padding:4px 10px;min-height:44px;cursor:pointer";
-    var estiloMini: any = "font:inherit;color:inherit;background:none;border:0;min-width:44px;min-height:44px;cursor:pointer;padding:0;font-size:18px";
+    var estiloMini: any = "font:inherit;color:inherit;background:none;border:0;min-width:44px;min-height:44px;cursor:pointer;padding:0;font-size:1.125rem";
     var agarre: any = el("button", { type: "button", className: "agarre", style: estiloMini + ";cursor:grab;color:rgba(255,255,255,0.7)", "aria-label": "Mover el chat: flechas del teclado (Mayús, más deprisa; Inicio, a su sitio)", title: "Arrastra para mover el chat" }, ["⠿"]);
-    var titulo: any = el("strong", { style: "flex:1;font-size:14px" }, ["Chat"]);
+    var titulo: any = el("strong", { style: "flex:1;font-size:.875rem" }, ["Chat"]);
     var llevar: any = el("button", { type: "button", style: estiloMini, "aria-label": "Llevar el chat a…", title: "Llevar a…" }, ["⋯"]);
     var minimiza: any = el("button", { type: "button", style: estiloMini, "aria-label": "Minimizar el chat", title: "Minimizar" }, ["–"]);
     var asa: any = el("div", { className: "asa", style: "display:flex;align-items:center;gap:2px;padding-left:2px;border-bottom:1px solid rgba(255,255,255,0.2);cursor:grab" }, [agarre, titulo, llevar, minimiza]);
     var cuerpo: any = el("div", { style: "flex:1;min-height:0;overflow:auto;padding:0 8px" });
     var estado: any = el("p", { style: "margin:6px 0;color:#ffd58a", role: "status" });
     var reentra: any = el("button", { type: "button", style: boton, hidden: true }, ["Volver a entrar"]);
-    var gTitulo: any = el("h3", { style: "margin:6px 0 0;font-size:13px" }, ["Gente"]);
+    var gTitulo: any = el("h3", { style: "margin:6px 0 0;font-size:.8125rem" }, ["Gente"]);
     var listaG: any = el("ul", { style: "list-style:none;margin:4px 0;padding:0;max-height:22vh;overflow:auto" });
     var gSeccion: any = el("div", { id: "presenciaListaGente" }, [gTitulo, listaG]);
     var chat: any = el("ol", { style: "list-style:none;margin:6px 0;padding:0", "aria-live": "polite", "aria-label": "Chat de la visita" });
     var entrada: any = el("input", { type: "text", maxLength: Chat.MAX, name: "chat-visita", autocomplete: "off", placeholder: "Escribe a la visita", "aria-label": "Mensaje para la visita (no se guarda)", style: "flex:1;min-width:0;font:inherit;min-height:44px;padding:0 8px;border-radius:8px;border:1px solid rgba(255,255,255,0.3);background:rgba(0,0,0,0.3);color:inherit" });
     var forma: any = el("form", { style: "display:flex;gap:6px;padding:6px 8px 0" }, [entrada, el("button", { type: "submit", style: boton }, ["Enviar"])]);
-    var nota: any = el("p", { style: "margin:4px 0;padding:0 8px;opacity:0.7;font-size:11px" }, ["Visita libre: sin voz. El chat no se guarda."]);
+    var nota: any = el("p", { style: "margin:4px 0;padding:0 8px;opacity:0.7;font-size:.6875rem" }, ["Visita libre: sin voz. El chat no se guarda."]);
     var ventanaG: any = document.getElementById("ventanaGente");
     cuerpo.appendChild(estado); cuerpo.appendChild(reentra); if (!ventanaG) cuerpo.appendChild(gSeccion); cuerpo.appendChild(chat);
     if (ventanaG) ventanaG.appendChild(gSeccion);
-    var raiz: any = el("section", { id: "presenciaGente", "aria-label": "Chat y gente de la visita", style: "position:absolute;left:12px;bottom:12px;z-index:30;width:min(300px,calc(100% - 24px));height:min(320px,46%);display:flex;flex-direction:column;overflow:hidden;border-radius:12px;background:rgba(16,20,24,0.88);color:#fff;font:13px/1.35 system-ui,sans-serif;box-sizing:border-box" }, [asa, cuerpo, forma, nota]);
-    var cont: any = el("span", { style: "position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;padding:0 4px;box-sizing:border-box;border-radius:10px;background:#e5484d;color:#fff;font-size:12px;line-height:20px;text-align:center", hidden: true });
-    var burbuja: any = el("button", { type: "button", id: "presenciaBurbuja", style: "position:absolute;left:12px;bottom:12px;z-index:30;width:56px;height:56px;padding:0;border-radius:50%;border:1px solid rgba(255,255,255,0.3);background:rgba(16,20,24,0.88);color:#fff;font-size:24px;cursor:grab;display:grid;place-items:center", hidden: true }, ["💬", cont]);
+    var raiz: any = el("section", { id: "presenciaGente", "aria-label": "Chat y gente de la visita", style: "position:absolute;left:12px;bottom:12px;z-index:30;width:min(300px,calc(100% - 24px));height:min(320px,46%);display:flex;flex-direction:column;overflow:hidden;border-radius:12px;background:rgba(16,20,24,0.88);color:#fff;font:.8125rem/1.35 system-ui,sans-serif;box-sizing:border-box" }, [asa, cuerpo, forma, nota]);
+    var cont: any = el("span", { style: "position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;padding:0 4px;box-sizing:border-box;border-radius:10px;background:#e5484d;color:#fff;font-size:.75rem;line-height:20px;text-align:center", hidden: true });
+    var burbuja: any = el("button", { type: "button", id: "presenciaBurbuja", style: "position:absolute;left:12px;bottom:12px;z-index:30;width:56px;height:56px;padding:0;border-radius:50%;border:1px solid rgba(255,255,255,0.3);background:rgba(16,20,24,0.88);color:#fff;font-size:1.5rem;cursor:grab;display:grid;place-items:center", hidden: true }, ["💬", cont]);
     reentra.addEventListener("click", function () { conecta(); });
     entrada.addEventListener("keydown", function (e?: any) { e.stopPropagation(); if (e.key === "Escape") { ponChat("minimo"); burbuja.focus(); } });   // al escribir, las pulsaciones no mueven al paseante; Esc minimiza
     minimiza.addEventListener("click", function () { ponChat("minimo"); burbuja.focus(); });
