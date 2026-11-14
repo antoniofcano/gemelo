@@ -68,8 +68,7 @@ function arranca(): void {
     imagen: function () { return new Image() as any; },
     trae: function (u) { return fetch(u); },
     cola: function () { return typeof ColaExt !== "undefined" ? ColaExt : null; },   // 02b_cola se monta después: se pregunta al llegar cada tesela
-    exag: function () { return typeof Estado !== "undefined" ? Estado.exag : 1; },   // L8-08: la cota de la tesela se exagera como la cámara
-    consola: console
+    exag: function () { return typeof Estado !== "undefined" ? Estado.exag : 1; } /* L8-08 */, consola: console
   });
   var suelo = Mundo.suelo, copaAlta = Mundo.copaAlta, colorSuelo = Mundo.colorSuelo, orto = Mundo.orto;
 
@@ -388,8 +387,7 @@ function arranca(): void {
   var Generados = Mundos.creaGenerados({
     THREE: THREE, D: D, VRP: VRP, Aparato: Aparato, Config: Config, Materiales: Materiales, gArboles: gArboles, camera: camera, Estado: Estado, suelo: suelo,
     factorR8Gen: function () { return FactorR8.E.gen; }, factorCopaDeConfig: factorCopaDeConfig, parcheTiempo: function (sh, viento) { parcheTiempo(sh, viento); }, tiempoTsl: function () { return typeof nodosTiempoTsl === "function" ? nodosTiempoTsl : null; },   // A3-4: los nodos del tiempo (15_tiempo) para la TSL apagada
-    busqueda: location.search, reloj: performance, consola: console, ventana: typeof window !== "undefined" ? window : null,
-    ahoraMs: function () { return typeof ahoraMs === "function" ? ahoraMs() : Date.now(); },   // L8-06: el reloj del mundo (Tiempo.ahoraMs, se monta después)
+    busqueda: location.search, reloj: performance, consola: console, ventana: typeof window !== "undefined" ? window : null, ahoraMs: function () { return typeof ahoraMs === "function" ? ahoraMs() : Date.now(); } /* L8-06: el reloj del mundo, que se monta después */,
     cargaConstructor: function () { return typeof window !== "undefined" && window.OlivoGen ? Promise.resolve(window.OlivoGen) : import("gemelo-olivo"); },
     renderer: function () { return typeof renderer !== "undefined" ? renderer : null; },
     scene: function () { return typeof scene !== "undefined" ? scene : null; },
@@ -417,8 +415,7 @@ function arranca(): void {
     THREE: THREE, FACTOR_R8: FactorR8.E.r8, busqueda: location.search, Aparato: Aparato, Config: Config, Mundo: Mundo, Cola: Cola, ColaExt: ColaExt, CargaPuro: CargaPuro, XrPerillas: XrPerillas,
     VrControlPuro: VrControlPuro, InfoDibujo: InfoDibujo, Estaticos: Estaticos, TopeTilesPuro: TopeTilesPuro, TopeOlivos: TopeOlivos, OlivosTiles: OlivosTiles, Catalogo: Catalogo,
     Escalera: Escalera, Generados: Generados, Lejanos: Lejanos, renderer: renderer, camera: camera, Estado: Estado, suelo: suelo, copaAlta: copaAlta, aviva: aviva, hash: hash, copas: copas,
-    desfase: function (h, out) { TinteOrto.desfase(h, out); },   // L3-01: el color de los niveles 1 y 2 lleva el mismo desfase que el de la copa
-    ALTO_MAX: ALTO_MAX, gArboles: gArboles, arbolesG: arbolesG, follajeG: follajeG, construyeSombras: construyeSombras, ventana: window, ahora: function () { return performance.now(); },
+    desfase: function (h, out) { TinteOrto.desfase(h, out); } /* L3-01 */, ALTO_MAX: ALTO_MAX, gArboles: gArboles, arbolesG: arbolesG, follajeG: follajeG, construyeSombras: construyeSombras, ventana: window, ahora: function () { return performance.now(); },
     get paseando() { return typeof Paseo !== "undefined" ? Paseo.E.paseando : false; }, get kcor() { return TinteOrto.E.kcor; }, get tinte() { return TinteOrto.E.tinte; }, get ndviIdx() { return typeof FechaNdvi !== "undefined" ? FechaNdvi.E.idx : 0; },
     get objetivo() { return typeof objetivo !== "undefined" ? objetivo : null; }, get orb() { return typeof orb !== "undefined" ? orb : null; }, get pp() { return typeof pp !== "undefined" ? pp : null; },
     get VRX() { return typeof VRX !== "undefined" ? VRX : null; }, get Ajustes() { return typeof Ajustes !== "undefined" ? Ajustes : undefined; }
