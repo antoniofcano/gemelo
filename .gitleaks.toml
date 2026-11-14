@@ -1,0 +1,16 @@
+# gitleaks (L9-08): las reglas de siempre de gitleaks y UNA excepción acotada, sin desactivar ninguna regla.
+# El workflow de la puerta (.github/workflows/puerta.yml) lo pasa por TODO el historial; lo vigila pruebas/guardianes/ci_gitleaks.test.js.
+title = "gemelo"
+
+[extend]
+useDefault = true
+
+# El único falso positivo conocido (MU0-4, decisión 222): el secreto SINTÉTICO de las pruebas de los avisos por correo, que en su primera versión
+# iba escrito de una pieza («secreto-de-prueba-» dos veces y unas cifras). Solo en ese fichero y solo esa forma: cualquier otro valor allí, o esa
+# forma en otro fichero, sigue saltando.
+[[allowlists]]
+description = "secreto sintético de apps/api/pruebas/unidad/avisos_correo.test.ts"
+condition = "AND"
+paths = ['''^apps/api/pruebas/unidad/avisos_correo\.test\.ts$''']
+regexTarget = "line"
+regexes = ['''"(?:secreto-de-prueba-){2}0123456789"''']

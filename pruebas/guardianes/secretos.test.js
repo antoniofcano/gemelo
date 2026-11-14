@@ -131,15 +131,23 @@ const EXPLOTACION = [
   // con puntos o espacios de millares; un múltiplo de 1.000 m (la comarca) no se marca. Los sintéticos van del km 4.180 en adelante
   ["coordenada UTM norte de la zona, con precisión de metro", new RegExp("\\b41" + "(?:6[5-9]|7\\d)(?!000\\b)\\d{3}(?:\\.\\d+)?\\b")],
   ["coordenada UTM norte de la zona, con separadores de millares", new RegExp("\\b4[.\\s]1" + "(?:6[5-9]|7\\d)[.\\s](?!000\\b)\\d{3}(?:,\\d+)?\\b")],
+  // L9-08 (remate): la franja ESTE de la zona (E entre los km 405 y 429 del huso 30: un rango de comarca, no un valor) con precisión de metro; un múltiplo
+  // de 1.000 m no se marca, ni un color (#4…), ni un decimal ni un trozo de otro número. Los sintéticos usan 400000 (y 400100), 430000 y 500000, fuera de la franja.
+  // Con separadores de millares solo tras una etiqueta de este (E, X, este): «412.345» a secas es demasiado parecido a una medida con decimales
+  ["coordenada UTM este de la zona, con precisión de metro", new RegExp("(?<![#\\w.,-])4" + "(?:0[5-9]|[12]\\d)(?!000\\b)\\d{3}(?:\\.\\d+)?\\b")],
+  ["coordenada UTM este de la zona, con separadores de millares", new RegExp("\\b(?:E|X|este)\\s*[:=≈]\\s*4" + "(?:0[5-9]|[12]\\d)[.\\s](?!000\\b)\\d{3}(?:,\\d+)?\\b", "i")],
   ["latitud y longitud con más precisión que la comarca", new RegExp("\\b3[78]\\.\\d{2,}\\s*[,;]\\s*(?:LON\\s*=\\s*)?[-−]\\s?[34]\\.\\d{2,}")],
   ["latitud asignada con más precisión que la comarca", new RegExp("\\b(?:LAT|lat|fi)\\s*=\\s*3[78]\\.\\d{2,}")],
 ];
 
 test("los patrones de datos de la explotación reconocen lo que deben y no lo sintético", () => {
   const debe = ["pol" + "ígono-12-parcela-345", "Pol" + ". 12 Parc. 345", "[40" + "0000, 41" + "77123]", "37" + ".731, -4.006", "LAT = 37" + ".73, LON = -4.006", "fi = 37" + ".73 * Math.PI",
-    "N = 4." + "172.345", "centro [41" + "68321.5]", "4 1" + "71 234"];   // L9-08: la zona en rango, con y sin separadores (valores inventados)
+    "N = 4." + "172.345", "centro [41" + "68321.5]", "4 1" + "71 234",   // L9-08: la zona en rango, con y sin separadores (valores inventados)
+    "centro_utm: [4" + "17345, 4100000]", "E = 4" + "06789.25", "x: 4" + "29001", "E = 4" + "13.582", "este: 4" + "21 007"];   // L9-08: el este de la zona (inventados)
   const no = ["loma-(polígono-9-parcela-8)", "centro_utm: [500000, 4100000]", "const CX = 430000, CY = 4180000;", "LAT = 37.7, LON = -4.0", "poligono de la parcela", "4100150",
-    "4180020.25", "4.180.096", "N ≈ 4.178.000 (la comarca)", "4194304", "41" + "70000"];
+    "4180020.25", "4.180.096", "N ≈ 4.178.000 (la comarca)", "4194304", "41" + "70000",
+    "x: 400100", "E 400010,04", "E = 430000", "[400000, 4100000]", "E ≈ 4" + "12.000 (la comarca)", "4" + "15000", "background: \"#4" + "06020\"", "0.4" + "12345", "1.4" + "12345 m",
+    "el lote 4" + "123456", "tardó 4" + "12.345 ms"];
   for (const s of debe) assert.ok(EXPLOTACION.some(([, re]) => re.test(s)), "debería marcarse: " + s);
   for (const s of no) assert.ok(!EXPLOTACION.some(([, re]) => re.test(s)), "no debería marcarse: " + s);
 });

@@ -41,6 +41,8 @@
         { "fichero": "pruebas/guardianes/secretos.test.js", "test": "sin enlaces ni ids de artefactos privados en lo versionado" },
         { "fichero": "pruebas/guardianes/secretos.test.js", "test": "sin ids internos de OlivarTrack en lo versionado" },
         { "fichero": "pruebas/guardianes/secretos.test.js", "test": "sin referencias de parcela ni coordenadas exactas de las fincas en lo versionado" },
+        { "fichero": "pruebas/guardianes/ci_gitleaks.test.js", "test": "el workflow de la puerta clona el historial completo y pasa gitleaks por él" },
+        { "fichero": "pruebas/guardianes/ci_gitleaks.test.js", "test": ".gitleaks.toml usa las reglas de gitleaks sin apagar ninguna" },
         { "fichero": "pruebas/guardianes/higiene.test.js", "test": "sin rutas locales de usuario (el repo es público)" },
         { "fichero": "pruebas/guardianes/higiene.test.js", "test": "sin correos electrónicos (salvo los permitidos)" }
       ],

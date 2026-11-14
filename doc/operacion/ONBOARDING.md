@@ -23,7 +23,7 @@
 | 5 | Contratos: el fixture cumple los esquemas (ajv), las interfaces devuelven los miembros declarados y la derivación de qué usa cada paso del arranque de otro solo mira el código (A3-8c: antes, las cabeceras «Expone / Consume» de `apps/web/motor/`) | `contratos.test.js` |
 | 6 | Build de las dos fincas desde el fixture (índice + `t/` + tileset) con Vite («[cerro\|hituelo] el build con tileset…», «[hituelo] sin tileset…», «la caché de páginas…») | `build.test.js` |
 | 7 | Carga en Chrome headless: 0 errores de consola y presupuesto de dibujo bajo `pruebas/presupuesto.json` | `carga.test.js` |
-| 8 | Sin secretos, ni datos de la explotación, ni ficheros pesados versionados | `secretos.test.js` |
+| 8 | Sin secretos, ni datos de la explotación, ni ficheros pesados versionados (y, en CI, gitleaks por todo el historial) | `secretos.test.js`, `ci_gitleaks.test.js` |
 | 9 | VR: sin WebXR no hay botón ni errores; con el mock, la prueba completa (**opcional**, `GEMELO_VR=1`) | `vr.test.js` |
 | 10 | Cliente web: la entrada de Vite es la concatenación exacta, three con versión exacta ≥ 0.167 y los trozos de sombreador que parchea el motor existen, y la página empaquetada carga sin errores, lleva la three de `apps/web` y solo pide a su mismo origen | `web.test.js` |
 | 11 | Exportadores multiplataforma: ninguna ruta con separador `\` escrito a mano en `tuberia/**/*.py` (se arman con `os.path.join`) | `multiplataforma.test.js` |

@@ -15,6 +15,21 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # el historial completo: gitleaks lo mira entero (L9-08)
+      # L9-08: secretos en TODO el historial (el repo es público), con las reglas de gitleaks y la excepción acotada de .gitleaks.toml.
+      # Versión fijada y comprobada contra la suma de su publicación. Lo vigila pruebas/guardianes/ci_gitleaks.test.js
+      - name: gitleaks (todo el historial)
+        env:
+          GITLEAKS_VERSION: 8.30.1
+        run: |
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+          tar="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfL -o "$RUNNER_TEMP/$tar" "$base/$tar"
+          curl -sSfL -o "$RUNNER_TEMP/sumas.txt" "$base/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          (cd "$RUNNER_TEMP" && grep " $tar\$" sumas.txt | sha256sum -c -)
+          tar -xzf "$RUNNER_TEMP/$tar" -C "$RUNNER_TEMP" gitleaks
+          "$RUNNER_TEMP/gitleaks" git --config .gitleaks.toml --redact --no-banner --exit-code 1 .
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
