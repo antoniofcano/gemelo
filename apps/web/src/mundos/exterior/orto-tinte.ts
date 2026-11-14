@@ -24,8 +24,11 @@ export function creaTinteOrto(d: DepsTinteOrto) {
   function aviva(c3: number[], x?: number, y?: number): void {
     for (var i = 0; i < 3; i++) c3[i] = Math.min(1, 0.8 * c3[i]! * 1.35 + 0.2 * PLATA[i]!);
     if (E.tinte && x !== undefined) {   // el tono de la copa sigue al NDVI de su zona; la luz y la sombra del follaje se conservan
-      var lum = (c3[0]! + c3[1]! + c3[2]!) / 3, t = d.ndviRel(x, y as number), r = d.rampa(t), mezcla = 0.78, f = 0.45 + 0.9 * lum;
-      for (var k = 0; k < 3; k++) c3[k] = Math.min(1, c3[k]! * (1 - mezcla) + r[k]! * f * mezcla);
+      var lum = (c3[0]! + c3[1]! + c3[2]!) / 3, t = d.ndviRel(x, y as number), mezcla = 0.78, f = 0.45 + 0.9 * lum;
+      if (isFinite(t)) {   // L3-19: sin NDVI en ese punto (NaN) la copa se queda con su color de la ortofoto, no con un vigor inventado
+        var r = d.rampa(t);
+        for (var k = 0; k < 3; k++) c3[k] = Math.min(1, c3[k]! * (1 - mezcla) + r[k]! * f * mezcla);
+      }
     }
   }
   function colorEn(x: number, y: number, h: number, out: number[]): void { d.orto(x + desp(h), y + E.kcor * 0.2 * Math.min(h / 2, 1), out); }
