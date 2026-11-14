@@ -182,10 +182,13 @@ test("el plazo (decisión 164): la función de la base borra solo la auditoría 
   const yaToca = corteAuditoriaVoz(new Date()) >= new Date("2026-10-01T00:00:00Z");
   assert.equal(await purgaAuditoriaVoz(bd.app, new Date("2027-10-05T12:00:00Z")), yaToca ? 3 : 0);
   assert.equal(await cuenta("guiada.cerrada", "2026-06-01", "2026-06-02"), yaToca ? 0 : 1);
-  // A-11: una fila de voz de hoy no la borra ni un corte del año 2100 que pase la api
+  // A-11: una fila de voz de hoy no la borra ni un corte del año 2100 que pase la api (las pruebas anteriores de este fichero ya dejan alguna de hoy:
+  // se cuentan antes y se espera una más, no una sola)
+  const deHoy = async () => Number((await bd.dueno.query<{ n: string }>("SELECT count(*) AS n FROM auditoria WHERE accion = 'guiada.palabra_dada' AND cuando > now() - interval '1 day'")).rows[0]!.n);
+  const antesHoy = await deHoy();
   await pon("guiada.palabra_dada", new Date().toISOString());
   assert.equal(Number((await bd.app.query<{ n: number }>("SELECT purga_auditoria_voz('2100-01-01') AS n")).rows[0]!.n), 0, "el corte se acota al del plazo");
-  assert.equal(Number((await bd.dueno.query<{ n: string }>("SELECT count(*) AS n FROM auditoria WHERE accion = 'guiada.palabra_dada' AND cuando > now() - interval '1 day'")).rows[0]!.n), 1);
+  assert.equal(await deHoy(), antesHoy + 1, "la de hoy sigue (y las de hoy de antes, también)");
   // gemelo_api sigue sin poder borrar de la auditoría a mano
   await assert.rejects(bd.app.query("DELETE FROM auditoria WHERE accion = 'enlace.pedido'"), /permission denied|permiso denegado/i);
   // ni la función acepta a quien no es gemelo_api (PUBLIC sin EXECUTE) — el rol dueño, sí

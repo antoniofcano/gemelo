@@ -60,6 +60,10 @@ body { background: #0b0d0a; color: var(--fg); font-family: var(--body); font-siz
 .hud-estado { position: absolute; top: calc(var(--sa-t) + 10px); left: calc(var(--sa-l) + 10px); display: flex; flex-direction: column; gap: 6px; align-items: flex-start; max-width: calc(100% - 20px); }
 /* L6-05: la voz (la palabra, el micro y el corro) en su sitio, bajo «lo tuyo»; la columna va por encima de la palanca y de los flotantes (z 22) y por debajo de ventanas y fichas */
 .hud-estado { z-index: 23; }
+/* la columna es ancha (hasta 100% - 20px) y está por encima de la barra de la derecha: su hueco vacío no se come los toques de «⋯» ni de la barra en
+   pantallas estrechas (en 360 px tapaba #bMas desde L6-05); solo sus piezas los reciben, como en .hud-abajo */
+.hud-estado { pointer-events: none; }
+.hud-estado > * { pointer-events: auto; }
 .hud-voz { display: grid; gap: 6px; width: min(320px, calc(100vw - 20px)); }
 .hud-voz:empty { display: none; }
 .hud-fila { display: flex; gap: 6px; align-items: center; position: relative; flex-wrap: wrap; }

@@ -22,7 +22,7 @@ before(async () => {
   if (SALTO) return;
   bd = await levantaBd();
   for (const [c, rol] of [[ADMIN, "admin"], [OFI, "oficina"], [ANA, "hogar"], [LUIS, "hogar"]] as const) {
-    ids[c] = Number((await bd.dueno.query<{ id: number }>("INSERT INTO hogares (correo, rol, alias, normas_version) VALUES ($1, $2, $3, 1) RETURNING id", [c, rol, "Gc" + rol + c.length])).rows[0]!.id);
+    ids[c] = Number((await bd.dueno.query<{ id: number }>("INSERT INTO hogares (correo, rol, alias, normas_version, normas_aceptadas_en) VALUES ($1, $2, $3, 1, now()) RETURNING id", [c, rol, "Gc" + rol + c.length])).rows[0]!.id);
   }
   for (const codigo of ["GC-01", "GC-02", "GC-03"]) {
     await bd.dueno.query("INSERT INTO hazas (codigo, nombre, finca, geom) VALUES ($1, $1, 'hituelo', ST_Multi(ST_GeomFromText('POLYGON((0 0,10 0,10 10,0 10,0 0))', 25830)))", [codigo]);
@@ -32,7 +32,7 @@ before(async () => {
   await app.ready();
 }, { timeout: 240_000 });
 
-after(async () => { if (!SALTO) { await app.close(); await bd.cierra(); } });
+after(async () => { if (!SALTO) { await app?.close(); await bd?.cierra(); } });   // si before falló a medias, cerrar lo que se abrió (sin dejar el contenedor)
 
 const ip = () => "198.51.100." + (++ipN % 250);
 const salta = (t: { skip: (m: string) => void }) => { if (SALTO) { t.skip(SALTO); return true; } return false; };

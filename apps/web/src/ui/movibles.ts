@@ -216,6 +216,10 @@ export function creaMovibles(dp: DepsMovibles) {
     }
     escucha(window, "resize", pronto); escucha(window, "orientationchange", pronto);
     if (typeof MutationObserver !== "undefined" && typeof dp.visor !== "undefined" && dp.visor) sol.observa(new MutationObserver(pronto)).observe(dp.visor, { attributes: true });   // la maniobra (la cruceta aparece) cambia las clases del visor
+    // L6-05: la columna del estado crece hacia abajo cuando entra la caja de la voz en #hudVoz (la palabra, el micro, el corro): el chat o el mapa que quede
+    // debajo se aparta (si no, el chat abierto abajo a la izquierda tapaba «Hablar» del corro: corro_dev, 2026-11-14)
+    var estado: T = document.getElementById ? document.getElementById("hudEstado") : null;
+    if (typeof MutationObserver !== "undefined" && estado) sol.observa(new MutationObserver(pronto)).observe(estado, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden"] });
     // A3-7a: libera() suelta lo apuntado (escuchas, observador, menús), cancela el fotograma y el aviso pendientes, saca el aviso y las zonas y olvida el registro
     function libera() {
       sol.suelta(); if (cola) { cancelAnimationFrame(cola); cola = 0; } clearTimeout(tAvisa); muestraZonas(null, false);

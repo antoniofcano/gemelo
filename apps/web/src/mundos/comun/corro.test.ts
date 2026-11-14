@@ -150,6 +150,19 @@ describe("creaCorro: componente de todo mundo con libera() de verdad (A3-6b)", (
     expect(m.voz.corro).toBe(false); expect(m.voz.salidas).toBe(antes + 1);   // antes se quedaba en la sala del corro sin el componente que la sacara
   });
 
+  it("al salir del corro, un sondeo con el POST de salir aún en vuelo no vuelve a meter la voz en la sala (la recreaba vacía en LiveKit: corro_dev)", async () => {
+    const m = monta();
+    await espera(); m.voz.entra!(true); await espera();
+    m.voz.entra = null;
+    m.srv.retener = true; m.gancho("sale", "salir");   // sale de la sala de voz y manda el POST, que queda en vuelo
+    expect(m.voz.corro).toBe(false);
+    m.api.tarde(60); await espera();   // un sondeo en ese hueco: la api aún le cuenta en el corro
+    expect(m.voz.entra).toBeNull();   // antes: Voz.entraCorro otra vez
+    m.srv.retener = false; m.srv.corro = null; m.srv.retenidas.splice(0).forEach(f => f()); await espera();
+    expect(m.voz.corro).toBe(false); expect(m.voz.entra).toBeNull();
+    m.libera();
+  });
+
   it("hallazgo A3-6b: en VR, lo que contesta la api después de liberarlo no abre una lámina que ya nadie cierra", async () => {
     const m = monta({ vr: true });
     await espera(); m.voz.entra!(true); await espera();

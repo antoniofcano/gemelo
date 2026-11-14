@@ -86,7 +86,9 @@ test("e2e: la voz de una visita guiada en dos Chrome con micrófono simulado (pe
         await ctx.addInitScript(() => { window.__habla = []; });
         const pg = await ctx.newPage(), errores = [];
         pg.on("pageerror", e => errores.push(String(e).slice(0, 300)));
-        pg.on("console", m => { if (m.type() === "error") errores.push(m.text().slice(0, 300)); });
+        // como corro_dev, guiada_dev y voz_guiada_dev: el 404 de un recurso no es un error de la voz (sin GEMELO_DEV_INTERIORES, el portón del exterior pide el
+        // mundo.json de cada interior y da 404, que es lo documentado en DESARROLLO-LOCAL); los fallos de la página siguen contando (pageerror y el resto de la consola)
+        pg.on("console", m => { if (m.type() === "error" && !/Failed to load resource/.test(m.text())) errores.push(m.text().slice(0, 300)); });
         await pg.goto(base + "/finca/?guiada=" + ev);
         await pg.waitForFunction(() => window.__g && window.__g.listo() && window.__voz, null, { timeout: 300000, polling: 1000 });
         const voz = (accion, arg) => pg.evaluate(([a, x]) => Promise.resolve(window.__voz(a, x)), [accion, arg]);

@@ -152,8 +152,12 @@ test("reenviar el enlace; sesiones abiertas con su aparato; cerrar una y todas",
   // las de una cuenta de oficina: solo admin (o la propia)
   const sesOfi = (await bd.dueno.query<{ id: number }>("SELECT id FROM sesiones WHERE hogar_id = $1 AND revocada_en IS NULL LIMIT 1", [ids[ADMIN]])).rows[0]!.id;
   assert.equal((await pide("DELETE", "/api/admin/sesiones/" + sesOfi, ofi.sesion)).statusCode, 403);
-  const adm = await pide("GET", "/api/admin/hogares/" + ids[ADMIN] + "/sesiones", ofi.sesion);
-  assert.equal(adm.statusCode, 200); assert.equal((adm.json().aparatos_oficina as unknown[]).length, 1, "ven sus aparatos");
+  // A-10 (auditoría de la api, 2026-11-14): verlas tampoco (antes la oficina veía las sesiones y aparatos de un admin)
+  assert.equal((await pide("GET", "/api/admin/hogares/" + ids[ADMIN] + "/sesiones", ofi.sesion)).statusCode, 403, "la oficina no ve las de un admin");
+  for (const [quien, de] of [[admin, ADMIN], [ofi, OFI], [admin, OFI]] as const) {
+    const r2 = await pide("GET", "/api/admin/hogares/" + ids[de] + "/sesiones", quien.sesion);
+    assert.equal(r2.statusCode, 200, de + ": " + r2.body); assert.equal((r2.json().aparatos_oficina as unknown[]).length, 1, "se ven sus aparatos (la propia, o el admin las de otra)");
+  }
 });
 
 test("asignar haza: se suelta la anterior de esa familia y se avisa de a quién se la quitó", async t => {

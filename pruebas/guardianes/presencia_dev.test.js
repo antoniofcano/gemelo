@@ -21,6 +21,7 @@ const { spawnSync, spawn, execFile } = require("child_process");
 const { pathToFileURL } = require("url");
 const { RAIZ, lee, path } = require("./_util");
 const { motivoSalto, lanza } = require("./_navegador");
+const { familiaNueva, borraFamilias } = require("./_familias_dev");
 
 const HERR = path.join(RAIZ, "infra", "dev", "herramientas");
 const SIN_DOCKER = (() => {
@@ -62,12 +63,14 @@ test("e2e: presencia con LiveKit real (dos Chrome, mismo hogar en dos aparatos, 
       await bd.connect();
       const lkSdk = require(path.join(HERR, "node_modules", "livekit-server-sdk"));
       const rs = new lkSdk.RoomServiceClient("http://127.0.0.1:" + p.livekit, process.env.GEMELO_DEV_LIVEKIT_CLAVE, process.env.GEMELO_DEV_LIVEKIT_SECRETO);
-      const yo = HOGARES[0], vecino = HOGARES[1], mirlo = HOGARES[2], OFICINA = "oficina.p4@example.com";
+      // «yo» es la familia a la que expulsa la oficina: propia y NUEVA en cada pasada (_familias_dev.js). La expulsión queda en la auditoría y la api la
+      // reconstruye al arrancar durante 15 min; con la Abubilla de la siembra (HOGARES[0]), las e2e siguientes que la usan (voz_dev, guiada_dev) la encontraban expulsada
+      const yo = { correo: "expulsada.p4@example.com", alias: "Expulsada P4" }, vecino = HOGARES[1], mirlo = HOGARES[2], OFICINA = "oficina.p4@example.com";
       let idYo, nav;
       try { if (!SOLO_CARGA) {   // GEMELO_P4_SOLO_CARGA=1: solo la carga (para repetirla con otro N sin los navegadores)
         // una cuenta de la oficina (rol admin) para expulsar; sintética, como los hogares de prueba (@example.com)
         await bd.query("INSERT INTO hogares (correo, rol, alias, alias_visible, activo) VALUES ($1, 'admin', 'Oficina', false, true) ON CONFLICT (correo) DO UPDATE SET rol = 'admin', activo = true", [OFICINA]);
-        idYo = Number((await bd.query("SELECT id FROM hogares WHERE correo = $1", [yo.correo])).rows[0].id);
+        idYo = await familiaNueva(bd, yo.correo, { alias: yo.alias });
 
         // una sesión por el camino de verdad: enlace mágico → buzón (Mailpit) → POST /api/auth/entrar → cookie
         const vistos = new Set();
@@ -354,6 +357,7 @@ test("e2e: presencia con LiveKit real (dos Chrome, mismo hogar en dos aparatos, 
         });
       } } finally {
         if (nav) await nav.close();
+        if (idYo) await borraFamilias(bd, [yo.correo]).catch(e => t.diagnostic("no se pudo borrar la familia expulsada: " + e.message));
         await bd.end().catch(() => {});
       }
 

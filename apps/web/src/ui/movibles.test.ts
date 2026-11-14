@@ -29,6 +29,13 @@ describe("ventanas flotantes", () => {
     M.revisa(); M.libera();
     expect(m.escuchas()).toBe(0); expect(m.observadores()).toBe(0); expect(menu.parentNode).toBe(null); expect(m.relojes()).toBe(0);
   });
+  it("L6-05: con la columna del estado (#hudEstado) en la página, también la observa (entra la caja de la voz → se aparta el chat); libera() la suelta", () => {
+    m = creaMundo();
+    const visor = m.el("div", "visor"), estado = m.el("div", "hudEstado"); m.documento.body.appendChild(visor); visor.appendChild(estado);
+    const M = creaMovibles({ visor, Hud: { zonasProhibidas: () => [], aviso: () => undefined }, ventana: m.ventana, documento: m.documento });
+    expect(m.observadores()).toBe(2);   // el visor y la columna del estado
+    M.libera(); expect(m.observadores()).toBe(0);
+  });
   it("un cambio de tamaño pide una revisión en el fotograma siguiente; libera() la cancela", () => {
     const { M, m } = monta();
     m.ventana.dispatchEvent({ type: "resize" }); expect(m.relojes()).toBe(1);

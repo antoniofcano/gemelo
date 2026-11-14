@@ -25,11 +25,11 @@ export interface DepsReingreso {
   /** el prefijo opaco del hogar en las salas (prefijoHogar) */
   prefijo: (hogar: number) => string;
   /** expulsados de la visita compartida (rutas.ts): fuera de TODAS las salas del mundo */
-  expulsados: { vivos(ahora?: number): number[] };
+  expulsados: { vivos(ahora?: number): number[]; /** lo está sacando ahora la ruta que expulsa: esta pasada no lo toca */ enCursoDe?(hogar: number): boolean };
   /** las salas donde mirar: las fijas, las guiadas abiertas y las de los corros */
   salas: () => Promise<string[]>;
   /** expulsados de una guiada (voz_rutas.ts): fuera de `guiada-<evento>` */
-  guiada?: { vivos(ahora?: number): { evento: number; hogar: number }[] };
+  guiada?: { vivos(ahora?: number): { evento: number; hogar: number }[]; enCursoDe?(evento: number, hogar: number): boolean };
   ahora?: () => number;
   /** L9-06: un fallo de LiveKit en una sala se apunta aquí y la pasada sigue con las demás */
   log?: RegistroCentinela;
@@ -40,7 +40,9 @@ export interface DepsReingreso {
 /** Una pasada: vuelve a sacar a los expulsados que estén dentro. Devuelve cuántas conexiones sacó (0 = nadie había vuelto). */
 export async function vuelveAExpulsar(d: DepsReingreso): Promise<number> {
   const ahora = (d.ahora ?? Date.now)();
-  const generales = d.expulsados.vivos(ahora), deGuiada = d.guiada ? d.guiada.vivos(ahora) : [];
+  // quien la ruta está sacando en este momento se deja para la pasada siguiente: su RemoveParticipant (y su recuento) son los de la ruta
+  const generales = d.expulsados.vivos(ahora).filter(h => !d.expulsados.enCursoDe?.(h));
+  const deGuiada = d.guiada ? d.guiada.vivos(ahora).filter(x => !d.guiada!.enCursoDe?.(x.evento, x.hogar)) : [];
   if (!generales.length && !deGuiada.length) return 0;   // lo normal: nadie expulsado, ninguna llamada a LiveKit
   let n = 0;
   // L9-06: cada sala por su cuenta: un error de LiveKit (que no sea el 404 de «la sala no existe», que expulsaHogar ya da por 0) en una sala se apunta
