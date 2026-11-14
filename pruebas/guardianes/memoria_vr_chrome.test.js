@@ -1,20 +1,27 @@
 "use strict";
 // AG-P1 (posible fuga al entrar y salir de VR, PLAN P4): la medida en el navegador. Con el WebXR simulado (pruebas/mock_xr.js) se entra y se sale de VR N veces
 // (GEMELO_VR_CICLOS, 10 por defecto) y se mide renderer.info.memory.{geometries,textures} y performance.memory.usedJSHeapSize (Chrome con
-// --enable-precise-memory-info, ya en ARGS_CHROME) en cuatro puntos: antes de la primera sesión (línea base), tras la PRIMERA sesión (calentamiento: las fábricas de
-// modelos de mandos se importan una vez, las teselas siguen llegando) y tras la última. Lo que se afirma es que entre el calentamiento y la última no crece
-// (geometrías y texturas dentro de un margen por el streaming de teselas; el heap, dentro de un margen por el GC) y que al salir los mandos no dejan nada apuntado.
-// Opcional (GEMELO_VR=1), como el resto de las pruebas con el mock: con SwiftShader la página puede caerse («Target crashed», PLAN P4). SwiftShader vale para
-// recuentos y memoria, no para fps; nada de esto se ha probado en unas Quest (no probado). Las cifras van a la consola; es una medida, no un tope del presupuesto.
-// Lanzarla (por el banco, un Chrome a la vez):  GEMELO_VR=1 node --test pruebas/guardianes/memoria_vr_chrome.test.js
+// --enable-precise-memory-info, ya en ARGS_CHROME) antes de la primera sesión (línea base), tras las DOS primeras (calentamiento), tras cada una de las siguientes
+// y tras la última. Lo que se afirma es que entre el calentamiento y la última no crece (geometrías y texturas dentro de MARGEN_GPU en total; el heap, dentro de un
+// margen por el GC) y que al salir los mandos no dejan nada apuntado.
+// L2-06 (MU0-5, 2026-11-14): el goteo de AG-P1b (~3 geometrías y ~1 textura por sesión, 2026-11-04) YA NO ESTÁ con el código de hoy (las liberaciones de
+// mundos/comun/vr-sesion.ts y mandos.ts, A3-6c): medido por el banco, de la 2ª a la 10ª sesión 67 geometrías / 23 texturas en todas. Lo que sube una vez entre la 1ª
+// y la 2ª (≈ +10 geometrías y +11 texturas, de 57/12 a 67/23) NO es goteo: el inventario (abajo) lo sitúa en la subida a la tarjeta al dibujar (WebGLGeometries.get
+// y setTexture2D desde renderBufferDirect): geometrías, texturas de datos y ortofotos que la vista de VR dibuja por primera vez y que se reutilizan después (no
+// cuelgan de la escena al salir porque el rig y las láminas se descuelgan, sin soltarse, para la sesión siguiente). Por eso el calentamiento son dos sesiones.
+// Ya no es `todo` ni opcional: corre en la puerta (≈ 1 min); con SwiftShader la página puede caerse («Page crashed»: firma de pruebas/banco/inestables.json, un
+// reintento). SwiftShader vale para recuentos y memoria, no para fps; nada de esto se ha probado en unas Quest (no probado).
+// Diagnóstico: GEMELO_VR_PILA=1 añade al inventario las líneas de la pila de quien subió cada recurso que queda vivo.
+// Lanzarla suelta (por el banco, un Chrome a la vez; lanza() pide el turno):  node --test pruebas/guardianes/memoria_vr_chrome.test.js
 const test = require("node:test"), { describe, before } = test, assert = require("node:assert");
 const { lee, fs } = require("./_util");
 const { sirve, motivoSalto, lanza } = require("./_navegador");
 const { montaPagina, saltoPagina } = require("./_pagina");
 
 const SALTO = motivoSalto("la memoria al entrar y salir de VR") || saltoPagina("la memoria al entrar y salir de VR");
-const CICLOS = Math.max(2, Number(process.env.GEMELO_VR_CICLOS || 10));
-const MARGEN_GPU = Number(process.env.GEMELO_VR_MARGEN_GPU || 8);   // geometrías/texturas que pueden aparecer por teselas que llegan entre el calentamiento y el final
+const CICLOS = Math.max(3, Number(process.env.GEMELO_VR_CICLOS || 10));
+const CALIENTA = 2;   // sesiones de calentamiento (ver arriba: la 2ª sube por primera vez lo que la vista de VR dibuja)
+const MARGEN_GPU = Number(process.env.GEMELO_VR_MARGEN_GPU || 3);   // geometrías/texturas que pueden aparecer en total tras el calentamiento (medido: 0); con 8 sesiones, un goteo de ≥ 0,5 por sesión salta
 const MARGEN_HEAP_MB = Number(process.env.GEMELO_VR_MARGEN_HEAP || 40);
 let nav, srv, url, preparado = null;
 const prepara = () => preparado || (preparado = (async () => {
@@ -26,10 +33,8 @@ test.after(async () => { if (nav) await nav.close(); if (srv) srv.close(); });
 describe("memoria al entrar y salir de VR (WebXR simulado)", () => {
   before(async () => { if (!SALTO) await prepara(); });
 
-  // todo (AG-P1b, 2026-11-04): medido un goteo de ~3 geometrías y ~1 textura por sesión de VR, que YA estaba en producción (4f90ae0: 88 → 127 geometrías en 9 sesiones; main: 74 → 99). Informa sin tumbar la puerta hasta arreglarlo
-  test("diez sesiones seguidas no hacen crecer geometrías, texturas ni heap más allá del margen", { timeout: 900000, todo: "AG-P1b: goteo preexistente de geometrías y texturas por sesión de VR" }, async t => {
+  test("diez sesiones seguidas no hacen crecer geometrías, texturas ni heap más allá del margen (L2-06)", { timeout: 900000 }, async t => {
     if (SALTO) return t.skip(SALTO);
-    if (!process.env.GEMELO_VR) return t.skip("opcional: define GEMELO_VR=1 (WebXR simulado; inestable con SwiftShader, ver PLAN P4)");
     const p = await nav.newPage({ viewport: { width: 450, height: 325 } }), errores = [];
     await p.addInitScript({ content: lee("pruebas/mock_xr.js") });
     p.on("pageerror", e => errores.push("PAGEERROR " + String(e.stack || e).slice(0, 300)));
@@ -53,13 +58,40 @@ describe("memoria al entrar y salir de VR (WebXR simulado)", () => {
     try {
       await p.goto(url + "?debug&hora=12:00");
       await p.waitForFunction(() => window.__g && window.__g.listo() && window.__vrDebug, null, { timeout: 120000, polling: 500 });
+      // el inventario de la GPU (como guiada_interior_dev): three, al subir una geometría o una textura, le pone una escucha «dispose» y se la quita al soltarla;
+      // se engancha el addEventListener/removeEventListener del prototipo común (EventDispatcher) y se apunta qué es, dónde cuelga y quién la subió
+      await p.evaluate(() => {
+        let pr = Object.getPrototypeOf(window.__g.scene); while (pr && !Object.prototype.hasOwnProperty.call(pr, "addEventListener")) pr = Object.getPrototypeOf(pr);
+        const vivas = new Map(), add = pr.addEventListener, rem = pr.removeEventListener;
+        const clase = o => o.isBufferGeometry ? "geo " + o.type : o.isTexture ? "tex " + (o.isRenderTargetTexture ? "rt" : o.isCanvasTexture ? "canvas" : o.isDataTexture ? "data" : o.isCompressedTexture ? "comprimida" : "img") + (o.name ? " " + o.name : "") : null;
+        pr.addEventListener = function (t, f) {
+          const c = t === "dispose" && clase(this);
+          if (c && !vivas.has(this.uuid)) vivas.set(this.uuid, { c, pila: String(new Error().stack).split("\n").slice(2, 9).map(s => s.trim().replace(/https?:\/\/[^/]+/, "").slice(0, 110)).join(" < ") });
+          return add.call(this, t, f);
+        };
+        pr.removeEventListener = function (t, f) { if (t === "dispose" && vivas.has(this.uuid)) vivas.delete(this.uuid); return rem.call(this, t, f); };
+        const donde = () => {
+          const r = new Map(), ruta = o => { const n = []; for (let q = o; q && n.length < 6; q = q.parent) n.push(q.name || q.type); return n.reverse().join("/"); };
+          window.__g.scene.traverse(o => {
+            if (o.geometry) r.set(o.geometry.uuid, ruta(o) + (o.visible ? "" : " (oculto)"));
+            for (const mt of [].concat(o.material || [])) for (const k in mt) { const t = mt[k]; if (t && t.isTexture) r.set(t.uuid, ruta(o) + " ." + k); }
+          });
+          return r;
+        };
+        window.__invGeo = { foto: () => [...vivas.keys()], nuevas: (antes, conPila) => { const a = new Set(antes), d = donde(), m = {}; for (const [k, v] of vivas) if (!a.has(k)) { const c = v.c + " @ " + (d.get(k) || "fuera de la escena") + (conPila ? " ← " + v.pila : ""); m[c] = (m[c] || 0) + 1; } return m; } };
+      });
       const base = await quieta();
-      await sesion(); const calen = await quieta();
-      for (let i = 1; i < CICLOS; i++) await sesion();
-      const fin = await quieta();
+      await sesion(); const tras1 = await quieta();
+      await sesion(); const calen = await quieta(), fotoCalen = await p.evaluate(() => window.__invGeo.foto());
+      if (process.env.GEMELO_VR_PILA) await p.evaluate(() => { window.__invPila = true; });   // diagnóstico: con quién la subió (las líneas de la pila)
+      const serie = [];
+      for (let i = CALIENTA; i < CICLOS; i++) { await sesion(); const m = await mem(); serie.push(m.geo + "/" + m.tex); }
+      console.log("   geometrías/texturas tras cada sesión (" + (CALIENTA + 1) + "ª…): " + serie.join(" "));
+      const fin = await quieta(), nuevas = await p.evaluate(a => window.__invGeo.nuevas(a, !!window.__invPila), fotoCalen);
+      console.log("   vivas tras la última sesión que no estaban tras la " + CALIENTA + "ª (qué · dónde cuelga): " + JSON.stringify(nuevas, null, 1));
       const n = await p.evaluate(() => window.__vrDebug().sesionesN);
-      console.log("   memoria VR (" + n + " sesiones): base " + JSON.stringify(base) + " · tras la 1ª " + JSON.stringify(calen) + " · tras la última " + JSON.stringify(fin));
-      console.log("   Δ(última − 1ª): geometrías " + (fin.geo - calen.geo) + ", texturas " + (fin.tex - calen.tex) + ", heap " + (fin.heapMB - calen.heapMB).toFixed(1) + " MB");
+      console.log("   memoria VR (" + n + " sesiones): base " + JSON.stringify(base) + " · tras la 1ª " + JSON.stringify(tras1) + " · tras la " + CALIENTA + "ª " + JSON.stringify(calen) + " · tras la última " + JSON.stringify(fin));
+      console.log("   Δ(última − " + CALIENTA + "ª): geometrías " + (fin.geo - calen.geo) + ", texturas " + (fin.tex - calen.tex) + ", heap " + (fin.heapMB - calen.heapMB).toFixed(1) + " MB");
       assert.strictEqual(n, CICLOS, "se hicieron " + CICLOS + " sesiones");
       assert.ok(fin.geo - calen.geo <= MARGEN_GPU, "geometrías: " + calen.geo + " → " + fin.geo);
       assert.ok(fin.tex - calen.tex <= MARGEN_GPU, "texturas: " + calen.tex + " → " + fin.tex);
