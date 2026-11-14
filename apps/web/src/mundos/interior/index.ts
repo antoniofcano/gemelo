@@ -26,6 +26,13 @@
 // a la vez la luz difusa y los brillos (un LightProbe más el entorno sumaría dos veces la difusa: lights_fragment_end suma iblIrradiance), y salen del
 // tone mapping como los unlit (su luz ya viene «revelada» como la horneada). Sin luz, o con modo «base», todo como en v1.
 // Las máquinas (v1.2, maquinas[]): maquinas.ts (lo puro en maquinas-puro.ts); actualiza(dt) las mueve.
+// El glb comprimido (v1.3, ADR-0035): lee() mira las extensiones del glb (InteriorPuro.extensionesGlb) y, SOLO si las usa, pide los decodificadores
+// (deps.decodificadores: import() escritos en el arranque, como el GLTFLoader): EXT_meshopt_compression → el MeshoptDecoder de three (un módulo con su
+// WebAssembly dentro, sin workers ni peticiones); KHR_texture_basisu → un KTX2Loader con el transcodificador Basis del mismo origen (<página>/basis/,
+// el del suelo de fotos; CSP: 'wasm-unsafe-eval' y worker-src blob:) y detectSupport(renderer), que elige el formato de la tarjeta (ETC2 o ASTC en el
+// Quest, BC7 en escritorio). El KTX2Loader se suelta (dispose: sus workers y su blob:) en cuanto el glb está leído y con sus mapas de luz, también si
+// falla o se cancela: no queda nada vivo entre visitas. Las texturas comprimidas siguen el mismo camino que las otras (la luz aparte las clona igual,
+// las correas desplazan el clon, suelta() hace dispose). Sin decodificadores en deps, un glb comprimido no entra y lo dice.
 // three no trae tipos en el repo: lo que se usa va como tipos mínimos estructurales (como mundos/vacio.ts y nucleo/ambiente.ts).
 import type { MundoInterior } from "../../datos/contratos/mundo-interior.ts";
 import type { Ambiente, LuzAmbiente } from "../../nucleo/ambiente.ts";
@@ -58,8 +65,25 @@ export interface ParserGltf {
   associations: Map<unknown, { materials?: number }>;
   getDependency(tipo: "texture", i: number): Promise<(Textura3D & { clone(): Textura3D }) | null>;
 }
-/** El GLTFLoader de three: parseAsync(ArrayBuffer, ruta) */
-export interface CargadorGltf { parseAsync(datos: ArrayBuffer, ruta: string): Promise<{ scene: Nodo3D; animations?: unknown[]; parser?: ParserGltf }> }
+/** El GLTFLoader de three: parseAsync(ArrayBuffer, ruta); con un glb comprimido (v1.3), sus decodificadores */
+export interface CargadorGltf {
+  parseAsync(datos: ArrayBuffer, ruta: string): Promise<{ scene: Nodo3D; animations?: unknown[]; parser?: ParserGltf }>;
+  setMeshoptDecoder?(d: unknown): unknown;
+  setKTX2Loader?(k: CargadorKtx2): unknown;
+}
+/** El KTX2Loader de three: ruta del transcodificador, workers, a qué formato de la tarjeta (detectSupport con el renderer) y dispose */
+export interface CargadorKtx2 { setTranscoderPath(r: string): CargadorKtx2; setWorkerLimit(n: number): CargadorKtx2; detectSupport(renderer: unknown): CargadorKtx2; dispose(): void }
+/** v1.3: los decodificadores de un glb comprimido, que el motor solo descarga si el glb los usa */
+export interface DecodificadoresInterior {
+  /** import("three/addons/libs/meshopt_decoder.module.js") */
+  meshopt(): Promise<{ MeshoptDecoder: { ready?: Promise<unknown> } }>;
+  /** import("three/addons/loaders/KTX2Loader.js") */
+  ktx2(): Promise<{ KTX2Loader: new () => CargadorKtx2 }>;
+  /** el renderer (detectSupport: a qué formato de la tarjeta se transcodifica) */
+  renderer: unknown;
+  /** la carpeta del transcodificador Basis (basis_transcoder.js y .wasm), del mismo origen: «basis/» (vite.config.js, RUTA_BASIS) */
+  ruta: string;
+}
 /** el entorno de las piezas con luz propia, hecho con la sonda (PMREM): su textura y cómo soltarlo */
 export interface EntornoInterior { textura: Textura3D; dispose(): void }
 /** fetch, reducido */
@@ -102,6 +126,10 @@ export interface DepsInterior {
   entorno?(sonda: number[]): EntornoInterior | null;
   /** ¿pide el sistema reducir el movimiento? (prefers-reduced-motion: las máquinas entran paradas) */
   reducido?(): boolean;
+  /** v1.3: los decodificadores de un glb comprimido (meshopt, KTX2); sin ellos, un glb comprimido no entra */
+  decodificadores?: DecodificadoresInterior | null;
+  /** reloj en ms (performance.now), para contar lo que tarda leer el glb (con su descompresión); sin él, 0 */
+  ahora?(): number;
 }
 
 /** MUNDOS §4: el fondo de un interior (lo que se ve por un hueco o sobre el patio abierto) [SUPUESTO: a ojo, un cielo claro y neutro] */
@@ -124,6 +152,8 @@ export interface EstadoInterior {
   luz: { modo: "base" | "mapa"; mapas: number; propia: number; entorno: boolean };
   /** v1.2: las máquinas (null sin ellas) */
   maquinas: ReturnType<Maquinas["estado"]> | null;
+  /** v1.3: si el glb venía comprimido (meshopt, KTX2), cuántos KTX2Loader siguen vivos (0 tras leer) y los ms de leerlo (parse, descompresión y mapas de luz) */
+  comprimido: { meshopt: boolean; ktx2: boolean; cargadoresKtx2: number; msLectura: number };
 }
 
 function texturasDe(m: Material3D, en: Set<Textura3D>): void {
@@ -140,7 +170,7 @@ export function creaInterior(deps: DepsInterior): MundoBase & {
   let man: MundoInterior | null = null, raiz: Nodo3D | null = null, zonas: Zonas | null = null, puertas: PuertaPose[] = [], vigia: ReturnType<typeof P.creaVigia> | null = null;
   let luces: Array<LuzAmbiente & { dispose?(): void }> | null = null, colgado = false, liberado = false;
   const inertes = new Set<string>();   // las puertas a un mundo que no existe ya avisadas en esta visita (hasta alejarse: el vigía las rearma)
-  const est: EstadoInterior = { id, perfil: null, ruta: null, nombre: null, fuente: null, triangulos: 0, llamadas: 0, materiales: 0, texturas: 0, sinLuz: 0, conColor: 0, recorte: 0, colgado: false, liberado: false, precargado: false, visita: null, luz: { modo: "base", mapas: 0, propia: 0, entorno: false }, maquinas: null };
+  const est: EstadoInterior = { id, perfil: null, ruta: null, nombre: null, fuente: null, triangulos: 0, llamadas: 0, materiales: 0, texturas: 0, sinLuz: 0, conColor: 0, recorte: 0, colgado: false, liberado: false, precargado: false, visita: null, luz: { modo: "base", mapas: 0, propia: 0, entorno: false }, maquinas: null, comprimido: { meshopt: false, ktx2: false, cargadoresKtx2: 0, msLectura: 0 } };
   let visita: Visita | null = null, maquinas: Maquinas | null = null, entorno: EntornoInterior | null = null;
   const conEntorno = new Set<Material3D>();
 
@@ -159,11 +189,36 @@ export function creaInterior(deps: DepsInterior): MundoBase & {
     if (!rg.ok) throw new Error("«" + id + "»: " + ruta + mi.glb + " dio " + rg.status);
     const [datos, lib] = await Promise.all([rg.arrayBuffer(), deps.cargaGltf()]);
     if (ctx.senal.aborted) throw new Error("«" + id + "»: carga cancelada");
-    const gltf = await new lib.GLTFLoader().parseAsync(datos, ruta);
-    if (ctx.senal.aborted || liberado) { suelta(gltf.scene); throw new Error("«" + id + "»: carga cancelada"); }
-    if (mi.luz && mi.luz.modo === "mapa" && gltf.parser) await mapasDeLuz(gltf.parser, gltf.scene, num(mi.luz.escala) ? mi.luz.escala : 1);
-    if (ctx.senal.aborted || liberado) { suelta(gltf.scene); throw new Error("«" + id + "»: carga cancelada"); }
-    return { perfil, ruta, mi, escena: gltf.scene };
+    const ext = P.extensionesGlb(datos), pide = P.decodificadores(ext ? ext.usadas : []);
+    est.comprimido.meshopt = pide.meshopt; est.comprimido.ktx2 = pide.ktx2;
+    const cargador = new lib.GLTFLoader(), dec = deps.decodificadores || null;
+    if ((pide.meshopt || pide.ktx2) && !dec) throw new Error("«" + id + "»: el glb viene comprimido (" + [pide.meshopt ? "meshopt" : "", pide.ktx2 ? "KTX2" : ""].filter(Boolean).join(", ") + ") y el motor no tiene sus decodificadores");
+    let ktx2: CargadorKtx2 | null = null;
+    const t0 = deps.ahora ? deps.ahora() : 0;
+    try {
+      if (dec && pide.meshopt) {
+        const { MeshoptDecoder } = await dec.meshopt();
+        if (MeshoptDecoder.ready) await MeshoptDecoder.ready;
+        if (cargador.setMeshoptDecoder) cargador.setMeshoptDecoder(MeshoptDecoder);
+      }
+      if (dec && pide.ktx2) {
+        const { KTX2Loader } = await dec.ktx2();
+        ktx2 = new KTX2Loader().setTranscoderPath(dec.ruta).setWorkerLimit(2).detectSupport(dec.renderer);
+        est.comprimido.cargadoresKtx2++;
+        if (cargador.setKTX2Loader) cargador.setKTX2Loader(ktx2);
+      }
+      if (ctx.senal.aborted || liberado) throw new Error("«" + id + "»: carga cancelada");
+      const gltf = await cargador.parseAsync(datos, ruta);
+      if (ctx.senal.aborted || liberado) { suelta(gltf.scene); throw new Error("«" + id + "»: carga cancelada"); }
+      // la luz aparte pide aquí sus texturas (los materiales unlit no las cargan): con KTX2, aún con el KTX2Loader vivo
+      if (mi.luz && mi.luz.modo === "mapa" && gltf.parser) await mapasDeLuz(gltf.parser, gltf.scene, num(mi.luz.escala) ? mi.luz.escala : 1);
+      if (ctx.senal.aborted || liberado) { suelta(gltf.scene); throw new Error("«" + id + "»: carga cancelada"); }
+      est.comprimido.msLectura = deps.ahora ? Math.round(deps.ahora() - t0) : 0;
+      return { perfil, ruta, mi, escena: gltf.scene };
+    } finally {
+      // el KTX2Loader no se guarda: sus texturas ya están hechas y sus workers (y su blob:) sobran
+      if (ktx2) { ktx2.dispose(); est.comprimido.cargadoresKtx2--; }
+    }
   }
 
   // la luz aparte: el occlusionTexture de cada material unlit, de lightMap (ver la cabecera). Un clon por índice de textura (lo comparten los materiales
@@ -362,7 +417,7 @@ export function creaInterior(deps: DepsInterior): MundoBase & {
       if (!luces) luces = deps.luz && !liberado && !entorno ? [deps.luz("ambiental", LUZ_INTERIOR.color, LUZ_INTERIOR.intensidad)] : [];
       return { cielo: "ninguno", fondo: FONDO_INTERIOR, niebla: null, luces, camara: { near: CAMARA_INTERIOR.near, far: CAMARA_INTERIOR.far }, exag: 1 };
     },
-    estado(): EstadoInterior { return { ...est, luz: { ...est.luz }, visita: visita ? visita.estado() : null, maquinas: maquinas ? maquinas.estado() : null }; },
+    estado(): EstadoInterior { return { ...est, luz: { ...est.luz }, comprimido: { ...est.comprimido }, visita: visita ? visita.estado() : null, maquinas: maquinas ? maquinas.estado() : null }; },
     /** v1.1: la visita (para las pruebas: __interiorVisita) */
     visita: (): Visita | null => visita,
     /** v1.2: las máquinas (para las pruebas y ?debug: __maquinas) */

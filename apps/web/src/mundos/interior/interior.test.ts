@@ -6,12 +6,15 @@ import { creaCola, creaColaDeMundo } from "../../nucleo/cola.ts";
 import { ComponentesPuro } from "../../nucleo/componentes.ts";
 import type { ContextoBase, IdMundo, Pose2, Puerta } from "../../nucleo/mundos.ts";
 import { creaInterior, FONDO_INTERIOR } from "./index.ts";
-import { cableaInteriores, mundoDeUrl, urlConMundo } from "./cableado.ts";
+import { cableaInteriores, mundoDeUrl, RUTA_BASIS, urlConMundo } from "./cableado.ts";
+import { InteriorPuro } from "./puro.ts";
 import type { DepsInterior, Material3D, Nodo3D, Textura3D } from "./index.ts";
 import type { MundoInterior } from "../../datos/contratos/mundo-interior.ts";
 
 /** el código del mundo interior, sin las pruebas (Vite: import.meta.glob ?raw) */
 const fuentes = import.meta.glob(["./*.ts", "!./*.test.ts"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+/** el arranque, para ver qué import() escribe (v1.3: los decodificadores) */
+const fuentesArranque = (): string => Object.values(import.meta.glob("../../arranque.ts", { query: "?raw", import: "default", eager: true }) as Record<string, string>)[0]!;
 
 const MAN: MundoInterior = {
   v: 1, id: "patios", nombre: "Patios (sintético)", fuente: "ilustrativo", licencia: { spdx: "CC0-1.0", autor: "prueba", atribucion: "" }, glb: "patios.glb", unidades: "m", arriba: "+Y",
@@ -365,5 +368,92 @@ describe("creaInterior: la luz aparte y las máquinas (v1.2)", () => {
     const { b } = bancoLuz({ maquinas: [{ ...MAQ[0], velocidad: undefined }] });
     await b.carga(); b.w.entra(null, null);
     expect(b.w.estado()).toMatchObject({ colgado: true, maquinas: null });
+  });
+});
+
+describe("creaInterior: el glb comprimido (v1.3, ADR-0035)", () => {
+  /** un glb mínimo: la cabecera y el trozo JSON con esas extensiones (lo único que el motor mira antes de leerlo) */
+  function glbCon(usadas: string[]): ArrayBuffer {
+    const j = new TextEncoder().encode(JSON.stringify({ asset: { version: "2.0" }, extensionsUsed: usadas, extensionsRequired: usadas }));
+    const pad = (4 - (j.length % 4)) % 4, n = 20 + j.length + pad, b = new ArrayBuffer(n), dv = new DataView(b);
+    dv.setUint32(0, 0x46546c67, true); dv.setUint32(4, 2, true); dv.setUint32(8, n, true); dv.setUint32(12, j.length + pad, true); dv.setUint32(16, 0x4e4f534a, true);
+    new Uint8Array(b, 20).set(j); new Uint8Array(b, 20 + j.length, pad).fill(0x20);
+    return b;
+  }
+  /** el banco de siempre con ese glb, un GLTFLoader que apunta lo que le ponen y unos decodificadores que cuentan */
+  function conGlb(usadas: string[], o: { sinDecodificadores?: boolean; fallaParse?: boolean } = {}) {
+    const b = banco(), cuenta = { meshopt: 0, ktx2: 0, cargadores: 0, sueltos: 0, ruta: "", soporte: null as unknown, ponMeshopt: 0, ponKtx2: 0 };
+    const datos = glbCon(usadas), renderer = { soy: "renderer" }, base = b.deps.descarga;
+    b.deps.descarga = async (url, i) => (url.endsWith(".glb") ? { ok: true, status: 200, json: async () => null, arrayBuffer: async () => datos } : base(url, i));
+    b.deps.cargaGltf = async () => ({ GLTFLoader: class {
+      setMeshoptDecoder() { cuenta.ponMeshopt++; return this; }
+      setKTX2Loader() { cuenta.ponKtx2++; return this; }
+      async parseAsync() { if (o.fallaParse) throw new Error("glb roto"); return { scene: b.g.escena }; }
+    } });
+    class KTX2Falso {
+      constructor() { cuenta.cargadores++; }
+      setTranscoderPath(r: string) { cuenta.ruta = r; return this; }
+      setWorkerLimit() { return this; }
+      detectSupport(r: unknown) { cuenta.soporte = r; return this; }
+      dispose() { cuenta.sueltos++; }
+    }
+    b.deps.decodificadores = o.sinDecodificadores ? null : {
+      meshopt: async () => { cuenta.meshopt++; return { MeshoptDecoder: { ready: Promise.resolve() } }; },
+      ktx2: async () => { cuenta.ktx2++; return { KTX2Loader: KTX2Falso }; },
+      renderer, ruta: "basis/",
+    };
+    return { ...b, cuenta, renderer };
+  }
+
+  it("lee las extensiones del trozo JSON del glb; lo que no es un glb da null", () => {
+    expect(InteriorPuro.extensionesGlb(glbCon(["KHR_materials_unlit", "EXT_meshopt_compression"]))).toEqual({ usadas: ["KHR_materials_unlit", "EXT_meshopt_compression"], requeridas: ["KHR_materials_unlit", "EXT_meshopt_compression"] });
+    expect(InteriorPuro.extensionesGlb(new ArrayBuffer(8))).toBeNull();
+    expect(InteriorPuro.extensionesGlb(new TextEncoder().encode("{\"no\": \"es un glb\", \"de verdad\": 1}").buffer as ArrayBuffer)).toBeNull();
+    expect(InteriorPuro.decodificadores(["KHR_texture_basisu"])).toEqual({ meshopt: false, ktx2: true });
+  });
+
+  it("un glb sin comprimir no descarga ningún decodificador", async () => {
+    const b = conGlb(["KHR_materials_unlit"]);
+    await b.carga();
+    expect(b.cuenta).toMatchObject({ meshopt: 0, ktx2: 0, cargadores: 0, ponMeshopt: 0, ponKtx2: 0 });
+    expect(b.w.estado().comprimido).toMatchObject({ meshopt: false, ktx2: false, cargadoresKtx2: 0 });
+  });
+
+  it("con meshopt y KTX2: pide los dos, se los pone al GLTFLoader (KTX2 con el transcodificador del mismo origen y el renderer) y suelta el KTX2Loader al acabar de leer", async () => {
+    const b = conGlb(["KHR_materials_unlit", "EXT_meshopt_compression", "KHR_mesh_quantization", "KHR_texture_basisu"]);
+    await b.carga();
+    expect(b.cuenta).toMatchObject({ meshopt: 1, ktx2: 1, cargadores: 1, sueltos: 1, ruta: "basis/", ponMeshopt: 1, ponKtx2: 1 });
+    expect(b.cuenta.soporte).toBe(b.renderer);
+    expect(b.w.estado().comprimido).toMatchObject({ meshopt: true, ktx2: true, cargadoresKtx2: 0 });
+    b.w.libera();
+    expect(b.cuenta.sueltos).toBe(1);
+  });
+
+  it("solo meshopt: no crea KTX2Loader", async () => {
+    const b = conGlb(["EXT_meshopt_compression"]);
+    await b.carga();
+    expect(b.cuenta).toMatchObject({ meshopt: 1, ktx2: 0, cargadores: 0, ponMeshopt: 1, ponKtx2: 0 });
+  });
+
+  it("si el glb no se puede leer, el KTX2Loader se suelta igual; sin decodificadores, un glb comprimido no entra y lo dice", async () => {
+    const roto = conGlb(["KHR_texture_basisu"], { fallaParse: true });
+    await expect(roto.carga()).rejects.toThrow(/glb roto/);
+    expect(roto.cuenta).toMatchObject({ cargadores: 1, sueltos: 1 });
+    expect(roto.w.estado().comprimido.cargadoresKtx2).toBe(0);
+    const sin = conGlb(["EXT_meshopt_compression", "KHR_texture_basisu"], { sinDecodificadores: true });
+    await expect(sin.carga()).rejects.toThrow(/comprimido \(meshopt, KTX2\).*decodificadores/);
+  });
+
+  it("el cableado da los decodificadores con la carpeta «basis/» (la que copia vite.config.js) y el renderer; sin sus import(), ninguno", () => {
+    expect(RUTA_BASIS).toBe("basis/");
+    const renderer = { soy: "renderer" }, meshopt = async () => ({ MeshoptDecoder: {} }), ktx2 = async () => ({ KTX2Loader: class {} as any });
+    const base = { gm: { registra() {}, cambia: async () => ({ ok: true }) as any, fichaDe: () => "sin_registrar" }, ids: ["fabrica"] as IdMundo[], D: { base: "" }, THREE: {}, scene: {}, renderer,
+      Aparato: { clase: () => "escritorio" }, VRX: { on: false }, vrAparece() {}, pose: { lee: () => ({ x: 0, y: 0, ang: 0 }), pon() {} }, Paseo: { E: { paseando: false, primera: false }, entraPaseo() {} }, TR: { act: false },
+      Hud: () => null, modulo: async () => ({ creaInterior }), cargaGltf: async () => ({ GLTFLoader: class {} as any }), ventana: { fetch: async () => ({ ok: false, status: 404 }) } as any, consola: null };
+    expect(cableaInteriores({ ...base, cargaMeshopt: meshopt, cargaKtx2: ktx2 }).deps("fabrica").decodificadores).toEqual({ meshopt, ktx2, renderer, ruta: "basis/" });
+    expect(cableaInteriores({ ...base, ventana: { fetch: async () => ({ ok: false, status: 404 }) } as any }).deps("fabrica").decodificadores).toBeNull();
+    const arranque = fuentesArranque();
+    expect(arranque).toMatch(/cargaMeshopt: function \(\) \{ return import\("three\/addons\/libs\/meshopt_decoder\.module\.js"\); \}/);
+    expect(arranque).toMatch(/cargaKtx2: function \(\) \{ return import\("three\/addons\/loaders\/KTX2Loader\.js"\); \}, ventana/);
   });
 });

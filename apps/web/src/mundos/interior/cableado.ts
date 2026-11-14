@@ -12,11 +12,13 @@
 //   · la puerta del cortijo (porton.ts): el componente «porton-cortijo» del exterior, y al entrar y salir de un interior, el quad aparcado y el dron;
 //   · la visita del museo (visita.ts, v1.1): lo de la UI que necesita (THREE, el documento, el panel de VR y cómo abrirlo en la pestaña «Mundo»);
 //   · la luz aparte (v1.2): el entorno de las piezas con luz propia, hecho con la sonda (entornoDeSonda: SphericalHarmonics3 de three en un
-//     equirectangular pequeño y PMREMGenerator), y si el sistema pide reducir el movimiento (las máquinas entran paradas).
+//     equirectangular pequeño y PMREMGenerator), y si el sistema pide reducir el movimiento (las máquinas entran paradas);
+//   · el glb comprimido (v1.3, ADR-0035): los import() del decodificador de meshopt y del KTX2Loader (escritos en el arranque, como el del GLTFLoader:
+//     Vite los trocea y solo se descargan si un glb los usa), el renderer y la carpeta del transcodificador Basis (la del suelo de fotos).
 import type { Manifiesto } from "../../nucleo/componentes.ts";
 import type { IdMundo, Pose2, Puerta, ResultadoCambio } from "../../nucleo/mundos.ts";
 import type { T } from "../comun/tipos.ts";
-import type { creaInterior, DepsInterior } from "./index.ts";
+import type { creaInterior, DecodificadoresInterior, DepsInterior } from "./index.ts";
 import { creaPortones, manifiestoPortones } from "./porton.ts";
 import type { DepsPortones, VidaPortones } from "./porton.ts";
 
@@ -36,6 +38,9 @@ export interface DepsCableaInteriores {
   /** import("./mundos/interior/index.ts") y import("three/addons/loaders/GLTFLoader.js"), escritos en el arranque */
   modulo(): Promise<{ creaInterior: typeof creaInterior }>;
   cargaGltf: DepsInterior["cargaGltf"];
+  /** v1.3: import("three/addons/libs/meshopt_decoder.module.js") e import("three/addons/loaders/KTX2Loader.js"); sin ellos, un glb comprimido no entra */
+  cargaMeshopt?: DecodificadoresInterior["meshopt"];
+  cargaKtx2?: DecodificadoresInterior["ktx2"];
   ventana: { fetch: DepsInterior["descarga"] } & Record<string, unknown>;
   consola?: { error(...a: unknown[]): void; warn(...a: unknown[]): void } | null;
   /** eje B, la puerta del cortijo (porton.ts): sin Componentes no hay puerta en el exterior (las pruebas del cableado no la montan) */
@@ -46,6 +51,9 @@ export interface DepsCableaInteriores {
   PanelVR?: (NonNullable<DepsPortones["PanelVR"]> & { tapa?(fn: () => boolean): () => void; repinta?(): void; abierto?(): boolean; conmutaPanel?(): void }) | null;
   Materiales?: T; suelo?(x: number, y: number): number; Estado?: { exag: number };
 }
+
+/** v1.3: la carpeta del transcodificador Basis junto a la página (la copia vite.config.js, RUTA_BASIS; la misma que usa el suelo de fotos) */
+export const RUTA_BASIS = "basis/";
 
 /** ?mundo=<id> (y nada más): el id, o null. «exterior» no cuenta (es donde se arranca). */
 export function mundoDeUrl(busqueda: string): string | null {
@@ -152,6 +160,8 @@ export function cableaInteriores(d: DepsCableaInteriores) {
       consola: d.consola || null,
       visita: documento ? { THREE: d.THREE, documento, PanelVR: d.PanelVR || null, abrePanel } : null,
       entorno: sonda => entornoDeSonda(d.THREE, d.renderer, sonda),
+      decodificadores: d.cargaMeshopt && d.cargaKtx2 ? { meshopt: d.cargaMeshopt, ktx2: d.cargaKtx2, renderer: d.renderer, ruta: RUTA_BASIS } : null,
+      ahora: () => (typeof performance !== "undefined" ? performance.now() : Date.now()),
       reducido: () => { const mm = d.ventana.matchMedia as ((q: string) => { matches: boolean }) | undefined; try { return !!(mm && mm.call(d.ventana, "(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; } },
     };
   }
