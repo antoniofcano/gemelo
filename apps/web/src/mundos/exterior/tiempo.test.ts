@@ -46,8 +46,10 @@ function temporizador() {
   const vivos = new Map<number, () => void>(); let n = 0;
   return { vivos, setInterval(fn: () => void) { vivos.set(++n, fn); return n; }, clearInterval(id: A) { vivos.delete(id); } };
 }
+/** la cámara de las pruebas, lejos del blanco de la órbita (el origen): L8-01 */
+const CAMARA = { x: 400, y: 52, z: 250 };
 const IDS = ["tEstado", "tEst", "tPrev", "tMomento", "tMomentoV", "tAhora", "tResumen", "tControl", "tDemo", "tPlay", "tLeer", "tVerMundo", "tFlecha", "tInsT", "tIns", "tLinea"];
-function monta(o: { T?: A; api?: A; prueba?: A; estimado?: () => boolean; F?: A } = {}) {
+function monta(o: { T?: A; api?: A; prueba?: A; estimado?: () => boolean; F?: A; paseando?: () => boolean } = {}) {
   const T = o.T || THREE, els: Record<string, A> = {}; IDS.forEach(id => { els[id] = elemento(); });
   const F = o.F || creaMateriales({ THREE: T as unknown as ThreeMin, busqueda: "" });
   const tema: A[] = [], bus: Record<string, A[]> = {}, tm = temporizador(), emitidos: string[] = [];
@@ -57,11 +59,11 @@ function monta(o: { T?: A; api?: A; prueba?: A; estimado?: () => boolean; F?: A 
   const gLinde = new T.Group();
   const respuesta = (cuerpo: A) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(cuerpo) });
   const tiempo = creaTiempo(Object.assign({
-    THREE: T, scene, camera: new T.PerspectiveCamera(), sol: new T.DirectionalLight(), hemi: new T.HemisphereLight(), SRGB: T.SRGBColorSpace, LUZ_SOL: 1, LUZ_CIELO: 1,
+    THREE: T, scene, camera: (() => { const c = new T.PerspectiveCamera(); c.position.set(CAMARA.x, CAMARA.y, CAMARA.z); return c; })(), sol: new T.DirectionalLight(), hemi: new T.HemisphereLight(), SRGB: T.SRGBColorSpace, LUZ_SOL: 1, LUZ_CIELO: 1,
     colorCss: () => new T.Color(0x87b5e0), colorVertSRGB: () => {}, texColor: (t: A) => { t.colorSpace = T.SRGBColorSpace; return t; },
     FOG0: 120, FOG1: 1200, parcelas: [{ linde: [[0, 0], [40, 0], [40, 30]] }, { linde: [[100, 100], [140, 100], [140, 150], [100, 150]] }], hash,
     gLinde, Estaticos: { congela() {} }, suelo: () => 10, Estado: { exag: 1 }, objetivo: new T.Vector3(),
-    estimado: o.estimado || null, ocasoFotos: false, $: (id: string) => els[id] || null, lienzo, Bus,
+    estimado: o.estimado || null, paseando: o.paseando || null, ocasoFotos: false, $: (id: string) => els[id] || null, lienzo, Bus,
     prefijoApi: () => o.api ? "/api/" : null, red: () => o.api ? () => respuesta(o.api) : null, prueba: () => o.prueba || null,
     busqueda: "?hora=2026-06-21T12:00", reloj: () => Date.UTC(2026, 5, 21, 10), calma: false, temporizador: tm, Materiales: F,
     alCambiarTema: (fn: A) => { tema.push(fn); return () => { const i = tema.indexOf(fn); if (i >= 0) tema.splice(i, 1); }; }
@@ -171,6 +173,22 @@ describe("el tiempo del exterior: el componente", () => {
     expect(tiempo.lluvia.lluvia.material.uniforms).toBe(tiempo.lluvia.uLluvia);   // los MISMOS uniformes que mueve el paso
     expect(typeof mats.matHojaG.onBeforeCompile).toBe("function");   // con el clásico, el MISMO material, parcheado
     tiempo.libera(); expect(F.duenos()).toEqual({}); expect(mats.matHojaG.onBeforeCompile).toBe(THREE.Material.prototype.onBeforeCompile);   // el de three, como antes de montarse
+  });
+  it("L8-01: «paseando» llega de creaTiempo al paso de cada fotograma: paseando, la caja de la lluvia cuelga bajo la cámara; en la vista aérea, bajo el blanco", () => {
+    let paseo = false;
+    const { tiempo, scene } = monta({ paseando: () => paseo });
+    const lluvia: A = scene.children.find((c: A) => c.isLineSegments && c.geometry.getAttribute("aEnd"));
+    expect(lluvia).toBeTruthy();
+    tiempo.actualiza(0.1);
+    expect([lluvia.position.x, lluvia.position.z]).toEqual([0, 0]);   // el blanco (objetivo) está en el origen
+    paseo = true; tiempo.actualiza(0.1);
+    expect([lluvia.position.x, lluvia.position.z]).toEqual([CAMARA.x, CAMARA.z]);
+  });
+  it("L8-01: arranque.ts le pasa a creaTiempo «paseando» leído del paseo (Paseo.E.paseando)", () => {
+    const src = Object.values(import.meta.glob("../../arranque.ts", { query: "?raw", import: "default", eager: true }) as Record<string, string>)[0]!;
+    const i = src.indexOf("Mundos.creaTiempo({"), f = src.indexOf("});", i);
+    expect(i).toBeGreaterThan(0);
+    expect(src.slice(i, f)).toMatch(/\bpaseando:\s*function \(\) \{ return [^}]*Paseo\.E\.paseando; \}/);
   });
   it("L8-05: con la estación de otra fecha, la chapita dice «estimado»", () => {
     const { tiempo, els } = monta({ estimado: () => true });
