@@ -25,4 +25,14 @@ describe("creaFusionaGeometrias", () => {
     const c = fusiona([[new THREE.BoxGeometry(), new THREE.Color(1, 1, 1)]], true);
     assert.strictEqual(c.attributes.uv.count, c.attributes.position.count, "con conUv, el uv de cada vértice");
   });
+  it("L8-14: con más de 65.535 vértices los índices pasan a 32 bits y no se envuelven; hasta ese límite, 16 bits", () => {
+    const fusiona = creaFusionaGeometrias(THREE), esfera = () => new THREE.SphereGeometry(1, 150, 150);   // 151 × 151 = 22.801 vértices
+    const justo = fusiona([[esfera(), new THREE.Color(1, 1, 1)], [esfera(), new THREE.Color(1, 1, 1)]]);   // 45.602: cabe en 16 bits
+    assert.ok(justo.index.array instanceof Uint16Array);
+    const g = fusiona([[esfera(), new THREE.Color(1, 1, 1)], [esfera(), new THREE.Color(1, 1, 1)], [esfera(), new THREE.Color(1, 1, 1)]]);   // 68.403: no cabe
+    assert.ok(g.attributes.position.count > 65535);
+    assert.ok(g.index.array instanceof Uint32Array, "índices de 32 bits");
+    const max = g.index.array.reduce((m: number, v: number) => Math.max(m, v), 0);
+    assert.strictEqual(max, g.attributes.position.count - 1, "el último índice apunta al último vértice (sin envolver)");
+  });
 });

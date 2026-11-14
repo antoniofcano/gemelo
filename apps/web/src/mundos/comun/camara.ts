@@ -11,6 +11,7 @@ export const ID_CAMARA = "camara-orbital";
 export interface DepsCamara {
   THREE: T; camera: T; lienzo: T; Estado: T; $(id: string): T; fmt(n: number, dec?: number): string; DIST_MAX: number; DIST_INI: number; Usables: T;
   /** 08_marcadores (antes) */ aplica(): void; capas(): void; aplicaLuego(): void;
+  /** 02_mundo: la altura del suelo (m, sin exagerar) en (x, norte); sin ella, la cámara no sabe dónde está el suelo (L8-02) */ suelo?: (x: number, y: number) => number;
   /** lo que cambia o se declara después: 12_paseo, 02_mundo (kcor, que se escribe), 12c, 13_parcelas, 33_ajustes */
   paseando(): boolean; ponKcor(v: number): void; IrA(): T; parcelaSel(): number; elegirParcela(i: number): void; Ajustes(): T;
 }
@@ -23,7 +24,16 @@ export function creaCamara(d: DepsCamara) {
   function escucha(o: T, tipo: string, fn: T, opc?: T) { if (!o) return; o.addEventListener(tipo, fn, opc); escuchas.push(function () { o.removeEventListener(tipo, fn, opc); }); }
   // cámara orbital
   var objetivo = new THREE.Vector3(0, 12, 0), orb = { az: -0.55, el: 0.62, dist: DIST_INI }, orbIni = JSON.parse(JSON.stringify(orb));
-  function camara() { var ce = Math.cos(orb.el), se = Math.sin(orb.el); camera.position.set(objetivo.x + orb.dist * ce * Math.sin(orb.az), objetivo.y + orb.dist * se, objetivo.z + orb.dist * ce * Math.cos(orb.az)); camera.lookAt(objetivo); }
+  // L8-02: la órbita sabe dónde está el suelo (el relieve real del mundo activo × la exageración; el mundo pone z = −norte). Sin `suelo` (dobles de prueba), como antes.
+  var sueloAt = d.suelo, HOLGURA = 2;   // m mínimos de la cámara sobre el suelo que tiene debajo
+  function sueloY(x: number, z: number): number { return sueloAt ? sueloAt(x, -z) * Estado.exag : NaN; }
+  /** pone el blanco sobre el suelo bajo él (tras un pan o un cambio de exageración); sin suelo, no hace nada */
+  function asienta() { var y = sueloY(objetivo.x, objetivo.z); if (isFinite(y)) objetivo.y = y; }
+  function camara() {
+    var ce = Math.cos(orb.el), se = Math.sin(orb.el), cx = objetivo.x + orb.dist * ce * Math.sin(orb.az), cz = objetivo.z + orb.dist * ce * Math.cos(orb.az), cy = objetivo.y + orb.dist * se;
+    var sc = sueloY(cx, cz); if (isFinite(sc) && cy < sc + HOLGURA) cy = sc + HOLGURA;   // nunca bajo el suelo (una ladera entre la cámara y el blanco)
+    camera.position.set(cx, cy, cz); camera.lookAt(objetivo);
+  }
   // Configuración → Controles (33_ajustes.js): sensibilidad al mirar y eje vertical invertido; sin 33_ajustes.js, 1× y sin invertir
   function sensMirar() {
     var k = 1, y = 1;
@@ -48,7 +58,7 @@ export function creaCamara(d: DepsCamara) {
     var tocar = Object.keys(punteros).length === 1 && movido < 6; delete punteros[e.pointerId]; if (tocar && e.type === "pointerup") elige(e.clientX, e.clientY); }
   escucha(lienzo, "pointerup", suelta); escucha(lienzo, "pointercancel", suelta); escucha(lienzo, "contextmenu", function (e: T) { e.preventDefault(); });
   escucha(lienzo, "wheel", function (e: T) { e.preventDefault(); if (paseando()) return; orb.dist = Math.max(30, Math.min(DIST_MAX, orb.dist * (1 + Math.sign(e.deltaY) * 0.1))); }, { passive: false });
-  function pan(dx: T, dy: T) { var f = orb.dist * 0.0016, rx = Math.cos(orb.az), rz = -Math.sin(orb.az); objetivo.x -= dx * f * rx; objetivo.z -= dx * f * rz; objetivo.x += dy * f * Math.sin(orb.az); objetivo.z += dy * f * Math.cos(orb.az); }
+  function pan(dx: T, dy: T) { var f = orb.dist * 0.0016, rx = Math.cos(orb.az), rz = -Math.sin(orb.az); objetivo.x -= dx * f * rx; objetivo.z -= dx * f * rz; objetivo.x += dy * f * Math.sin(orb.az); objetivo.z += dy * f * Math.cos(orb.az); asienta(); }
 
   // un toque corto o un clic: elige lo que haya debajo (C7: Usables, 02e_entidades.js; cada tipo de cosa del mundo dice si está bajo el dedo y gana por
   // tipo y por cercanía); sobre nada, suelta lo elegido y cierra la ficha
@@ -57,7 +67,7 @@ export function creaCamara(d: DepsCamara) {
   function pon(m: T) { Estado.modo = m; ["Nube", "Gem", "Orto"].forEach(function (n: T) { $("m" + n).setAttribute("aria-pressed", String((n === "Nube" && m === "nube") || (n === "Gem" && m === "gem") || (n === "Orto" && m === "orto"))); }); aplica(); }
   escucha($("mNube"), "click", function () { pon("nube"); }); escucha($("mGem"), "click", function () { pon("gem"); }); escucha($("mOrto"), "click", function () { pon("orto"); });
   ["cLinde", "cCopas", "cMarc", "cDesf"].forEach(function (id: T) { escucha($(id), "change", capas); });
-  escucha($("exag"), "input", function (e: T) { Estado.exag = Number(e.target.value); $("exagV").textContent = fmt(Estado.exag, Estado.exag % 1 ? 2 : 0) + "×"; aplicaLuego(); });
+  escucha($("exag"), "input", function (e: T) { Estado.exag = Number(e.target.value); $("exagV").textContent = fmt(Estado.exag, Estado.exag % 1 ? 2 : 0) + "×"; asienta(); aplicaLuego(); });
   escucha($("corr"), "input", function (e: T) { var kcor = Number(e.target.value); ponKcor(kcor); $("corrV").textContent = fmt(kcor, kcor % 1 ? 2 : 0) + "×"; aplicaLuego(); });   // kcor es de 02_mundo: se escribe por función
   escucha($("reiniciar"), "click", function () { elegirParcela(parcelaSel()); });
 

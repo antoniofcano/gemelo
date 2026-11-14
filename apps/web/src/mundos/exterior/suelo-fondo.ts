@@ -40,6 +40,9 @@ export interface DepsSueloFondo {
   busqueda?: string;
 }
 
+// BAJA (L8-07): el hundimiento es NECESARIO (M6, 935d8e1d): el relieve grueso interpolado puede quedar ~1,5 m por encima del fino en una loma y asomaría sobre el tileset.
+// Su precio: donde no hay tesela con dato, el paseante pisa el grueso y el fondo dibujado queda BAJA·exag por debajo (hasta 4,5 m con exag 3; lo acota suelo_fondo.test.js).
+// El paseo se recorta a la caja D.ext menos 3 m (exterior.test.ts), normalmente cubierta por teselas; una tesela vacía dentro de ext, no probada con datos reales.
 export const MARGEN = 400, BAJA = 1.5, CELDAS_MAX = 128;
 export const ID_SUELO_FONDO = "suelo-fondo";
 

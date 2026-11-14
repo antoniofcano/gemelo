@@ -68,7 +68,7 @@ function arranca(): void {
     imagen: function () { return new Image() as any; },
     trae: function (u) { return fetch(u); },
     cola: function () { return typeof ColaExt !== "undefined" ? ColaExt : null; },   // 02b_cola se monta después: se pregunta al llegar cada tesela
-    consola: console
+    exag: function () { return typeof Estado !== "undefined" ? Estado.exag : 1; } /* L8-08 */, consola: console
   });
   var suelo = Mundo.suelo, copaAlta = Mundo.copaAlta, colorSuelo = Mundo.colorSuelo, orto = Mundo.orto;
 
@@ -387,7 +387,7 @@ function arranca(): void {
   var Generados = Mundos.creaGenerados({
     THREE: THREE, D: D, VRP: VRP, Aparato: Aparato, Config: Config, Materiales: Materiales, gArboles: gArboles, camera: camera, Estado: Estado, suelo: suelo,
     factorR8Gen: function () { return FactorR8.E.gen; }, factorCopaDeConfig: factorCopaDeConfig, parcheTiempo: function (sh, viento) { parcheTiempo(sh, viento); }, tiempoTsl: function () { return typeof nodosTiempoTsl === "function" ? nodosTiempoTsl : null; },   // A3-4: los nodos del tiempo (15_tiempo) para la TSL apagada
-    busqueda: location.search, reloj: performance, consola: console, ventana: typeof window !== "undefined" ? window : null,
+    busqueda: location.search, reloj: performance, consola: console, ventana: typeof window !== "undefined" ? window : null, ahoraMs: function () { return typeof ahoraMs === "function" ? ahoraMs() : Date.now(); } /* L8-06: el reloj del mundo, que se monta después */,
     cargaConstructor: function () { return typeof window !== "undefined" && window.OlivoGen ? Promise.resolve(window.OlivoGen) : import("gemelo-olivo"); },
     renderer: function () { return typeof renderer !== "undefined" ? renderer : null; },
     scene: function () { return typeof scene !== "undefined" ? scene : null; },
@@ -415,7 +415,7 @@ function arranca(): void {
     THREE: THREE, FACTOR_R8: FactorR8.E.r8, busqueda: location.search, Aparato: Aparato, Config: Config, Mundo: Mundo, Cola: Cola, ColaExt: ColaExt, CargaPuro: CargaPuro, XrPerillas: XrPerillas,
     VrControlPuro: VrControlPuro, InfoDibujo: InfoDibujo, Estaticos: Estaticos, TopeTilesPuro: TopeTilesPuro, TopeOlivos: TopeOlivos, OlivosTiles: OlivosTiles, Catalogo: Catalogo,
     Escalera: Escalera, Generados: Generados, Lejanos: Lejanos, renderer: renderer, camera: camera, Estado: Estado, suelo: suelo, copaAlta: copaAlta, aviva: aviva, hash: hash, copas: copas,
-    ALTO_MAX: ALTO_MAX, gArboles: gArboles, arbolesG: arbolesG, follajeG: follajeG, construyeSombras: construyeSombras, ventana: window, ahora: function () { return performance.now(); },
+    desfase: function (h, out) { TinteOrto.desfase(h, out); } /* L3-01 */, ALTO_MAX: ALTO_MAX, gArboles: gArboles, arbolesG: arbolesG, follajeG: follajeG, construyeSombras: construyeSombras, ventana: window, ahora: function () { return performance.now(); },
     get paseando() { return typeof Paseo !== "undefined" ? Paseo.E.paseando : false; }, get kcor() { return TinteOrto.E.kcor; }, get tinte() { return TinteOrto.E.tinte; }, get ndviIdx() { return typeof FechaNdvi !== "undefined" ? FechaNdvi.E.idx : 0; },
     get objetivo() { return typeof objetivo !== "undefined" ? objetivo : null; }, get orb() { return typeof orb !== "undefined" ? orb : null; }, get pp() { return typeof pp !== "undefined" ? pp : null; },
     get VRX() { return typeof VRX !== "undefined" ? VRX : null; }, get Ajustes() { return typeof Ajustes !== "undefined" ? Ajustes : undefined; }
@@ -450,7 +450,7 @@ function arranca(): void {
   // Aquí solo se cablea lo del legado: lo que otros reescriben o se declara después (paseando, kcor, IrA, parcelaSel, elegirParcela, Ajustes) entra por función (parcelaSel, por Parcelas.parcelaSel(): A3-7b1).
   // [talón] apps/web/src/mundos/comun/camara.ts
   var Camara = Mundos.creaCamara({
-    THREE: THREE, camera: camera, lienzo: lienzo, Estado: Estado, $: $, fmt: fmt, DIST_MAX: DIST_MAX, DIST_INI: DIST_INI, Usables: Usables, aplica: aplica, capas: capas, aplicaLuego: aplicaLuego,
+    THREE: THREE, camera: camera, lienzo: lienzo, Estado: Estado, $: $, fmt: fmt, DIST_MAX: DIST_MAX, DIST_INI: DIST_INI, Usables: Usables, suelo: suelo, aplica: aplica, capas: capas, aplicaLuego: aplicaLuego,
     paseando: function () { return Paseo.E.paseando; }, ponKcor: function (v) { TinteOrto.E.kcor = v; }, IrA: function () { return IrA; }, parcelaSel: function () { return Parcelas.parcelaSel(); },
     elegirParcela: function (i) { elegirParcela(i); }, Ajustes: function () { return typeof Ajustes !== "undefined" ? Ajustes : null; }
   });
@@ -574,7 +574,7 @@ function arranca(): void {
   var Tiempo = Mundos.creaTiempo({
     THREE: THREE, scene: scene, camera: camera, sol: sol, hemi: hemi, SRGB: SRGB, LUZ_SOL: LUZ_SOL, LUZ_CIELO: LUZ_CIELO, colorCss: colorCss, colorVertSRGB: colorVertSRGB, texColor: texColor,
     FOG0: FOG0, FOG1: FOG1, parcelas: D.parcelas, hash: hash, matSuelo: matSuelo, matOrto: matOrto, nube: nube, matHojaG: matHojaG, matHojaP: matHojaP, matCorteza: matCorteza,
-    gLinde: gLinde, Estaticos: Estaticos, suelo: suelo, Estado: Estado, objetivo: objetivo,
+    gLinde: gLinde, Estaticos: Estaticos, suelo: suelo, Estado: Estado, objetivo: objetivo, paseando: function () { return typeof Paseo !== "undefined" && Paseo.E.paseando; },   // L8-01: la lluvia va con la cámara al pasear
     objetivoMundo: function () { return typeof objetivoMundo === "function" ? objetivoMundo() : null; },   // 23_estacion va después en el montaje (null: aún no está)
     estimado: function () { return typeof EST !== "undefined" && !!EST && !!EST.activa; },   // L8-05: la estación de otra fecha (23_estacion) se rotula «estimado»
     temaEstela: function (o) { if (typeof temaEstela === "function") temaEstela(o); },   // 16_vida, después en el montaje

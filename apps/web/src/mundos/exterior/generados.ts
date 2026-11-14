@@ -80,6 +80,8 @@ export interface DepsGenerados {
   /** location.search */
   busqueda: string;
   reloj: { now(): number };
+  /** L8-06: el reloj del MUNDO (el tiempo simulado, con ?fecha= y ?hora=: Tiempo.ahoraMs) en ms de época; la época de los olivos sale de su fecha. Sin él, el del navegador */
+  ahoraMs?: (() => number) | null;
   consola?: { warn(...a: unknown[]): void } | null;
   /** window (para window.__olivosGen, pruebas y ?debug); null sin navegador */
   ventana?: A;
@@ -122,7 +124,8 @@ export function creaGenerados(d: DepsGenerados) {
   var grupo: A = new THREE.Group(); grupo.name = "olivosGenerados";
   function epoca() { var m: A = /[?&]epoca=([a-z]+)/.exec(BUSQUEDA); return m ? m[1] : epocaManif || epocaConfig(D.finca_id) || "envero"; }
   // la época de hoy según el calendario de la configuración del servidor (02c Config; null si no lo trae o no cubre los 366 días)
-  function epocaConfig(finca: A) { var t: A = Config.tablaEpocas(finca); return t ? Config.epocaDeFecha(t, fechaPrueba || new Date()) : null; }
+  function fechaMundo(): Date { return fechaPrueba || new Date(d.ahoraMs ? d.ahoraMs() : Date.now()); }   // L8-06: la fecha del mundo, no la del navegador
+  function epocaConfig(finca: A) { var t: A = Config.tablaEpocas(finca); return t ? Config.epocaDeFecha(t, fechaMundo()) : null; }
   function arrancaGen() {
     var p: A = d.cargaConstructor();   // window.OlivoGen o import("gemelo-olivo"): el import() se queda escrito en el talón, para que Vite lo trocee como antes
     // la configuración del servidor (02c Config: espera como mucho 2 s; sin servidor, al momento) se aplica antes del primer olivo: nada cambia en caliente
@@ -163,7 +166,7 @@ export function creaGenerados(d: DepsGenerados) {
         if (!/[?&]epoca=/.test(BUSQUEDA)) {   // la época por fecha: la del calendario de la configuración (decisión 112) si el hornero la tiene;
           // si no, con el calendario del manifiesto (sus ventanas); si hoy no cae en ninguna, la actual
           var ventanas: A = {}, ec: A = epocaConfig(m.finca); m.epocas.forEach(function (e: A) { ventanas[e.epoca] = { desde: e.desde, hasta: e.hasta }; });
-          epocaManif = (ec && m.epocas.some(function (e: A) { return e.epoca === ec; }) ? ec : null) || M.epocaDeFecha(M.tablaDe({ comun: ventanas }, m.finca), fechaPrueba || new Date()) || m.actual;
+          epocaManif = (ec && m.epocas.some(function (e: A) { return e.epoca === ec; }) ? ec : null) || M.epocaDeFecha(M.tablaDe({ comun: ventanas }, m.finca), fechaMundo()) || m.actual;
         }
         var ep: A = epoca(); varSem = variantesDeEpoca(m, ep);
         if (!varSem) { horn.estado = "sin la época " + ep; } else horn.estado = HORNEADO ? "activo" : "apagado";

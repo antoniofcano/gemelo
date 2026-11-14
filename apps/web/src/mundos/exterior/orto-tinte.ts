@@ -31,8 +31,11 @@ export function creaTinteOrto(d: DepsTinteOrto) {
       }
     }
   }
-  function colorEn(x: number, y: number, h: number, out: number[]): void { d.orto(x + desp(h), y + E.kcor * 0.2 * Math.min(h / 2, 1), out); }
-  return { E: E, desp: desp, aviva: aviva, colorEn: colorEn };
+  /** el desfase (m) entre la copa que ve el LiDAR y su color en la ortofoto (el de la copa de altura h): lo lee el color de los niveles 0, 1 y 2 (L3-01) */
+  function desfase(h: number, out: number[]): void { out[0] = desp(h); out[1] = E.kcor * 0.2 * Math.min(h / 2, 1); }
+  var dz = [0, 0];
+  function colorEn(x: number, y: number, h: number, out: number[]): void { desfase(h, dz); d.orto(x + dz[0]!, y + dz[1]!, out); }
+  return { E: E, desp: desp, desfase: desfase, aviva: aviva, colorEn: colorEn };
 }
 export type TinteOrto = ReturnType<typeof creaTinteOrto>;
 

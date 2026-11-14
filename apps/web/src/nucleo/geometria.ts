@@ -13,7 +13,8 @@ export type ParteGeometria = [any, { r: number; g: number; b: number }];
 export function creaFusionaGeometrias(THREE: ThreeGeometria) {
   return function fusionaGeometrias(partes: ParteGeometria[], conUv?: boolean) {
     var nv = 0, ni = 0; partes.forEach(function (p) { nv += p[0].attributes.position.count; ni += p[0].index.count; });
-    var pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = new Float32Array(nv * 3), uv = conUv ? new Float32Array(nv * 2) : null, idx = new Uint16Array(ni), o = 0, oi = 0;
+    // L8-14: los índices son de 16 bits mientras quepan; con más de 65.535 vértices, de 32 (en 16 se envolverían en silencio y la geometría saldría rota)
+    var pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = new Float32Array(nv * 3), uv = conUv ? new Float32Array(nv * 2) : null, idx = new (nv > 65535 ? Uint32Array : Uint16Array)(ni), o = 0, oi = 0;
     partes.forEach(function (p) {
       var g = p[0], n = g.attributes.position.count, c = p[1]; pos.set(g.attributes.position.array, o * 3); nor.set(g.attributes.normal.array, o * 3);
       if (uv) uv.set(g.attributes.uv.array, o * 2);

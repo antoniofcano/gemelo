@@ -25,6 +25,8 @@ export interface DepsArboles {
   renderer: T3; camera: T3; Estado: T3;
   suelo(x: number, y: number): number; copaAlta(x: number, y: number): number; aviva(c3: number[], x: number, y: number): void; hash(n: number): number;
   copas: T3[]; ALTO_MAX: number;
+  /** TinteOrto.desfase (L3-01): el desfase copa-ortofoto de una copa de altura h, que el color de los niveles 1 y 2 aplica como el del nivel 0. Sin él, sin desfase */
+  desfase?: (h: number, out: number[]) => void;
   gArboles: T3; arbolesG(arr: T3[]): Generator<unknown, T3[]>; follajeG(arr: T3[], P: T3, grupo: T3): Generator; construyeSombras(): void;
   /** el reloj (performance.now): se recibe para probar con un reloj de mentira */
   ahora(): number;
@@ -103,17 +105,23 @@ export function creaArboles(d: DepsArboles) {
   // registro: celda, altura del suelo, forma y color de cada olivo (del mosaico: sirve de lejos)
   function clave(i: any, j: any) { return i * 100000 + j; }
   var listo0 = false;
+  // L3-01: el color de los niveles 1 y 2 sale del mosaico de 1 m DESPLAZADO como el de la copa de nivel 0 (colorEn): copa y color casan. Se rehace si cambia kcor
+  var kcorColor: any = null, dz: number[] = [0, 0];
+  function recolorea() {
+    kcorColor = kcor;
+    olivos.forEach(function (c: any) { dz[0] = 0; dz[1] = 0; if (d.desfase) d.desfase(c.h, dz); Mundo.ortoGrueso(c.x + dz[0], c.y + dz[1], c3); c.cr = c3[0]; c.cg = c3[1]; c.cb = c3[2]; });
+  }
   function inicia() { sync();
     listo0 = true;
     olivos.forEach(function (c: any) {
       c.gz = suelo(c.x, c.y); c.rm = c.perfil.reduce(function (a: any, b: any) { return a + b; }, 0) / 8; var ci = Math.floor((c.x + cx) / CEL), cj = Math.floor((c.y + cy) / CEL), k = clave(ci, cj);
       c.cel = celdas[k] || (celdas[k] = { k: k, i: ci, j: cj, x0: ci * CEL - cx, y0: cj * CEL - cy, arr: [], g: null, sucia: true, visto: 0, en: false, pre: false, enAntes: false, prio: 0, ts: Mundo.tesela(ci * CEL - cx + CEL / 2, cj * CEL - cy + CEL / 2) });
       c.cel.arr.push(c);
-      Mundo.ortoGrueso(c.x, c.y, c3); c.cr = c3[0]; c.cg = c3[1]; c.cb = c3[2];
       // la silueta: el eje largo de la copa medida (pares de radios opuestos) y su perpendicular; semiejes = r8 × FACTOR_R8 (01_datos.js; hoy 0,5)
       var P = c.perfil, L: any = [0, 1, 2, 3].map(function (q: any) { return (P[q] + P[q + 4]) / 2; }), im = 0; for (var q2 = 1; q2 < 4; q2++) if (L[q2] > L[im]) im = q2;
       c.ang = im * Math.PI / 4; c.rx = Math.max(0.6, L[im] * FACTOR_R8); c.rz = Math.max(0.6, L[(im + 2) % 4] * FACTOR_R8); c.pr = Math.min(NP1 - 1, Math.floor(hash(c.i * 7.7 + 1) * NP1)); c.vf = 0.88 + 0.26 * hash(c.i * 3.7);
     });
+    recolorea();
     Lejanos.inicia(olivos);   // ?olivos=escalera (07ac); sin la bandera no hace nada
   }
   function libera(g: any) { g.traverse(function (o: any) { if (o.geometry) o.geometry.dispose(); }); }
@@ -306,6 +314,7 @@ export function creaArboles(d: DepsArboles) {
     var vis = gArboles.visible; if (!vis && Estado.modo !== "nube") return;   // en modo Ortofoto no hay árboles; en modo Nube se precargan los de alrededor
     t += dt;
     var cam = camera.position, umbral = paseando ? 2.5 : 6, mueve = Math.hypot(cam.x - ultima.x, cam.y - ultima.y, cam.z - ultima.z) > umbral, k = tinte + "|" + ndviIdx + "|" + kcor;
+    if (kcorColor !== kcor) recolorea();   // L3-01: el deslizador de corrección mueve la copa y, con ella, el color de los niveles 1 y 2
     if (forzar || sucio || ultima.exag !== Estado.exag || ultima.k !== k || (mueve && t > 0.25) || t > (paseando ? 0.7 : 1.5)) { t = 0; reclasifica(); }
   }
   // Q0n: cada TopeTilesPuro.DEF.MUESTRA s en VR, el lazo de 02m mira los triángulos del último reparto; si cambia el factor, se reparte de nuevo

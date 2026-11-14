@@ -41,6 +41,8 @@ export interface DepsTiempo {
   gLinde: A; Estaticos: { congela(o: A): void }; suelo: (x: number, y: number) => number; Estado: { exag: number };
   /** 09_camara: el blanco de la cámara orbital */
   objetivo: A;
+  /** 12_paseo: ¿se pasea?, para anclar la lluvia a la cámara (L8-01); va después en el montaje */
+  paseando?: (() => boolean) | null;
   /** 23_estacion: lo que tiende el mundo a enseñar con la estación de otra fecha (objetivoMundo), y si la hay (EST.activa: L8-05, «estimado»). Van después en el montaje */
   objetivoMundo?: (() => A) | null;
   estimado?: (() => boolean) | null;
@@ -108,7 +110,7 @@ export function creaTiempo(d: DepsTiempo) {
     THREE: THREE, scene: d.scene, camera: d.camera, sol: d.sol, hemi: d.hemi, SRGB: d.SRGB, LUZ_SOL: d.LUZ_SOL, LUZ_CIELO: d.LUZ_CIELO, FOG0: d.FOG0, FOG1: d.FOG1,
     cieloBase: function () { return cieloBase; }, matHojaG: d.matHojaG, matHojaP: d.matHojaP, matCorteza: d.matCorteza, matOrto: d.matOrto, matSuelo: d.matSuelo, nube: d.nube,
     uSombra: uSombra, uViento: uViento, NUBES: cielo.NUBES, nubesMalla: cielo.nubesMalla, pintaNubes: cielo.pintaNubes, sprSol: cielo.sprSol, estrellas: cielo.estrellas,
-    OCASO_FOTOS: cielo.OCASO_FOTOS, PALETA_OCASO: PALETA_OCASO, uOcasoN: cielo.uOcasoN, lluvia: ll.lluvia, uLluvia: ll.uLluvia, uBarrera: barreras.uBarrera, objetivo: d.objetivo,
+    OCASO_FOTOS: cielo.OCASO_FOTOS, PALETA_OCASO: PALETA_OCASO, uOcasoN: cielo.uOcasoN, lluvia: ll.lluvia, uLluvia: ll.uLluvia, uBarrera: barreras.uBarrera, objetivo: d.objetivo, paseando: d.paseando || undefined,
     nivelEn: nivelEn, cur: cur, meta: meta, $: d.$, TiempoPuro: TiempoPuro, TM: TM, fmtHora: fmtHora, num1: num1, rumbo: rumbo,
     estimado: function () { return !!(d.estimado && d.estimado()); }, calma: d.calma
   });

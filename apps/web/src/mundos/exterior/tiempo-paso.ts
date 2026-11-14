@@ -4,6 +4,8 @@
 // de AG-1.4c pruebas/guardianes/bucle_equivalencia.test.js). Solo corre como paso del exterior (90_final.js): con el exterior congelado no toca la escena
 // (MUNDOS §4, «Cómo quedó (MU2-7)»; lo vigila pruebas/guardianes/ambiente_mundo.test.js). Lo que escribe en la scene por fotograma es el fondo; la niebla, en su sitio.
 
+import { anclaLluvia } from "./tiempo-lluvia.ts";
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type A = any;
 
@@ -25,8 +27,10 @@ export interface DepsPasoTiempo {
   lluvia: A; uLluvia: A;
   /** tiempo-barrera.ts */
   uBarrera: A;
-  /** 09_camara: el blanco de la cámara orbital (la caja de la lluvia va con él) */
+  /** 09_camara: el blanco de la cámara orbital (la caja de la lluvia va con él en la vista aérea; paseando, con la cámara: L8-01) */
   objetivo: A;
+  /** 12_paseo (después en el montaje): ¿se pasea (a pie, en quad o en dron)? Sin ella, la vista aérea */
+  paseando?: () => boolean;
   /** el nivel del sol (tiempo-puro.ts: creaNivelSol) */
   nivelEn: (ms: number, salida: A) => A;
   /** el estado actual y el objetivo (tiempo.ts) */
@@ -125,7 +129,7 @@ export function creaPasoTiempo(d: DepsPasoTiempo) {
     uViento.uT.value = tMundo; uViento.uAmp.value = amp; uViento.uDir.value.set(vx, vz);
     // lluvia
     lluviaVis += ((cur.lluvia > 0.05 ? 1 : 0) - lluviaVis) * k; var inten = Math.min(1, cur.lluvia / 3) * 0.8 + (cur.lluvia > 0.05 ? 0.15 : 0);
-    lluvia.visible = lluviaVis > 0.02 && inten > 0.02; lluvia.position.set(objetivo.x, objetivo.y - 20, objetivo.z);
+    lluvia.visible = lluviaVis > 0.02 && inten > 0.02; anclaLluvia(!!(d.paseando && d.paseando()), camera.position, objetivo, lluvia.position);   // L8-01: con quien mira (la cámara al pasear), no con el blanco de la órbita
     uLluvia.uT.value = tMundo; uLluvia.uInt.value = inten * lluviaVis; uLluvia.uViento.value.set(vx * Math.min(1, cur.viento / 6), vz * Math.min(1, cur.viento / 6)); uLluvia.uColor.value.setRGB(0.4 + 0.5 * d2, 0.5 + 0.45 * d2, 0.6 + 0.35 * d2, SRGB);
     // la chapita del visor: hora, temperatura, nubes y viento, con la flecha de dónde viene el viento respecto a cómo miras
     ins.t += dt; if (ins.t > 0.25) chapitaTiempo(vxS, vzS);
