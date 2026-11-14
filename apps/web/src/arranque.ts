@@ -347,7 +347,7 @@ function arranca(): void {
   // [talón] apps/web/src/mundos/exterior/arboles-l0.ts
   var Arboles0 = Mundos.creaArbolesL0({
     THREE: THREE, scene: scene, camera: camera, Estaticos: Estaticos, Materiales: Materiales, Entidades: Entidades, Estado: Estado, D: D, fmt: fmt, FACTOR_R8: FactorR8.E.r8, ESC_R8: ESC_R8,
-    suelo: suelo, aviva: aviva, colorEn: colorEn, hash: hash, copas: copas, marc: marc, colorVertSRGB: colorVertSRGB,
+    suelo: suelo, aviva: aviva, colorEn: colorEn, hash: hash, copas: copas, marc: marc, colorVertSRGB: colorVertSRGB, parcheTiempo: function (sh, viento) { parcheTiempo(sh, viento); }, tiempoTsl: function () { return typeof nodosTiempoTsl === "function" ? nodosTiempoTsl : null; },   // L5-04: 15_tiempo, después
     Generados: { rotulo: function (i) { return Generados.rotulo(i); }, escalera: function () { return Generados.escalera(); } },   // 07ab se carga después: por función
     parcelas: function () { return parcelas; }   // 13_parcelas, después de este módulo
   });

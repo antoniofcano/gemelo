@@ -4,13 +4,13 @@
 import { describe, expect, it } from "vitest";
 import { creaMateriales } from "../../nucleo/materiales.ts";
 import type { ThreeMin } from "../../nucleo/materiales.ts";
-import { ID_ARBOLES_L0, MATERIAL_COPA_L0, MATERIAL_TRONCO_L0, creaArbolesL0, defLambertVertice } from "./arboles-l0.ts";
+import { CLAVE_L0_TIEMPO, ID_ARBOLES_L0, MATERIAL_COPA_L0, MATERIAL_TRONCO_L0, creaArbolesL0, defLambertVertice } from "./arboles-l0.ts";
 import type { DepsArbolesL0 } from "./arboles-l0.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const THREE: any = await import(/* @vite-ignore */ "three" as string);
 
-function monta() {
+function monta(extra?: Partial<DepsArbolesL0>) {
   const scene = new THREE.Scene(), registradas: { tipo: string }[] = [], quitadas: string[] = [];
   const copas = [
     { i: 0, id: 101, x: 5, y: 7, h: 4, perfil: [2, 2, 2, 2, 2, 2, 2, 2], oliv: 1, dentro: true, parc: 0 },
@@ -20,7 +20,7 @@ function monta() {
     Entidades: { registra: (d: { tipo: string }) => { registradas.push(d); return () => { quitadas.push(d.tipo); }; } }, Estado: { exag: 1 },
     D: { finca_id: "prueba", centro_utm: [500000, 4200000] }, fmt: (n: number, dec = 0) => n.toFixed(dec), FACTOR_R8: 0.5, ESC_R8: 1,
     suelo: () => 100, aviva: () => {}, colorEn: (_x: number, _y: number, _h: number, c3: number[]) => { c3[0] = 0.4; c3[1] = 0.5; c3[2] = 0.3; }, hash: (n: number) => (Math.sin(n * 12.9898) * 43758.5453) % 1 / 2 + 0.5,
-    copas, marc: [], Generados: { rotulo: () => null, escalera: () => false }, parcelas: () => [{ nombre: "Parcela A" }], colorVertSRGB: () => {},
+    copas, marc: [], Generados: { rotulo: () => null, escalera: () => false }, parcelas: () => [{ nombre: "Parcela A" }], colorVertSRGB: () => {}, ...(extra || {}),
   };
   return { api: creaArbolesL0(deps), deps, scene, registradas, quitadas, copas };
 }
@@ -85,6 +85,27 @@ describe("materiales del nivel 0 (MU5-n)", () => {
     expect(deps.Materiales.duenos()).toEqual({ [ID_ARBOLES_L0]: 2 });
     expect(deps.Materiales.inventario()).toMatchObject({ [MATERIAL_COPA_L0]: { tipo: "define", n: 1 }, [MATERIAL_TRONCO_L0]: { tipo: "define", n: 1 } });
     expect(api.materiales.libera()).toBe(2);   // y nada más
+  });
+
+  it("L5-04: con parcheTiempo (15_tiempo), la copa y el tronco llevan la sombra de nubes y la helada (parcheTiempo sin viento), con su clave de programa", () => {
+    const vistos: unknown[][] = [];
+    const { api } = monta({ parcheTiempo: (sh, viento) => { vistos.push([sh, viento]); } });
+    const sh = { uniforms: {} };
+    api.matCopa.onBeforeCompile(sh); api.matTroncoL0.onBeforeCompile(sh);
+    expect(vistos).toEqual([[sh, false], [sh, false]]);
+    expect(api.matCopa.onBeforeCompile).toBe(api.matTroncoL0.onBeforeCompile);   // el mismo parche: los separa side
+    expect(api.matCopa.customProgramCacheKey()).toBe(CLAVE_L0_TIEMPO); expect(api.matTroncoL0.customProgramCacheKey()).toBe(CLAVE_L0_TIEMPO);
+  });
+
+  it("L5-04: la variante TSL lleva los nodos del tiempo tras la luz (outputNode) en la posición del mundo, si se dan", async () => {
+    const rutaW = "three/webgpu", rutaT = "three/tsl";
+    const W = await import(/* @vite-ignore */ rutaW), T = await import(/* @vite-ignore */ rutaT);
+    const pedidos: unknown[] = [], salida = { nodo: "tiempo" };
+    const tiempo = () => (_T: unknown) => ({ salida: (xz: unknown) => { pedidos.push(xz); return salida; } });
+    const nuevo = creaMateriales({ THREE: THREE as unknown as ThreeMin, render: { tipo: "nuevo", pedido: "nuevo" }, nodos: () => ({ THREE: W, TSL: T }) });
+    nuevo.define(MATERIAL_COPA_L0, defLambertVertice(() => {}, true, tiempo, CLAVE_L0_TIEMPO)); nuevo.define(MATERIAL_TRONCO_L0, defLambertVertice(() => {}, false, null));
+    expect((nuevo.crea(MATERIAL_COPA_L0) as { outputNode?: unknown }).outputNode).toBe(salida); expect(pedidos).toHaveLength(1);
+    expect((nuevo.crea(MATERIAL_TRONCO_L0) as { outputNode?: unknown }).outputNode ?? null).toBeNull();   // sin los nodos, como antes
   });
 
   it("la variante TSL (apagada): con three/webgpu y three/tsl de verdad son MeshLambertNodeMaterial con su colorNode, y solo salen con el renderer nuevo", async () => {

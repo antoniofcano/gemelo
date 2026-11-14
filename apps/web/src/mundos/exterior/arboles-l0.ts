@@ -36,9 +36,17 @@ export interface DepsArbolesL0 {
   Generados: { rotulo(i: number): T3; escalera(): boolean };
   /** 13_parcelas: las parcelas de la finca (se carga después de 06: por función) */
   parcelas(): T3[];
-  /** 03_escena: el color por vértice en sRGB pasa a lineal (el parche de los dos materiales del nivel 0) */
+  /** 03_escena: el color por vértice en sRGB pasa a lineal (el parche de los dos materiales del nivel 0 si no hay parcheTiempo) */
   colorVertSRGB: (sh: unknown) => void;
+  /** L5-04: 15_tiempo (se carga después: por función), la sombra de las nubes y la helada, como las copas de L1/L2 y las hojas; ya incluye colorVertSRGB */
+  parcheTiempo?: ((sh: unknown, viento: boolean) => void) | null;
+  /** L5-04: los mismos, en TSL (para la variante apagada); por función, como en el catálogo */
+  tiempoTsl?: (() => ((T: unknown) => NodosTiempoL0) | null) | null;
 }
+/** lo que se usa de los nodos del tiempo (tiempo-parche.ts, nodosTsl): la sombra de las nubes y la helada tras la luz, en la posición del mundo dada */
+export interface NodosTiempoL0 { salida(xz: unknown): unknown }
+/** L5-04: la clave del programa del nivel 0 con el tiempo (la copa y el tronco comparten parche; los separa side) */
+export const CLAVE_L0_TIEMPO = "gemelo:nivel0-tiempo";
 
 export const ID_ARBOLES_L0 = "arboles-l0";
 
@@ -47,12 +55,15 @@ export const ID_ARBOLES_L0 = "arboles-l0";
 export const MATERIAL_COPA_L0 = "copa-l0";
 export const MATERIAL_TRONCO_L0 = "tronco-l0";
 /** Lambert con el color por vértice (escrito en sRGB: el parche lo pasa a lineal al leerlo, `colorVertSRGB` de 03_escena). La copa se ve por las dos caras. */
-export function defLambertVertice(parche: (sh: unknown) => void, dosCaras: boolean): DefMaterial<void> {
+// L5-04: con `tiempo` (los nodos de 15_tiempo) la variante TSL lleva la sombra de las nubes y la helada tras la luz (outputNode) en la posición del mundo, como las
+// copas de L1/L2 (catalogo.ts, luzTiempo); con `clave`, el clásico lleva esa clave de programa (si no, three usa el texto de `parche`)
+export function defLambertVertice(parche: (sh: unknown) => void, dosCaras: boolean, tiempo?: DepsArbolesL0["tiempoTsl"], clave?: string): DefMaterial<void> {
   return {
     clasico: function (_o, c) {
       const Lambert = c.THREE["MeshLambertMaterial"] as new (opc: unknown) => MaterialMin;
       const m = new Lambert(dosCaras ? { vertexColors: true, side: c.THREE["DoubleSide"] } : { vertexColors: true });
-      m.onBeforeCompile = parche;   // la MISMA función: three usa su texto como clave del programa (sin clave propia, como con parchea)
+      m.onBeforeCompile = parche;   // la MISMA función para los dos materiales
+      if (clave) m.customProgramCacheKey = function () { return clave; };
       return m;
     },
     // MU5-n, tercer commit: la variante TSL, APAGADA (solo con el WebGPURenderer, que hasta MU6 no existe; nadie la usa hoy). Lo mismo que el parche: el color por vértice,
@@ -63,6 +74,8 @@ export function defLambertVertice(parche: (sh: unknown) => void, dosCaras: boole
       const { vertexColor, vec4, sRGBTransferEOTF } = c.TSL as Record<string, any>;   // eslint-disable-line @typescript-eslint/no-explicit-any
       const m = new Lambert(dosCaras ? { side: c.THREE["DoubleSide"] } : {});
       m.colorNode = vec4(sRGBTransferEOTF(vertexColor().rgb), 1);
+      const f = tiempo ? tiempo() : null;   // L5-04: las geometrías del nivel 0 están en coordenadas del mundo
+      if (f) (m as MaterialMin & { outputNode?: unknown }).outputNode = f(c.TSL).salida((c.TSL as Record<string, any>)["positionWorld"].xz);   // eslint-disable-line @typescript-eslint/no-explicit-any
       return m;
     }
   };
@@ -71,9 +84,12 @@ export function defLambertVertice(parche: (sh: unknown) => void, dosCaras: boole
 export function creaArbolesL0(d: DepsArbolesL0) {
   const THREE = d.THREE, scene = d.scene, camera = d.camera, Estaticos = d.Estaticos, Materiales = d.Materiales, Entidades = d.Entidades, Estado = d.Estado, D = d.D, fmt = d.fmt;
   const FACTOR_R8 = d.FACTOR_R8, ESC_R8 = d.ESC_R8, suelo = d.suelo, aviva = d.aviva, colorEn = d.colorEn, hash = d.hash, copas = d.copas, marc = d.marc, colorVertSRGB = d.colorVertSRGB;
+  // L5-04: la copa y el tronco del nivel 0 llevan el parche del tiempo (sombra de nubes y helada; incluye colorVertSRGB) como los demás niveles; sin él, solo el color
+  const parcheTiempo = d.parcheTiempo || null, parcheL0 = parcheTiempo ? function (sh: unknown) { (parcheTiempo as (s: unknown, v: boolean) => void)(sh, false); } : colorVertSRGB;
+  const claveL0 = parcheTiempo ? CLAVE_L0_TIEMPO : undefined, tiempoL0 = d.tiempoTsl || null;
   // ---------- los olivos del modo Gemelo: copa con la forma real medida (8 radios) y tronco debajo (nivel 0, por celdas de 64 m; ver Arboles)
   const gArboles = new THREE.Group(), gFollaje = gArboles, gSombras = new THREE.Group(); gArboles.name = "arboles"; gSombras.name = "sombras-olivos"; Estaticos.congela(gArboles); Estaticos.congela(gSombras); scene.add(gArboles); scene.add(gSombras);   // AG-1.15: los grupos no se mueven; lo que cuelga se congela al crearlo (07b celdas, 07 sombras)   // gFollaje es el mismo grupo: las celdas de nivel 0 llevan copa, tronco, hojas y frutos
-  Materiales.define(MATERIAL_COPA_L0, defLambertVertice(colorVertSRGB, true)); Materiales.define(MATERIAL_TRONCO_L0, defLambertVertice(colorVertSRGB, false));   // el color por vértice está escrito en sRGB (03_escena)
+  Materiales.define(MATERIAL_COPA_L0, defLambertVertice(parcheL0, true, tiempoL0, claveL0)); Materiales.define(MATERIAL_TRONCO_L0, defLambertVertice(parcheL0, false, tiempoL0, claveL0));   // el color por vértice está escrito en sRGB (03_escena)
   const materiales = Materiales.de(ID_ARBOLES_L0);   // lo que cree este componente se libera con su libera()
   const matCopa = materiales.crea(MATERIAL_COPA_L0) as MaterialMin & T3, matTroncoL0 = materiales.crea(MATERIAL_TRONCO_L0) as MaterialMin & T3;
   var KSEG = 20, RING = 9;
