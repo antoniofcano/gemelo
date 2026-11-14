@@ -98,6 +98,15 @@ test("los esquemas rechazan lo que deben (arrays posicionales de otra longitud, 
     "punto del tendido con 2 coordenadas": I => I.paisaje.tendido.linea[0].pop(),
     "árbol sin radio": I => { delete I.paisaje.arboles[0].r; },
     "eje de cauce con un punto de 1 coordenada": I => { I.paisaje.arroyo.ejes[0][0] = [0]; },
+    // L4-09: titulo_vr y config tienen contrato (config cerrado)
+    "config con otra forma (la de /api/config)": I => { I.config = { v: 1 }; },
+    "config.factorR8 fuera de (0, 2]": I => { I.config = { factorR8: 3 }; },
+    "titulo_vr vacío": I => { I.titulo_vr = ""; },
+    // L9-09: ot es una lista blanca cerrada; nada por persona
+    "tarea de OT con asignados": I => { Object.values(I.ot.parcelas)[0].tareas.push({ tipo: "poda", titulo: "x", asignados: ["PERSONA SINTETICA"] }); },
+    "fenología de OT con un campo de más": I => { Object.values(I.ot.parcelas)[0].fenologia.push({ fecha: "2026-01-01", bbch: 61, quien: "PERSONA SINTETICA" }); },
+    "parcela de OT con un campo de más": I => { Object.values(I.ot.parcelas)[0].cuadrilla = []; },
+    "ot con un campo de más": I => { I.ot.personas = []; },
   };
   for (const [n, f] of Object.entries(casos)) assert.notDeepStrictEqual(roto(f), [], "el esquema del índice debería rechazar: " + n);
   const t = jsonFx("hituelo", "t", k0 + ".json");
@@ -272,6 +281,37 @@ test("olivo-generado.schema.json compila y valida la entrada de los casos de las
 test("la fila de copas_param es la misma en olivo-generado.schema.json y en indice.schema.json", () => {
   assert.deepStrictEqual(sinComentarios(ESQ_OLIVO.$defs.copas_param_fila), sinComentarios(ESQ_INDICE.properties.copas_param.items),
     "las dos copias de la fila de copas_param divergen: cámbialas a la vez (contratos/olivo-generado.md §3)");
+});
+
+// L4-09 / L9-09: lo que el esquema admite de verdad (para que los rechazos de arriba no pasen por un esquema que lo rechaza todo)
+test("el índice admite titulo_vr, config.factorR8 y tareas y fenología de OT con la lista blanca de hituelo_conv.py", () => {
+  const I = jsonFx("hituelo", "indice.json"), p = Object.values(I.ot.parcelas)[0];
+  I.titulo_vr = "Finca sintética"; I.config = { factorR8: 0.7 };
+  p.tareas.push({ tipo: "poda", titulo: "Poda sintética", fecha: "2026-01-02", estado: "en_curso", avance: 0.5, fuente: "olivos", andados: 10, objetivo: 20 }, { tipo: "riego", titulo: "x", fecha: null, estado: "completado", avance: null, fuente: null, andados: null, objetivo: null });
+  p.fenologia.push({ fecha: "2026-04-01", bbch: 61 });
+  assert.deepStrictEqual(valida(V_INDICE, I), []);
+});
+
+// L4-09: cada campo del índice que lee el motor (D.<campo> en apps/web/src, fuera de las pruebas) está en contratos/indice.schema.json.
+// Un campo nuevo que el motor lea sin contrato (como titulo_vr o config antes) hace caer esto.
+test("cada D.<campo> del índice que lee el motor está en indice.schema.json", () => {
+  const ficheros = [], recorre = d => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const f = path.join(d, e.name); if (e.isDirectory()) recorre(f); else if (/\.ts$/.test(e.name) && !/\.test\.ts$/.test(e.name) && !/[\\/]datos[\\/]contratos[\\/]/.test(f)) ficheros.push(f); } };
+  recorre(path.join(RAIZ, "apps", "web", "src"));
+  const leidos = new Set();
+  for (const f of ficheros) for (const m of fs.readFileSync(f, "utf8").matchAll(/(?<![A-Za-z0-9_$.])D\.([a-z][a-z0-9_]*)(?![A-Za-z0-9_$])/g)) leidos.add(m[1]);
+  assert.ok(leidos.has("ext") && leidos.has("paisaje"), "la búsqueda no encuentra lo que debe (ext, paisaje)");
+  const fuera = [...leidos].filter(k => !(k in ESQ_INDICE.properties)).sort();
+  assert.deepStrictEqual(fuera, [], "el motor lee del índice campos que el contrato no fija: añádelos a contratos/indice.schema.json y a CONTRATOS §1.1");
+});
+
+// L4-13: CONTRATOS §1.1 enumera los mismos campos obligatorios y opcionales que el esquema, y nombra cada fichero de contratos/
+test("CONTRATOS §1.1 lista los obligatorios y opcionales del esquema del índice, y nombra cada fichero de contratos/", () => {
+  const doc = lee("doc/sistema/CONTRATOS.md"), lista = re => { const m = re.exec(doc); assert.ok(m, "no encuentro " + re); return m[1].split(",").map(s => s.trim()).sort(); };
+  const req = ESQ_INDICE.required.slice().sort(), opc = Object.keys(ESQ_INDICE.properties).filter(k => !req.includes(k)).sort();
+  assert.deepStrictEqual(lista(/Campos obligatorios: `([^`]+)`/), req, "obligatorios de CONTRATOS §1.1 frente a indice.schema.json");
+  assert.deepStrictEqual(lista(/Opcionales: `([^`]+)`/), opc, "opcionales de CONTRATOS §1.1 frente a indice.schema.json");
+  const sin = fs.readdirSync(path.join(RAIZ, "contratos")).filter(f => !doc.includes(f));
+  assert.deepStrictEqual(sin, [], "ficheros de contratos/ que CONTRATOS.md no nombra");
 });
 
 // L4-07: el motor georreferencia el NDVI y el suelo-NDVI con ext (arranque.ts: x0, yN, ANCHO, ALTO), y Hituelo lo toma de la caja del NDVI;

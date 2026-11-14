@@ -32,6 +32,10 @@ export interface Indice {
    * @minItems 4
    */
   ext: [number, number, number, number];
+  titulo_vr?: string;
+  config?: {
+    factorR8?: number;
+  };
   base?: string;
   tileset?: string;
   parcelas: Parcela[];
@@ -84,8 +88,8 @@ export interface Indice {
     analiticas_finca?: number;
     parcelas: {
       [k: string]: {
-        tareas: unknown[];
-        fenologia: unknown[];
+        tareas: OtTarea[];
+        fenologia: OtFenologia[];
       };
     };
   };
@@ -167,6 +171,20 @@ export interface Parcela {
   finca?: number;
   decl?: number;
   pasto?: boolean;
+}
+export interface OtTarea {
+  tipo?: string | null;
+  titulo?: string | null;
+  fecha?: string | null;
+  estado?: string | null;
+  avance?: number | null;
+  fuente?: string | null;
+  andados?: number | null;
+  objetivo?: number | null;
+}
+export interface OtFenologia {
+  fecha: string;
+  bbch: number | string | null;
 }
 export interface Edificio {
   x: number;
