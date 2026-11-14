@@ -246,6 +246,15 @@ test("los alias heredados suelo, copaAlta, colorSuelo y orto siguen apuntando a 
   assert.match(pasoArranque("02_mundo.js"), /var suelo = Mundo\.suelo, copaAlta = Mundo\.copaAlta, colorSuelo = Mundo\.colorSuelo, orto = Mundo\.orto;/);
 });
 
+// L4-07: el motor georreferencia el NDVI y el suelo-NDVI con ext (arranque.ts: x0, yN, ANCHO, ALTO), y Hituelo lo toma de la caja del NDVI;
+// CONTRATOS lo dice así (antes decía «la caja de teselas/ventana»). La comprobación del exportador está en exportadores.test.js.
+test("CONTRATOS dice que ext es la caja del NDVI (lo que consume el motor), no la de teselas", () => {
+  const fila = lee("doc/sistema/CONTRATOS.md").split("\n").find(l => l.startsWith("| `ext` |")) || "";
+  assert.match(fila, /caja del NDVI/, "la fila de ext en CONTRATOS §1.1");
+  assert.doesNotMatch(fila, /caja de teselas\/ventana/);
+  assert.match(lee("apps/web/src/arranque.ts"), /x0 = D\.ext\[0\], yN = D\.ext\[1\], ANCHO = D\.ext\[2\] - D\.ext\[0\]/, "arranque.ts deja de colocar las rejillas con ext: revisa CONTRATOS");
+});
+
 test("la documentación nombra cada interfaz del contrato", () => {
   const doc = lee("doc/sistema/CONTRATOS.md");
   for (const n of Object.keys(IFACES.interfaces).concat(["window.__g", "indice.json", "t/<kx>_<ky>.json", "VR"])) assert.ok(doc.includes(n), "CONTRATOS.md no menciona " + n);

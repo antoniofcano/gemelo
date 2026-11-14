@@ -16,7 +16,7 @@
     "z0": { "type": "number", "$comment": "cota de referencia, m; dtm va en cm sobre z0" },
     "zmax": { "type": "number" },
     "cobertura_nube": { "type": "number", "minimum": 0, "maximum": 1 },
-    "ext": { "type": "array", "prefixItems": [{ "type": "number" }, { "type": "number" }, { "type": "number" }, { "type": "number" }], "items": false, "minItems": 4, "$comment": "[xmin, ymax, xmax, ymin] relativo a centro_utm" },
+    "ext": { "type": "array", "prefixItems": [{ "type": "number" }, { "type": "number" }, { "type": "number" }, { "type": "number" }], "items": false, "minItems": 4, "$comment": "[xmin, ymax, xmax, ymin] relativo a centro_utm: la caja del NDVI y del suelo-NDVI (que no traen georreferencia propia; el motor las coloca con ella) y el borde del paseo; no es la caja de teselas (L4-07, CONTRATOS §1.1)" },
     "base": { "type": "string", "$comment": "prefijo de las rutas de t/ (por defecto vacío = relativo a la página)" },
     "tileset": { "type": "string", "minLength": 1, "pattern": "^(?![a-zA-Z][a-zA-Z0-9+.-]*:)(?!//)", "$comment": "ruta del tileset.json de la escena 3D Tiles (ADR-0015), relativa a la página o absoluta del mismo origen, nunca otro host; si está, esa es la escena; sin él la finca no tiene escena (el motor lo dice en su panel; decisión 79). Lo pone quien sirve el tileset junto a los datos (infra/dev, las páginas de prueba), no los exportadores" },
     "parcelas": { "type": "array", "items": { "$ref": "#/$defs/parcela" } },

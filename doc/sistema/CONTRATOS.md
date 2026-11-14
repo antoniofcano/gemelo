@@ -56,7 +56,7 @@ Campos obligatorios: `v, ts, res, srs, orto_px, finca_id, centro_utm, z0, ext, p
 | `finca_id` | `hituelo`… (el fixture sintético usa además `cerro`, hasta C2); solo `hituelo` tiene recorrido guiado en la historia |
 | `centro_utm` | `[E, N]` enteros: origen de las coordenadas relativas |
 | `z0` | cota de referencia (m): `dtm` y `grueso` van en cm sobre ella |
-| `ext` | `[xmin, ymax, xmax, ymin]` relativo al centro: la caja de teselas/ventana |
+| `ext` | `[xmin, ymax, xmax, ymin]` relativo al centro: **la caja del NDVI** (y del suelo-NDVI), que no llevan georreferencia propia: el motor la usa para colocar sus rejillas (`x0`, `yN`, `ANCHO`, `ALTO` de `arranque.ts`) y como borde del paseo. Hituelo la toma del `bbox25830` del NDVI; no tiene por qué coincidir con la caja de teselas (esa la dan `teselas{}`, `grueso` y `mosaico`). Un exportador sin NDVI pone la caja de lo que exporta (L4-07) |
 | `parcelas[]` | `id, nombre, ha, linde[[x,y]…], centro[x,y], desfase, suelo (perfiles SoilGrids o null), finca (índice en fincas), decl (olivos declarados), pasto` |
 | `fincas[]` | `nombre, parcelas[índices], ha, olivos` (Hituelo; el fixture «cerro» no lo lleva) |
 | `copas[]` | **registro de árboles**: `[x, y, h, r8[8], parcela+1]`; `parcela+1 = 0` = fuera de toda parcela. Ver nota abajo |
@@ -98,9 +98,9 @@ Campos obligatorios: `v, ts, res, srs, orto_px, finca_id, centro_utm, z0, ext, p
 
 | Campo | Contenido decodificado | Tamaño |
 |---|---|---|
-| `dtm` | Int16 LE, cm sobre `z0`; 258 × 258 (celdas −1..256: **una celda de margen**) | 133.128 B |
+| `dtm` | Int16 LE, cm sobre `z0` (rango −327,68..327,67 m: un desnivel mayor para la exportación, L4-11); 258 × 258 (celdas −1..256: **una celda de margen**, la de la tesela vecina) | 133.128 B |
 | `chm` | u8, altura de vegetación en **decímetros**; 256 × 256 | 65.536 B |
-| `suelo` | u8 RGB a 2 m; 130 × 130 × 3 (celdas −1..128, con margen) | 50.700 B |
+| `suelo` | u8 RGB a 2 m; 130 × 130 × 3 (celdas −1..128, con margen: la celda de la **tesela vecina**, y el borde propio solo donde no hay vecina; `con_margen` de `hituelo_conv.py`, L4-06) | 50.700 B |
 | `pts` | *(opcional)* nube: Int16 ×3 por punto: x, y en **cm sobre la esquina SO de la tesela** (0..25.600), z en cm sobre `z0`. **Orden barajado con semilla fija**: el prefijo es una submuestra uniforme (`setDrawRange` = LOD) | 6 B × `np` |
 | `np` | número de puntos de `pts` (0 si no hay) | |
 

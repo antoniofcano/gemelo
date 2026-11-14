@@ -15,6 +15,55 @@ HD = __import__("os").environ.get("GEMELO_HITUELO", "hituelo_datos")
 PARC = __import__("os").environ.get("GEMELO_PARCELAS", "hituelo_parcelas_utm.json")
 
 
+def cm_i16(v, que):
+    """L4-11: cotas en cm sobre z0 a Int16 LE (el contrato: dtm y grueso). numpy desborda en silencio (330 m darían −32.536 cm), así que
+    un valor fuera de Int16 para la exportación con un error claro en vez de escribir relieve con escalones falsos."""
+    q = np.rint(np.asarray(v, dtype=np.float64))
+    if q.size and not np.isfinite(q).all(): raise ValueError("%s: cota no finita (sin dato) al pasar a Int16" % que)
+    if q.size and (q.min() < -32768 or q.max() > 32767):
+        raise ValueError("%s: cota fuera de Int16 en cm sobre z0 (%.0f..%.0f cm; el contrato admite −327,68..327,67 m): demasiado desnivel en una exportación" % (que, np.nanmin(q), np.nanmax(q)))
+    return q.astype("<i2")
+
+
+def con_margen(sfs, kx, ky):
+    """L4-06: el color del suelo de la tesela (kx, ky) (128×128×3, fila 0 = sur, columna 0 = oeste) con su celda de margen, 130×130×3.
+    El margen sale de la tesela VECINA (CONTRATOS §1, «la de la tesela vecina, para que la interpolación no tenga costura»): sur = última fila de
+    (kx, ky−1), norte = primera de (kx, ky+1), oeste = última columna de (kx−1, ky), este = primera de (kx+1, ky), y las esquinas de las diagonales.
+    Solo donde no hay vecina (el borde de la exportación) se repite el borde propio."""
+    sf = sfs[(kx, ky)]; m = np.pad(sf, ((1, 1), (1, 1), (0, 0)), mode="edge")
+    v = sfs.get((kx, ky - 1))
+    if v is not None: m[0, 1:-1] = v[-1]
+    v = sfs.get((kx, ky + 1))
+    if v is not None: m[-1, 1:-1] = v[0]
+    v = sfs.get((kx - 1, ky))
+    if v is not None: m[1:-1, 0] = v[:, -1]
+    v = sfs.get((kx + 1, ky))
+    if v is not None: m[1:-1, -1] = v[:, 0]
+    for dx, dy, j, i, vj, vi in ((-1, -1, 0, 0, -1, -1), (1, -1, 0, -1, -1, 0), (-1, 1, -1, 0, 0, -1), (1, 1, -1, -1, 0, 0)):
+        v = sfs.get((kx + dx, ky + dy))
+        if v is not None: m[j, i] = v[vj, vi]
+    return m
+
+
+def suelo_sin_copa(oim, c1):
+    """color del suelo a 2 m (128×128×3 u8, filas sur->norte) de la ortofoto de una tesela (512×512×3) sin la copa (c1: chm a 1 m en cm)"""
+    s2 = oim.reshape(128, 4, 128, 4, 3).mean(axis=(1, 3))[::-1]                                                     # 128×128, filas sur->norte
+    ch2 = np.maximum.reduce([c1[0:256:2, 0:256:2], c1[0:256:2, 1:256:2], c1[1:256:2, 0:256:2], c1[1:256:2, 1:256:2]]) / 100.0
+    mask = ndi.binary_dilation(ch2 > 0.4, iterations=2)
+    s2 = ndi.uniform_filter(s2, size=(3, 3, 1))
+    if mask.any() and not mask.all():
+        i2 = ndi.distance_transform_edt(mask, return_distances=False, return_indices=True); sf = s2[i2[0], i2[1]]
+    else: sf = s2
+    sf = ndi.uniform_filter(sf, size=(3, 3, 1)); lum = sf.mean(axis=2, keepdims=True); med = np.median(lum[~mask]) if (~mask).any() else lum.mean()
+    return np.clip(sf * np.clip(0.85 * med / np.maximum(lum, 1), 1.0, 1.6), 0, 255).astype("u1")
+
+
+def chm_1m(z):
+    """chm de la tesela a 1 m (256×256, cm): máximo de los 4 nodos de 0,5 m de cada celda"""
+    chm = z["chm"].astype(np.float32)                                                                              # 513×513 a 0,5 m (cm), nodos
+    return np.maximum.reduce([chm[0:512:2, 0:512:2], chm[0:512:2, 1:512:2], chm[1:512:2, 0:512:2], chm[1:512:2, 1:512:2]])
+
+
 def hituelo(salida=None, anterior=None):
     L = os.path.join(HD, "lidar"); IM = os.path.join(HD, "imagen")
     salida = salida or os.path.join(R, "salida", "hituelo"); os.makedirs(os.path.join(salida, "t"), exist_ok=True)
@@ -74,27 +123,21 @@ def hituelo(salida=None, anterior=None):
     censo = {par[i]: m[2] for i, m in enumerate(marcas) if par[i] >= 0 and m[2] is not None}
 
     # ---- teselas
+    def orto(k):
+        ofile = os.path.join(IM, "ort", "%s.jpg" % k)
+        if os.path.exists(ofile): return np.asarray(Image.open(ofile).convert("RGB")), open(ofile, "rb").read()
+        oim = np.full((512, 512, 3), 128, "u1"); return oim, jpg_bytes(oim)
+    # primera pasada: el color del suelo de todas, para que cada una tome su celda de margen de la vecina (L4-06)
+    sfs = {tuple(map(int, k.split("_"))): suelo_sin_copa(orto(k)[0], chm_1m(datos[k])) for k in claves}
     teselas, carga = {}, {}
     for k in claves:
         kx, ky = map(int, k.split("_")); z = datos[k]
         jb = (ky - ky0) * TS + M; ib = (kx - kx0) * TS + M
-        dtm = np.rint((celdas[jb - 1:jb + TS + 1, ib - 1:ib + TS + 1] - z0) * 100).astype("<i2")                    # 258×258: celdas -1..256
-        chm = z["chm"].astype(np.float32)                                                                          # 513×513 a 0,5 m (cm), nodos
-        c1 = np.maximum.reduce([chm[0:512:2, 0:512:2], chm[0:512:2, 1:512:2], chm[1:512:2, 0:512:2], chm[1:512:2, 1:512:2]])   # 256×256 a 1 m (máx. de los 4 nodos de la celda)
+        dtm = cm_i16((celdas[jb - 1:jb + TS + 1, ib - 1:ib + TS + 1] - z0) * 100, "dtm " + k)                      # 258×258: celdas -1..256
+        c1 = chm_1m(z)                                                                                             # 256×256 a 1 m (máx. de los 4 nodos de la celda)
         chm_dm = np.clip(np.rint(c1 / 10.0), 0, 255).astype("u1")
-        ofile = os.path.join(IM, "ort", "%s.jpg" % k)
-        if os.path.exists(ofile): oim = np.asarray(Image.open(ofile).convert("RGB")); jpgb = open(ofile, "rb").read()
-        else: oim = np.full((512, 512, 3), 128, "u1"); jpgb = jpg_bytes(oim)
-        # color del suelo a 2 m: la ortofoto sin la copa, con una celda de margen
-        s2 = oim.reshape(128, 4, 128, 4, 3).mean(axis=(1, 3))[::-1]                                                 # 128×128, filas sur->norte
-        ch2 = np.maximum.reduce([c1[0:256:2, 0:256:2], c1[0:256:2, 1:256:2], c1[1:256:2, 0:256:2], c1[1:256:2, 1:256:2]]) / 100.0
-        mask = ndi.binary_dilation(ch2 > 0.4, iterations=2)
-        s2 = ndi.uniform_filter(s2, size=(3, 3, 1))
-        if mask.any() and not mask.all():
-            i2 = ndi.distance_transform_edt(mask, return_distances=False, return_indices=True); sf = s2[i2[0], i2[1]]
-        else: sf = s2
-        sf = ndi.uniform_filter(sf, size=(3, 3, 1)); lum = sf.mean(axis=2, keepdims=True); med = np.median(lum[~mask]) if (~mask).any() else lum.mean()
-        sf = np.clip(sf * np.clip(0.85 * med / np.maximum(lum, 1), 1.0, 1.6), 0, 255).astype("u1"); suelo = np.pad(sf, ((1, 1), (1, 1), (0, 0)), mode="edge")
+        jpgb = orto(k)[1]
+        suelo = con_margen(sfs, kx, ky)                                                                             # color del suelo a 2 m con la celda de margen de la vecina
         # nube: x, y en cm sobre la esquina SO de la tesela; z en cm sobre z0 de la finca (el .npz ya viene barajado)
         pt = z["pts"].astype(np.int64); zz = float(z["z0"]) + pt[:, 2] * 0.05
         q = np.stack([pt[:, 0] * 5, pt[:, 1] * 5, np.rint((zz - z0) * 100)], axis=1).clip(-32768, 32767).astype("<i2")
@@ -105,7 +148,7 @@ def hituelo(salida=None, anterior=None):
     # ---- relieve grueso (8 m) y mosaico de ortofoto (2 m/px) sobre la caja de teselas
     G8 = 8; zc = celdas[M:M + NKY * TS, M:M + NKX * TS]; gh, gw = NKY * TS // G8, NKX * TS // G8
     dg = zc[:gh * G8, :gw * G8].reshape(gh, G8, gw, G8).mean(axis=(1, 3))[::-1]
-    grueso = dict(x0=kx0 * TS - cx, yN=(ky1 + 1) * TS - cy, res=G8, w=gw, h=gh, b64=b64(np.rint((dg - z0) * 100).astype("<i2")))
+    grueso = dict(x0=kx0 * TS - cx, yN=(ky1 + 1) * TS - cy, res=G8, w=gw, h=gh, b64=b64(cm_i16((dg - z0) * 100, "grueso")))
     MR = 2; mw, mh = NKX * TS // MR, NKY * TS // MR; mos = np.full((mh, mw, 3), 128, "u1")
     for k in claves:
         kx, ky = map(int, k.split("_")); ofile = os.path.join(IM, "ort", "%s.jpg" % k)
