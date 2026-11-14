@@ -41,14 +41,31 @@ Los anexos de los revisores son:
 
 De ellos, L5-03, L3-02 y L8-07 son medios.
 
+## Lo que vino después, el mismo día
+
+- **Segunda mirada a los remates y a la ronda del banco** ([anexo](reverificacion/tarde-remates-banco.md)), por un revisor distinto. Dio todo por bien cerrado salvo un medio y seis bajos, y se arreglaron:
+  - **H-1 (medio):** los topes de los olivos generados y de la escalera pasaban de 2× lo medido. Ahora llevan su medida de la puerta pesada y la misma regla, o su cálculo con motivo.
+  - **H-3:** la marca de expulsión se escribe antes de llamar a LiveKit.
+  - **H-4:** el tope de memoria de GPU ya no se salta en silencio.
+  - **H-5:** «hace N» no afirma nada de un dato fechado más de 5 min en el futuro.
+  - **H-7:** la fila del goteo de VR del PLAN está cerrada.
+  - **Quedan dichos, sin arreglar:** H-2 (el umbral del goteo de VR no vería un goteo de menos de 0,4 recursos por sesión) y H-6 (gitleaks en la CI aún no se ha ejecutado).
+- **Auditoría de la api** ([anexo](reverificacion/ampliacion-api.md)). Era lo principal que la auditoría de noviembre dejó sin revisar. Resultado: **0 críticos, 0 altos, 4 medios y 8 bajos, los 12 arreglados** con su prueba (A-01 a A-12):
+  - lo de la cuenta, solo con sesión de titular;
+  - guardas de oficina frente a admin;
+  - no asignar hazas a cuentas de baja;
+  - defensa en profundidad.
+  - Tampoco ella lo vio todo: su apartado «No revisado» lista lo que falta (las lecturas de OlivarTrack y Vigía en detalle, la lógica de corros y voz, las migraciones una a una y `npm audit`).
+- **Puerta pesada:** la tanda de Chrome pasó en verde sobre el árbol de antes de los arreglos de la api (1.560 pruebas). La rápida pasó sobre el árbol final (1.502). La tanda de Docker se apunta en [ESTADO](../ESTADO.md) cuando termine.
+
 ## Lo que esta foto no puede afirmar
 
-- **Los remates y la ronda del banco** se fusionaron después de pasar los revisores. Tienen sus pruebas en verde, pero no una segunda mirada independiente. Son L9-06 (la parte de reinicios), L9-08 (gitleaks en CI), L3-22, L6-03 (el resto), L1-06, L1-07 y L2-06.
+- **Los arreglos de la api (A-01 a A-12) y los de la segunda mirada** tienen sus pruebas en verde, pero no una revisión independiente posterior.
 - **L9-06** queda resuelto con matiz. Un expulsado que vuelve con un token anterior sale en 20 s como mucho, no al instante: cerrarlo del todo pide un webhook de LiveKit (MU3-2). No está probado contra LiveKit real.
 - **El paso de gitleaks de la CI** no se ha ejecutado nunca: se estrena en el primer push.
 - **La puerta pesada** (Docker, PostGIS, LiveKit) no se ha pasado sobre el árbol final. Las pruebas de integración nuevas de la api están escritas y sin ejecutar.
 - **Nada de lo de hoy se ha visto en iPhone ni en Quest.** Los cambios de interacción y de VR están probados con dobles y, en parte, en Chrome sin pantalla.
-- **Lo que la auditoría original no revisó sigue sin revisar:** la mayor parte de `apps/api`, el constructor de olivos y `prototipos/`.
+- **Sigue sin revisar:** el constructor de olivos (`apps/web/olivo/`), `prototipos/` y lo que la auditoría de la api lista como no revisado.
 
 ## Veredicto
 
@@ -57,6 +74,6 @@ No hay ningún crítico, alto ni medio abierto, y los bajos están arreglados o 
 1. pasar la puerta pesada sobre este árbol;
 2. sacar la versión que cierre L10-24;
 3. medir L1-09 y L1-12 en un aparato o aceptarlos;
-4. revisar lo que la auditoría original dejó fuera.
+4. revisar lo que queda fuera (constructor de olivos y el resto de la api).
 
 El «10 de producto» lo da el uso real en iPhone, Quest y el campo.
