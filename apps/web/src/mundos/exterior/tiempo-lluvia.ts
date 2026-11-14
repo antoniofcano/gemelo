@@ -68,3 +68,11 @@ export function creaLluvia(d: DepsLluvia) {
   return { lluvia: lluvia, uLluvia: uLluvia, libera: libera };
 }
 export type Lluvia = ReturnType<typeof creaLluvia>;
+
+/** L8-01: dónde cuelga la caja de la lluvia (resultado en `salida`): en la vista aérea, bajo el blanco de la órbita; paseando (o en quad o dron), bajo la cámara, que es
+ *  quien mira (el blanco de la órbita no se mueve al andar). 20 m por debajo de los ojos o del blanco: la caja mide 170 m y llega por encima de las copas. */
+export function anclaLluvia(paseando: boolean, camara: { x: number; y: number; z: number }, objetivo: { x: number; y: number; z: number }, salida: { x: number; y: number; z: number }) {
+  const o = paseando ? camara : objetivo;
+  salida.x = o.x; salida.y = (paseando ? camara.y : objetivo.y) - 20; salida.z = o.z;
+  return salida;
+}

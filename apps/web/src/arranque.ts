@@ -574,7 +574,7 @@ function arranca(): void {
   var Tiempo = Mundos.creaTiempo({
     THREE: THREE, scene: scene, camera: camera, sol: sol, hemi: hemi, SRGB: SRGB, LUZ_SOL: LUZ_SOL, LUZ_CIELO: LUZ_CIELO, colorCss: colorCss, colorVertSRGB: colorVertSRGB, texColor: texColor,
     FOG0: FOG0, FOG1: FOG1, parcelas: D.parcelas, hash: hash, matSuelo: matSuelo, matOrto: matOrto, nube: nube, matHojaG: matHojaG, matHojaP: matHojaP, matCorteza: matCorteza,
-    gLinde: gLinde, Estaticos: Estaticos, suelo: suelo, Estado: Estado, objetivo: objetivo,
+    gLinde: gLinde, Estaticos: Estaticos, suelo: suelo, Estado: Estado, objetivo: objetivo, paseando: function () { return typeof Paseo !== "undefined" && Paseo.E.paseando; },   // L8-01: la lluvia va con la cámara al pasear
     objetivoMundo: function () { return typeof objetivoMundo === "function" ? objetivoMundo() : null; },   // 23_estacion va después en el montaje (null: aún no está)
     estimado: function () { return typeof EST !== "undefined" && !!EST && !!EST.activa; },   // L8-05: la estación de otra fecha (23_estacion) se rotula «estimado»
     temaEstela: function (o) { if (typeof temaEstela === "function") temaEstela(o); },   // 16_vida, después en el montaje
