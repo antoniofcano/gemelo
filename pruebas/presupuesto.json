@@ -18,12 +18,15 @@
   },
   "fixture_olivos_gen": {
     "$comment": "Con ?olivos=gen (ADR-0017, decisión 52), escenario «cerca» del fixture de Hituelo montado con --olivos. Medido el 2026-10-29 (SwiftShader, máquina cargada): 47 llamadas / 546 k tri / 2,8 k pts / heap 44 MB, con un lote de 6 mallas para 2 olivos generados (E0 + E1: 135 k tri; 222 k contando la pasada de sombras). Topes con ≈25 % de margen; lo comprueba pruebas/guardianes/olivo.test.js. T8 fase 2 (2026-10-30), con la escena 3D Tiles: 47 llamadas / 278 k tri / 43 MB, lote de 6; los topes no cambian.",
-    "cerca": { "llamadas": 60, "triangulos": 680000, "puntos": 3600, "heapMB": 95, "llamadas_lote": 7 }
+    "medido_el": "2026-11-14",
+    "cerca": { "llamadas": 60, "triangulos": 550000, "puntos": 3600, "heapMB": 95, "llamadas_lote": 7, "medido": { "llamadas": 39, "triangulos": 279129, "heapMB": 49, "llamadas_lote": 7 }, "calculado": { "puntos": "la prueba no imprime los puntos: vale la medida del 2026-10-29 (2,8 k) con ≈ 25 %" } }
   },
   "fixture_olivos_escalera": {
     "$comment": "Con ?olivos=escalera (ADR-0019 fase A, O8c), fixture de Hituelo montado con --olivos. Medido el 2026-10-29 en dos rondas del banco (SwiftShader, máquina al 100 % de CPU, esc 0,7 → presupuesto de olivos 385 k): cerca 27 llamadas / 426 k tri / 38-46 MB; lejos 76-77 / 125 k / 42-45 MB; SIN terminar: a los 5-12 min solo había 2-3 variantes E2, ni capa de lejanos ni propios (página sin trabajador). Por eso los topes no son el 25 % sobre lo medido sino el estado final calculado: cerca = 372 k del resto de la escena + el presupuesto de olivos (550 k × 0,7 + 10 % del fundido) ≈ 800 k → 1 M; lejos = 125 k + lejanos (140 × 4) → 160 k; llamadas, las medidas + 2 (lejanos y puntos) y ≈ 25 %. llamadas_olivos: el del ADR §5. La nube no se midió con la bandera: valen los de «fixture». Lo comprueba pruebas/guardianes/olivo.test.js; O8d los fija con medidas completas. T8 fase 2 (2026-10-30): con la escena 3D Tiles y de día (la bandada de 16_vida.js suma 98 llamadas, ver «fixture»), medido por el banco: lejos 124 llamadas / 11 k tri / 28 MB; cerca 33 / 459 k / 61 MB; nube 72 / 7,4 k / 62 MB. Sube solo el tope de llamadas de «lejos» (100 → 155).",
-    "cerca": { "llamadas": 40, "triangulos": 1000000, "heapMB": 95 },
-    "lejos": { "llamadas": 155, "triangulos": 160000, "heapMB": 95 },
-    "llamadas_olivos": 8
+    "medido_el": "2026-11-14",
+    "cerca": { "llamadas": 40, "triangulos": 600000, "heapMB": 78, "medido": { "llamadas": 29, "triangulos": 157100, "heapMB": 39 }, "calculado": { "triangulos": "estado final que SwiftShader no alcanza (solo llega a 5 variantes E2 y lejanos sustitutos): resto de la escena medido hoy (106 k) + presupuesto de olivos (550 k × 0,7 + 10 % del fundido = 424 k) = 530 k, con ≈ 13 %" } },
+    "lejos": { "llamadas": 58, "triangulos": 43000, "heapMB": 95, "medido": { "llamadas": 29, "triangulos": 21508, "heapMB": 49 } },
+    "llamadas_olivos": 8,
+    "llamadas_olivos_medido": 5
   }
 }

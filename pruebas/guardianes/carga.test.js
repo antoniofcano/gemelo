@@ -42,6 +42,28 @@ test("presupuesto.json: cada tope de «fixture» tiene su medida anotada y no pa
   }
 });
 
+// La misma regla para los dos bloques de olivos (los mide olivo.test.js; segunda mirada a MU0-5, 2026-11-14): cada tope numérico lleva su medida y no pasa de 2× ella,
+// o está en «calculado» con su motivo escrito (un estado final que SwiftShader no alcanza no se puede medir aquí: se dice, no se disimula).
+test("presupuesto.json: los topes de los olivos generados y de la escalera llevan su medida (≤ 2×) o su cálculo con motivo", () => {
+  for (const bloque of ["fixture_olivos_gen", "fixture_olivos_escalera"]) {
+    const B = PRES[bloque];
+    assert.match(String(B.medido_el), /^\d{4}-\d{2}-\d{2}$/, bloque + ".medido_el");
+    for (const [nombre, tope] of Object.entries(B)) {
+      if (!tope || typeof tope !== "object") continue;
+      const med = tope.medido || {}, calc = tope.calculado || {};
+      for (const [k, v] of Object.entries(tope)) {
+        if (typeof v !== "number") continue;
+        const d = bloque + "/" + nombre + "." + k;
+        if (typeof calc[k] === "string" && calc[k].length > 20) continue;
+        assert.ok(typeof med[k] === "number", d + ": ni medida ni cálculo con motivo");
+        assert.ok(v >= med[k] && v <= 2 * med[k], d + ": el tope " + v + " no está entre lo medido (" + med[k] + ") y su doble");
+      }
+    }
+  }
+  const E = PRES.fixture_olivos_escalera;
+  assert.ok(E.llamadas_olivos >= E.llamadas_olivos_medido && E.llamadas_olivos <= 2 * E.llamadas_olivos_medido, "llamadas_olivos entre lo medido y su doble");
+});
+
 for (const finca of FINCAS) {
   test("[" + finca + "] carga sin errores con la escena 3D Tiles y cada escenario cabe en el presupuesto de dibujo", { timeout: 300000 }, async t => {
     if (SALTO) return t.skip(SALTO);
@@ -58,7 +80,8 @@ for (const finca of FINCAS) {
         const tope = topes[nombre];
         // L1-07: además de llamadas, triángulos y puntos, la memoria de la tarjeta: geometrías y texturas de renderer.info.memory y los MB estimados (__g.memoria())
         for (const k of ["llamadas", "triangulos", "puntos", "geometrias", "texturas"]) assert.ok(m[k] <= tope[k], finca + "/" + nombre + ": " + k + " " + m[k] + " > tope " + tope[k] + " (si sube a propósito, explícalo y sube pruebas/presupuesto.json)");
-        if (m.gpuMB >= 0) assert.ok(m.gpuMB <= tope.gpuMB, finca + "/" + nombre + ": memoria de GPU estimada " + m.gpuMB + " MB > tope " + tope.gpuMB);
+        assert.ok(m.gpuMB >= 0, finca + "/" + nombre + ": sin estimación de la memoria de GPU (¿falta __g.memoria?): el tope no se puede saltar en silencio");
+        assert.ok(m.gpuMB <= tope.gpuMB, finca + "/" + nombre + ": memoria de GPU estimada " + m.gpuMB + " MB > tope " + tope.gpuMB);
         if (m.heapMB >= 0) assert.ok(m.heapMB <= tope.heapMB, finca + "/" + nombre + ": heap " + m.heapMB + " MB > tope " + tope.heapMB);
       }
       assert.ok(m.triangulos <= dis.triangulos && m.puntos <= dis.puntos && m.heapMB <= dis.heapMB && m.llamadas <= dis.llamadas, nombre + ": se pasa del presupuesto de DISEÑO (ADR-0002)");

@@ -339,6 +339,11 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 
 
 ### Corregido
+- Segunda mirada a la ronda del banco (2026-11-14):
+  - Topes de los olivos generados y de la escalera: llevan también su medida de hoy y no pasan de 2× ella. «Lejos» de la escalera baja de 155 a 58 llamadas y de 160.000 a 43.000 triángulos; los generados de cerca, de 680.000 a 550.000.
+  - El tope que sale de un cálculo y no de una medida lo dice con su motivo.
+  - El tope de memoria de GPU ya no se salta en silencio si falta la estimación.
+  - «Hace N» no afirma nada de un dato fechado más de 5 min en el futuro.
 - Medidas y topes (auditoría de noviembre, L1-06, L1-07 y L2-06; ronda del banco del 2026-11-14 en Chrome sin pantalla: recuentos y memoria, no fps; Quest e iPhone no probados):
   - Topes del fixture recalibrados con su medida al lado: «lejos» baja de 155 a 40 llamadas. `carga.test.js` falla si un tope pasa de 2× lo medido, y el banco mide siempre con la escala de olivos y la hora fijas.
   - Nuevo tope de memoria de GPU por escenario (geometrías, texturas y MB estimados); `__g.memoria()` la estima.

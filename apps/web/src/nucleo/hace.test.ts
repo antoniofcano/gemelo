@@ -19,6 +19,9 @@ describe("haceMinutos / haceDesde", () => {
     expect(haceDesde(antes(-5), AHORA)).toBe("hace 1 min");
     expect(haceMinutos(0.2)).toBe("hace 1 min");
   });
+  it("un instante más de 5 min en el futuro no es un desajuste de relojes: no se afirma cuánto hace", () => {
+    expect(haceMinutos(-5)).toBe("hace 1 min"); expect(haceMinutos(-6)).toBe(""); expect(haceDesde(antes(-600), AHORA)).toBe("");
+  });
   it("sin instante o sin reloj, nada", () => {
     for (const malo of [undefined, null, "", "no es fecha", 123]) expect(haceDesde(malo, AHORA)).toBe("");
     expect(haceDesde(antes(5), undefined)).toBe(""); expect(haceDesde(antes(5), NaN)).toBe("");
