@@ -70,6 +70,8 @@ function pintaSesion() {
   $("aliasBarra").textContent = s?.alias || "hogar";
   $("accionesSin").hidden = con && !s.primer_acceso;
   $("accionesCon").hidden = !con || s.primer_acceso;
+  const bt = document.querySelector("[data-accion='salirTodas']"), fila = bt && bt.closest(".fila");   // solo el titular cierra todas las sesiones (A-02): en unas gafas vinculadas no se ofrece
+  if (fila) fila.hidden = !con || s.titular !== true || s.entrada === "codigo";
   $("pistaPortada").textContent = !con ? "Para entrar necesitas una cuenta de hogar. Sin contraseña: te mandamos un enlace al correo."
     : s.primer_acceso ? "Ya has entrado. Antes de ir a la finca, faltan tres pasos cortos." : "Ya has entrado en este aparato.";
   const be = $("btnEntrar");
@@ -679,7 +681,10 @@ $("dlgSalirTodoNo").addEventListener("click", () => { $("dlgSalirTodo").close();
 
 // ---------- salir
 async function salir(todas) {
-  try { await pide("POST", todas ? "/api/sesion/salir-todas" : "/api/sesion/salir"); } catch { /* sin red: se limpia igual en pantalla */ }
+  let r = null;
+  try { r = await pide("POST", todas ? "/api/sesion/salir-todas" : "/api/sesion/salir"); } catch { /* sin red: se limpia igual en pantalla */ }
+  // un aparato vinculado (unas gafas) no cierra las demás sesiones de la cuenta (403 solo_titular, auditoría A-02): se dice, y su sesión sigue como estaba
+  if (todas && r && r.status === 403) { anuncia("Desde este aparato no se pueden cerrar las demás sesiones. Hazlo desde el aparato con el que entras por correo."); return; }
   S.sesion = null; pintaSesion(); ir("portada"); anuncia(todas ? "Has cerrado la sesión en todos tus aparatos." : "Has cerrado la sesión.");
 }
 document.addEventListener("click", e => {

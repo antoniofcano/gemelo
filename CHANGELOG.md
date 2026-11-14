@@ -339,6 +339,14 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 
 
 ### Corregido
+- Seguridad de la api (auditoría del 2026-11-14 de lo que la de noviembre no miró: 0 críticos, 0 altos, 4 medios y 8 bajos, todos arreglados):
+  - Solo titular: borrar la cuenta, descargar sus datos, cambiar el alias y cerrar todas sus sesiones ya no se pueden hacer desde unas gafas vinculadas.
+  - Cuentas de oficina: borrar una pide confirmación reciente y nunca deja sin la última admin; una cuenta oficina no cierra ni ve las sesiones de un admin.
+  - Hazas: no se asigna una haza a una cuenta de baja.
+  - Defensa en profundidad: registros sin correos, formularios solo en la entrada y la baja, una clave derivada por uso (sin cerrar sesiones), errores del contorno sin texto interno, acciones de CI fijadas por hash y purga de la auditoría de voz acotada en la base (migración 0028).
+  - Expulsiones: dejan su marca antes de llamar a LiveKit.
+  - Portada: en un aparato vinculado no se ofrece «Cerrar sesión en todos mis aparatos», y si el servidor dice que no, la pantalla lo dice.
+  - Probado en unidad (422 pruebas de la api) y en la puerta pesada; Quest no probado.
 - Segunda mirada a la ronda del banco (2026-11-14):
   - Topes de los olivos generados y de la escalera: llevan también su medida de hoy y no pasan de 2× ella. «Lejos» de la escalera baja de 155 a 58 llamadas y de 160.000 a 43.000 triángulos; los generados de cerca, de 680.000 a 550.000.
   - El tope que sale de un cálculo y no de una medida lo dice con su motivo.
