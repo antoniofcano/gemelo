@@ -40,6 +40,9 @@ describe("L6-11: las teclas del paseo no roban las del navegador", () => {
     expect(TeclasPaseo.accion({ code: "Space" }, { tag: "BUTTON" })).toBe(null); expect(TeclasPaseo.accion({ code: "Space" }, { tag: "CANVAS" })).toBe("sube");
     expect(TeclasPaseo.accion({ code: "ArrowDown" }, { tag: "DIV", panel: true })).toBe(null); expect(TeclasPaseo.accion({ code: "KeyD" }, { tag: "BUTTON", panel: true })).toBe("right");
     expect(TeclasPaseo.accion({ code: "KeyQ" }, { tag: "BUTTON" })).toBe("quad");
+    // L6-20: sin atajos de una tecla, ni WASD ni V, Q, E; las flechas, Mayús y Espacio siguen
+    expect(TeclasPaseo.accion({ code: "KeyW" }, { sinAtajos: true })).toBe(null); expect(TeclasPaseo.accion({ code: "KeyE" }, { sinAtajos: true })).toBe(null);
+    expect(TeclasPaseo.accion({ code: "ArrowUp" }, { sinAtajos: true })).toBe("up"); expect(TeclasPaseo.accion({ code: "ShiftLeft" }, { sinAtajos: true })).toBe("run");
   });
 });
 

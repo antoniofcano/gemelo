@@ -19,6 +19,7 @@ export var TecladoAereo = (function () {
   function accion(t: T, est: T) {
     if (!t || est.paseando || t.ctrl || t.meta || t.alt || est.campo || est.panel || est.prevenido) return null;
     if (/^Arrow/.test(t.code) && est.recorrido) return null;
+    if (est.sinAtajos && (/^(Key[A-Z]|Equal|Minus|NumpadAdd|NumpadSubtract)$/.test(t.code) || t.key === "+" || t.key === "-")) return null;   // L6-20: quedan las flechas y Re Pág / Av Pág
     var m = MOV[t.code];
     if (m) { if (t.shift && m[1]) return { incl: m[1] * INCL }; return { pan: [m[0] * PASO, m[1] * PASO] }; }
     if (t.key === "+" || t.key === "-") return { zoom: t.key === "+" ? -ZOOM : ZOOM };
@@ -50,6 +51,7 @@ export function creaCamara(d: DepsCamara) {
   var objetivo = new THREE.Vector3(0, 12, 0), orb = { az: -0.55, el: 0.62, dist: DIST_INI }, orbIni = JSON.parse(JSON.stringify(orb));
   function camara() { var ce = Math.cos(orb.el), se = Math.sin(orb.el); camera.position.set(objetivo.x + orb.dist * ce * Math.sin(orb.az), objetivo.y + orb.dist * se, objetivo.z + orb.dist * ce * Math.cos(orb.az)); camera.lookAt(objetivo); }
   // Configuración → Controles (33_ajustes.js): sensibilidad al mirar y eje vertical invertido; sin 33_ajustes.js, 1× y sin invertir
+  function sinAtajos() { var A = d.Ajustes(); try { return !!(A && A.atajos && !A.atajos()); } catch (e) { return false; } }   // L6-20
   function sensMirar() {
     var k = 1, y = 1;
     var Ajustes = d.Ajustes(); try { if (typeof Ajustes !== "undefined" && Ajustes && Ajustes.lee) { k = Number(Ajustes.lee("controles.sens")) || 1; y = Ajustes.lee("controles.invertir") ? -1 : 1; } } catch (e) { /* sin Configuración: 1× y sin invertir */ }
@@ -80,7 +82,7 @@ export function creaCamara(d: DepsCamara) {
     var el = e.target, tag = el && el.tagName;
     var a = TecladoAereo.accion({ code: e.code, key: e.key, ctrl: e.ctrlKey, meta: e.metaKey, alt: e.altKey, shift: e.shiftKey },
       { paseando: paseando(), campo: tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA" || !!(el && el.isContentEditable), panel: !!(el && el.closest && el.closest(PANEL)),
-        prevenido: !!e.defaultPrevented, recorrido: !!(d.recorrido && d.recorrido()) });
+        prevenido: !!e.defaultPrevented, recorrido: !!(d.recorrido && d.recorrido()), sinAtajos: sinAtajos() });
     if (!a) return;
     e.preventDefault();
     if (a.pan) pan(a.pan[0], a.pan[1]);

@@ -64,7 +64,9 @@ test("en Chrome: las siete pestañas, cada ajuste cambia sin errores, se guarda 
   assert.strictEqual(e.calidad, "2"); assert.strictEqual(e.exag, "2"); assert.strictEqual(e.corr, "0.75");
   assert.strictEqual(e.btnSonido, false, "el 🔊 duplicado ya no está (decisión 89)");
   assert.ok(e.guardado >= 15, "los ajustes se guardan en localStorage: " + e.guardado);
-  // restablecer: todo vuelve a su valor
+  // restablecer: todo vuelve a su valor (L6-19: con una segunda pulsación; la primera no borra nada)
+  await p.evaluate(() => document.getElementById("ajReinicia").click()); await p.waitForTimeout(200);
+  assert.strictEqual(await p.evaluate(() => document.documentElement.getAttribute("data-brujula")), "no", "una sola pulsación no restablece");
   await p.evaluate(() => document.getElementById("ajReinicia").click()); await p.waitForTimeout(300);
   const r = await p.evaluate(() => ({ b: document.documentElement.getAttribute("data-brujula"), q: Object.keys(localStorage).filter(k => k.indexOf("gemelo.ajustes.") === 0).length, calidad: document.getElementById("calidad").value, exag: document.getElementById("exag").value }));
   assert.deepStrictEqual(r, { b: "si", q: 0, calidad: "1", exag: "1" });

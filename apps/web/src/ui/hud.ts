@@ -40,13 +40,15 @@ export var HudPuro: T = (function () {
     function tactil(ajuste?: T, coarse?: T) { return ajuste === "si" ? true : ajuste === "no" ? false : !!coarse; }
     function zurda(mano?: T) { return mano === "zurda"; }
     // el mapa de teclas (decisión 84, §4.7): 1–6 ventanas, F1 ayuda, F pantalla completa, Inicio o 0 vista aérea, Intro pasear (en vista aérea), Esc como en
-    // un juego. Las teclas de letra y número no hacen nada con el foco en un campo (WCAG 2.1.4); Intro sobre un botón es su clic; con Ctrl, Alt o Cmd, nada
+    // un juego. Las teclas de letra y número no hacen nada con el foco en un campo ni, con «Atajos de una sola tecla» apagado en Configuración → Accesibilidad,
+    // nunca (WCAG 2.1.4, L6-20: se pueden apagar); Intro sobre un botón es su clic; con Ctrl, Alt o Cmd, nada
     var VENT: T = { Digit1: "mapa", Digit2: "capas", Digit3: "tiempo", Digit4: "historia", Digit5: "gente", Digit6: "chat",
       Numpad1: "mapa", Numpad2: "capas", Numpad3: "tiempo", Numpad4: "historia", Numpad5: "gente", Numpad6: "chat" };
     function accionTecla(t?: T, est?: T) {
       if (t.ctrl || t.meta || t.alt) return null;
       if (t.code === "Escape") return "esc";
       if (est.campo) return null;
+      if (est.sinAtajos && /^(Key[A-Z]|Digit\d|Numpad\d)$/.test(t.code)) return null;   // L6-20 (el mismo patrón que UNA_TECLA de nucleo/teclas.ts)
       if (t.code === "F1") return "v:ayuda";
       if (VENT[t.code]) return "v:" + VENT[t.code];
       if (t.code === "KeyF") return "pantalla";
@@ -201,7 +203,8 @@ export function creaHud(dp: DepsHud) {
       if (dp.VRX.on || (typeof dp.Menu !== "undefined" && dp.Menu && dp.Menu.abierto())) return;   // el menú es un <dialog>: Esc lo cierra él solo
       var el: T = e.target, t: T = el && el.tagName;
       var a: T = HudPuro.accionTecla({ code: e.code, ctrl: e.ctrlKey, meta: e.metaKey, alt: e.altKey },
-        { campo: t === "INPUT" || t === "SELECT" || t === "TEXTAREA" || !!(el && el.isContentEditable), paseando: dp.paseando, boton: t === "BUTTON" || t === "A" || t === "SUMMARY" });
+        { campo: t === "INPUT" || t === "SELECT" || t === "TEXTAREA" || !!(el && el.isContentEditable), paseando: dp.paseando, boton: t === "BUTTON" || t === "A" || t === "SUMMARY",
+          sinAtajos: !!(typeof dp.Ajustes !== "undefined" && dp.Ajustes && dp.Ajustes.atajos && !dp.Ajustes.atajos()) });
       if (!a || (e.repeat && a !== "esc")) return;
       e.preventDefault();
       if (a === "esc") esc();

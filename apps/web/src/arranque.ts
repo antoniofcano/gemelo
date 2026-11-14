@@ -103,7 +103,7 @@ function arranca(): void {
   var Bus = Nucleo.creaBus({ consola: typeof console !== "undefined" ? console : null });   // contratos/eventos.json
   var Pausa = Nucleo.creaPausa(Bus);   // C9a: el mundo en pausa (un juego a pantalla completa); emite «mundo:pausa»
   var ConfigPuro = Nucleo.ConfigPuro;
-  var Teclas = Nucleo.creaTeclas({ ventana: typeof window !== "undefined" ? window : null, consola: typeof console !== "undefined" ? console : null });
+  var Teclas = Nucleo.creaTeclas({ ventana: typeof window !== "undefined" ? window : null, consola: typeof console !== "undefined" ? console : null, atajos: function () { return typeof Ajustes === "undefined" || !Ajustes || Ajustes.atajos(); } });   // L6-20
   var Componentes = Nucleo.creaComponentes({
     bus: Bus,
     reparto: Reparto,

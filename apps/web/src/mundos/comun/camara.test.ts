@@ -55,6 +55,9 @@ describe("cámara orbital", () => {
     expect(TecladoAereo.accion({ ...base, ctrl: true }, {})).toBe(null);
     expect(TecladoAereo.accion({ code: "KeyA", key: "a" }, { recorrido: true })).toEqual({ pan: [TecladoAereo.PASO, 0] });   // WASD sigue con el recorrido
     expect(TecladoAereo.accion({ code: "BracketRight", key: "+" }, {})).toEqual({ zoom: -TecladoAereo.ZOOM });   // el + del teclado español
+    // L6-20: sin atajos de una tecla, ni WASD, Q, E ni + −; las flechas y Re Pág / Av Pág siguen
+    for (const t of [{ code: "KeyQ", key: "q" }, { code: "KeyW", key: "w" }, { code: "BracketRight", key: "+" }, { code: "Minus", key: "-" }]) expect(TecladoAereo.accion(t, { sinAtajos: true })).toBe(null);
+    expect(TecladoAereo.accion(base, { sinAtajos: true })).toEqual({ pan: [TecladoAereo.PASO, 0] }); expect(TecladoAereo.accion({ code: "PageUp", key: "PageUp" }, { sinAtajos: true })).toEqual({ zoom: -TecladoAereo.ZOOM });
     const p = monta(true), d0 = p.api.orb.dist, e: A = { code: "PageDown", key: "PageDown", defaultPrevented: false, preventDefault() { e.defaultPrevented = true; } };
     p.ventana.dispara("keydown", e); expect(p.api.orb.dist).toBe(d0); expect(e.defaultPrevented).toBe(false);
     const r = monta(false, true), x0 = r.api.objetivo.x; r.ventana.dispara("keydown", { code: "ArrowRight", key: "ArrowRight", preventDefault() { /* doble */ } }); expect(r.api.objetivo.x).toBe(x0);

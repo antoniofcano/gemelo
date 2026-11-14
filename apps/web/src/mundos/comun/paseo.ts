@@ -44,6 +44,7 @@ export var TeclasPaseo = (function () {
     if (!t || t.ctrl || t.meta || t.alt) return null;
     var tag = est && est.tag;
     if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA" || (est && est.editable)) return null;
+    if (est && est.sinAtajos && /^Key[A-Z]$/.test(t.code)) return null;   // L6-20: sin atajos de una tecla, ni WASD ni V, Q, E (quedan las flechas, Mayús y Espacio)
     if (LETRAS[t.code]) return LETRAS[t.code];
     var m = MAPA[t.code]; if (!m) return null;
     if (t.code === "Space" && (tag === "BUTTON" || tag === "A" || tag === "SUMMARY")) return null;
@@ -85,6 +86,7 @@ export function creaPaseo(d: DepsPaseo) {
   var E: EstadoPaseo = { paseando: false, persona: null, teclas: {}, primera: false };
   // AV2 (decisión 133): «Altura de la vista» en Configuración (vista.altura): de pie (ojos a 1,62 m, como siempre) o sentado (1,20 m); independiente del avatar. Sin Configuración, de pie.
   var OJOS_PIE = 1.62, OJOS_SENTADO = 1.2;
+  function sinAtajos() { var A = d.Ajustes(); try { return !!(A && A.atajos && !A.atajos()); } catch (e) { return false; } }
   function alturaOjos() { var Ajustes = d.Ajustes(); return typeof Ajustes !== "undefined" && Ajustes && Ajustes.lee && Ajustes.lee("vista.altura") === "sentado" ? OJOS_SENTADO : OJOS_PIE; }
   function creaPersona() {
     var g = new THREE.Group(), mt = function (c: T) { return materiales.estandar("MeshLambertMaterial", { color: c }); };
@@ -125,7 +127,7 @@ export function creaPaseo(d: DepsPaseo) {
   escucha(window, "keydown", function (e: T) {
     if (!paseando) return; var o = e.target;
     // Esc ya no sale del paseo (decisión 84): cierra lo último abierto o abre el menú (31_hud.js); a la vista aérea se vuelve con Inicio o 0
-    var a = TeclasPaseo.accion({ code: e.code, ctrl: e.ctrlKey, meta: e.metaKey, alt: e.altKey }, { tag: o && o.tagName, editable: !!(o && o.isContentEditable), panel: !!(o && o.closest && o.closest(PANEL)) });   // L6-11
+    var a = TeclasPaseo.accion({ code: e.code, ctrl: e.ctrlKey, meta: e.metaKey, alt: e.altKey }, { tag: o && o.tagName, editable: !!(o && o.isContentEditable), panel: !!(o && o.closest && o.closest(PANEL)), sinAtajos: sinAtajos() });   // L6-11, L6-20
     if (!a) return;
     if (a === "vista") { cicloVista(); return; }
     if (a === "quad") { ponQuad(!enQuad()); return; }

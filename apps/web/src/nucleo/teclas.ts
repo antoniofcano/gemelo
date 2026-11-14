@@ -6,7 +6,12 @@
 
 /** Lo que se usa de un KeyboardEvent. */
 export interface TeclaEvento { code: string; ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean; repeat?: boolean; target?: any; preventDefault(): void }
-export interface DepsTeclas { ventana?: { addEventListener(tipo: string, fn: (e: any) => void): void } | null; consola?: { error(...a: unknown[]): void } | null }
+export interface DepsTeclas { ventana?: { addEventListener(tipo: string, fn: (e: any) => void): void } | null; consola?: { error(...a: unknown[]): void } | null;
+  /** L6-20: ¿valen los atajos de una sola tecla? (Configuración → Accesibilidad; sin ella, sí) */
+  atajos?: () => boolean }
+
+/** L6-20 (WCAG 2.1.4): las teclas de un solo carácter (letras, cifras y + −), las que «Atajos de una sola tecla» apaga. El HUD, el paseo y la cámara usan el mismo patrón en sus trozos puros */
+export const UNA_TECLA = /^(Key[A-Z]|Digit\d|Numpad\d|Equal|Minus|NumpadAdd|NumpadSubtract|BracketRight|Slash)$/;
 
 export function creaTeclas(deps?: DepsTeclas) {
   var ventana = deps && deps.ventana ? deps.ventana : null, consola = deps && deps.consola ? deps.consola : null;
@@ -22,6 +27,7 @@ export function creaTeclas(deps?: DepsTeclas) {
   function campo(el: any) { var t = el && el.tagName; return t === "INPUT" || t === "SELECT" || t === "TEXTAREA" || !!(el && el.isContentEditable); }
   function alPulsar(e: TeclaEvento) {
     var r = mapa[e.code]; if (!r || e.ctrlKey || e.metaKey || e.altKey || e.repeat || campo(e.target)) return;
+    if (deps && deps.atajos && UNA_TECLA.test(e.code)) { var si = true; try { si = deps.atajos(); } catch (er) {} if (!si) return; }   // L6-20
     var usada; try { usada = r.fn(e); } catch (er) { try { if (consola) consola.error("[Teclas] " + e.code, er); } catch (e2) {} }
     if (usada !== false) e.preventDefault();
   }

@@ -31,7 +31,7 @@ export var AjustesPuro: T = (function () {
       "vista.exag": num(1, 1, 3, 0.25), "vista.corr": num(1, 0, 1.5, 0.25), "vista.brujula": bool(true), "vista.personal": bool(true), "vista.suelo": bool(false), "vista.tono": opc("neutro", ["neutro", "agx", "aces", "neutral"]), "vista.a2c": bool(false), "vista.unidades": opc("ha", ["ha", "m2"]), "vista.altura": opc("pie", ["pie", "sentado"]),
       "controles.tactil": opc("auto", ["auto", "si", "no"]), "controles.mano": opc("diestra", ["diestra", "zurda"]), "controles.sens": num(1, 0.4, 2, 0.2), "controles.invertir": bool(false), "controles.palanca": bool(true), "controles.tocarIr": bool(true),
       "vr.giro": opc("30", ["15", "30", "45", "60"]), "vr.vineta": opc("suave", ["suave", "fuerte", "no"]), "vr.vuelo": bool(false), "vr.multiview": bool(true), "vr.muneca": bool(true),
-      "acc.texto": num(100, 100, 200, 25), "acc.contraste": bool(false), "acc.movimiento": opc("sistema", ["sistema", "reducido", "normal"]),
+      "acc.texto": num(100, 100, 200, 25), "acc.contraste": bool(false), "acc.movimiento": opc("sistema", ["sistema", "reducido", "normal"]), "acc.atajos": bool(true),
       "avanzado.contador": bool(false)
     };
     // lo que fuerza la URL (clave del ajuste → expresión sobre location.search); la URL manda y no se guarda
@@ -108,6 +108,7 @@ export function creaAjustes(dp: DepsAjustes) {
     function alMovimiento(fn?: T) { if (typeof fn !== "function") return function () {}; oyentesMov.push(fn); try { fn(movimientoReducido()); } catch (e: T) {} return function () { var i: T = oyentesMov.indexOf(fn); if (i >= 0) oyentesMov.splice(i, 1); }; }
     function tactil() { var t: T = api.lee("controles.tactil"); if (t === "auto") return !!(window.matchMedia && matchMedia("(pointer: coarse)").matches); return t === "si"; }
     api.movimientoReducido = movimientoReducido; api.alMovimiento = alMovimiento; api.tactil = tactil;
+    api.atajos = function () { return api.lee("acc.atajos") !== false; };   // L6-20: ¿valen los atajos de una sola tecla? (los leen el HUD, las Teclas, el paseo y la cámara)
     api.superficie = function (ha?: T) { return AjustesPuro.superficie(ha, api.lee("vista.unidades"), dp.fmt); };
     // calidad de los olivos: null = automática (la escala adaptativa de 07b manda); si no, la escala que se fija. 07b la lee con Ajustes.escalaArboles() (ver el informe de U4)
     api.escalaArboles = function () { var c: T = api.lee("graficos.calidad"); return c === "auto" ? null : ({ "0": 0.7, "1": 1, "2": 1.6 } as T)[c]; };
@@ -181,12 +182,14 @@ export function creaAjustes(dp: DepsAjustes) {
       { id: "acc", t: "Accesibilidad", campos: [
         { k: "acc.texto", t: "Tamaño del texto", fmt: function (v?: T) { return v + " %"; } },
         { k: "acc.contraste", t: "Alto contraste en el HUD" },
+        { k: "acc.atajos", t: "Atajos de una sola tecla (letras, números, + y −)", nota: "Apágalos si dictas por voz o usas un conmutador: siguen las flechas, Esc, F1, Inicio, Intro, Mayús, Espacio, Re Pág y Av Pág, y todos los botones." },
         { k: "acc.movimiento", t: "Movimiento", ops: [["sistema", "Como el sistema"], ["reducido", "Reducido"], ["normal", "Normal"]], nota: "Reducido: sin animaciones del HUD, sin el vuelo de la cámara ni la caída al pasear, nubes y viento quietos y las máquinas de los interiores paradas al entrar." } ] },
       { id: "avanzado", t: "Avanzado", campos: [
         { k: "avanzado.contador", t: "Contador de rendimiento (lo mismo que ?debug)", nota: "Los fps solo valen en un aparato real; en Chrome sin GPU no son fps de nada." },
         { boton: "Medir 60 s", id: "ajMedir", solo: "contador", nota: "El medidor solo está con el contador encendido (o con &mide=N en la URL)." },
         { boton: "Devolver el chat y el mapa a su sitio", id: "ajRecoloca" },
-        { boton: "Restablecer toda la configuración", id: "ajReinicia" } ] }
+        { boton: "Restablecer toda la configuración", id: "ajReinicia", texto: function () { return reinicioArmado() ? "Pulsa otra vez para restablecerlo todo" : "Restablecer toda la configuración"; },
+          nota: "Vuelve todo a como venía, también el texto, el contraste, el movimiento y la mano. Pide pulsar dos veces." } ] }
     ];
 
     function recoloca() {   // chat, burbuja y mapa de vuelta a su sitio (UB: Movibles); si aún no está, se borran las posiciones guardadas
@@ -199,10 +202,17 @@ export function creaAjustes(dp: DepsAjustes) {
       try { if (typeof dp.Movibles !== "undefined" && dp.Movibles && typeof dp.Movibles.revisa === "function") dp.Movibles.revisa(); } catch (e: T) {}
       try { if (typeof dp.Hud !== "undefined" && dp.Hud && dp.Hud.aviso) dp.Hud.aviso("Chat y mapa en su sitio", 2500); } catch (e: T) {}
     }
+    // L6-19: «Restablecer» pide una segunda pulsación en 8 s (el botón cambia su texto y lo dice el aviso del HUD): un toque suelto no borra el contraste ni la mano
+    var reinicioT: T = 0;
+    function reinicioArmado() { return reinicioT > 0 && Date.now() - reinicioT < 8000; }
+    function avisa(t?: T) { try { if (typeof dp.Hud !== "undefined" && dp.Hud && dp.Hud.aviso) dp.Hud.aviso(t, 4000); } catch (e: T) {} }
     var ACCIONES: T = {
       ajMedir: function () { if (!dp.Bus.hay("medida:inicia")) return; var d: T = dp.$("menu"); try { if (d && d.close) d.close(); } catch (e: T) {} dp.Bus.emite("medida:inicia", { segundos: 60 }); },
       ajRecoloca: recoloca,
-      ajReinicia: function () { api.restablece(); try { if (typeof dp.Hud !== "undefined" && dp.Hud && dp.Hud.aviso) dp.Hud.aviso("Configuración restablecida", 2500); } catch (e: T) {} }
+      ajReinicia: function () {
+        if (!reinicioArmado()) { reinicioT = Date.now(); pinta(); avisa("Pulsa otra vez «Restablecer» para volver toda la configuración a como venía (también la accesibilidad)."); return; }
+        reinicioT = 0; api.restablece(); pinta(); avisa("Configuración restablecida");
+      }
     };
 
     var cont: T = null, hojas: T = {};   // los controles pintados, por clave

@@ -38,6 +38,14 @@ describe("Configuración", () => {
     const otros: boolean[] = [], quita = A.alMovimiento((r: boolean) => { otros.push(r); }); A.pon("acc.movimiento", "reducido"); quita(); A.pon("acc.movimiento", "normal");
     expect(otros).toEqual([false, true]);
   });
+  it("L6-19: «Restablecer toda la configuración» pide una segunda pulsación (el botón lo dice); L6-20: «Atajos de una sola tecla» encendidos por defecto", () => {
+    const { A, d } = monta();
+    expect(A.atajos()).toBe(true); A.pon("acc.atajos", false); expect(A.atajos()).toBe(false);
+    A.pon("acc.contraste", true);
+    const b = d.getElementById("ajReinicia"); b.click();
+    expect(A.lee("acc.contraste")).toBe(true); expect(A.lee("acc.atajos")).toBe(false); expect(b.textContent).toMatch(/otra vez/);
+    b.click(); expect(A.lee("acc.contraste")).toBe(false); expect(A.atajos()).toBe(true); expect(b.textContent).toBe("Restablecer toda la configuración");
+  });
   it("?debug manda sobre el contador (y avisa al medidor)", () => {
     const { A, emitidos } = monta("?debug"); expect(A.lee("avanzado.contador")).toBe(true); expect(emitidos).toContain("medida:muestra");
   });

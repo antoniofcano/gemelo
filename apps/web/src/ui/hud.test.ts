@@ -24,7 +24,11 @@ function monta() {
 describe("HUD", () => {
   it("lo puro sigue igual: el modo, el rumbo y las teclas", () => {
     expect(HudPuro.modoDe(true, false, true)).toBe("dron"); expect(HudPuro.rumboCamara(1, 0)).toBe(90);
-    expect(HudPuro.accionTecla({ code: "Digit1" }, {})).toBe("v:mapa"); expect(HudPuro.ordenEsc({})).toBe("menu");
+    expect(HudPuro.accionTecla({ code: "Digit1" }, {})).toBe("v:mapa");
+    // L6-20: sin atajos de una tecla, ni 1-6 ni F ni 0; F1, Inicio, Esc e Intro siguen
+    expect(HudPuro.accionTecla({ code: "Digit1" }, { sinAtajos: true })).toBe(null); expect(HudPuro.accionTecla({ code: "KeyF" }, { sinAtajos: true })).toBe(null);
+    expect(HudPuro.accionTecla({ code: "F1" }, { sinAtajos: true })).toBe("v:ayuda"); expect(HudPuro.accionTecla({ code: "Home" }, { sinAtajos: true })).toBe("aereo");
+    expect(HudPuro.accionTecla({ code: "Escape" }, { sinAtajos: true })).toBe("esc"); expect(HudPuro.ordenEsc({})).toBe("menu");
   });
   it("arranca sus dos relojes y sus escuchas; un aviso y un icono entran en su sitio", () => {
     const { H, m, barra, avisos } = monta();
