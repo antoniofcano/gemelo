@@ -40,7 +40,7 @@ python tuberia/finca_8_teselas.py --finca hituelo
 node tuberia/tiles3d/genera.mjs --salida <carpeta del tileset>
 
 # Cliente web (Vite; el producto): página empaquetada en apps/web/dist/
-cd apps/web && npm i && GEMELO_DATOS=<ruta a indice.json> npm run build && cd ../..
+cd apps/web && npm ci && GEMELO_DATOS=<ruta a indice.json> npm run build && cd ../..
 ```
 
 El gemelo se sirve solo desde el servidor: el entorno local (`npm run dev:arriba`, [DESARROLLO-LOCAL](doc/operacion/DESARROLLO-LOCAL.md)) o el VPS de OVH, donde está desplegado ([PUBLICACION](doc/operacion/PUBLICACION.md), [DESPLIEGUE-V2](doc/operacion/DESPLIEGUE-V2.md)). La salida artefacto de claude.ai se retiró ([ADR-0021](doc/adr/0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md)).
@@ -52,8 +52,8 @@ Los scripts de `tuberia/datos/` leen sus rutas de variables de entorno (`GEMELO_
 ## Probar
 
 ```bash
-npm i && npm run puerta                    # la puerta: guardianes con un fixture sintético (duración: ONBOARDING#la-puerta)
-# hace falta Chrome instalado (variable CHROME si no está en la ruta por defecto); npm i ya trae playwright-core
+npm ci && npm run puerta                    # la puerta: guardianes con un fixture sintético (duración: ONBOARDING#la-puerta)
+# hace falta Chrome instalado (variable CHROME si no está en la ruta por defecto); npm ci ya trae playwright-core
 # con la web servida (npm run dev:arriba) o una página de pruebas/salida/paginas/
 node pruebas/prueba3.js <url de la página> salida/h     # carga, presupuesto, capturas
 GEMELO_URL=<url de la página> node pruebas/vr_mock.js   # VR con sesión simulada
