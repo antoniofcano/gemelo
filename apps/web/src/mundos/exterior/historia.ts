@@ -125,7 +125,15 @@ export var HistoriaPuro: T = (function () {
     var MOTIVOS: T = { sin_api: "esta página no tiene servidor", http_401: "hace falta entrar con tu enlace", http_503: "el servidor no lee OlivarTrack ni Vigía ahora",
       contrato: "la respuesta del servidor no tiene la forma esperada", red: "no se pudo hablar con el servidor" };
     function motivo(m?: T) { return MOTIVOS[m] || "el servidor respondió con un error (" + String(m).replace(/^http_/, "") + ")"; }
-    return { valida: valida, lee: lee, aplica: aplica, aviso: aviso, atencion: atencion, motivo: motivo };
+    // L6-10: ← → con el recorrido en marcha: −1, +1 o 0. Valen con el foco en un botón (donde lo deja el propio recorrido: «Siguiente»); no en un campo de texto,
+    // un deslizador, unas pestañas, un menú o una lista (sus flechas son suyas), ni con Ctrl, Alt o Cmd, ni paseando
+    var ROLES_FLECHA: T = { tab: 1, menuitem: 1, menuitemradio: 1, menuitemcheckbox: 1, slider: 1, radio: 1, option: 1, spinbutton: 1, listbox: 1, combobox: 1, tree: 1, grid: 1, textbox: 1 };
+    function flecha(t?: T, est?: T) {
+      if (!t || !est || !est.recorrido || est.paseando || t.ctrl || t.meta || t.alt || est.editable) return 0;
+      if (est.tag === "INPUT" || est.tag === "SELECT" || est.tag === "TEXTAREA" || ROLES_FLECHA[est.rol || ""]) return 0;
+      return t.code === "ArrowRight" ? 1 : t.code === "ArrowLeft" ? -1 : 0;
+    }
+    return { valida: valida, lee: lee, aplica: aplica, aviso: aviso, atencion: atencion, motivo: motivo, flecha: flecha };
   })();
   // [puro:fin]
 
@@ -360,8 +368,9 @@ export function creaHistoria(dp: DepsHistoria) {
     var cont = $("hPuntos"); ESCENAS.forEach(function (e?: T, i?: T) { var b = document.createElement("button"); b.type = "button"; b.className = "h-punto"; b.setAttribute("aria-label", "Escena " + (i + 1) + ": " + e.t); b.title = e.t; suel.escucha(b, "click", function () { vaA(i); }); suel.nodo(b); cont.appendChild(b); });
     suel.escucha($("hIni"), "click", function () { vaA(0); }); suel.escucha($("hAnt"), "click", function () { vaA(hist - 1); }); suel.escucha($("hSig"), "click", function () { vaA(hist + 1); }); suel.escucha($("hFin"), "click", saleHistoria);
     suel.escucha(window, "keydown", function (e?: T) {
-      if (hist < 0 || dp.paseando) return; var t = e.target && e.target.tagName; if (t === "INPUT" || t === "SELECT" || t === "TEXTAREA" || t === "BUTTON") return;
-      if (e.code === "ArrowRight") { vaA(hist + 1); e.preventDefault(); } else if (e.code === "ArrowLeft") { vaA(hist - 1); e.preventDefault(); }
+      var o = e.target, d = HistoriaPuro.flecha({ code: e.code, ctrl: e.ctrlKey, meta: e.metaKey, alt: e.altKey },
+        { recorrido: hist >= 0, paseando: dp.paseando, tag: o && o.tagName, rol: o && o.getAttribute ? o.getAttribute("role") : null, editable: !!(o && o.isContentEditable) });   // L6-10: también con el foco en un botón
+      if (d) { vaA(hist + d); e.preventDefault(); }
     });
     aviso("Datos: instantánea de OlivarTrack del " + dd(OT.fecha_consulta) + " · sin lectura en vivo", "");
   })();

@@ -34,6 +34,24 @@ export var PalancaPuro = (function () {
   }
   return { ZONA_MUERTA: ZONA_MUERTA, lee: lee, mundo: mundo, giro: giro, activa: activa };
 })();
+// L6-11: las teclas del paseo, sin robar las del navegador. t = { code, ctrl, meta, alt }; est = { tag, panel, editable }. Devuelve «vista», «quad», «dron», la tecla del mapa
+// (up, down, left, right, run, sube, baja) o null. Nada con Ctrl, Alt o Cmd (Ctrl+S, Alt+←…; en macOS, sin keyup con Cmd pulsado), ni en un campo; con el foco en un
+// botón, enlace o «summary», Espacio es su clic; dentro de una ventana, la ficha, un menú o un diálogo, Espacio y las flechas son suyos (desplazar, elegir).
+export var TeclasPaseo = (function () {
+  var MAPA: T = { ArrowUp: "up", KeyW: "up", ArrowDown: "down", KeyS: "down", ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right", ShiftLeft: "run", ShiftRight: "run", Space: "sube", KeyC: "baja" };
+  var LETRAS: T = { KeyV: "vista", KeyQ: "quad", KeyE: "dron" };
+  function accion(t: T, est: T) {
+    if (!t || t.ctrl || t.meta || t.alt) return null;
+    var tag = est && est.tag;
+    if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA" || (est && est.editable)) return null;
+    if (LETRAS[t.code]) return LETRAS[t.code];
+    var m = MAPA[t.code]; if (!m) return null;
+    if (t.code === "Space" && (tag === "BUTTON" || tag === "A" || tag === "SUMMARY")) return null;
+    if ((t.code === "Space" || /^Arrow/.test(t.code)) && est && est.panel) return null;
+    return m;
+  }
+  return { MAPA: MAPA, accion: accion };
+})();
 // [puro:fin]
 
 /** A3-8c: el estado del paseo que leen los demás (Paseo.E; antes, var del legado). teclas se reemplaza al salir del paseo: se lee en cada uso */
@@ -103,15 +121,16 @@ export function creaPaseo(d: DepsPaseo) {
     visor.classList.remove("paseo"); $("ayudaPaseo").hidden = true; $("ayuda").hidden = false;
   }
   escucha($("btnPaseo"), "click", function () { if (paseando) salePaseo(); else entraPaseo(); });
-  var MAPA: T = { ArrowUp: "up", KeyW: "up", ArrowDown: "down", KeyS: "down", ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right", ShiftLeft: "run", ShiftRight: "run", Space: "sube", KeyC: "baja" };
+  var MAPA: T = TeclasPaseo.MAPA, PANEL = ".ventana, .ficha, dialog, [role=dialog], [role=alertdialog], [role=menu], [role=tablist], .tarjeta-rec";
   escucha(window, "keydown", function (e: T) {
-    if (!paseando) return; var t = e.target && e.target.tagName;
-    if (t === "INPUT" || t === "SELECT" || t === "TEXTAREA") return;
+    if (!paseando) return; var o = e.target;
     // Esc ya no sale del paseo (decisión 84): cierra lo último abierto o abre el menú (31_hud.js); a la vista aérea se vuelve con Inicio o 0
-    if (e.code === "KeyV") { cicloVista(); return; }
-    if (e.code === "KeyQ") { ponQuad(!enQuad()); return; }
-    if (e.code === "KeyE") { ponDron(!enDron()); return; }
-    if (MAPA[e.code]) { teclas[MAPA[e.code]] = true; e.preventDefault(); }
+    var a = TeclasPaseo.accion({ code: e.code, ctrl: e.ctrlKey, meta: e.metaKey, alt: e.altKey }, { tag: o && o.tagName, editable: !!(o && o.isContentEditable), panel: !!(o && o.closest && o.closest(PANEL)) });   // L6-11
+    if (!a) return;
+    if (a === "vista") { cicloVista(); return; }
+    if (a === "quad") { ponQuad(!enQuad()); return; }
+    if (a === "dron") { ponDron(!enDron()); return; }
+    teclas[a] = true; e.preventDefault();
   });
   escucha(window, "keyup", function (e: T) { if (MAPA[e.code]) teclas[MAPA[e.code]] = false; });
   ["up", "down", "left", "right"].forEach(function (d: T) {
@@ -180,7 +199,7 @@ export function creaPaseo(d: DepsPaseo) {
     persona.traverse(function (o: T) { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
     materiales.libera();
   }
-  var api = { E: E, pp: pp, camPos: camPos, PalancaPuro: PalancaPuro, ponPalanca: ponPalanca, giraPalanca: giraPalanca, entraPaseo: entraPaseo, salePaseo: salePaseo, actualizaPaseo: actualizaPaseo,
+  var api = { E: E, pp: pp, TeclasPaseo: TeclasPaseo, camPos: camPos, PalancaPuro: PalancaPuro, ponPalanca: ponPalanca, giraPalanca: giraPalanca, entraPaseo: entraPaseo, salePaseo: salePaseo, actualizaPaseo: actualizaPaseo,
     estado: function () { return { paseando: paseando, persona: persona, teclas: teclas }; }, libera: libera, componente: null as Manifiesto | null };
   api.componente = manifiestoPaseo(api);   // lo registra 90_final.js (como Vida)
   return api;
