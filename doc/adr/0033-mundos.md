@@ -167,3 +167,7 @@ Lo concreto (el diseño de las interfaces está en [MUNDOS.md](../sistema/MUNDOS
   - Spark con super-three;
   - la pantalla compartida en el Quest;
   - la carga de LiveKit con tres salas a la vez en el VPS, cuyos núcleos siguen **[NO VERIFICADO]**.
+
+## Enmienda 2026-11-14 ([ADR-0036](0036-visita-guiada-compartida-en-los-interiores.md), decisión 233)
+- **En una visita guiada manda la sala del evento:** `guiada-<evento>` lleva la pose, la voz y el estado de la visita en todos los mundos, con una sola conexión; no hay sala de datos por mundo durante una guiada (enmienda el punto «Una guiada que cruza mundos» del §2 y la decisión 226). Fuera de una guiada, la sala por mundo de este ADR sigue en pie.
+- **La tabla de mundos de la pose** (bits 6-7 del byte 1) es la de `mundos_pose` de [livekit-roles.json](../../contratos/livekit-roles.json) v9: `0` exterior, `1` patios, `2` fábrica, `3` otro (la de este ADR, con molino y bodega, no llegó a usarse). En una guiada no es solo una defensa: es lo que separa a quién se dibuja.

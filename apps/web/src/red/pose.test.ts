@@ -2,6 +2,7 @@
 // cambia al pasar a TypeScript; esta prueba lo fija byte a byte (los errores medidos de ida y vuelta, las tasas y el resto los cubre pruebas/guardianes/presencia.test.js).
 import { describe, expect, it } from "vitest";
 import { BufferPose, PoseCodec } from "./pose.ts";
+import roles from "../../../../contratos/livekit-roles.json";
 
 const hex = (b: Uint8Array) => Array.from(b, x => x.toString(16).padStart(2, "0")).join(" ");
 
@@ -36,7 +37,7 @@ describe("PoseCodec: la tabla de bytes del contrato (little-endian)", () => {
     expect(PoseCodec.decodifica(b.slice(0, 23))).toBeNull();                                               // longitud que no es la del tipo
     expect(PoseCodec.decodifica(new Uint8Array(56))).toBeNull();
     const m3 = b.slice(); m3[1] = 1 | (3 << 4); expect(PoseCodec.decodifica(m3).modo).toBe(PoseCodec.PIE);  // modo 3 (reservado): a pie, no se descarta
-    const r = b.slice(); r[1] = 1 | 0xc0; expect(PoseCodec.decodifica(r)).not.toBeNull();                    // bits 6-7 (el mundo es de MU3): se ignoran
+    const r = b.slice(); r[1] = 1 | 0xc0; expect(PoseCodec.decodifica(r)!.mundo).toBe(PoseCodec.OTRO);     // bits 6-7 = 3: el mundo «otro» (ADR-0036), no se descarta
     expect(PoseCodec.decodifica(b.buffer)).not.toBeNull();                                                   // un ArrayBuffer también vale
     expect(() => PoseCodec.codifica({ tipo: 1, seq: 0, t: 0, cab: { p: [3e7, 0, 0], q: [0, 0, 0, 1] } })).toThrow(RangeError);   // fuera del int32 en cm
   });
@@ -60,5 +61,40 @@ describe("BufferPose", () => {
     expect(BufferPose.recibe(b, P(65000, 900, 0), 5100)).toBe(false); // más vieja
     expect(BufferPose.muestra(b, 5150, 100, o)).toBe(true);           // 50 ms tras la primera (desfase 4000)
     expect(o.cab.p[0]).toBeCloseTo(5, 9);
+  });
+});
+
+describe("PoseCodec: el mundo en los bits 6-7 del byte 1 (ADR-0036, contratos/livekit-roles.json v9)", () => {
+  const cab = { p: [1, 2, 3], q: [0, 0, 0, 1] }, mano = { p: [0, 1, 0], q: [0, 0, 0, 1] };
+  it("la tabla es la del contrato (mundos_pose): el índice es el código; un mundo que no está, «otro»; sin mundo, el exterior", () => {
+    expect(PoseCodec.MUNDOS).toEqual(roles.mundos_pose.lista);
+    expect(["exterior", "patios", "fabrica", "otro"].map(PoseCodec.codigoMundo)).toEqual([0, 1, 2, 3]);
+    expect(PoseCodec.codigoMundo("vacio")).toBe(3); expect(PoseCodec.codigoMundo("bodega")).toBe(3); expect(PoseCodec.codigoMundo(null)).toBe(0); expect(PoseCodec.codigoMundo(undefined)).toBe(0);
+    expect([0, 1, 2, 3].map(PoseCodec.nombreMundo)).toEqual(roles.mundos_pose.lista);
+  });
+  it("ida y vuelta de los cuatro mundos con los tres modos y los dos tipos: el tamaño, la versión, el tipo, las manos y el modo no cambian", () => {
+    for (const tipo of [1, 2]) for (const modo of [0, 1, 2]) for (const mundo of [0, 1, 2, 3]) {
+      const b = PoseCodec.codifica({ tipo, seq: 9, t: 5, cab, izq: tipo === 2 ? mano : null, der: null, modo: tipo === 2 ? 0 : modo, mundo });
+      expect(b.byteLength).toBe(PoseCodec.BYTES[tipo]); expect(b[0]).toBe(1);
+      expect(b[1]! >> 6).toBe(mundo); expect(b[1]! & 3).toBe(tipo); expect((b[1]! >> 4) & 3).toBe(tipo === 2 ? 0 : modo);
+      const d = PoseCodec.decodifica(b);
+      expect(d).toMatchObject({ tipo, mundo, modo: tipo === 2 ? 0 : modo }); expect(d.cab.p).toEqual([1, 2, 3]);
+      if (tipo === 2) { expect(d.izq).not.toBeNull(); expect(d.der).toBeNull(); }
+    }
+  });
+  it("lectura antigua: un cliente de antes solo miraba los bits 0-5 y ve la misma pose; una pose de antes (bits 6-7 a 0) es del exterior", () => {
+    const b = PoseCodec.codifica({ tipo: 1, seq: 1, t: 2, cab, modo: PoseCodec.QUAD, mundo: PoseCodec.codigoMundo("fabrica") });
+    const viejo = (band: number) => ({ tipo: band & 3, izq: !!(band & 4), der: !!(band & 8), modo: (band >> 4) & 3 });
+    expect(viejo(b[1]!)).toEqual({ tipo: 1, izq: false, der: false, modo: 1 });
+    const antes = PoseCodec.codifica({ tipo: 1, seq: 1, t: 2, cab });
+    expect(antes[1]).toBe(1); expect(PoseCodec.decodifica(antes).mundo).toBe(0);
+    expect(PoseCodec.codifica({ tipo: 1, seq: 1, t: 2, cab, mundo: 7 })[1]).toBe(1);   // un código que no es 0-3 viaja como exterior (quien publica pasa codigoMundo)
+  });
+  it("el búfer lleva el mundo de la última pose hasta la que se dibuja", () => {
+    const bf = BufferPose.crea(), out = BufferPose.salida();
+    expect(out.mundo).toBe(0);
+    BufferPose.recibe(bf, PoseCodec.decodifica(PoseCodec.codifica({ tipo: 1, seq: 1, t: 0, cab, mundo: 0 })), 0);
+    BufferPose.recibe(bf, PoseCodec.decodifica(PoseCodec.codifica({ tipo: 1, seq: 2, t: 100, cab, mundo: 2 })), 100);
+    BufferPose.muestra(bf, 300, 0, out); expect(out.mundo).toBe(2);
   });
 });

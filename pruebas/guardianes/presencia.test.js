@@ -317,7 +317,7 @@ test("balizas (I4): ir a una baliza te deja a 4-5,5 m de la columna, fuera de co
 });
 test("contratos/livekit-roles.json: en las salas fijas ningún rol publica audio ni vídeo, todos publican datos, nadie lleva roomAdmin y la identidad es opaca", () => {
   const R = JSON.parse(lee("contratos/livekit-roles.json"));
-  assert.strictEqual(R.contrato, "livekit-roles"); assert.strictEqual(R.version, 8); assert.strictEqual(R.fase, "F3");
+  assert.strictEqual(R.contrato, "livekit-roles"); assert.strictEqual(R.version, 9); assert.strictEqual(R.fase, "F3");
   assert.deepStrictEqual(Object.keys(R.roles).sort(), ["admin", "corresponsal", "guia", "hogar", "oficina"], "los roles de contratos/sesion.md");
   assert.strictEqual(R.roles.oficina.hidden, false, "la oficina es siempre visible en el mundo (decisión 107)");
   for (const [rol, p] of Object.entries(R.roles)) {
@@ -370,6 +370,23 @@ test("contratos/livekit-roles.json v8 (F3k-1, ADR-0032): la sala de cada corro e
   for (const a of ["corro.invitacion", "corro.entra", "corro.sale", "corro.deshecho", "corro.suspendido", "corro.interruptor"]) assert.ok(R.moderacion.corros.includes(a), a);
   assert.match(R.moderacion.corros, /sin roomAdmin/); assert.match(R.grabacion, /Egress/);
   assert.ok(lee("contratos/presencia.md").includes("corro-"), "presencia.md describe la sala del corro");
+});
+
+test("contratos/livekit-roles.json v9 (ADR-0036): la tabla de mundos de la pose (2 bits, «otro» el último) y los metadatos de la sala guiada, que solo escribe la api", () => {
+  const R = JSON.parse(lee("contratos/livekit-roles.json")), M = R.mundos_pose.lista, G = R.metadatos_sala.guiada;
+  assert.deepStrictEqual(M, ["exterior", "patios", "fabrica", "otro"], "el índice es el código de los bits 6-7: el exterior es el 0 (lo que ve un cliente de antes)");
+  assert.deepStrictEqual(PoseCodec.MUNDOS, M, "el códec usa la tabla del contrato");
+  assert.strictEqual(G.lo_escribe, "api"); assert.match(R.metadatos_sala.$comment, /updateRoomMetadata/); assert.match(G.ruta, /^POST \/api\/presencia\/guiadas\/:evento\/visita /);
+  for (const [p, x] of Object.entries(R.roles_guiada)) if (p !== "$comment") assert.strictEqual(x.roomAdmin, false, p + ": ningún cliente escribe los metadatos de la sala");
+  assert.deepStrictEqual(Object.keys(G.campos), ["v", "mundo", "parada", "maquinas", "n"]);
+  assert.deepStrictEqual(G.vacio, { v: 1, mundo: "exterior", parada: null, maquinas: null, n: 0 });
+  for (const e of [G.ejemplo, G.vacio]) {
+    assert.deepStrictEqual(Object.keys(e), ["v", "mundo", "parada", "maquinas", "n"]); assert.ok(Buffer.byteLength(JSON.stringify(e)) <= 512, "≤ 512 B");
+    assert.ok(M.indexOf(e.mundo) >= 0 && e.mundo !== "otro"); assert.ok(e.parada === null || (Number.isInteger(e.parada) && e.parada >= 0 && e.parada <= 63));
+    assert.ok(e.maquinas === null || (typeof e.maquinas.marcha === "boolean" && Number.isInteger(e.maquinas.desde))); assert.ok(Number.isInteger(e.n) && e.n >= 0);
+  }
+  const md = lee("contratos/presencia.md");
+  for (const s of ["Bits 6–7: mundo", "mundos_pose", "metadatos_sala.guiada", "guiada:visita", "ADR-0036"]) assert.ok(md.includes(s), "presencia.md no menciona «" + s + "»");
 });
 
 // ---------- PB8: lo que cuesta dibujar al grupo, sin página (Cuenta, en el trozo puro). El de Chrome solo confirma que el montaje da lo mismo.
