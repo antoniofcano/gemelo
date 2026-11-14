@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { ComponentesPuro } from "../../nucleo/componentes.ts";
 import { creaMateriales } from "../../nucleo/materiales.ts";
 import type { ThreeMin } from "../../nucleo/materiales.ts";
-import { ID_AVATARES, MATERIAL_VRM_FUNDIDO, creaAvatares, defVrmFundido, manifiestoAvatares, parcheVrmFundido } from "./avatares.ts";
+import { AvataresPuro, ID_AVATARES, MATERIAL_VRM_FUNDIDO, creaAvatares, defVrmFundido, manifiestoAvatares, parcheVrmFundido } from "./avatares.ts";
 import type { DepsAvatares } from "./avatares.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -85,5 +85,19 @@ describe("avatares-vrm: de todo mundo y con libera() de verdad (A3-6a)", () => {
     const c: any = clasico.encadena(new THREE.MeshStandardMaterial(), MATERIAL_VRM_FUNDIDO, parcheVrmFundido(uni), MATERIAL_VRM_FUNDIDO);
     expect(c.isNodeMaterial).toBeFalsy(); expect(typeof c.onBeforeCompile).toBe("function");   // con el clásico, el parche de siempre
     expect(nuevo.cobertura()[MATERIAL_VRM_FUNDIDO]).toMatchObject({ tsl: true });
+  });
+});
+
+describe("ADR-0036 (T8): el cupo de VRM según lo que deja libre el mundo", () => {
+  it("sin libre (el exterior), el de siempre; con libre, nunca más de los que caben en sus triángulos ni en sus llamadas (≈ 20.000 y 4 por VRM, ESTIMADO)", () => {
+    expect(AvataresPuro.cupo("escritorio", false, 0, null)).toBe(6); expect(AvataresPuro.cupo("quest", true, 0, null)).toBe(3);
+    expect([AvataresPuro.VRM_TRI, AvataresPuro.VRM_LLAMADAS]).toEqual([20000, 4]);
+    // la fábrica en el Quest (tope 300.000 / 150): con 250.000 dibujados quedan 50.000 → 2 VRM; con 290.000, ninguno
+    expect(AvataresPuro.cupo("quest", true, 0, { triangulos: 50000, llamadas: 60 })).toBe(2);
+    expect(AvataresPuro.cupo("quest", true, 0, { triangulos: 10000, llamadas: 60 })).toBe(0);
+    expect(AvataresPuro.cupo("escritorio", false, 0, { triangulos: 1e6, llamadas: 9 })).toBe(2);   // las llamadas también mandan
+    expect(AvataresPuro.cupo("escritorio", false, 0, { triangulos: 1e6, llamadas: 400 })).toBe(6);   // con sitio de sobra, el del aparato
+    expect(AvataresPuro.cupo("quest", true, 2, { triangulos: 1e6, llamadas: 400 })).toBe(1);   // el escalón de VR sigue mandando
+    expect(AvataresPuro.cupo("escritorio", false, 0, { triangulos: -5, llamadas: NaN })).toBe(0);
   });
 });

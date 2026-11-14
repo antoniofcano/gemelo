@@ -27,7 +27,8 @@ export interface DepsPresencia {
   sitioJunto(t: unknown, desde: unknown, dists: unknown, rTronco: unknown): any;
   readonly objetivo: any; readonly paseando: boolean; readonly pp: any; readonly enQuad: boolean; readonly enDron: boolean;
   readonly VRX: any; readonly Ajustes: any; readonly Movibles: any; readonly Llegada: any; readonly TR: any;
-  /** el mundo activo del gestor (gm.actual; el gestor se crea después, va por función). Sin esto, o «exterior», la presencia es la de siempre; en cualquier otro (un interior, o null mientras se cambia) no publica pose ni dibuja a nadie: las poses van en coordenadas del exterior (T0, eje B) */
+  /** el mundo activo del gestor (gm.actual; el gestor se crea después, va por función). Sin esto, o «exterior», la presencia es la de siempre; en cualquier otro (un interior, o null mientras se cambia)
+   *  no publica pose ni dibuja a nadie (T0, eje B), SALVO en una visita guiada (ADR-0036): ahí publica con su mundo en la pose y dibuja a los de su mismo mundo (null: nada, se está cambiando) */
   mundoActual?(): string | null;
 }
 export const ID_PRESENCIA = "presencia-compartida";
@@ -67,6 +68,30 @@ export function defNombres() {
   };
 }
 
+// ADR-0036: el estado de la visita guiada que escribe SOLO la api en los metadatos de la sala (contratos/livekit-roles.json v9, «metadatos_sala.guiada»). Llega como texto
+// de la red (red/salas.ts: «sala-meta», metadatos()) y es DATO: se valida campo a campo; lo que no cuadra toma el valor de VACIO. Puro (sin THREE ni DOM): lo prueba presencia.test.ts.
+export type VisitaGuiada = { v: 1; mundo: string; parada: number | null; maquinas: { marcha: boolean; desde: number } | null; n: number };
+export const VisitaPuro = (function () {
+  const MUNDOS = ["exterior", "patios", "fabrica"], MAX_BYTES = 512;
+  const VACIO: Readonly<VisitaGuiada> = Object.freeze({ v: 1, mundo: "exterior", parada: null, maquinas: null, n: 0 });
+  const ent = (x: unknown, a: number, b: number): x is number => typeof x === "number" && Number.isInteger(x) && x >= a && x <= b;
+  /** el texto de los metadatos → la visita (siempre una: vacíos, ilegibles, de más de 512 B o de otra versión = VACIO; cada campo que no cuadra, el de VACIO) */
+  function lee(texto: unknown): VisitaGuiada {
+    let m: any = null;
+    if (typeof texto === "string" && texto && new TextEncoder().encode(texto).byteLength <= MAX_BYTES) { try { m = JSON.parse(texto); } catch (e) { m = null; } }
+    if (!m || typeof m !== "object" || Array.isArray(m) || m.v !== 1) return { v: 1, mundo: VACIO.mundo, parada: null, maquinas: null, n: 0 };
+    const q = m.maquinas, mq = q && typeof q === "object" && typeof q.marcha === "boolean" && ent(q.desde, 0, Number.MAX_SAFE_INTEGER) ? { marcha: q.marcha as boolean, desde: q.desde as number } : null;
+    return { v: 1, mundo: MUNDOS.indexOf(m.mundo) >= 0 ? m.mundo : VACIO.mundo, parada: ent(m.parada, 0, 63) ? m.parada : null, maquinas: mq, n: ent(m.n, 0, Number.MAX_SAFE_INTEGER) ? m.n : 0 };
+  }
+  /** lo que se emite en el Bus (guiada:visita, contratos/eventos.json) */
+  function evento(v: VisitaGuiada, soyGuia: boolean) { return { mundo: v.mundo, parada: v.parada, maquinas: v.maquinas ? { marcha: v.maquinas.marcha, desde: v.maquinas.desde } : null, n: v.n, soyGuia: !!soyGuia }; }
+  /** ¿mueve al grupo? El papel que pone la api en tus metadatos de la sala guiada: guía u oficina (los que pueden moderar) */
+  function soyGuia(metadatos: unknown): boolean { try { const m = JSON.parse(typeof metadatos === "string" && metadatos ? metadatos : "{}"); return !!m && (m.papel === "guia" || m.papel === "oficina"); } catch (e) { return false; } }
+  return { MUNDOS, MAX_BYTES, VACIO, lee, evento, soyGuia };
+})();
+// cómo se dice en Gente dónde estás tú (ADR-0036: en una guiada, también dentro de un interior)
+const DONDE_YO: Record<string, string> = { exterior: "en el olivar", patios: "en los patios", fabrica: "en la fábrica" };
+
 // ---------- presencia compartida (F2, contratos/presencia.md), componente «presencia-compartida» (C5, ADR-0023): los demás visitantes como muñecos instanciados,
 // su pose por el códec del contrato, su interpolación y, en la sala de verdad, el apartado Gente y el chat. La lógica pura (códec, búfer, SalaPose, chat,
 // aspecto, muñeco, Encuentro) vive en 26_presencia.js; la conexión, en el componente de la red (37_red.js): esta pieza no sabe nada de LiveKit.
@@ -89,7 +114,8 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
   var observa: any = null;   // A3-6a: el MutationObserver del chat en móvil vertical, para desconectarlo al liberar
   Materiales.define(MATERIAL_NOMBRES, defNombres());   // (aquí y no al cargar: el manifiesto se pide sin dependencias para medirlo)
   const materiales = Materiales.de(ID_PRESENCIA);     // MU5-n (A3-6a): lo que cree este componente se libera con su libera()
-  var fueraOculto: any = false;   // T0: grupos ocultos porque quien mira está en un interior
+  var fueraOculto: any = false;   // T0: grupos ocultos porque quien mira está en un interior (fuera de una guiada)
+  var sinLuz: any = false, matsBasic: any = null;   // ADR-0036: dentro de un interior (en una guiada), los muñecos sin luz (MeshBasicMaterial), como la luz horneada del interior
   var vrmG: any = null;   // el gancho de los avatares VRM (26b_avatares.js), si están montados
   var variante: any = (/[?&]presencia=(sim|red)\b/.exec(location.search) || [])[1] || "", activo: any = !!variante, N: any = 0;
   // F2b: sin ?presencia= y con api, la presencia en red arranca sola si el servidor tiene LiveKit (GET /api/presencia -> { red: true }) y la casilla de Ajustes está marcada
@@ -160,7 +186,7 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
     mBase = new THREE.Matrix4(); mPieza = new THREE.Matrix4(); ejeX = new THREE.Vector3(1, 0, 0);
     m4 = new THREE.Matrix4(); m4b = new THREE.Matrix4(); q1 = new THREE.Quaternion(); v1 = new THREE.Vector3(); v2 = new THREE.Vector3(); vS = new THREE.Vector3(1, 1, 1); ejeY = new THREE.Vector3(0, 1, 0);
     vF = new THREE.Vector3(1, 1, 1); qI = new THREE.Quaternion(); vU = new THREE.Vector3(1, 1, 1);
-    grupo = new THREE.Group(); grupo.name = "presencia"; scene.add(grupo);
+    grupo = new THREE.Group(); grupo.name = "presencia"; grupo.userData.deTodoMundo = true; scene.add(grupo);   // ADR-0036: congelar el exterior no lo oculta (lo decide la presencia)
     // el muñeco del paseante (12_paseo.js): cuerpo, dos piernas y dos brazos son la MISMA caja unidad con el pivote arriba,
     // escalada y girada por instancia (Muneco.PIEZAS): 5 instancias por avatar en una sola llamada; color por instancia
     // (camisa en cuerpo y brazos, pantalón en las piernas). La cabeza, una bola baja (icosaedro: 20 triángulos)
@@ -435,6 +461,18 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
   // claveSala = "guiada" mientras dure; si la api no deja entrar (cerrada, fuera de hora, no apuntada) o la sala se cierra, de vuelta a la general con el aviso
   var eventoGuiada: any = null, NOMBRE_GUIADA: any = "Visita guiada", avisoGuiada: any = "";   // avisoGuiada (OF11e): la frase de la api del último intento fallido de entrar (la lee la agenda)
   function nombreSala(c?: any) { return c === "guiada" ? NOMBRE_GUIADA : SALAS_MUNDO[c]; }
+  // ADR-0036: la visita guiada que escribe la api en los metadatos de la sala (VisitaPuro); null fuera de una guiada (dentro, al menos la VACIA: la visita en el exterior).
+  // nVisita: la última n emitida (0 al entrar). Solo se emite con una n mayor que 0 y distinta de la última: al entrar si ya había estado (quien llega tarde) y en cada cambio.
+  // Unos metadatos ilegibles (n = 0) no pisan lo que ya se sabía: la api solo escribe con n creciente
+  var visita: any = null, nVisita: any = 0;
+  function olvidaVisita() { visita = null; nVisita = 0; }
+  function revisaVisita(texto?: any) {   // el texto de «sala-meta» o de metadatos(); solo en la sala guiada y ya dentro (con tu papel)
+    if (claveSala !== "guiada" || !yo) return;
+    var v: any = VisitaPuro.lee(texto);
+    if (!visita) visita = VisitaPuro.evento(VisitaPuro.VACIO, yo.guia);
+    if (v.n === 0 || v.n === nVisita) return;
+    nVisita = v.n; visita = VisitaPuro.evento(v, yo.guia); n.emite("guiada:visita", visita);
+  }
   var ui: any = null, mensajes: any = [], tChat: any = 0, tGente: any = 0, claveGente: any = "", conectando: any = false, poseL: any = { tipo: 1, seq: 0, t: 0, cab: { p: [0, 0, 0], q: [0, 0, 0, 1] }, izq: null, der: null };
   var mDesc: any = null, vDesc: any = null, qDesc: any = null, sDesc: any = null, manoR0: any = { p: [0, 0, 0], q: [0, 0, 0, 1] }, manoR1: any = { p: [0, 0, 0], q: [0, 0, 0, 1] };   // las dos manos de la pose propia, reescritas cada fotograma (AG-1.4)
   // medida de las pruebas (P4): con window.__presenciaMide puesto ANTES de cargar, se apunta cada pose que llega
@@ -457,7 +495,7 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
     // con ella apagada, este componente ni se monta) no hay sala: el panel lo dice y no se intenta entrar
     SR = R ? R.sala("visita") : null;
     if (SR) quitaRed.push(SR.escucha("pose", function (datos?: any, de?: any) { recibeDatos(datos, de, "pose"); }), SR.escucha("chat", function (datos?: any, de?: any) { recibeDatos(datos, de, "chat"); }),
-      SR.al("entra", function (de?: any) { entraOtro(de); }), SR.al("sale", function (id?: any) { saleOtro(id); }), SR.al("estado", alEstado));
+      SR.al("entra", function (de?: any) { entraOtro(de); }), SR.al("sale", function (id?: any) { saleOtro(id); }), SR.al("estado", alEstado), SR.al("sala-meta", revisaVisita));
     montaPanel();
     // OF11e: la agenda (43) pide entrar en una visita guiada por el Bus (guiada:entrar); solo con la presencia de verdad hay quien escuche, y por eso la agenda
     // enseña o no su botón. La respuesta vuelve por guiada:entrada: ok, o la frase de la api (403/409) para enseñarla
@@ -503,8 +541,9 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
       // la red resuelve la URL (wss://… o /rtc del mismo origen) contra la página y pide livekit-client la primera vez (import() solo con esta bandera)
       if (!(await SR.une({ url: t.url, token: t.token })) || !activo) { if (auto && activo) { fallaAuto("LiveKit no responde"); ponEstado("", false); } return; }
       var mi: any = SR.yo(); sala = SR; avisoAuto = ""; fallosAuto = 0;
-      yo = { identidad: mi.identidad, info: SalaPose.leeInfo(mi.metadatos) };
+      yo = { identidad: mi.identidad, info: SalaPose.leeInfo(mi.metadatos), guia: VisitaPuro.soyGuia(mi.metadatos) };
       SR.participantes().forEach(function (de?: any) { entraOtro(de); });
+      if (claveSala === "guiada") { olvidaVisita(); revisaVisita(SR.metadatos()); }   // ADR-0036: quien llega tarde sabe dónde está la visita (se emite si n > 0)
       ponEstado("", false); pintaNota();
     } catch (err: any) {
       if (auto) { fallaAuto("sala: " + (err && err.message ? err.message : err)); ponEstado("", false); return; }   // F2b: callada; ?debug lo cuenta
@@ -520,7 +559,7 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
   }
   function alSalir(motivo?: any) {
     if (!sala && !yo) return;
-    sala = null; yo = null;
+    sala = null; yo = null; olvidaVisita();
     Object.keys(porId).forEach(saleOtro);
     if (!activo) return;
     // F3f: al salir de una guiada sin pedirlo (el guía te sacó, la sala se cerró o se cortó), de vuelta a la visita libre con su aviso
@@ -538,7 +577,7 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
   function cambiaSala(clave?: any) {
     if (!SR || !Object.prototype.hasOwnProperty.call(SALAS_MUNDO, clave) || conectando) return Promise.resolve(false);
     if (clave === claveSala && sala) return Promise.resolve(false);
-    claveSala = clave; eventoGuiada = null; Object.keys(porId).forEach(saleOtro); sala = null; yo = null; claveGente = "";   // así el «fuera» de la sala vieja no avisa de nada
+    claveSala = clave; eventoGuiada = null; Object.keys(porId).forEach(saleOtro); sala = null; yo = null; claveGente = ""; olvidaVisita();   // así el «fuera» de la sala vieja no avisa de nada
     return conecta().then(function () { pintaNota(); return !!sala && claveSala === clave; });
   }
   // F3f: viajar a la sala guiada de un evento (la pide la voz, Voz.entra, o el enlace ?guiada=<evento>). Promesa de true si quedas dentro de guiada-<evento>;
@@ -548,7 +587,7 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
     if (variante !== "red" || !SR || !Number.isInteger(id) || id < 1 || id > 2147483647) return Promise.resolve(false);
     if (conectando) return esperaConexion().then(function (si?: any): any { return si ? entraGuiada(id) : false; });   // p. ej. ?guiada= al cargar, mientras entra en la general
     if (claveSala === "guiada" && eventoGuiada === id && sala) return Promise.resolve(true);
-    avisoGuiada = ""; claveSala = "guiada"; eventoGuiada = id; Object.keys(porId).forEach(saleOtro); sala = null; yo = null; claveGente = "";
+    avisoGuiada = ""; claveSala = "guiada"; eventoGuiada = id; Object.keys(porId).forEach(saleOtro); sala = null; yo = null; claveGente = ""; olvidaVisita();
     return conecta().then(function () { pintaNota(); return !!sala && claveSala === "guiada" && eventoGuiada === id; });
   }
   function esperaConexion() {   // hasta que acabe de entrar (o salir) la sala en curso: como mucho 20 s, mirando cada 100 ms
@@ -587,10 +626,19 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
     }
   }
   // la pose propia en el sistema del contrato (cota SIN exagerar), o null si estás en vista aérea (órbita, vuelo o mirador de VR): entonces no se publica (decisión 60)
-  function enExterior() { return !dp.mundoActual || dp.mundoActual() === "exterior"; }   // las poses del contrato son del exterior: dentro de un interior (otras coordenadas, otro suelo) ni se publican ni se dibujan
+  function mundoAct() { return dp.mundoActual ? dp.mundoActual() : "exterior"; }
+  function enExterior() { return mundoAct() === "exterior"; }
+  // ADR-0036: en una visita guiada (la sala guiada-<evento>, dentro) la presencia vale en todos los mundos: la pose lleva el mundo y se dibuja solo a los del tuyo
+  function enGuiada() { return variante === "red" && claveSala === "guiada" && !!sala; }
+  // ¿se publica y se dibuja aquí? En el exterior, siempre (como antes); en un interior, solo en una guiada (T0 fuera de ella: las coordenadas de un interior no son las del
+  // exterior y la sala general es del exterior); mientras se cambia de mundo (null), nunca
+  function aqui() { var m: any = mundoAct(); return m === "exterior" || (m !== null && enGuiada()); }
+  // con quién se comparte mundo: en una guiada, el código de tu mundo (SalaPose filtra por él); fuera, undefined (como siempre: todos los de la sala)
+  function filtroMundo() { return enGuiada() ? PoseCodec.codigoMundo(mundoAct()) : undefined; }
   function poseLocal(tMs?: any) {
     var o: any = poseL, s: any;
-    if (!enExterior()) return null;   // en un interior: como en vista aérea (no se publica; los demás te ven «en vista aérea»), sin cambiar el contrato
+    if (!aqui()) return null;   // T0, en un interior fuera de una guiada: como en vista aérea (no se publica; los demás te ven «en vista aérea»)
+    o.mundo = PoseCodec.codigoMundo(mundoAct());   // ADR-0036: el mundo en los bits 6-7 (fuera de una guiada solo se publica en el exterior: 0, como antes)
     if (dp.VRX.on) {
       if (dp.VRX.vuelo || dp.VRX.mirador) return null;
       var h: any = dp.VRX.cab; s = suelo(h.x, -h.z);
@@ -625,7 +673,7 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
     var nc: any = 0, np: any = 0, id: any, a: any;
     for (id in porId) {
       a = porId[id]; np++;
-      if (!SalaPose.seVe(SP, id, tMs, bloqueados)) { if (a.visto) oculta(a); continue; }   // bloqueado o en vista aérea: no se dibuja
+      if (!SalaPose.seVe(SP, id, tMs, bloqueados, filtroMundo())) { if (a.visto) oculta(a); continue; }   // bloqueado, en vista aérea o (en una guiada) en otro mundo: no se dibuja
       a.buf = a.o.buf; coloca(a, tMs, dt, SalaPose.retardo(a.o));   // (el búfer se rehace si vuelve tras un rato sin pose)
       if (a.o.cerca) nc++;
     }
@@ -709,11 +757,12 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
   }
   function pintaGente(tMs?: any) {
     if (!ui) return;
-    var enMundo: any = !!(sala && poseLocal(tMs)), g: any = SalaPose.gente(SP, tMs), clave: any = (yo ? "1" : "0") + (enMundo ? "m" : "a") + g.map(function (x?: any) { return x.id + x.estado + (bloqueados[x.id] ? "b" : ""); }).join("|");
+    var enMundo: any = !!(sala && poseLocal(tMs)), g: any = SalaPose.gente(SP, tMs, filtroMundo()), dondeYo: any = DONDE_YO[mundoAct() || "exterior"] || DONDE_YO["exterior"];
+    var clave: any = (yo ? "1" : "0") + (enMundo ? "m" + dondeYo : "a") + g.map(function (x?: any) { return x.id + x.estado + (bloqueados[x.id] ? "b" : ""); }).join("|");
     if (clave === claveGente) return; claveGente = clave;
     ui.gTitulo.textContent = "Gente (" + (g.length + (yo ? 1 : 0)) + ")";
     while (ui.listaG.firstChild) ui.listaG.removeChild(ui.listaG.firstChild);
-    if (yo) ui.listaG.appendChild(el("li", { style: "margin:3px 0" }, [el("strong", {}, ["Tú · " + (yo.info.oficial ? "◆ " : "") + yo.info.alias]), " · " + (enMundo ? "en el olivar" : "en vista aérea (no te ven)")]));
+    if (yo) ui.listaG.appendChild(el("li", { style: "margin:3px 0" }, [el("strong", {}, ["Tú · " + (yo.info.oficial ? "◆ " : "") + yo.info.alias]), " · " + (enMundo ? dondeYo : "en vista aérea (no te ven)")]));
     g.forEach(function (x?: any) {
       var m: any = x.info || SalaPose.leeInfo(""), bl: any = !!bloqueados[x.id];
       var b: any = el("button", { type: "button", style: "font:inherit;color:inherit;background:none;border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:1px 6px;margin-left:6px;cursor:pointer", "aria-pressed": bl ? "true" : "false", title: "Solo te afecta a ti; nadie se entera" }, [bl ? "Desbloquear" : "Bloquear"]);
@@ -738,7 +787,7 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
   // esta sala, con pose (no «en vista aérea») y sin bloquear por ti. No manda nada por la red: usa la pose que ya llega. Este módulo solo calcula el
   // punto (Encuentro, en el trozo puro); el salto, con su fundido en pantalla y en VR (nunca un vuelo de cámara), es el de 12b_llegada.js (Llegada.funde y Llegada.aparece)
   var puntosL: any = [];
-  function seVe(a?: any, tMs?: any) { return !!a && enExterior() && a.visto && (variante !== "red" || SalaPose.seVe(SP, a.id, tMs, bloqueados)); }
+  function seVe(a?: any, tMs?: any) { return !!a && aqui() && a.visto && (variante !== "red" || SalaPose.seVe(SP, a.id, tMs, bloqueados, filtroMundo())); }
   function idDe(a?: any) { return variante === "red" ? a.id : "sim" + a.k; }
   function busca(id?: any) { if (variante === "red") return porId[id] || null; var m: any = /^sim(\d+)$/.exec(String(id)); return m ? V[Number(m[1])] || null : null; }
   function puntos() {   // [{id, alias, x este, y norte, modo}] de los que se dibujan ahora mismo
@@ -817,15 +866,25 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
     radio: function () { return 0.7; } }); }
   if (variante) registraPersona();
 
+  // ADR-0036: dentro de un interior la luz va horneada (materiales sin luz) y su Ambiente puede no traer luces (la fábrica: una sonda solo para lo PBR): los muñecos
+  // Lambert se verían negros. Se cambian a MeshBasicMaterial con el mismo color por instancia (instanceColor), y de vuelta al salir. Los VRM conservan su MToon (anotado).
+  function ponSinLuz(si?: any) {
+    if (!!si === sinLuz || !mCuerpo) return;
+    sinLuz = !!si;
+    if (sinLuz && !matsBasic) { matsBasic = [materiales.estandar("MeshBasicMaterial", {}), materiales.estandar("MeshBasicMaterial", {})]; mats.push(matsBasic[0], matsBasic[1]); }
+    var mc: any = sinLuz ? matsBasic[0] : mats[0], ml: any = sinLuz ? matsBasic[1] : mats[1];
+    mCuerpo.material = mc; [mCabeza, mSombrero, mManos, mRuedas].forEach(function (m?: any) { m.material = ml; });
+  }
   function actualiza(dt?: any) {
     if (!activo) return;
     var t0: any = performance.now(), tMs: any = Math.round(t0), nc: any = 0, i: any;
-    if (!enExterior()) {   // T0: dentro de un interior no se dibuja a nadie (los grupos, también el de los VRM, ocultos); la red sigue su tic sin pose y el panel Gente se repinta
+    if (!aqui()) {   // T0: dentro de un interior fuera de una guiada (o mientras se cambia de mundo) no se dibuja a nadie (los grupos, también el de los VRM, ocultos); la red sigue su tic sin pose y Gente se repinta
       if (fueraOculto !== true) { fueraOculto = true; if (grupo) grupo.visible = false; if (vrmG && vrmG.muestra) vrmG.muestra(false); }
       if (variante === "red") { SalaPose.tic(SP, t0, null); tGente += dt; if (tGente >= 0.5) { tGente = 0; pintaGente(t0); } }
       return;
     }
     if (fueraOculto) { fueraOculto = false; if (grupo) grupo.visible = true; if (vrmG && vrmG.muestra) vrmG.muestra(true); }
+    ponSinLuz(!enExterior());   // ADR-0036: dentro de un interior (en una guiada), los muñecos sin luz
     nVehQ = 0; nVehD = 0; tVeh += dt;
     if (variante === "red") actualizaRed(dt, t0);
     else {
@@ -854,7 +913,7 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
       bytesPorSegundo: est.bps, ms: Math.round(est.ms * 1000) / 1000, msMax: Math.round(est.msMax * 1000) / 1000, retardoP95ms: est.retP95, errorP95m: est.errP95, vistos: V.filter(function (a?: any) { return a.visto; }).length,
       enQuad: est.quad || 0, conDron: est.dron || 0, vehiculos: !!(mQuad && mDron), idas: est.idas || 0, ultimaIda: est.ultimaIda || null, vrm: vrmG ? vrmG.estado() : null,
       aspecto: mSombrero ? { cajas: mSombrero.count, ruedas: mRuedas.count, sillas: personasTodas().filter(function (a?: any) { return a.mov === "silla"; }).length, bastones: personasTodas().filter(function (a?: any) { return a.mov === "baston"; }).length, andadores: personasTodas().filter(function (a?: any) { return a.mov === "andador"; }).length } : null };
-    if (variante === "red") { e.sala = claveSala; e.evento = claveSala === "guiada" ? eventoGuiada : null; e.oficina = !!(yo && yo.info.oficial); e.conectado = !!sala; e.identidad = yo ? yo.identidad : null; e.vistos = Object.keys(porId).filter(function (k?: any) { return porId[k].visto; }).length; e.sinPlaza = est.sinPlaza || 0; e.enVistaAerea = !(sala && poseLocal(Math.round(performance.now()))); }
+    if (variante === "red") { e.visita = visita; e.mundo = mundoAct(); e.sinLuz = sinLuz; e.sala = claveSala; e.evento = claveSala === "guiada" ? eventoGuiada : null; e.oficina = !!(yo && yo.info.oficial); e.conectado = !!sala; e.identidad = yo ? yo.identidad : null; e.vistos = Object.keys(porId).filter(function (k?: any) { return porId[k].visto; }).length; e.sinPlaza = est.sinPlaza || 0; e.enVistaAerea = !(sala && poseLocal(Math.round(performance.now()))); }
     return e;
   }
   function libera() {   // libera todo lo de la GPU (y, en red, sale de la sala y retira el apartado) y deja la presencia como sin la bandera
@@ -870,7 +929,7 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
     scene.remove(grupo); [mCuerpo, mCabeza, mSombrero, mManos, mNombres, mRuedas, mQuad, mDron].forEach(function (m?: any) { if (m) m.dispose(); }); mQuad = null; mDron = null;
     geos.forEach(function (g?: any) { g.dispose(); }); mats.forEach(function (m?: any) { m.dispose(); }); materiales.libera(); if (texNombres) texNombres.dispose();
     try { if (cxNom && cxNom.canvas) cxNom.canvas.width = cxNom.canvas.height = 0; } catch (e: any) {}   // A3-6a: el lienzo del atlas de nombres (1024 × 624) se suelta
-    texNombres = null; cxNom = null; geos = []; mats = [];
+    texNombres = null; cxNom = null; geos = []; mats = []; matsBasic = null; sinLuz = false;
     grupo = null; mallasInst = []; V = []; redSim = []; porId = Object.create(null); mensajes = [];
   }
   function texto() { return activo ? "presencia (" + variante + ") " + est.n + " · cerca " + est.cerca + " · " + est.bps + " B/s · JS " + est.ms.toFixed(2) + " ms" + (variante === "sim" ? " · retardo p95 " + est.retP95 + " ms" : sala ? "" : " · sin conexión" + (avisoAuto ? " (" + avisoAuto + (tReintento ? ", reintento " + fallosAuto : "") + ")" : "")) : ""; }
@@ -936,7 +995,8 @@ export function creaPresencia(dp: DepsPresencia, n?: any, R?: any) {
   var api: any = { activo: function () { return activo; }, actualiza: actualiza, estado: estado, libera: libera, texto: texto, llegadas: llegadas, puntos: puntos, irCon: irCon,
     vrmPersonas: vrmPersonas, miVrm: miVrm, miAvatar: miAvatar, recolorea: recolorea, cambiaron: cambiaron, enganchaVRM: enganchaVRM,
     sala: function () { return claveSala; }, cambiaSala: cambiaSala, entraGuiada: entraGuiada, avisoGuiada: function () { return avisoGuiada; }, evento: function () { return claveSala === "guiada" ? eventoGuiada : null; }, nombreSala: nombreSala,
-    yo: miInfo, mensaje: mensaje, cabeza: cabeza, accionesPersona: accionesPersona, distancia: distancia, repintaGente: repintaGente };
+    yo: miInfo, mensaje: mensaje, cabeza: cabeza, accionesPersona: accionesPersona, distancia: distancia, repintaGente: repintaGente,
+    visita: function () { return claveSala === "guiada" && visita ? { mundo: visita.mundo, parada: visita.parada, maquinas: visita.maquinas ? { marcha: visita.maquinas.marcha, desde: visita.maquinas.desde } : null, n: visita.n, soyGuia: visita.soyGuia } : null; } };   // ADR-0036
   window.__presenciaChat = function (txt?: any) { anadeMensaje("Prueba", String(txt || "Hola"), false); };   // pruebas del chat movible (la ventana solo existe con ?presencia=red o &chat=1)
   // gancho de pruebas: estado; con "libera", apagar el componente (soltar todo; los avatares VRM se sueltan antes); con "llegadas", las poses apuntadas (P4);
   // con "puntos", quién sale en el minimapa; con "ir" e id, ir con esa persona (I1). Tras liberar sigue contestando (activo: false), como antes de C5
@@ -959,7 +1019,7 @@ export function manifiestoPresencia(dp: DepsPresencia) {
     // A3-6a: solo lo que llega del legado por el talón; la pose, la sala, el chat y el muñeco se importan de red/ y de ./muneco.ts
     consume: ["Materiales", "Aparato", "Red", "Ajustes", "sitioJunto", "Llegada", "Movibles", "VRX", "TR", "Paseo", "pp", "Vida", "quad", "dron", "objetivo", "texColor"],
     expone: ["Presencia"],
-    eventos: { escucha: ["chat:alterna", "depura:lineas", "guiada:entrar"], emite: ["guiada:entrada", "presencia:activada"] },
+    eventos: { escucha: ["chat:alterna", "depura:lineas", "guiada:entrar"], emite: ["guiada:entrada", "guiada:visita", "presencia:activada"] },
     bandera: { defecto: true, url: "presencia" },
     // muñecos instanciados (cuerpo, cabeza, sombrero y apoyo, manos, nombres, ruedas de la silla) + quad y dron de los demás: 8 llamadas tengas los que tengas;
     // ≈ 234 triángulos por persona como mucho (98 medidos sin accesorios, MEDIDAS) × 49 plazas + los vehículos [estimado, sin medir con vehículos]; el atlas de nombres (1024 × 624)

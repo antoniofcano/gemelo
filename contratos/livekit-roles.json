@@ -1,7 +1,7 @@
 {
-  "$comment": "Qué puede hacer cada rol en una sala de LiveKit. Salas fijas (F2, presencia compartida): SOLO datos (pose y chat), sin audio ni vídeo. Versión 6 (F3c, ADR-0026): la sala de voz de cada visita guiada, `guiada-<evento>`, con permisos por PAPEL (roles_guiada): el guía y la oficina con micrófono; las familias, sin publicar pistas hasta que la api les da la palabra en vivo. La api firma el token con estos permisos; el cliente no los elige. Descripción y tabla de bytes de la pose: contratos/presencia.md. Lo comprueban pruebas/guardianes/presencia.test.js y apps/api/pruebas/unidad/voz.test.ts. Los nombres de los permisos son los del VideoGrant de livekit-server-sdk 2.19.2 (comprobado contra sus tipos; apps/api/src/presencia/livekit.ts los copia y apps/api/pruebas/unidad/presencia.test.ts y voz.test.ts comparan las dos cosas y decodifican el token). Cómo los aplica el servidor (canPublishSources vacío con canPublish false: comprobado en P4 contra LiveKit 1.13.11; el cambio en vivo con UpdateParticipant y que al quitarlo se despubliquen las pistas: NO comprobado, F3g) se dice en cada caso. Versión 7 (F3f, decisión 155): el tema «cierre» (la api avisa de que cierra la sala guiada) y cerrar en «moderacion». Versión 8 (F3k-1, ADR-0032; decisiones 205-213): la sala SOLO DE AUDIO de cada corro de la visita libre, `corro-<id>` (salas.corro), con su papel único «miembro» (roles_corro: micrófono y solo micrófono, sin datos), el tema «corro» que manda la api a la sala libre (temas_de_datos.corro) y la moderación de los corros (moderacion.corros). La sala libre (`hituelo-libre`) NO cambia: sigue sin audio para todos. Cambiar un permiso es cambiar este fichero, su versión y presencia.md en el mismo commit.",
+  "$comment": "Qué puede hacer cada rol en una sala de LiveKit. Salas fijas (F2, presencia compartida): SOLO datos (pose y chat), sin audio ni vídeo. Versión 6 (F3c, ADR-0026): la sala de voz de cada visita guiada, `guiada-<evento>`, con permisos por PAPEL (roles_guiada): el guía y la oficina con micrófono; las familias, sin publicar pistas hasta que la api les da la palabra en vivo. La api firma el token con estos permisos; el cliente no los elige. Descripción y tabla de bytes de la pose: contratos/presencia.md. Lo comprueban pruebas/guardianes/presencia.test.js y apps/api/pruebas/unidad/voz.test.ts. Los nombres de los permisos son los del VideoGrant de livekit-server-sdk 2.19.2 (comprobado contra sus tipos; apps/api/src/presencia/livekit.ts los copia y apps/api/pruebas/unidad/presencia.test.ts y voz.test.ts comparan las dos cosas y decodifican el token). Cómo los aplica el servidor (canPublishSources vacío con canPublish false: comprobado en P4 contra LiveKit 1.13.11; el cambio en vivo con UpdateParticipant y que al quitarlo se despubliquen las pistas: NO comprobado, F3g) se dice en cada caso. Versión 7 (F3f, decisión 155): el tema «cierre» (la api avisa de que cierra la sala guiada) y cerrar en «moderacion». Versión 8 (F3k-1, ADR-0032; decisiones 205-213): la sala SOLO DE AUDIO de cada corro de la visita libre, `corro-<id>` (salas.corro), con su papel único «miembro» (roles_corro: micrófono y solo micrófono, sin datos), el tema «corro» que manda la api a la sala libre (temas_de_datos.corro) y la moderación de los corros (moderacion.corros). La sala libre (`hituelo-libre`) NO cambia: sigue sin audio para todos. Versión 9 (2026-11-14, ADR-0036; decisiones 233-238): la visita guiada cruza mundos en su propia sala: la tabla de mundos de la pose (mundos_pose: el índice es el código de los bits 6-7 del byte 1, contratos/presencia.md) y el estado de la visita en los metadatos de la sala guiada (metadatos_sala.guiada), que escribe SOLO la api (RoomServiceClient.updateRoomMetadata); los permisos NO cambian. Cambiar un permiso es cambiar este fichero, su versión y presencia.md en el mismo commit.",
   "contrato": "livekit-roles",
-  "version": 8,
+  "version": 9,
   "fase": "F3",
   "salas": {
     "visita_libre": { "nombre": "hituelo-libre", "clave": "general", "fija": true, "nota": "decisiones 39 y 60: una sala fija de Hituelo para la visita libre, con este nombre. Clave «general» en POST /api/presencia/token (sin sala, esta)" },
@@ -23,6 +23,41 @@
     "balizas": { "fiable": true, "lo_manda": "api", "formato": "JSON UTF-8 {v: 1, finca}", "se_guarda": false, "nota": "versión 4 (OF10): «las balizas oficiales de esta finca han cambiado»; el cliente vuelve a pedirlas (GET /api/balizas-oficiales). Las balizas sí se guardan en la base (migración 0014)" },
     "cierre": { "fiable": true, "lo_manda": "api", "lo_escucha": "46_guiada", "solo_en": "guiada", "formato": "JSON UTF-8 {v: 1, en: instante ISO 8601 del borrado, a: \"general\"}", "se_guarda": "solo en la auditoría (guiada.cerrada)", "nota": "versión 7 (F3f, decisión 155): el guía del evento o la oficina cierran la sala guiada (POST /api/presencia/guiadas/:evento/cerrar). La api manda este aviso a toda la sala, sin participante; cada cliente enseña la cuenta atrás y, al llegar a «en», vuelve solo a la sala de la clave «a» (la visita libre). A los segundos del aviso (5-60, 15 por omisión) la api borra la sala (RoomService.DeleteRoom) y LiveKit desconecta a quien siga dentro. El cliente lo descarta si llega con participante o fuera de una sala guiada" },
     "corro": { "fiable": true, "lo_manda": "api", "lo_escucha": "el componente «corro-voz» del motor (apps/web/motor/47b_corro.js, F3k-3): pide GET /api/presencia/corros/estado al momento", "solo_en": "visita_libre", "formato": "JSON UTF-8 {v: 1, que: \"invitacion\" | \"corro\"}", "se_guarda": false, "nota": "versión 8 (F3k-1): «mira tu estado de corro»: la api lo manda (RoomService.sendData, sin participante) SOLO a las conexiones del hogar afectado en la sala libre (destinationIdentities) cuando le llega una invitación o cambia su corro. No lleva ni quién ni qué: el cliente vuelve a pedir GET /api/presencia/corros/estado. Es una comodidad (sin él, el cliente pregunta cada pocos segundos); lo descarta si llega con participante" }
+  },
+  "mundos_pose": { "$comment": "versión 9 (ADR-0036): el mundo de quien publica la pose, en los bits 6-7 del byte 1 (contratos/presencia.md). El índice de cada nombre es su código de 2 bits. Un cliente de antes que no los lee ve 0 = exterior; un mundo que no esté en la lista se publica como 3 «otro» (y nadie lo dibuja). Fuera de una guiada la pose solo se publica en el exterior (T0); en una guiada, en cualquier mundo, con las coordenadas de ese mundo. Código: apps/web/src/red/pose.ts (PoseCodec.MUNDOS, igual a esta lista: lo comprueba red/pose.test.ts)", "lista": ["exterior", "patios", "fabrica", "otro"] },
+  "metadatos_sala": {
+    "$comment": "versión 9 (ADR-0036): los metadatos de una sala (Room.metadata de LiveKit). Solo los escribe la api con su clave de servidor (RoomServiceClient.updateRoomMetadata); ningún token de cliente lleva roomAdmin, así que nadie más puede. LiveKit los da al entrar (room.metadata) y avisa de cada cambio (RoomEvent.RoomMetadataChanged, livekit-client 2.22.4). El cliente los lee como DATOS: la red solo da el texto (evento «sala-meta» y metadatos()); lo parsea la presencia y lo emite en el Bus como guiada:visita (contratos/eventos.json)",
+    "guiada": {
+      "sala": "guiada-<evento> (salas.guiada)",
+      "formato": "JSON UTF-8, como mucho 512 bytes",
+      "lo_escribe": "api",
+      "ruta": "POST /api/presencia/guiadas/:evento/visita { mundo?, parada?, maquinas?: { marcha } } (al menos un campo): solo quien puede moderar (el guía del evento o la oficina; si no, 403); fuera de la ventana o con la sala cerrada, 409; cuerpo inválido, 400. La api lee los metadatos actuales, mezcla, sube n, pone maquinas.desde si cambia marcha, escribe y responde 200 { visita }. Cambiar mundo pone parada a null salvo que venga en el mismo cuerpo. Queda en la auditoría como las demás acciones de moderación (contratos/api.openapi.yaml)",
+      "campos": {
+        "v": "1 (versión de esta forma)",
+        "mundo": "uno de mundos_pose.lista salvo «otro»: dónde está la visita",
+        "parada": "entero 0..63 o null: la parada a la que el guía lleva al grupo (el cliente ignora las que su mundo no tiene)",
+        "maquinas": "null (nadie las ha tocado: cada aparato hace lo de siempre) o { marcha: boolean, desde: entero, ms desde 1970 del último cambio de marcha, lo pone la api }",
+        "n": "entero ≥ 0: sube 1 en cada escritura (el cliente solo reacciona a una n distinta de la última que vio)"
+      },
+      "ejemplo": {
+        "v": 1,
+        "mundo": "exterior",
+        "parada": null,
+        "maquinas": {
+          "marcha": true,
+          "desde": 1763100000000
+        },
+        "n": 7
+      },
+      "vacio": {
+        "v": 1,
+        "mundo": "exterior",
+        "parada": null,
+        "maquinas": null,
+        "n": 0
+      },
+      "nota": "metadatos vacíos o ilegibles (no es JSON, v distinta de 1, mundo desconocido…) valen «vacio»; un campo que no cuadra toma su valor de «vacio». Al entrar en la sala (quien llega tarde) el cliente emite guiada:visita si n > 0. Fuera de la sala guiada nadie los lee"
+    }
   },
   "roles_nota": "versión 3 (2026-10-30, OF1, ADR-0024): se añade el rol «oficina» con los mismos permisos que los demás; la oficina nunca va oculta (hidden false, decisión 107). Versión 4 (OF10): la oficina (rol oficina o admin) entra con el alias «Oficina» en sus metadatos (sin nombre propio) y el cliente la dibuja con chaleco e insignia; los permisos NO cambian (sus poderes van por la api). ADR-0028 (OF16): unas gafas vinculadas con el código corto desde una cuenta de oficina o admin llevan rol «hogar» y el alias de la cuenta (ni «Oficina» ni chaleco): la api firma con el rol EFECTIVO de la sesión (apps/api/src/auth/almacen.ts, rolEfectivo); tampoco heredan el papel de guía de esa cuenta en una sala guiada (puedeGuiar en apps/api/src/presencia/voz.ts: con rol efectivo hogar no se es guía ni se modera). Sin cambio de permisos ni de versión",
   "roles": {

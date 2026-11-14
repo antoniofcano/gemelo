@@ -342,6 +342,86 @@
         "mundos/comun/habla"
       ]
     },
+    "guiada:visita": {
+      "descripcion": "ADR-0036 (decisiones 233-238): en una sala guiada cambió el estado de la visita que escribe la api en los metadatos de la sala (livekit-roles v9, metadatos_sala.guiada), o acabas de entrar en ella y ya había uno (n > 0, quien llega tarde). mundo = dónde está la visita (exterior, patios o fabrica); parada = la parada a la que el guía lleva al grupo (0-63) o null; maquinas = null (nadie las tocó) o { marcha, desde } (ms desde 1970 del último cambio); n = el contador de la api (sube en cada escritura: solo se emite cuando cambia); soyGuia = tu papel en la sala es guía u oficina (quien mueve al grupo). Lo emite la presencia, que lee los metadatos como DATOS; lo atienden quienes ofrecen «Ir / Me quedo» y las máquinas del interior.",
+      "datos": {
+        "type": "object",
+        "required": [
+          "mundo",
+          "parada",
+          "maquinas",
+          "n",
+          "soyGuia"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "mundo": {
+            "enum": [
+              "exterior",
+              "patios",
+              "fabrica"
+            ]
+          },
+          "parada": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 63
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maquinas": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "marcha",
+                  "desde"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "marcha": {
+                    "type": "boolean"
+                  },
+                  "desde": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            ]
+          },
+          "n": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "soyGuia": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ejemplo": {
+        "mundo": "fabrica",
+        "parada": 3,
+        "maquinas": {
+          "marcha": true,
+          "desde": 1763100000000
+        },
+        "n": 7,
+        "soyGuia": false
+      },
+      "emiten": [
+        "mundos/comun/presencia"
+      ],
+      "escuchan": []
+    },
     "habla:alterna": {
       "descripcion": "EV2-A4: el botón «Hablar» de lo tuyo en pantalla (HUD; EV2-A3: y el de la muñeca en VR): abre o cierra el micrófono de esta sesión, como el botón de la caja de la visita guiada en modo «pulsar» (con su aviso de voz si falta el consentimiento). Fuera de una visita guiada, o sin la palabra, nadie hace nada.",
       "datos": {},

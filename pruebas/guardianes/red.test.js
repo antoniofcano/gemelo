@@ -24,18 +24,18 @@ const espera = (ms = 0) => new Promise(r => setTimeout(r, ms));
 
 // ---------- un livekit-client de mentira: lo justo de Room que usa 37_red.js, y cómo simular lo que manda el servidor
 function lkFalso(opc = {}) {
-  const RoomEvent = { ParticipantConnected: "pc", ParticipantDisconnected: "pd", DataReceived: "dr", Reconnecting: "rc", Reconnected: "rd", Disconnected: "dc" };
+  const RoomEvent = { ParticipantConnected: "pc", ParticipantDisconnected: "pd", DataReceived: "dr", Reconnecting: "rc", Reconnected: "rd", Disconnected: "dc", RoomMetadataChanged: "rm" };
   const DisconnectReason = { UNKNOWN_REASON: 0, CLIENT_INITIATED: 1, DUPLICATE_IDENTITY: 2, PARTICIPANT_REMOVED: 4 };
   const salas = [];
   class Room {
-    constructor(o) { this.opciones = o; this.oy = {}; this.remoteParticipants = new Map(); this.publicados = []; this.desconexiones = 0; this.conectada = false; salas.push(this);
+    constructor(o) { this.opciones = o; this.oy = {}; this.remoteParticipants = new Map(); this.publicados = []; this.desconexiones = 0; this.conectada = false; this.metadata = opc.metaSala || ""; salas.push(this);
       const yo = this; this.localParticipant = { identity: null, metadata: null, publishData(d, op) { yo.publicados.push({ d, op }); return opc.publicaFalla ? Promise.reject(new Error("no")) : Promise.resolve(); } }; }
     on(ev, fn) { (this.oy[ev] = this.oy[ev] || []).push(fn); return this; }
     emite(ev, ...a) { (this.oy[ev] || []).forEach(fn => fn(...a)); }
     connect(url, token, o) {
       this.url = url; this.token = token; this.conexion = o;
       if (token === "malo") return Promise.reject(new Error("token rechazado"));
-      const sigue = () => { this.conectada = true; this.localParticipant.identity = "h_yo_" + token; this.localParticipant.metadata = JSON.stringify({ alias: "Yo " + token });
+      const sigue = () => { this.conectada = true; this.localParticipant.identity = "h_yo_" + token; this.localParticipant.metadata = JSON.stringify(Object.assign({ alias: "Yo " + token }, opc.metaYo || {}));
         (opc.yaDentro || []).forEach(p => this.remoteParticipants.set(p.identity, p)); };
       if (opc.lento) return new Promise(r => { this.termina = () => { sigue(); r(); }; });
       sigue(); return Promise.resolve();
@@ -46,6 +46,7 @@ function lkFalso(opc = {}) {
     sale(identity) { const p = this.remoteParticipants.get(identity); this.remoteParticipants.delete(identity); this.emite(RoomEvent.ParticipantDisconnected, p); }
     datos(p, tema, bytes) { this.emite(RoomEvent.DataReceived, bytes, p, 0, tema); }
     corta(motivo) { this.conectada = false; this.emite(RoomEvent.Disconnected, motivo); }
+    meta(texto) { this.metadata = texto; this.emite(RoomEvent.RoomMetadataChanged, texto); }   // ADR-0036: la api cambia los metadatos de la sala
   }
   return { Room, RoomEvent, DisconnectReason, salas };
 }
@@ -178,8 +179,8 @@ class El {
   busca(tag) { if (this.tagName === tag) return this; for (const c of this.children) { const r = c.busca && c.busca(tag); if (r) return r; } return null; }
 }
 /** el registro (02c entero) con la lógica pura de la presencia (26_presencia.js) y los componentes que se pidan; lo demás, de mentira */
-function motor({ busqueda = "", ficheros = ["red", "presencia", "avatares"], token = { url: "/rtc", token: "tk" }, tokenEstado = 200, base = "", hay = null } = {}) {
-  const LK = lkFalso(), errores = [], avisos = [], cuenta = { mallas: 0, mallasLibres: 0, escena: 0, tipos: [], defs: {}, quitados: 0, fetch: [] };
+function motor({ busqueda = "", ficheros = ["red", "presencia", "avatares"], token = { url: "/rtc", token: "tk" }, tokenEstado = 200, base = "", hay = null, lk = {} } = {}) {
+  const LK = lkFalso(lk), errores = [], avisos = [], cuenta = { mallas: 0, mallasLibres: 0, escena: 0, tipos: [], defs: {}, quitados: 0, fetch: [] };
   const fuentes = { red: RED.replace('import("livekit-client")', "Promise.resolve(LK_FALSO)"),
     presencia: PRES.replace('import("three/addons/utils/BufferGeometryUtils.js")', "Promise.reject(new Error(\"sin addons en Node\"))"),
     avatares: AVAT };
@@ -207,7 +208,7 @@ function motor({ busqueda = "", ficheros = ["red", "presencia", "avatares"], tok
   return Object.assign(r, { LK, errores, avisos, cuenta, ventana, visor, g });
 }
 const ACTIVOS = r => r.Componentes.resumen().filter(x => x.activo).map(x => x.id).sort();
-const POSE = (x, z, seq, t) => { const P = require("./_mundos").PoseCodec; return P.codifica({ tipo: 1, seq, t, cab: { p: [x, 11.6, z], q: [0, 0, 0, 1] }, izq: null, der: null }); };
+const POSE = (x, z, seq, t, mundo = 0) => { const P = require("./_mundos").PoseCodec; return P.codifica({ tipo: 1, seq, t, cab: { p: [x, 11.6, z], q: [0, 0, 0, 1] }, izq: null, der: null, mundo }); };
 
 test("componentes en Node: sin ?presencia los tres se montan y no crean nada; ?presencia=0 o ?red=0 apagan la presencia y los avatares; la red no carga LiveKit sola", async () => {
   let r = motor();
@@ -250,6 +251,74 @@ test("T0 (eje B): dentro de un interior la presencia no publica pose ni dibuja a
   for (let k = 0; k < 4; k++) room.datos(ana, "pose", POSE(60 + k * 0.1, -60, k + 10, Math.round(performance.now()) + k * 100));
   for (let i = 0; i < 8; i++) { r.Componentes.actualiza("mundo", 0.1, 30 + i); await espera(30); }
   assert.ok(poses() > antes, "al volver al exterior se reanuda la pose"); assert.strictEqual(r.ventana.__presencia("puntos").length, 1, "y se vuelve a ver a Ana");
+  r.ventana.__presencia("libera"); assert.deepStrictEqual(r.errores, []);
+});
+
+// ---------- ADR-0036: la visita guiada en los interiores (decisiones 233-238). Lo de varios navegadores y LiveKit de verdad es de la e2e de tres Chrome (por el banco)
+async function enGuiada(opc = {}) {
+  const r = motor(Object.assign({ busqueda: "?presencia=red" }, opc)), visitas = [], entradas = [];
+  r.Bus.on("guiada:visita", d => visitas.push(d)); r.Bus.on("guiada:entrada", d => entradas.push(d));
+  await espera(10);
+  r.Bus.emite("guiada:entrar", { evento: 7 }); await espera(20);
+  assert.deepStrictEqual(entradas, [{ evento: 7, ok: true, mensaje: "" }], "entra en guiada-7");
+  assert.ok(r.cuenta.fetch.some(([u]) => /\/api\/presencia\/guiadas\/7\/token$/.test(u)));
+  return Object.assign(r, { room: r.LK.salas[r.LK.salas.length - 1], visitas });
+}
+const marcha = async (r, n, t0 = 0) => { for (let i = 0; i < n; i++) { r.Componentes.actualiza("mundo", 0.1, t0 + i); await espera(25); } };
+const mias = r => r.room.publicados.filter(x => x.op.topic === "pose").map(x => require("./_mundos").PoseCodec.decodifica(x.d));
+
+test("ADR-0036: en una guiada la pose lleva el mundo y se publica también dentro de un interior; solo se dibuja a los de tu mundo y Gente dice dónde están los demás", async () => {
+  const r = await enGuiada(), room = r.room, t = () => Math.round(performance.now());
+  assert.strictEqual(r.ventana.__presencia().sala, "guiada");
+  const ana = room.entra("h_ana", JSON.stringify({ alias: "Ana", papel: "familia" })), bea = room.entra("h_bea", JSON.stringify({ alias: "Bea", papel: "guia" }));
+  const llegan = async (k) => { for (let i = 0; i < 4; i++) { room.datos(ana, "pose", POSE(60 + i * 0.1, -60, k + i, t() + i * 100, 0)); room.datos(bea, "pose", POSE(51 + i * 0.1, -52, k + i, t() + i * 100, 2)); } };
+  await llegan(1); await marcha(r, 5);
+  const nombres = () => r.ventana.__presencia("puntos").map(p => p.alias).sort();
+  assert.deepStrictEqual(nombres(), ["Ana"], "en el exterior se ve a Ana (exterior) y no a Bea (en la fábrica)");
+  assert.ok(mias(r).length >= 1 && mias(r).every(p => p.mundo === 0), "fuera, la pose propia va con el mundo 0");
+  const gente = () => { const l = r.visor.children[0].busca("UL"); return l ? l.children.map(li => li.children.map(c => c.texto || c.textContent || (c.children || []).map(x => x.texto || "").join("")).join("")) : []; };
+  assert.ok(gente().some(t => /Bea .*en la fábrica/.test(t)), "Gente: Bea, en la fábrica (" + gente().join(" | ") + ")");
+  assert.strictEqual(r.ventana.__presencia().sinLuz, false);
+  // dentro de la fábrica: se publica con el mundo 2 y se ve a Bea, no a Ana
+  r.g.gm.actual = "fabrica"; const antes = mias(r).length;
+  await llegan(20); await marcha(r, 6, 10);
+  assert.ok(mias(r).length > antes, "dentro de un interior, en una guiada, SÍ se publica la pose (T0 no vale aquí)");
+  assert.ok(mias(r).slice(antes).every(p => p.mundo === 2), "con el mundo de la fábrica en los bits 6-7");
+  assert.deepStrictEqual(nombres(), ["Bea"], "dentro se ve a Bea y no a Ana");
+  assert.ok(gente().some(t => /Ana .*fuera/.test(t)), "Gente: Ana, fuera"); assert.ok(gente().some(t => /^Tú .*en la fábrica/.test(t)), "Gente: tú, en la fábrica");
+  assert.strictEqual(r.ventana.__presencia().sinLuz, true, "dentro, los muñecos sin luz");
+  assert.strictEqual(r.ventana.__presencia().mundo, "fabrica");
+  // mientras se cambia de mundo, nada; de vuelta fuera, como al principio
+  r.g.gm.actual = null; const n0 = mias(r).length; await marcha(r, 3, 20); assert.strictEqual(mias(r).length, n0, "mientras se cambia de mundo no se publica");
+  assert.deepStrictEqual(r.ventana.__presencia("puntos"), []);
+  r.g.gm.actual = "exterior"; await llegan(40); await marcha(r, 6, 30);
+  assert.deepStrictEqual(nombres(), ["Ana"]); assert.strictEqual(r.ventana.__presencia().sinLuz, false);
+  r.ventana.__presencia("libera"); assert.deepStrictEqual(r.errores, []);
+});
+
+test("ADR-0036: los metadatos de la sala guiada se leen como datos y se emiten como guiada:visita al cambiar n (y al entrar si n > 0); fuera de la guiada, nada", async () => {
+  // quien llega tarde: la sala ya tenía estado (n = 5) y es la guía (papel en sus metadatos)
+  let r = await enGuiada({ lk: { metaSala: JSON.stringify({ v: 1, mundo: "fabrica", parada: 2, maquinas: null, n: 5 }), metaYo: { papel: "guia" } } });
+  assert.deepStrictEqual(r.visitas, [{ mundo: "fabrica", parada: 2, maquinas: null, n: 5, soyGuia: true }], "al entrar, una vez, con lo que ya había");
+  r.room.meta(JSON.stringify({ v: 1, mundo: "fabrica", parada: 3, maquinas: { marcha: false, desde: 1763100000000 }, n: 6 }));
+  r.room.meta(JSON.stringify({ v: 1, mundo: "fabrica", parada: 3, maquinas: { marcha: false, desde: 1763100000000 }, n: 6 }));   // la misma n: nada
+  r.room.meta("no es json"); r.room.meta("");   // ilegibles o vacíos (n = 0): ni se emite ni se pisa lo que se sabía
+  assert.deepStrictEqual(r.visitas.map(v => v.n), [5, 6]);
+  assert.deepStrictEqual(r.visitas[1], { mundo: "fabrica", parada: 3, maquinas: { marcha: false, desde: 1763100000000 }, n: 6, soyGuia: true });
+  r.room.meta(JSON.stringify({ v: 1, mundo: "bodega", parada: 99, maquinas: { marcha: "si" }, n: 7 }));   // lo que no cuadra toma el valor del vacío
+  assert.deepStrictEqual(r.visitas[2], { mundo: "exterior", parada: null, maquinas: null, n: 7, soyGuia: true });
+  r.ventana.__presencia("libera"); assert.deepStrictEqual(r.errores, []);
+  // una familia que entra en una sala sin estado (n = 0): no se emite nada, y la visita que da la presencia es la vacía (en el exterior)
+  r = await enGuiada({ lk: { metaYo: { papel: "familia" } } });
+  assert.deepStrictEqual(r.visitas, []);
+  assert.deepStrictEqual(r.ventana.__presencia().visita, { mundo: "exterior", parada: null, maquinas: null, n: 0, soyGuia: false });
+  r.room.meta(JSON.stringify({ v: 1, mundo: "patios", parada: null, maquinas: null, n: 1 }));
+  assert.deepStrictEqual(r.visitas, [{ mundo: "patios", parada: null, maquinas: null, n: 1, soyGuia: false }]);
+  r.ventana.__presencia("libera");
+  // en la sala general los metadatos no son de una visita: nadie los lee
+  r = motor({ busqueda: "?presencia=red", lk: { metaSala: JSON.stringify({ v: 1, mundo: "fabrica", parada: 1, maquinas: null, n: 3 }) } }); const vs = []; r.Bus.on("guiada:visita", d => vs.push(d));
+  await espera(10); r.LK.salas[0].meta(JSON.stringify({ v: 1, mundo: "fabrica", parada: 1, maquinas: null, n: 4 }));
+  assert.deepStrictEqual(vs, []); assert.strictEqual(r.ventana.__presencia().visita, null);
   r.ventana.__presencia("libera"); assert.deepStrictEqual(r.errores, []);
 });
 

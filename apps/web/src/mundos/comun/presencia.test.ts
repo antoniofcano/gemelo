@@ -8,7 +8,9 @@ import { ComponentesPuro } from "../../nucleo/componentes.ts";
 import { creaMateriales } from "../../nucleo/materiales.ts";
 import type { ThreeMin } from "../../nucleo/materiales.ts";
 import { creaSitioJunto } from "./muneco.ts";
-import { ID_PRESENCIA, MATERIAL_NOMBRES, creaPresencia, defNombres, manifiestoPresencia } from "./presencia.ts";
+import { ID_PRESENCIA, MATERIAL_NOMBRES, VisitaPuro, creaPresencia, defNombres, manifiestoPresencia } from "./presencia.ts";
+import roles from "../../../../../contratos/livekit-roles.json";
+import eventos from "../../../../../contratos/eventos.json";
 import type { DepsPresencia } from "./presencia.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -142,5 +144,31 @@ describe("presencia-compartida: de todo mundo y con libera() de verdad (A3-6a)",
     expect(m.colorNode).toBeTruthy(); expect(m.opacityNode).toBeTruthy(); expect(m.vertexNode).toBeTruthy();   // A4-0: de cara a la cámara (compila en tsl-compila.test.ts)
     expect(clasico.crea(MATERIAL_NOMBRES, { uniforms: uni })).toMatchObject({ type: "ShaderMaterial" });
     expect(nuevo.cobertura()[MATERIAL_NOMBRES]).toMatchObject({ clasico: true, tsl: true });
+  });
+});
+
+describe("VisitaPuro: el estado de la visita guiada en los metadatos de la sala (ADR-0036, livekit-roles v9)", () => {
+  const G = roles.metadatos_sala.guiada;
+  it("el ejemplo del contrato se lee tal cual; vacíos, ilegibles, de otra versión o de más de 512 B valen el vacío del contrato", () => {
+    expect(VisitaPuro.lee(JSON.stringify(G.ejemplo))).toEqual(G.ejemplo);
+    for (const t of ["", "no es json", "[]", "null", JSON.stringify({ ...G.ejemplo, v: 2 }), JSON.stringify({ ...G.ejemplo, relleno: "x".repeat(600) }), undefined, 7])
+      expect(VisitaPuro.lee(t), String(t).slice(0, 30)).toEqual(G.vacio);
+    expect(VisitaPuro.VACIO).toEqual(G.vacio);
+  });
+  it("cada campo que no cuadra toma el valor del vacío (DATOS: nada se adivina)", () => {
+    const l = (o: object) => VisitaPuro.lee(JSON.stringify({ v: 1, ...o }));
+    expect(l({ mundo: "otro", n: 3 }).mundo).toBe("exterior"); expect(l({ mundo: "bodega" }).mundo).toBe("exterior"); expect(l({ mundo: "fabrica" }).mundo).toBe("fabrica");
+    expect([64, -1, 2.5, "3", 0, 63].map(parada => l({ parada }).parada)).toEqual([null, null, null, null, 0, 63]);
+    expect(l({ maquinas: { marcha: "si", desde: 1 } }).maquinas).toBeNull(); expect(l({ maquinas: { marcha: true } }).maquinas).toBeNull();
+    expect(l({ maquinas: { marcha: false, desde: 1763100000000, x: 1 } }).maquinas).toEqual({ marcha: false, desde: 1763100000000 });
+    expect([-1, 1.5, "2", 9].map(n => l({ n }).n)).toEqual([0, 0, 0, 9]);
+  });
+  it("lo que se emite cumple el esquema de guiada:visita (contratos/eventos.json) y soyGuia sale del papel de la api", () => {
+    const ev = (eventos.eventos as unknown as Record<string, { datos: { required: string[] }; ejemplo?: object }>)["guiada:visita"]!;
+    const e = VisitaPuro.evento(VisitaPuro.lee(JSON.stringify(G.ejemplo)), true);
+    expect(Object.keys(e).sort()).toEqual(ev.datos.required.slice().sort()); expect(e).toMatchObject({ mundo: "exterior", n: 7, soyGuia: true });
+    expect(Object.keys(ev.ejemplo!).sort()).toEqual(Object.keys(e).sort());
+    expect(["guia", "oficina", "familia", undefined].map(papel => VisitaPuro.soyGuia(JSON.stringify({ papel })))).toEqual([true, true, false, false]);
+    expect(VisitaPuro.soyGuia("no es json")).toBe(false);
   });
 });

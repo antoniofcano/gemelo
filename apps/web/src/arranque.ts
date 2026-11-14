@@ -790,7 +790,7 @@ function arranca(): void {
   Componentes.registra(Mundos.manifiestoAvatares({
     THREE: THREE, location: location, window: window, consola: console, fetch: function (u, o: any) { return fetch(u, o); },
     cargaVrm: function () { return Promise.all([import("@pixiv/three-vrm"), import("three/addons/loaders/GLTFLoader.js")]); },
-    Aparato: Aparato, Materiales: Materiales, Componentes: Componentes, suelo: suelo, renderer: renderer, scene: scene, camera: camera, Estado: Estado,
+    Aparato: Aparato, Materiales: Materiales, Componentes: Componentes, suelo: function (x, y) { return typeof gm !== "undefined" && gm ? gm.suelo(x, y) : suelo(x, y); }, libreMundo: function () { return typeof Interiores !== "undefined" && Interiores ? Interiores.libre() : null; }, renderer: renderer, scene: scene, camera: camera, Estado: Estado,   // ADR-0036: el suelo del mundo activo y lo que deja libre un interior (T8), por función (gm e Interiores se crean después)
     get paseando() { return Paseo.E.paseando; }, get persona() { return Paseo.E.persona; }, get primera() { return Paseo.E.primera; }, get pp() { return pp; },
     get enQuad() { return Vida.E.enQuad; }, get enDron() { return Vida.E.enDron; }, get VRX() { return VRX; }, get VrPresupuesto() { return VrPresupuesto; }
   }));
@@ -1179,7 +1179,7 @@ function arranca(): void {
   // MU2-6: las fases «mundo» y «tarde» de Componentes, las láminas y la Cola son de todo mundo y salen del exterior al Bucle, tras gm.actualiza; Escena3D.actualiza, del exterior, va en gm.antesDelRender (tras la Cola y antes del render, como siempre).
   // Lo único que cambia de orden: la fase «mundo» corría entre la nube y los árboles, y ahora corre tras los árboles y la carga de teselas (MUNDOS §3, «Cómo quedó (MU2-6)»).
   var bCamara = Reparto.reg("cámara/paseo/VR"), Bucle: Nucleo.Bucle, temporizador = function (f: () => void, ms: number) { var h = setTimeout(f, ms); return function () { clearTimeout(h); }; };   // la cámara se registra antes que los del exterior (el reparto lista por orden de registro); Bucle se crea más abajo
-  var deTodoMundo = function (o: unknown) { return o === camera || o === vrRig || o === Paseo.E.persona; };   // MU2-6: lo que congelar el exterior no oculta (quien mira y su rig de VR)
+  var deTodoMundo = function (o: unknown) { return o === camera || o === vrRig || o === Paseo.E.persona || !!(o && (o as { userData?: { deTodoMundo?: boolean } }).userData?.deTodoMundo); };   // MU2-6: lo que congelar el exterior no oculta (quien mira y su rig de VR); ADR-0036: y lo marcado userData.deTodoMundo (los grupos de la presencia y de los VRM)
   var hudExterior = ["hudEstado", "mapita", "ndviHud", "ficha", "baliza"].map(function (id) { return $(id); }).filter(Boolean);   // MU2-6: el HUD del exterior (brújula y tiempo, mapa, NDVI, fichas)
   var poseDelPaseo = { lee: function () { return pp; }, pon: function (p: Nucleo.Pose2) { pp.x = p.x; pp.y = p.y; pp.ang = p.ang; } };   // MU2-6: la pose de quien mira (12_paseo: pp)
   // MU2-7: lo que el Ambiente del exterior lee del legado al aplicarse (el tema, la perilla xrnear y el deslizador #exag pueden haber cambiado); los valores, en src/mundos/exterior.ts

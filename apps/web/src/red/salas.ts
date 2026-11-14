@@ -11,17 +11,19 @@
 //    del token o los que la api cambia en vivo), los atributos de cada participante («atributos», los pone solo la api) y abrir o cerrar TU micrófono
 //    (microfono), con cancelación de eco, supresión de ruido y el preset de voz; cerrar lo despublica y para la captura (el piloto del navegador se apaga).
 //    El vídeo no está (F4).
+//  · Los metadatos de la sala (ADR-0036; contratos/livekit-roles.json v9, «metadatos_sala»): los escribe SOLO la api (updateRoomMetadata); la red da el texto tal cual
+//    (metadatos(), y el evento «sala-meta» con el texto nuevo al cambiar y, si no está vacío, al quedar dentro) y no los interpreta: los lee quien los use (la presencia).
 // Estados de una sala: «fuera» → «conectando» → «dentro» (⇄ «reconectando») → «fuera». Al salir, motivo(): «propio» (sale() o cambio de sala),
 // «expulsado» (la oficina te sacó), «duplicado» (la misma identidad en otra pestaña), «desconectado» (se cortó) o «error» (no se pudo entrar).
 // Lo que llega de la sala (metadatos, identidades, bytes) es DATO de otras personas: quien lo use lo valida (la presencia lo hace con su contrato).
 // Componente de TODO mundo (mundos: "todos", COMPONENTES §3.2): la red no sabe qué hay dentro de un mundo; solo conoce salas, identidades y temas (MUNDOS §1).
 // Vive en red/, que solo importa de datos/ (MUNDOS §1): por eso el manifiesto no nombra el tipo Manifiesto del núcleo; tiene su misma forma.
-// El protocolo no cambia (contratos/livekit-roles.json v8 y contratos/presencia.md): lo vigilan red.test.js y salas.test.ts.
+// El protocolo no cambia (contratos/livekit-roles.json v9 y contratos/presencia.md): lo vigilan red.test.js y salas.test.ts.
 
 // [puro:inicio] — sin DOM ni THREE: salas.test.ts y pruebas/guardianes/red.test.js lo prueban con un LiveKit de mentira
 export const RedPuro: any = (function () {
   var CLAVE: any = /^[a-z][a-z0-9-]{0,31}$/, TEMA: any = /^[a-z][a-z0-9-]{0,31}$/;
-  var EVENTOS: any = ["estado", "entra", "sale", "publicada", "despublicada", "pista", "pista-fuera", "hablan", "permisos", "atributos"];
+  var EVENTOS: any = ["estado", "entra", "sale", "publicada", "despublicada", "pista", "pista-fuera", "hablan", "permisos", "atributos", "sala-meta"];
   // F3d: las fuentes de un permiso (TrackSource del protocolo de LiveKit: 0 desconocida, 1 cámara, 2 micrófono, 3 pantalla, 4 audio de pantalla)
   var FUENTES: any = ["desconocida", "camera", "microphone", "screen_share", "screen_share_audio"];
   // F3d: la captura del micrófono (restricciones de getUserMedia; livekit-client 2.22.4 ya las pone a true por defecto: se dicen aquí para no depender de eso)
@@ -102,11 +104,15 @@ export const RedPuro: any = (function () {
         });
         if (E.ParticipantPermissionsChanged) r.on(E.ParticipantPermissionsChanged, function (antes?: any, p?: any) { if (vale() && (!p || p === r.localParticipant)) llama(oy.permisos, permisosDe(r.localParticipant.permissions)); });
         if (E.ParticipantAttributesChanged) r.on(E.ParticipantAttributesChanged, function (cambiados?: any, p?: any) { if (vale() && p && typeof p.identity === "string") llama(oy.atributos, { identidad: p.identity, atributos: copiaAtr(p.attributes) }); });
+        // ADR-0036: los metadatos de la sala (los escribe solo la api); el texto, tal cual
+        if (E.RoomMetadataChanged) r.on(E.RoomMetadataChanged, function (m?: any) { if (vale()) llama(oy["sala-meta"], typeof m === "string" ? m : metadatos()); });
       }
       function copiaAtr(a?: any) { var o: any = {}; if (a && typeof a === "object") Object.keys(a).forEach(function (k?: any) { if (typeof a[k] === "string") o[k] = a[k]; }); return o; }
       function dentro() { return !!room && (estado === "dentro" || estado === "reconectando"); }
       // F3d: el nombre de la sala de LiveKit (p. ej. «guiada-12»: la voz solo actúa ahí) y tus permisos; "" y null fuera
       function nombre() { return room && estado !== "conectando" && typeof room.name === "string" ? room.name : ""; }
+      /** ADR-0036: los metadatos de la sala (texto que pone la api; "" fuera o si no hay). Son DATOS: quien los use los valida */
+      function metadatos() { return room && estado !== "conectando" && typeof room.metadata === "string" ? room.metadata : ""; }
       function permisos() { return room && estado !== "conectando" && room.localParticipant ? permisosDe(room.localParticipant.permissions) : null; }
       /** los atributos (texto) de esa identidad (o los tuyos, sin ella) que puso la api; null si no está */
       function atributos(identidad?: any) {
@@ -162,6 +168,7 @@ export const RedPuro: any = (function () {
             return Promise.resolve(r.connect(urlWs(c.url, o.base()), c.token, opc.conexion || CONEXION_LK)).then(function () {
               if (g !== gen || room !== r) { dejaSala(r); return false; }
               cambiaEstado("dentro", "");
+              var mt: any = metadatos(); if (mt && room === r) llama(oy["sala-meta"], mt);   // ADR-0036: quien llega tarde, con lo que ya había
               return true;
             });
           });
@@ -189,7 +196,8 @@ export const RedPuro: any = (function () {
       }
       /** evento: «estado» fn({ sala, estado, motivo }), «entra» fn({ identidad, metadatos }), «sale» fn(identidad); y el audio (F3d): «publicada» y
        *  «despublicada» fn({ identidad, sid, fuente }), «pista» fn({ identidad, sid, fuente, mst }), «pista-fuera» fn({ identidad, sid, fuente }),
-       *  «hablan» fn([{ identidad, nivel 0-1, yo }]), «permisos» fn({ publicar, fuentes, datos }) y «atributos» fn({ identidad, atributos }).
+       *  «hablan» fn([{ identidad, nivel 0-1, yo }]), «permisos» fn({ publicar, fuentes, datos }) y «atributos» fn({ identidad, atributos });
+       *  y (ADR-0036) «sala-meta» fn(texto): los metadatos de la sala al cambiar, y al quedar dentro si no están vacíos.
        *  Devuelve la función que deja de escuchar */
       function al(ev?: any, fn?: any) {
         if (EVENTOS.indexOf(ev) < 0) throw new Error("evento de sala desconocido: " + ev);
@@ -203,7 +211,7 @@ export const RedPuro: any = (function () {
       function cierra() { sale(); oy = vacios(); temas = Object.create(null); }
       return { clave: clave, une: une, sale: sale, publica: publica, escucha: escucha, al: al, estado: function () { return estado; }, motivo: function () { return porque; },
         yo: yo, participantes: participantes, info: info, cierra: cierra,
-        nombre: nombre, permisos: permisos, atributos: atributos, publicaciones: publicaciones, suscribe: suscribe, microfono: microfono, microAbierto: microAbierto };
+        nombre: nombre, metadatos: metadatos, permisos: permisos, atributos: atributos, publicaciones: publicaciones, suscribe: suscribe, microfono: microfono, microAbierto: microAbierto };
     }
     function info() { return Object.keys(salas).map(function (k?: any) { return salas[k].info(); }); }
     function cierra() { cerrada = true; Object.keys(salas).forEach(function (k?: any) { salas[k].cierra(); }); salas = Object.create(null); }
