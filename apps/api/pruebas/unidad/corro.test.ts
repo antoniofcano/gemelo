@@ -283,7 +283,8 @@ test("la expulsión de la oficina saca también del corro (y de su sala) y lo ap
   assert.equal(m.c.corroDe(1), null); assert.equal(m.c.corroDe(2), null, "con uno solo, el corro se deshace");
   assert.deepEqual(m.sala.borradas, [SALA_CORRO(id)]);
   assert.ok(m.filas.some(f => f.accion === "corro.sale" && f.detalle.motivo === "expulsion" && f.actor === 99));
-  const auditoria = filas.find(f => String(f[0]).includes("INSERT INTO auditoria"))!;
+  // la fila del resultado (la primera es la marca que se apunta antes de LiveKit, H-3)
+  const auditoria = filas.find(f => String(f[0]).includes("INSERT INTO auditoria") && (f[1] as unknown[])[1] === "admin.presencia_expulsado")!;
   assert.match(String((auditoria[1] as unknown[])[2]), new RegExp("corro-" + id));
 });
 

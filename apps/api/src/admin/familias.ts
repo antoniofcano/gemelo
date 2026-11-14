@@ -13,16 +13,18 @@
 //   (las llaves de acceso de la familia, GET/DELETE /api/admin/hogares/:id/llaves, viven en llaves_hogar.ts)
 //   (GET /api/admin/hazas, las hazas con su titular para elegir, vive en hazas.ts: es la misma lista que usa la sección Hazas)
 // El nombre interno (decisión 109) no sale por ninguna ruta de los hogares. Todo queda en la auditoría, sin correos en el detalle.
+import { errorParaRegistro } from "../registro.ts";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { enTransaccion } from "../bd/pool.ts";
 import { mensajeDeBienvenida, mensajeDeEnlace } from "../auth/correo.ts";
 import { TEXTO_LIMITE } from "../auth/rutas.ts";
-import { audita, creaEnlace, esOficina, normalizaCorreo, ROLES, revocaTodas, type Rol } from "../auth/servicio.ts";
+import { audita, creaEnlace, esOficina, hayOtroAdmin, normalizaCorreo, ROLES, revocaTodas, type Rol } from "../auth/servicio.ts";
+import type { Bd } from "../bd/pool.ts";
 import type { Contexto } from "../contexto.ts";
 import { huella } from "../seguridad/cripto.ts";
 import { datosDelHogar } from "../yo/datos.ts";
 import { borraFicheros, clavesDelHogar } from "../vida/medios.ts";
-import { CONFIRMACION_REQUERIDA, OFICINA, OFICINA_CONFIRMADA, SIN_PERMISO } from "../oficina/acceso.ts";
+import { CONFIRMACION_REQUERIDA, OFICINA, OFICINA_CONFIRMADA, SIN_PERMISO, ULTIMO_ADMIN, vetado as vetadoRol } from "../oficina/acceso.ts";
 import { DIAS_DE_BAJA } from "./bajas.ts";
 
 const ID = { type: "object", additionalProperties: false, required: ["id"], properties: { id: { type: "integer", minimum: 1, maximum: 2147483647 } } } as const;
@@ -40,22 +42,46 @@ export function estadoDeCuenta(c: { activo: boolean; rol: Rol; normas_version: n
   return !esOficina(c.rol) && c.normas_version === null ? "pendiente" : "activa";
 }
 
-const MENSAJE_ULTIMO_ADMIN = { error: "ultimo_admin", mensaje: "Es la única cuenta admin activa: sin ella nadie podría cambiar los roles. Da de alta otra antes." } as const;
 const MENSAJE_A_TI_MISMO = { error: "a_ti_mismo", mensaje: "No puedes hacerlo con tu propia cuenta." } as const;
 
 class HazaNoExiste extends Error {}
-interface Objetivo { id: number; correo: string; rol: Rol; activo: boolean; normas_version: number | null }
+export interface Objetivo { id: number; correo: string; rol: Rol; activo: boolean; normas_version: number | null }
+
+/** La cuenta `id` tal como la miran las guardas de la oficina (null si no existe). */
+export const leeObjetivo = async (bd: Bd, id: number): Promise<Objetivo | null> =>
+  (await bd.query<Objetivo>("SELECT id, correo::text AS correo, rol, activo, normas_version FROM hogares WHERE id = $1", [id])).rows[0] ?? null;
+
+/**
+ * Asigna (o quita, con null) LA haza de un hogar: un hogar tiene su haza (decisión 91), así que asignar una suelta las que tuviera; si la
+ * tenía otra familia, se le quita y se dice. La comparten PUT /api/admin/hogares/:id/haza y PUT /api/admin/hazas/:id/hogar (A-04).
+ * Las guardas (existe, de baja, veto) van antes, en la ruta.
+ */
+export async function asignaHaza(bd: Bd, autor: number, hogarId: number, hazaId: number | null) {
+  return enTransaccion(bd, async c => {
+    let quitadaA: { id: number; correo: string } | null = null;
+    if (hazaId !== null) {
+      const h = await c.query<{ hogar_id: number | null }>("SELECT hogar_id FROM hazas WHERE id = $1 FOR UPDATE", [hazaId]);
+      if (!h.rows[0]) return "no_existe" as const;
+      const otra = h.rows[0].hogar_id;
+      if (otra !== null && otra !== hogarId) {
+        quitadaA = { id: otra, correo: (await c.query<{ correo: string }>("SELECT correo::text AS correo FROM hogares WHERE id = $1", [otra])).rows[0]?.correo ?? "" };
+      }
+    }
+    // un hogar tiene su haza (decisión 91): asignar una suelta las que tuviera
+    const suelta = await c.query("UPDATE hazas SET hogar_id = NULL, actualizada_en = now() WHERE hogar_id = $1 AND id IS DISTINCT FROM $2", [hogarId, hazaId]);
+    if (hazaId !== null) await c.query("UPDATE hazas SET hogar_id = $1, actualizada_en = now() WHERE id = $2", [hogarId, hazaId]);
+    await audita(c, autor, "admin.haza_asignada", { hogar: hogarId, haza: hazaId, quitada_a: quitadaA?.id ?? null });
+    return { quitada_a: quitadaA, soltadas: suelta.rowCount ?? 0 };
+  });
+}
 
 export async function rutasFamilias(app: FastifyInstance, ctx: Contexto): Promise<void> {
   const { bd, config, cartero } = ctx;
   const ventana = config.enlace.ventanaMin * 60_000;
 
-  const objetivo = async (id: number): Promise<Objetivo | null> =>
-    (await bd.query<Objetivo>("SELECT id, correo::text AS correo, rol, activo, normas_version FROM hogares WHERE id = $1", [id])).rows[0] ?? null;
-  /** Tocar una cuenta de oficina (rol oficina o admin) es cosa de admin. */
-  const vetado = (req: FastifyRequest, o: Objetivo): boolean => esOficina(o.rol) && req.session.rol !== "admin";
-  const hayOtroAdmin = async (id: number): Promise<boolean> =>
-    ((await bd.query<{ n: number }>("SELECT count(*)::int AS n FROM hogares WHERE rol = 'admin' AND activo AND id <> $1", [id])).rows[0]?.n ?? 0) > 0;
+  const objetivo = (id: number): Promise<Objetivo | null> => leeObjetivo(bd, id);
+  /** Tocar una cuenta de oficina (rol oficina o admin) es cosa de admin (oficina/acceso.ts). */
+  const vetado = (req: FastifyRequest, o: Objetivo): boolean => vetadoRol(req, o.rol);
 
   // ---------------------------------------------------------------- lista
   app.get<{ Querystring: { q?: string; estado?: Estado; limite?: number; desde?: number } }>("/api/admin/hogares", {
@@ -134,7 +160,7 @@ export async function rutasFamilias(app: FastifyInstance, ctx: Contexto): Promis
       await cartero.envia((bienvenida ? mensajeDeBienvenida : mensajeDeEnlace)(correo, url, config.enlace.minutos));
       return true;
     } catch (e) {
-      req.log.error({ evento: "correo_fallido", hogar: enlace.hogarId, error: e instanceof Error ? e.message : "?" }, "no se pudo mandar el enlace");
+      req.log.error({ evento: "correo_fallido", hogar: enlace.hogarId, error: errorParaRegistro(e) }, "no se pudo mandar el enlace");
       return false;
     }
   }
@@ -154,7 +180,7 @@ export async function rutasFamilias(app: FastifyInstance, ctx: Contexto): Promis
       if (req.session.rol !== "admin") return rep.code(403).send(SIN_PERMISO);
       if (req.session.confirmacionVigente !== true) return rep.code(403).send(CONFIRMACION_REQUERIDA);
       if (o.id === req.session.hogarId) return rep.code(409).send(MENSAJE_A_TI_MISMO);
-      if (o.rol === "admin" && !(await hayOtroAdmin(o.id))) return rep.code(409).send(MENSAJE_ULTIMO_ADMIN);
+      if (o.rol === "admin" && !(await hayOtroAdmin(bd, o.id))) return rep.code(409).send(ULTIMO_ADMIN);
       await bd.query("UPDATE hogares SET rol = $1 WHERE id = $2", [b.rol, o.id]);
       const n = await revocaTodas(bd, o.id);   // entra con el rol nuevo (y, si pasa a oficina, con su aparato)
       await audita(bd, req.session.hogarId!, "admin.rol_cambiado", { hogar: o.id, de: o.rol, a: b.rol, sesiones: n });
@@ -192,6 +218,8 @@ export async function rutasFamilias(app: FastifyInstance, ctx: Contexto): Promis
   app.get<{ Params: { id: number } }>("/api/admin/hogares/:id/sesiones", { preHandler: OFICINA, schema: { params: ID } }, async (req, rep) => {
     const o = await objetivo(req.params.id);
     if (!o) return rep.code(404).send({ error: "no_existe" });
+    // A-10: las sesiones y aparatos de otra cuenta de oficina, solo admin (las propias, como en DELETE /api/admin/sesiones/:id, sí)
+    if (vetado(req, o) && o.id !== req.session.hogarId) return rep.code(403).send(SIN_PERMISO);
     const s = await bd.query(
       `SELECT id, coalesce(aparato_nombre, 'Aparato') AS aparato, origen = 'vinculo' AS por_codigo_corto, creada_en, ultima_actividad_en, expira_en
          FROM sesiones WHERE hogar_id = $1 AND revocada_en IS NULL AND expira_en > now() ORDER BY ultima_actividad_en DESC`, [o.id]);
@@ -222,23 +250,9 @@ export async function rutasFamilias(app: FastifyInstance, ctx: Contexto): Promis
   }, async (req, rep) => {
     const o = await objetivo(req.params.id);
     if (!o) return rep.code(404).send({ error: "no_existe" });
+    if (vetado(req, o)) return rep.code(403).send(SIN_PERMISO);   // A-10
     if (!o.activo) return rep.code(409).send({ error: "de_baja", mensaje: "La cuenta está de baja: reactívala antes de asignarle una haza." });
-    const res = await enTransaccion(bd, async c => {
-      let quitadaA: { id: number; correo: string } | null = null;
-      if (req.body.haza_id !== null) {
-        const h = await c.query<{ hogar_id: number | null }>("SELECT hogar_id FROM hazas WHERE id = $1 FOR UPDATE", [req.body.haza_id]);
-        if (!h.rows[0]) return "no_existe" as const;
-        const otra = h.rows[0].hogar_id;
-        if (otra !== null && otra !== o.id) {
-          quitadaA = { id: otra, correo: (await c.query<{ correo: string }>("SELECT correo::text AS correo FROM hogares WHERE id = $1", [otra])).rows[0]?.correo ?? "" };
-        }
-      }
-      // un hogar tiene su haza (decisión 91): asignar una suelta las que tuviera
-      const suelta = await c.query("UPDATE hazas SET hogar_id = NULL, actualizada_en = now() WHERE hogar_id = $1 AND id IS DISTINCT FROM $2", [o.id, req.body.haza_id]);
-      if (req.body.haza_id !== null) await c.query("UPDATE hazas SET hogar_id = $1, actualizada_en = now() WHERE id = $2", [o.id, req.body.haza_id]);
-      await audita(c, req.session.hogarId!, "admin.haza_asignada", { hogar: o.id, haza: req.body.haza_id, quitada_a: quitadaA?.id ?? null });
-      return { quitada_a: quitadaA, soltadas: suelta.rowCount ?? 0 };
-    });
+    const res = await asignaHaza(bd, req.session.hogarId!, o.id, req.body.haza_id);
     if (res === "no_existe") return rep.code(404).send({ error: "haza_no_existe", mensaje: "Esa haza no existe." });
     return rep.header("cache-control", "no-store").send({ haza_id: req.body.haza_id, ...res });
   });
@@ -250,7 +264,7 @@ export async function rutasFamilias(app: FastifyInstance, ctx: Contexto): Promis
     if (vetado(req, o)) return rep.code(403).send(SIN_PERMISO);
     if (o.id === req.session.hogarId) return rep.code(409).send(MENSAJE_A_TI_MISMO);
     if (!o.activo) return rep.code(409).send({ error: "ya_de_baja", mensaje: "La cuenta ya está de baja." });
-    if (o.rol === "admin" && !(await hayOtroAdmin(o.id))) return rep.code(409).send(MENSAJE_ULTIMO_ADMIN);
+    if (o.rol === "admin" && !(await hayOtroAdmin(bd, o.id))) return rep.code(409).send(ULTIMO_ADMIN);
     const res = await enTransaccion(bd, async c => {
       const hz = await c.query<{ id: number }>("SELECT id FROM hazas WHERE hogar_id = $1 ORDER BY id FOR UPDATE", [o.id]);
       await c.query("UPDATE hogares SET activo = false, baja_en = now(), baja_hazas = $2 WHERE id = $1", [o.id, hz.rows.map(h => h.id)]);
@@ -305,7 +319,7 @@ export async function rutasFamilias(app: FastifyInstance, ctx: Contexto): Promis
       return rep.code(400).send({ error: "correo_no_coincide", mensaje: "El correo escrito no es el de la cuenta. Para borrar hay que escribirlo tal cual." });
     }
     if (o.id === req.session.hogarId) return rep.code(409).send(MENSAJE_A_TI_MISMO);
-    if (o.rol === "admin" && o.activo && !(await hayOtroAdmin(o.id))) return rep.code(409).send(MENSAJE_ULTIMO_ADMIN);
+    if (o.rol === "admin" && o.activo && !(await hayOtroAdmin(bd, o.id))) return rep.code(409).send(ULTIMO_ADMIN);
     const claves = await clavesDelHogar(bd, o.id);
     const r = await bd.query("DELETE FROM hogares WHERE id = $1", [o.id]);
     if (!r.rowCount) return rep.code(404).send({ error: "no_existe" });

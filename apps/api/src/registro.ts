@@ -8,6 +8,13 @@ export const REDACTADAS = [
   "res.headers[\"set-cookie\"]", "headers.cookie", "headers.authorization", "token", "correo", "clave",
 ];
 
+/** Un correo cualquiera dentro de un texto (lo que un servidor SMTP suele citar al rechazar un destinatario). */
+const RE_CORREO_EN_TEXTO = /[^\s<>"'(),;:@]+@[^\s<>"'(),;:@]+/g;
+/** El texto sin correos: cada uno se cambia por «[correo]» (auditoría A-05: los registros no llevan correos). */
+export const sinCorreos = (texto: string): string => texto.replace(RE_CORREO_EN_TEXTO, "[correo]");
+/** El mensaje de un error para el registro, sin correos (el de nodemailer puede citar al destinatario). */
+export const errorParaRegistro = (e: unknown): string => (e instanceof Error ? sinCorreos(e.message) : "?");
+
 export function recortaIp(ip: string | undefined): string | undefined {
   if (!ip) return undefined;
   const v4 = /^(?:::ffff:)?(\d+)\.(\d+)\.(\d+)\.\d+$/.exec(ip);

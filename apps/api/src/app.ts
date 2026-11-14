@@ -36,6 +36,10 @@ export interface OpcionesApp {
   alRegistrarRuta?: (metodo: string, ruta: string) => void;
 }
 
+/** Las únicas rutas que aceptan un formulario: la entrada con el enlace (la página manda el token por POST) y la baja de los avisos con un
+ * clic (RFC 8058: el cliente de correo manda List-Unsubscribe=One-Click). */
+export const RUTAS_CON_FORMULARIO: ReadonlySet<string> = new Set(["/api/auth/entrar", "/api/avisos/baja"]);
+
 export async function construyeApp(ctx: Contexto, o: OpcionesApp = {}): Promise<FastifyInstance> {
   const { config } = ctx;
   const app = Fastify({
@@ -53,11 +57,20 @@ export async function construyeApp(ctx: Contexto, o: OpcionesApp = {}): Promise<
     app.addHook("onRoute", r => { for (const m of [r.method].flat()) if (m !== "HEAD") fn(m, r.url); });
   }
 
-  // Solo JSON (y formulario en /api/auth/entrar). text/plain es un tipo «simple» de CSRF: fuera.
+  // Solo JSON (y formulario en RUTAS_CON_FORMULARIO). text/plain es un tipo «simple» de CSRF: fuera.
   app.removeContentTypeParser("text/plain");
   app.addContentTypeParser(["application/csp-report", "application/reports+json"], { parseAs: "string", bodyLimit: 8192 },
     (_req, cuerpo, hecho) => { try { hecho(null, JSON.parse(cuerpo as string)); } catch { hecho(null, {}); } });
   await app.register(fastifyFormbody, { bodyLimit: 2048 });
+  // el formulario (application/x-www-form-urlencoded, otro tipo «simple» de CSRF) solo donde se usa: 415 en el resto, antes de leer el
+  // cuerpo (auditoría A-06). Así, si algún día otra ruta se exime de Origin, un formulario de otro sitio no le llega.
+  app.addHook("onRequest", async (req, rep) => {
+    const ruta = req.routeOptions.url;
+    if (ruta === undefined || RUTAS_CON_FORMULARIO.has(ruta)) return;
+    if (/^application\/x-www-form-urlencoded\b/i.test(String(req.headers["content-type"] ?? ""))) {
+      await rep.code(415).send({ error: "tipo_no_admitido", mensaje: "La petición no tiene la forma esperada." });
+    }
+  });
 
   app.addHook("onRequest", compruebaOrigen(config.origenes));
 

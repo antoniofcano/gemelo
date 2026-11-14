@@ -172,3 +172,78 @@ test("la api cablea el centinela: al arrancar recupera de la auditoría al expul
   } finally { await app.close(); }
   assert.ok(t.programados.every(p => p.parado), "al cerrar la api, se para");
 });
+
+// ---------------------------------------------------------------- H-3: la marca, en la auditoría antes de LiveKit; la reconstrucción, con reintento
+
+/** Una auditoría en memoria: guarda los INSERT y responde a SQL_EXPULSIONES_VIVAS con las filas de expulsión de la ventana (como la base). */
+function auditoriaEnMemoria() {
+  const filas: { accion: string; detalle: Record<string, unknown>; en: number }[] = [];
+  let fallaLectura = 0;
+  const bd = {
+    query: async (sql: string, p: unknown[] = []) => {
+      if (/INSERT INTO auditoria/.test(sql)) { filas.push({ accion: String(p[1]), detalle: JSON.parse(String(p[2] ?? "{}")), en: Date.now() }); return { rows: [], rowCount: 1 }; }
+      if (sql === SQL_EXPULSIONES_VIVAS) {
+        if (fallaLectura > 0) { fallaLectura--; throw new Error("la base no responde"); }
+        const acciones = /IN \(([^)]*)\)/.exec(sql)![1]!.split(",").map(x => x.trim().replace(/'/g, ""));
+        const vivas = filas.filter(f => acciones.includes(f.accion) && f.en > Date.now() - (p[0] as number) * 1000);
+        return { rows: vivas.map(f => ({ accion: f.accion, hogar: f.detalle["hogar"] === undefined ? null : String(f.detalle["hogar"]), evento: f.detalle["evento"] === undefined ? null : String(f.detalle["evento"]), en: f.en })), rowCount: vivas.length };
+      }
+      if (/SELECT 1 FROM hogares WHERE id = \$1/.test(sql)) return { rows: [{}], rowCount: 1 };
+      return { rows: [], rowCount: 0 };
+    },
+  };
+  return { bd, filas, fallaLecturas: (n: number) => { fallaLectura = n; } };
+}
+const LK_APP = { GEMELO_LIVEKIT_URL: "http://127.0.0.1:1", GEMELO_LIVEKIT_URL_PUBLICA: "ws://localhost:7880", GEMELO_LIVEKIT_CLAVE: "devreingreso3", GEMELO_LIVEKIT_SECRETO: "h".repeat(32) };
+
+test("H-3: si LiveKit falla al expulsar, la marca ya está en la auditoría: tras un reinicio, el barrido saca al expulsado", async () => {
+  const { expulsa } = await import("../../src/presencia/rutas.ts");
+  const { MARCA_GENERAL } = await import("../../src/presencia/reingreso.ts");
+  const lkc = configDePrueba(LK_APP).livekit!;
+  const a = auditoriaEnMemoria();
+  const roto = { expulsaHogar: async () => { throw new Error("LiveKit 503"); }, envia: async () => { throw new Error("LiveKit 503"); } };
+  await assert.rejects(expulsa({ bd: a.bd as never, lk: lkc, moderador: roto as never, expulsados: new Expulsados() }, 1, 7, null), /LiveKit/);
+  assert.deepEqual(a.filas.map(f => f.accion), [MARCA_GENERAL], "la marca quedó escrita antes de la llamada que falló");
+  // «reinicio»: una api nueva sobre la misma auditoría; LiveKit ya responde y el expulsado ha vuelto con su token de antes
+  const sala = new SalaFalsa(), t = new TemporizadorFalso();
+  const app = await construyeApp({ ...contexto(a.bd as unknown as pg.Pool, configDePrueba(LK_APP)), moderador: sala, temporizador: t });
+  try {
+    await app.ready();
+    sala.entra(SALAS.general, identidadOpaca(lkc, 7, "movil")); sala.entra(SALAS.general, identidadOpaca(lkc, 8, "pc"));
+    t.programados.find(p => p.ms === BARRIDO_MS)!.fn(); await vacia();
+    assert.deepEqual(dentro(sala, SALAS.general), [identidadOpaca(lkc, 8, "pc")], "el expulsado, fuera; el otro se queda");
+  } finally { await app.close(); }
+});
+
+test("H-3: si leer la auditoría falla al arrancar, la primera pasada del centinela lo reintenta, recupera la marca y saca al expulsado", async () => {
+  const lkc = configDePrueba(LK_APP).livekit!;
+  const a = auditoriaEnMemoria();
+  a.filas.push({ accion: "guiada.expulsion_marcada", detalle: { evento: 3, hogar: 7 }, en: Date.now() - 30_000 });
+  a.filas.push({ accion: "admin.presencia_expulsion_marcada", detalle: { hogar: 9 }, en: Date.now() - 30_000 });
+  a.fallaLecturas(1);   // la del arranque
+  const sala = new SalaFalsa(), t = new TemporizadorFalso();
+  const app = await construyeApp({ ...contexto(a.bd as unknown as pg.Pool, configDePrueba(LK_APP)), moderador: sala, temporizador: t });
+  try {
+    await app.ready();   // no tumba el arranque
+    sala.entra(SALA_GUIADA(3), identidadOpaca(lkc, 7, "gafas")); sala.entra(SALAS.visita, identidadOpaca(lkc, 9, "movil")); sala.entra(SALAS.general, identidadOpaca(lkc, 8, "pc"));
+    t.programados.find(p => p.ms === BARRIDO_MS)!.fn(); await vacia(); await vacia();
+    assert.deepEqual(dentro(sala, SALA_GUIADA(3)), [], "el de la guiada, fuera");
+    assert.deepEqual(dentro(sala, SALAS.visita), [], "el de la visita compartida, fuera");
+    assert.equal(dentro(sala, SALAS.general).length, 1, "el otro se queda");
+  } finally { await app.close(); }
+});
+
+test("H-3: RecuperaMarcas solo lee la auditoría hasta que sale bien; una marca reconstruida tarde no acorta otra más nueva", async () => {
+  const { RecuperaMarcas } = await import("../../src/presencia/reingreso.ts");
+  const t0 = 10_000_000;
+  let lecturas = 0, falla = true;
+  const bd = { query: async () => { lecturas++; if (falla) throw new Error("caída"); return { rows: [{ accion: "admin.presencia_expulsado", hogar: "7", evento: null, en: t0 }], rowCount: 1 }; } };
+  const exp = new Expulsados(), r = registro();
+  const rec = new RecuperaMarcas(bd as never, { expulsados: exp }, r.log);
+  assert.equal(await rec.intenta(), false); assert.equal(rec.hecha, false); assert.match(r.avisos[0]!, /se reintenta/);
+  exp.marca(7, t0 + 600_000);   // mientras, una expulsión nueva del mismo hogar
+  falla = false;
+  assert.equal(await rec.intenta(), true); assert.equal(rec.hecha, true);
+  assert.equal(await rec.intenta(), true); assert.equal(lecturas, 2, "hecha, no vuelve a leer");
+  assert.ok(exp.esta(7, t0 + 600_000 + TTL_S * 1000 - 1), "la marca nueva no se acorta con la vieja");
+});

@@ -15,6 +15,9 @@ export const SIN_PERMISO = { error: "sin_permiso", mensaje: "Tu cuenta no tiene 
 export const APARATO_PENDIENTE = { error: "aparato_pendiente", mensaje: "Este aparato aún no está aprobado para la oficina. Pide que lo aprueben desde otro aparato de la oficina, o vuelve a entrar con otro enlace pasados unos minutos." } as const;
 export const LLAVE_REQUERIDA = { error: "llave_requerida", mensaje: "La oficina pide tu llave de acceso. Abre la oficina y entra con ella (o, la primera vez, date de alta una)." } as const;
 export const CONFIRMACION_REQUERIDA = { error: "confirmacion_requerida", mensaje: "Para esto hace falta haber entrado hace poco. Pide un enlace nuevo, entra con él y vuelve a intentarlo." } as const;
+export const ULTIMO_ADMIN = { error: "ultimo_admin", mensaje: "Es la única cuenta admin activa: sin ella nadie podría cambiar los roles. Da de alta otra antes." } as const;
+/** El texto del 403 solo_titular de lo que es de la cuenta (sus datos, su alias, cerrar todas sus sesiones, borrarla). */
+export const TEXTO_SOLO_TITULAR_CUENTA = "Esto solo se puede hacer entrando con el enlace de tu correo o con tu llave, no desde unas gafas vinculadas.";
 
 type Sesion = FastifyRequest["session"] | undefined;
 const conSesion = (s: Sesion): boolean => typeof s?.hogarId === "number";
@@ -31,6 +34,21 @@ export async function requiereSesion(req: FastifyRequest, rep: FastifyReply): Pr
   if (aparatoPendiente(req.session)) { await rep.code(403).send(APARATO_PENDIENTE); return; }
   if (llaveRequerida(req.session)) await rep.code(403).send(LLAVE_REQUERIDA);
 }
+
+/**
+ * Sesión de TITULAR (decisión 96, ADR-0028): válida (como requiereSesion) y nacida del enlace o de una llave, no de unas gafas
+ * vinculadas con el código corto (`origen = 'vinculo'`): 403 solo_titular con `mensaje`. Vale como preHandler y como onRequest.
+ */
+export function requiereTitular(mensaje: string) {
+  return async function (req: FastifyRequest, rep: FastifyReply): Promise<void> {
+    await requiereSesion(req, rep);
+    if (rep.sent) return;
+    if (req.session.origen === "vinculo") await rep.code(403).send({ error: "solo_titular", mensaje });
+  };
+}
+
+/** Tocar una cuenta de oficina (rol oficina o admin) es cosa de admin: ¿le está vetado a esta sesión actuar sobre una cuenta de `rolObjetivo`? */
+export const vetado = (req: FastifyRequest, rolObjetivo: Rol): boolean => esOficina(rolObjetivo) && req.session.rol !== "admin";
 
 /** Sesión válida con uno de estos roles. Para la oficina: `requiereRol("oficina", "admin")`; lo que es solo de Antonio: `requiereRol("admin")`. */
 export function requiereRol(...roles: Rol[]) {

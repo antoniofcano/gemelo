@@ -39,3 +39,18 @@ test(".gitleaks.toml usa las reglas de gitleaks sin apagar ninguna y su única e
   assert.ok(forma.test(viejo), "la excepción cubre el literal sintético");
   assert.ok(!forma.test("const SECRETO = \"Ab3dE5fG7hJ9kL1mNp2Q0123456789\";"), "otro valor en ese fichero sigue saltando");
 });
+
+test("auditoría A-09: cada acción del workflow va fijada por el hash completo de un commit (40 hex), con su versión en un comentario", () => {
+  const usos = [...CI.matchAll(/^\s*-?\s*uses:\s*(\S+)(.*)$/gm)];
+  assert.ok(usos.length >= 3, "checkout, setup-node y setup-python");
+  for (const [, accion, resto] of usos) {
+    assert.match(accion, /^[\w.-]+\/[\w.-]+@[0-9a-f]{40}$/, accion + ": por hash, no por etiqueta (@v4) ni rama");
+    assert.match(resto, /#\s*v\d+\.\d+\.\d+/, accion + ": la versión que es, en un comentario");
+  }
+});
+
+test("auditoría A-09: la suma de gitleaks también va fijada en el workflow y se comprueba, no solo la que se baja de su publicación", () => {
+  const g = pasos.find(p => /gitleaks/.test(p) && /\brun:/.test(p));
+  assert.match(g, /GITLEAKS_SHA256:\s*[0-9a-f]{64}\s*$/m, "la suma, fijada");
+  assert.match(g, /echo "\$GITLEAKS_SHA256  \$tar" \| sha256sum -c -/, "y comprobada contra el binario bajado");
+});

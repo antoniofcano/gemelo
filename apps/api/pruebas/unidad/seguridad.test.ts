@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { mensajeDeEnlace } from "../../src/auth/correo.ts";
 import { paginaEnlaceMalo, paginaEntrar } from "../../src/auth/paginas.ts";
 import { normalizaCorreo } from "../../src/auth/servicio.ts";
-import { recortaIp, sinConsulta } from "../../src/registro.ts";
+import { errorParaRegistro, recortaIp, sinConsulta, sinCorreos } from "../../src/registro.ts";
 import { hashToken, huella, nuevoToken, pareceToken } from "../../src/seguridad/cripto.ts";
 
 test("tokens: 256 bits en base64url, distintos, y el hash es SHA-256 (32 bytes)", () => {
@@ -49,4 +49,25 @@ test("el correo del enlace es solo texto, con el enlace y la caducidad", () => {
   assert.match(m.texto, /15 minutos/);
   assert.match(m.texto, /entrar\?t=X/);
   assert.ok(!/<img|<a /i.test(m.texto));
+});
+
+test("registro (auditoría A-05): si el SMTP rechaza al destinatario y cita su correo, la línea del registro no lo lleva", async () => {
+  const { construyeApp } = await import("../../src/app.ts");
+  const { configDePrueba, contexto, deLaWeb, Registro } = await import("../apoyo/contexto.ts");
+  assert.equal(sinCorreos("550 5.1.1 <ana.smtp@example.com>: Recipient address rejected"), "550 5.1.1 <[correo]>: Recipient address rejected");
+  assert.equal(errorParaRegistro("no es un Error"), "?");
+  const bd = { query: async (sql: string) => (/tokens_acceso/.test(sql) ? { rowCount: 1, rows: [{ hogar_id: 7 }] } : { rowCount: 0, rows: [] }) };
+  const ctx = contexto(bd as never, configDePrueba({ GEMELO_API_REGISTRO: "info" }));
+  ctx.cartero.envia = async () => { throw new Error("550 5.1.1 <ana.smtp@example.com>: Recipient address rejected: User unknown"); };
+  const registro = new Registro();
+  const app = await construyeApp(ctx, { destinoRegistro: registro });
+  await app.ready();
+  try {
+    const r = await app.inject({ method: "POST", url: "/api/auth/enlace", headers: deLaWeb(), payload: { correo: "ana.smtp@example.com" } });
+    assert.equal(r.statusCode, 202, r.body);
+    for (let i = 0; i < 20 && !registro.texto.includes("correo_fallido"); i++) await new Promise(ok => setTimeout(ok, 10));
+    assert.match(registro.texto, /correo_fallido/, "el fallo queda en el registro");
+    assert.match(registro.texto, /Recipient address rejected/, "con el texto del SMTP");
+    assert.doesNotMatch(registro.texto, /ana\.smtp@example\.com|@example\.com/, "pero sin el correo");
+  } finally { await app.close(); }
 });

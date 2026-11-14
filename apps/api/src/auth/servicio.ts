@@ -78,6 +78,11 @@ export async function consumeEnlace(bd: Bd, token: string): Promise<{ ok: true; 
 }
 
 /** Cierra todas las sesiones de un hogar («salir de todos los dispositivos», o la oficina ante un robo). */
+/** ¿Queda otra cuenta admin activa además de `id`? (la guarda «último admin»: sin ninguna, nadie podría cambiar roles) */
+export async function hayOtroAdmin(bd: Bd | Cliente, id: number): Promise<boolean> {
+  return ((await bd.query<{ n: number }>("SELECT count(*)::int AS n FROM hogares WHERE rol = 'admin' AND activo AND id <> $1", [id])).rows[0]?.n ?? 0) > 0;
+}
+
 export async function revocaTodas(bd: Bd | Cliente, hogarId: number): Promise<number> {
   const r = await bd.query("UPDATE sesiones SET revocada_en = now() WHERE hogar_id = $1 AND revocada_en IS NULL", [hogarId]);
   return r.rowCount ?? 0;

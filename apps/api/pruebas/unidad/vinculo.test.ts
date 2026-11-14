@@ -43,3 +43,14 @@ test("en la base va un HMAC del código con el secreto del servidor, no el códi
   assert.deepEqual(a, hashCodigo("K7Q4M2", "s".repeat(32)));
   assert.notDeepEqual(hashCodigo("K7Q4M3", "s".repeat(32)), a);
 });
+
+test("auditoría A-07: el HMAC del código usa la clave derivada «vinculo» (HKDF), distinta del secreto de la cookie y de la de las bajas", async () => {
+  const { createHmac } = await import("node:crypto");
+  const { claveDeUso } = await import("../../src/seguridad/cripto.ts");
+  const s = "s".repeat(32);
+  assert.notDeepEqual(hashCodigo("K7Q4M2", s), createHmac("sha256", s).update("vinculo:K7Q4M2", "utf8").digest(), "ya no con el secreto tal cual");
+  assert.deepEqual(hashCodigo("K7Q4M2", s), createHmac("sha256", claveDeUso(s, "vinculo")).update("vinculo:K7Q4M2", "utf8").digest());
+  assert.equal(claveDeUso(s, "vinculo").length, 32);
+  assert.notDeepEqual(claveDeUso(s, "vinculo"), claveDeUso(s, "baja-avisos"), "una clave por uso");
+  assert.notDeepEqual(claveDeUso(s, "vinculo"), claveDeUso("t".repeat(32), "vinculo"));
+});

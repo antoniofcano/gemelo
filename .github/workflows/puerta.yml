@@ -14,7 +14,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      # acciones fijadas por el hash del commit de su versión (auditoría A-09: una etiqueta se puede mover), con la versión al lado
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262   # v4.4.0
         with:
           fetch-depth: 0   # el historial completo: gitleaks lo mira entero (L9-08)
       # L9-08: secretos en TODO el historial (el repo es público), con las reglas de gitleaks y la excepción acotada de .gitleaks.toml.
@@ -22,19 +23,21 @@ jobs:
       - name: gitleaks (todo el historial)
         env:
           GITLEAKS_VERSION: 8.30.1
+          # A-09: la suma del binario linux_x64 de esa versión, fijada aquí (no solo la que se baja de la misma publicación)
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
         run: |
           base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
           tar="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
           curl -sSfL -o "$RUNNER_TEMP/$tar" "$base/$tar"
           curl -sSfL -o "$RUNNER_TEMP/sumas.txt" "$base/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
-          (cd "$RUNNER_TEMP" && grep " $tar\$" sumas.txt | sha256sum -c -)
+          (cd "$RUNNER_TEMP" && grep " $tar\$" sumas.txt | sha256sum -c - && echo "$GITLEAKS_SHA256  $tar" | sha256sum -c -)
           tar -xzf "$RUNNER_TEMP/$tar" -C "$RUNNER_TEMP" gitleaks
           "$RUNNER_TEMP/gitleaks" git --config .gitleaks.toml --redact --no-banner --exit-code 1 .
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020   # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: npm
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065   # v5.6.0
         with:
           python-version: "3.12"
       - run: npm ci

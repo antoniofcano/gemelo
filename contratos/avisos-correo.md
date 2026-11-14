@@ -84,7 +84,7 @@ correo de los eventos» en Configuración y la oficina lo ve, de solo lectura, e
 
 ## Baja con un clic
 
-Enlace firmado `…/api/avisos/baja?t=<hogar>.<hmac>` (HMAC-SHA256 del id con el secreto de sesión, 32 caracteres base64url; no caduca y solo sirve para esto) y
+Enlace firmado `…/api/avisos/baja?t=<hogar>.<hmac>` (HMAC-SHA256 del id con la clave «baja-avisos», derivada con HKDF de `GEMELO_SESION_SECRETO` (auditoría A-07: no la misma que firma la cookie), 32 caracteres base64url; no caduca y solo sirve para esto; los enlaces de los correos mandados antes, firmados con el secreto tal cual, siguen valiendo) y
 cabeceras `List-Unsubscribe` + `List-Unsubscribe-Post: List-Unsubscribe=One-Click` (RFC 8058). `GET` enseña el botón y no hace nada; `POST` pone `avisos_correo =
 false` (idempotente, auditoría `avisos.baja_correo`). La ruta no exige Origin (el cliente de correo no lo manda): la protege la firma.
 

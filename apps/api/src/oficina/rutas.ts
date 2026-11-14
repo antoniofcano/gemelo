@@ -6,6 +6,7 @@
 //   GET  /api/admin/aparatos             aparatos de las cuentas de oficina
 //   POST /api/admin/aparatos/:id/aprobar desde un aparato ya aprobado, con confirmación reciente (los de `admin`, solo `admin`)
 //   POST /api/admin/aparatos/:id/revocar cierra además sus sesiones (los de `admin`, solo `admin` o la propia cuenta)
+import { errorParaRegistro } from "../registro.ts";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { mensajeDeEnlace } from "../auth/correo.ts";
 import { paginaAparatoPendiente } from "../auth/paginas.ts";
@@ -77,7 +78,7 @@ export async function rutasOficina(app: FastifyInstance, ctx: Contexto): Promise
     const enlace = correo ? await creaEnlace(bd, correo, config.enlace.minutos) : null;
     if (!correo || !enlace) return rep.code(401).send(SIN_SESION);
     cartero.envia(mensajeDeEnlace(correo, config.urlPublica + "/api/auth/entrar?t=" + enlace.token, config.enlace.minutos)).catch((e: unknown) => {
-      req.log.error({ evento: "correo_fallido", hogar: enlace.hogarId, error: e instanceof Error ? e.message : "?" }, "no se pudo mandar el enlace de confirmación");
+      req.log.error({ evento: "correo_fallido", hogar: enlace.hogarId, error: errorParaRegistro(e) }, "no se pudo mandar el enlace de confirmación");
     });
     await audita(bd, req.session.hogarId!, "oficina.confirmacion_pedida");
     return rep.code(202).send({ mensaje: TEXTO_CONFIRMAR });

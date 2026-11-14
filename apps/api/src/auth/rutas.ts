@@ -1,4 +1,5 @@
 // Rutas del enlace mágico, de la entrada con llave sin correo (OF13b-5) y de la sesión (contratos/sesion.md, contratos/api.openapi.yaml).
+import { errorParaRegistro } from "../registro.ts";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Contexto } from "../contexto.ts";
@@ -6,7 +7,7 @@ import { huella, PATRON_TOKEN } from "../seguridad/cripto.ts";
 import { entradaDe } from "./almacen.ts";
 import { mensajeDeEnlace } from "./correo.ts";
 import { paginaEnlaceMalo, paginaEntrar, POLITICA_REFERENTE } from "./paginas.ts";
-import { aparatoPendiente, llaveRequerida } from "../oficina/acceso.ts";
+import { aparatoPendiente, llaveRequerida, requiereTitular, TEXTO_SOLO_TITULAR_CUENTA } from "../oficina/acceso.ts";
 import { aparatoAlEntrar, COOKIE_APARATO, nombreDeAparato, OPCIONES_COOKIE_APARATO } from "../oficina/aparatos.ts";
 import { entraConLlave, gastaRetoDeAcceso, MIN_RETO, opcionesDeAcceso } from "../oficina/llaves.ts";
 import { requiereSesion } from "./roles.ts";
@@ -48,6 +49,7 @@ const RESPUESTA_LLAVE = {
 } as const;
 
 const NO_GUARDAR = "no-store";
+const soloTitularCuenta = requiereTitular(TEXTO_SOLO_TITULAR_CUENTA);
 
 export async function rutasAuth(app: FastifyInstance, ctx: Contexto): Promise<void> {
   const { bd, config, cartero } = ctx;
@@ -77,7 +79,7 @@ export async function rutasAuth(app: FastifyInstance, ctx: Contexto): Promise<vo
       const url = config.urlPublica + "/api/auth/entrar?t=" + enlace.token;
       // sin esperar al SMTP: la respuesta tarda lo mismo exista o no la cuenta, y un SMTP lento no bloquea
       cartero.envia(mensajeDeEnlace(correo, url, config.enlace.minutos)).catch((e: unknown) => {
-        req.log.error({ evento: "correo_fallido", hogar: enlace.hogarId, error: e instanceof Error ? e.message : "?" }, "no se pudo mandar el enlace");
+        req.log.error({ evento: "correo_fallido", hogar: enlace.hogarId, error: errorParaRegistro(e) }, "no se pudo mandar el enlace");
       });
     }
     return rep.code(202).send({ mensaje: TEXTO_ACEPTADO });
@@ -222,7 +224,8 @@ export async function rutasAuth(app: FastifyInstance, ctx: Contexto): Promise<vo
     return rep.clearCookie(NOMBRE_COOKIE, OPCIONES_COOKIE).code(204).send();
   });
 
-  app.post("/api/sesion/salir-todas", { preHandler: requiereSesion }, async (req, rep) => {
+  // cerrar TODAS las sesiones de la cuenta es del titular (A-02): unas gafas vinculadas no echan al resto de aparatos (para salir ellas, /salir)
+  app.post("/api/sesion/salir-todas", { preHandler: soloTitularCuenta }, async (req, rep) => {
     const id = req.session.hogarId!;
     const n = await revocaTodas(bd, id);
     await audita(bd, id, "sesion.todas_cerradas", { sesiones: n });

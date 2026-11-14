@@ -2,7 +2,8 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { requiereSesion } from "../auth/roles.ts";
 import { NOMBRE_COOKIE, OPCIONES_COOKIE, TEXTO_LIMITE_VINCULO } from "../auth/rutas.ts";
-import { audita, esOficina, NORMAS_VERSION } from "../auth/servicio.ts";
+import { audita, esOficina, hayOtroAdmin, NORMAS_VERSION } from "../auth/servicio.ts";
+import { CONFIRMACION_REQUERIDA, requiereTitular, TEXTO_SOLO_TITULAR_CUENTA, ULTIMO_ADMIN } from "../oficina/acceso.ts";
 import { decideCodigo, PATRON_ENTRADA } from "../auth/vinculo.ts";
 import type { Contexto } from "../contexto.ts";
 import { ACC_MAX, type Aspecto, ASPECTO, bytesReceta, limpiaAspecto, PATRON_PIEZA, RECETA_MAX_BYTES } from "../presencia/livekit.ts";
@@ -21,6 +22,9 @@ const TEXTO_CODIGO_MALO = "Ese código no sirve: puede que haya caducado o que t
 export async function rutasYo(app: FastifyInstance, ctx: Contexto): Promise<void> {
   const { bd, config } = ctx;
   const ventanaVinculo = config.vinculo.ventanaMin * 60_000;
+  // lo que es de la CUENTA (sus datos, su alias, borrarla) solo con sesión de titular: unas gafas vinculadas, también las de la oficina
+  // (ADR-0028: entran como visitante), no lo tocan (A-01, A-02)
+  const soloTitular = requiereTitular(TEXTO_SOLO_TITULAR_CUENTA);
   // intentos de aprobar por hogar (además del límite por IP de la ruta): con 31^6 códigos posibles, adivinar uno vivo es inviable
   const porHogar = app.createRateLimit({
     max: config.vinculo.intentosPorHogar, timeWindow: ventanaVinculo,
@@ -79,7 +83,7 @@ export async function rutasYo(app: FastifyInstance, ctx: Contexto): Promise<void
   });
 
   app.put<{ Body: { alias: string; visible: boolean } }>("/api/yo/alias", {
-    preHandler: requiereSesion,
+    preHandler: soloTitular,
     schema: { body: { type: "object", additionalProperties: false, required: ["alias", "visible"], properties: { alias: { type: "string", pattern: PATRON_ALIAS }, visible: { type: "boolean" } } } },
   }, async (req, rep) => {
     const alias = req.body.alias.trim().replace(/\s+/g, " ");
@@ -138,8 +142,8 @@ export async function rutasYo(app: FastifyInstance, ctx: Contexto): Promise<void
     return rep.code(204).send();
   });
 
-  // Derecho de acceso y portabilidad: todo lo que se guarda del hogar, en JSON.
-  app.get("/api/yo/datos", { preHandler: requiereSesion }, async (req, rep) => {
+  // Derecho de acceso y portabilidad: todo lo que se guarda del hogar, en JSON (correo incluido: solo titular, A-02).
+  app.get("/api/yo/datos", { preHandler: soloTitular }, async (req, rep) => {
     const id = req.session.hogarId!;
     // la misma lista que la exportación de la oficina (src/yo/datos.ts): una sola fuente
     const datos = await datosDelHogar(bd, id);
@@ -149,8 +153,13 @@ export async function rutasYo(app: FastifyInstance, ctx: Contexto): Promise<void
     return datos;
   });
 
-  // Derecho de supresión: se borra el hogar y, en cascada, todo lo suyo (migraciones/0001_inicial.sql).
-  app.delete("/api/yo", { preHandler: requiereSesion }, async (req, rep) => {
+  // Derecho de supresión: se borra el hogar y, en cascada, todo lo suyo (migraciones/0001_inicial.sql). Solo titular (A-01). Una cuenta de
+  // oficina, además, como al borrar desde la oficina (admin/familias.ts): con confirmación reciente y nunca la última cuenta admin.
+  app.delete("/api/yo", { preHandler: soloTitular }, async (req, rep) => {
+    if (esOficina(req.session.rol)) {
+      if (req.session.confirmacionVigente !== true) return rep.code(403).send(CONFIRMACION_REQUERIDA);
+      if (req.session.rol === "admin" && !(await hayOtroAdmin(bd, req.session.hogarId!))) return rep.code(409).send(ULTIMO_ADMIN);
+    }
     const claves = await clavesDelHogar(bd, req.session.hogarId!);
     await bd.query("DELETE FROM hogares WHERE id = $1", [req.session.hogarId]);
     await borraFicheros(config.medios.carpeta, claves);   // la cascada borra las filas; los ficheros, aquí (y la purga, si falla)

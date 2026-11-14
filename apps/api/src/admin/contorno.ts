@@ -41,6 +41,20 @@ export async function leeLimite(bd: Bd, finca: string): Promise<Limite> {
     fuente: null, consultado_en: null, parcelas: null, superficie_ha: null, cargado_en: null, hazas_fuera: [] };
 }
 
+/** Prefijo de los RAISE de fincas_contorno_carga (migraciones): lo único del error de la base que se enseña (A-08). */
+const PREFIJO_PROPIO = "contorno_no_valido: ";
+/**
+ * El `motivo` del 400 (A-08): solo el texto de los RAISE propios de fincas_contorno_carga («no es un polígono», «menos de 100 m²» o la razón
+ * de ST_IsValidReason sobre la geometría que mandó el admin), sin el prefijo. Lo demás (mensajes internos de PostgreSQL o PostGIS, con
+ * nombres de función y tipos) va solo al registro y la respuesta no lleva motivo.
+ */
+export function motivoContorno(e: unknown, log?: { warn: (o: object, m: string) => void }): { motivo?: string } {
+  const m = String((e as Error)?.message ?? "");
+  if (m.startsWith(PREFIJO_PROPIO)) return { motivo: m.slice(PREFIJO_PROPIO.length).replace(/\p{Cc}/gu, " ").slice(0, 200) };
+  log?.warn({ evento: "contorno_rechazado", codigo: (e as { code?: string })?.code ?? "?", error: m.slice(0, 200) }, "la base rechazó el contorno");
+  return {};
+}
+
 export async function rutasContornoFinca(app: FastifyInstance, ctx: Contexto): Promise<void> {
   const { bd } = ctx;
 
@@ -70,7 +84,7 @@ export async function rutasContornoFinca(app: FastifyInstance, ctx: Contexto): P
       const codigo = (e as { code?: string }).code;
       // 22023: lo rechaza fincas_contorno_carga; XX000 / 22P02 / 22023: PostGIS no sabe leer el GeoJSON; 23514: un CHECK de la tabla
       if (codigo === "22023" || codigo === "XX000" || codigo === "22P02" || codigo === "23514" || codigo === "22007" || codigo === "22008") {
-        return rep.code(400).send({ error: "contorno_no_valido", mensaje: "El contorno no es un polígono válido en EPSG:25830 (o la fecha no existe).", motivo: String((e as Error).message).slice(0, 200) });
+        return rep.code(400).send({ error: "contorno_no_valido", mensaje: "El contorno no es un polígono válido en EPSG:25830 (o la fecha no existe).", ...motivoContorno(e, req.log) });
       }
       throw e;
     }

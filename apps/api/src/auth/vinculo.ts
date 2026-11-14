@@ -5,10 +5,10 @@
 //   2. en un aparato con sesión, la persona lo teclea (POST /api/yo/dispositivos/vincular) y lo aprueba o lo rechaza;
 //   3. las gafas sondean con su secreto (POST /api/auth/vincula/sondeo); al verlo aprobado se gasta (un solo uso, atómico)
 //      y reciben su propia sesión, como con el enlace mágico.
-// En la base no hay nada en claro: el código va como HMAC con el secreto de la sesión y el sondeo como SHA-256.
+// En la base no hay nada en claro: el código va como HMAC (con la clave «vinculo», derivada del secreto del servidor) y el sondeo como SHA-256.
 import { createHmac, randomInt } from "node:crypto";
 import type { Bd } from "../bd/pool.ts";
-import { hashToken, nuevoToken } from "../seguridad/cripto.ts";
+import { claveDeUso, hashToken, nuevoToken } from "../seguridad/cripto.ts";
 import { audita, type Rol } from "./servicio.ts";
 
 /** Sin caracteres que se confundan al leerlos en las gafas o al teclearlos: ni 0/O, ni 1/I/L. 31 símbolos. */
@@ -33,9 +33,9 @@ export function normalizaCodigo(s: string): string | null {
   return RE_CODIGO.test(c) ? c : null;
 }
 
-/** HMAC del código normalizado con el secreto del servidor: una copia de la base sola no permite sacar los códigos. */
+/** HMAC del código normalizado con la clave «vinculo» (derivada del secreto del servidor, A-07): una copia de la base sola no permite sacar los códigos. */
 export function hashCodigo(normalizado: string, secreto: string): Buffer {
-  return createHmac("sha256", secreto).update("vinculo:" + normalizado, "utf8").digest();
+  return createHmac("sha256", claveDeUso(secreto, "vinculo")).update("vinculo:" + normalizado, "utf8").digest();
 }
 
 export interface CodigoNuevo { codigo: string; sondeo: string; expiraEn: Date }

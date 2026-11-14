@@ -24,6 +24,7 @@
 //  La oficina:
 //   PUT    /api/admin/eventos/:id/guia                   { hogar_id | null }  el guía del evento (una cuenta activa de rol guia, oficina o admin)
 // Por qué /api/presencia/guiadas y no /api/admin/directos (OFICINA §8 lo esbozaba así): el guía no es la oficina, y las rutas /api/admin/* son solo suyas.
+import { MARCA_GUIADA } from "./reingreso.ts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { audita, esOficina } from "../auth/servicio.ts";
 import { requiereSesion } from "../auth/roles.ts";
@@ -307,6 +308,8 @@ export async function rutasVoz(app: FastifyInstance, bd: Bd, d: DepsVoz): Promis
     const hogar = hogarDeIdentidad(lk, req.body.identidad, (await apuntados(bd, ev)).filter(h => h !== e.guia_id));
     if (hogar === null) return falla(rep, 409, "no_es_familia_apuntada");
     expulsadosGuiada.marca(ev, hogar);
+    // H-3: la marca, en la auditoría ANTES de llamar a LiveKit (si falla, el centinela le saca igual y un reinicio la reconstruye)
+    await audita(bd, req.session.hogarId!, MARCA_GUIADA, { evento: ev, hogar });
     await palabra.olvidaHogar(ev, hogar, req.session.hogarId!);
     const conexiones = await voz.expulsaHogar(SALA_GUIADA(ev), prefijoHogar(lk, hogar));
     const motivo = req.body.motivo?.trim().replace(/\s+/g, " ") || null;

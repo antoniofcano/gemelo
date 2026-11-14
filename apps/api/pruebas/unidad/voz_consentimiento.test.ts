@@ -118,3 +118,21 @@ test("la versión del aviso de la api es la del texto del motor (si cambia el te
   const codigo = lee("apps/api/src/presencia/consentimiento_voz.ts");
   for (const a of ["voz.consentimiento_dado", "voz.consentimiento_retirado"]) assert.ok(codigo.includes('"' + a + '"'), a);
 });
+
+test("auditoría A-11: la migración 0028 acota en la base el corte de purga_auditoria_voz al del plazo (la api no puede borrar lo reciente)", () => {
+  const sql = lee("apps/api/migraciones/0028_purga_voz_acotada.sql").split("\n").filter(l => !/^\s*--/.test(l)).join("\n");
+  assert.match(sql, /CREATE OR REPLACE FUNCTION purga_auditoria_voz\(corte timestamptz\) RETURNS integer/, "mismo nombre y firma: conserva dueño y EXECUTE");
+  assert.match(sql, /SECURITY DEFINER SET search_path = public, pg_temp/);
+  // el plazo de corteAuditoriaVoz, calculado en la base: 1 de octubre del año anterior (desde octubre) o de dos años antes, en UTC
+  assert.match(sql, /hoy timestamp := now\(\) AT TIME ZONE 'UTC'/);
+  assert.match(sql, /make_timestamptz\(extract\(year FROM hoy\)::int - CASE WHEN extract\(month FROM hoy\) >= 10 THEN 1 ELSE 2 END, 10, 1, 0, 0, 0, 'UTC'\)/);
+  assert.match(sql, /hasta timestamptz := LEAST\(corte, tope\)/, "un corte más reciente que el plazo se recorta");
+  assert.match(sql, /WHERE a\.cuando < hasta/);
+  assert.doesNotMatch(sql, /a\.cuando < corte/, "el corte de la api no se usa sin acotar");
+  const acciones = [...sql.matchAll(/a\.accion\s*(?:LIKE|=)\s*'([^']+)'/g)].map(x => x[1]).sort();
+  assert.deepEqual(acciones, ["corro.%", "guiada.%", "voz.consentimiento_dado", "voz.consentimiento_retirado"], "las mismas acciones que la 0025");
+  assert.match(sql, /REVOKE ALL ON FUNCTION purga_auditoria_voz\(timestamptz\) FROM PUBLIC/);
+  // y es la misma regla que la de la api
+  for (const [ahora, corte] of [["2026-09-30T12:00:00Z", "2024-10-01"], ["2026-10-01T00:00:00Z", "2025-10-01"], ["2027-01-15T00:00:00Z", "2025-10-01"]] as const)
+    assert.equal(corteAuditoriaVoz(new Date(ahora)).toISOString().slice(0, 10), corte, ahora);
+});

@@ -7,6 +7,7 @@ import pg from "pg";
 import { construyeApp } from "../../src/app.ts";
 import { compruebaCorte, compruebaGeometria, CONTORNO_HOLGURA_M, MAX_VERTICES, MAX_VERTICES_CONTORNO } from "../../src/hazas/geometria.ts";
 import { contexto, deLaWeb } from "../apoyo/contexto.ts";
+import { motivoContorno } from "../../src/admin/contorno.ts";
 
 const E0 = 430_000, N0 = 4_180_000;
 const cuadro = (x: number, y: number, l: number) => [[E0 + x, N0 + y], [E0 + x + l, N0 + y], [E0 + x + l, N0 + y + l], [E0 + x, N0 + y + l], [E0 + x, N0 + y]];
@@ -87,4 +88,15 @@ test("contorno: más vértices que una haza, pero con tope", () => {
   assert.equal(compruebaGeometria({ type: "Polygon", coordinates: [anillo(MAX_VERTICES + 500)] }, MAX_VERTICES_CONTORNO), null);
   assert.equal(compruebaGeometria({ type: "Polygon", coordinates: [anillo(MAX_VERTICES + 500)] })?.error, "demasiados_vertices", "una haza sigue con su tope");
   assert.equal(CONTORNO_HOLGURA_M, 1);
+});
+
+test("contorno (auditoría A-08): el 400 solo enseña el motivo de los RAISE propios; un error interno de PostGIS va al registro, no a la respuesta", () => {
+  const avisos: object[] = [];
+  const log = { warn: (o: object) => { avisos.push(o); } };
+  assert.deepEqual(motivoContorno(Object.assign(new Error("contorno_no_valido: menos de 100 m²"), { code: "22023" }), log), { motivo: "menos de 100 m²" });
+  assert.deepEqual(motivoContorno(Object.assign(new Error("contorno_no_valido: Self-intersection[1 2]"), { code: "22023" }), log), { motivo: "Self-intersection[1 2]" });
+  assert.equal(avisos.length, 0);
+  const interno = Object.assign(new Error("lwgeom_from_geojson: unknown type in function st_geomfromgeojson(text)"), { code: "XX000" });
+  assert.deepEqual(motivoContorno(interno, log), {}, "sin motivo: nombres de función y tipos no salen");
+  assert.equal(avisos.length, 1, "pero queda en el registro");
 });
