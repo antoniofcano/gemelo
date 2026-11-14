@@ -291,7 +291,8 @@ export class ModeradorLiveKit implements ModeradorSala, ModeradorVoz {
  */
 export class Expulsados {
   private readonly hasta = new Map<number, number>();
-  marca(hogarId: number, ahora = Date.now()): void { this.hasta.set(hogarId, ahora + TTL_S * 1000); }
+  /** marca (o alarga) la expulsión; nunca la acorta: una marca reconstruida tarde desde la auditoría (H-3) no pisa una más nueva */
+  marca(hogarId: number, ahora = Date.now()): void { this.hasta.set(hogarId, Math.max(this.hasta.get(hogarId) ?? 0, ahora + TTL_S * 1000)); }
   /** los hogares con la marca vigente (el centinela solo llama a LiveKit si hay alguno) */
   vivos(ahora = Date.now()): number[] { return [...this.hasta.keys()].filter(h => this.esta(h, ahora)); }
   esta(hogarId: number, ahora = Date.now()): boolean {

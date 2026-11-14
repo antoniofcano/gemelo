@@ -190,7 +190,11 @@ test("expulsar: saca de las dos salas (hituelo-libre y, OF10, hituelo-visita) TO
   assert.deepEqual(r, { ok: true, estaba_en_sala: true, conexiones: 3 });
   assert.deepEqual(mod.llamadas, [["hituelo-libre", prefijoHogar(LK, 9)], ["hituelo-visita", prefijoHogar(LK, 9)]], "las dos salas del mundo");
   assert.deepEqual([...sala], [otro], "el otro hogar sigue dentro");
-  const aud = consultas.find(c => /INSERT INTO auditoria/.test(c.sql));
+  const auds = consultas.filter(c => /INSERT INTO auditoria/.test(c.sql));
+  // H-3: primero la marca (antes de llamar a LiveKit), luego lo que pasó
+  assert.deepEqual(auds.map(c => c.params[1]), ["admin.presencia_expulsion_marcada", "admin.presencia_expulsado"]);
+  assert.deepEqual(JSON.parse(auds[0]!.params[2] as string), { hogar: 9 }, "la marca: solo el hogar");
+  const aud = auds[1];
   assert.ok(aud, "queda en la auditoría");
   assert.deepEqual(aud!.params.slice(0, 2), [1, "admin.presencia_expulsado"]);
   assert.deepEqual(JSON.parse(aud!.params[2] as string), { hogar: 9, sala: "hituelo-libre", estaba: true, conexiones: 3, motivo: "insultos en el chat" });
@@ -203,7 +207,7 @@ test("expulsar: saca de las dos salas (hituelo-libre y, OF10, hituelo-visita) TO
 test("expulsar a quien no está en la sala también se apunta (estaba: false); a un hogar que no existe, 404 y nada más", async () => {
   const mod = new ModeradorDePrueba(new Set()), a = bdDePrueba([4]), e = new Expulsados();
   assert.deepEqual(await expulsa({ bd: a.bd, lk: LK, moderador: mod, expulsados: e }, 1, 4, null), { ok: true, estaba_en_sala: false, conexiones: 0 });
-  assert.deepEqual(JSON.parse(a.consultas.find(c => /auditoria/.test(c.sql))!.params[2] as string), { hogar: 4, sala: "hituelo-libre", estaba: false, conexiones: 0 });
+  assert.deepEqual(JSON.parse(a.consultas.find(c => /auditoria/.test(c.sql) && c.params[1] === "admin.presencia_expulsado")!.params[2] as string), { hogar: 4, sala: "hituelo-libre", estaba: false, conexiones: 0 });
   const b = bdDePrueba([]), mod2 = new ModeradorDePrueba(new Set());
   assert.deepEqual(await expulsa({ bd: b.bd, lk: LK, moderador: mod2, expulsados: e }, 1, 77, null), { ok: false, motivo: "no_existe" });
   assert.equal(mod2.llamadas.length, 0);
@@ -211,11 +215,12 @@ test("expulsar a quien no está en la sala también se apunta (estaba: false); a
   assert.equal(e.esta(77), false);
 });
 
-test("si LiveKit falla, el error sube (la oficina lo ve), el hogar queda sin token igualmente y no se apunta lo que no se hizo", async () => {
+test("si LiveKit falla, el error sube (la oficina lo ve), el hogar queda sin token igualmente, la marca ya está en la auditoría (H-3) y no se apunta lo que no se hizo", async () => {
   const roto: ModeradorSala = { expulsaHogar: async () => { throw new Error("LiveKit no responde"); }, envia: async () => { throw new Error("LiveKit no responde"); } }, e = new Expulsados(), { bd, consultas } = bdDePrueba([5]);
   await assert.rejects(expulsa({ bd, lk: LK, moderador: roto, expulsados: e }, 1, 5, null), /LiveKit/);
   assert.equal(e.esta(5), true);
-  assert.ok(!consultas.some(c => /auditoria/.test(c.sql)));
+  const auds = consultas.filter(c => /auditoria/.test(c.sql)).map(c => c.params[1]);
+  assert.deepEqual(auds, ["admin.presencia_expulsion_marcada"], "la marca (reconstruible tras un reinicio), sí; el resultado, no");
 });
 
 test("POST /api/admin/presencia/expulsar: sin Origin 403, cuerpo raro 400, sin sesión 401 (y sin tocar LiveKit)", async () => {

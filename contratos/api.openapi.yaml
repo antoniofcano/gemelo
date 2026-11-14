@@ -1584,7 +1584,9 @@ paths:
         La api saca TODAS las conexiones del hogar (una por aparato: lista la sala con RoomService.ListParticipants y
         quita con RemoveParticipant las que llevan su prefijo; ningún token de cliente lleva roomAdmin), no le da token
         nuevo durante 15 minutos (en memoria: no sobrevive a un reinicio de la api) y lo apunta en la auditoría
-        (admin.presencia_expulsado: hogar, sala, si estaba, cuántas conexiones y el motivo). No es un bloqueo de la cuenta: para eso, revocar
+        (admin.presencia_expulsado: hogar, sala, si estaba, cuántas conexiones y el motivo). Antes de llamar a LiveKit apunta la marca
+        (admin.presencia_expulsion_marcada, solo el hogar; H-3): si LiveKit falla (500), el centinela le saca igual y un reinicio la reconstruye
+        desde la auditoría. No es un bloqueo de la cuenta: para eso, revocar
         sus sesiones o desactivar el hogar.
       security: [{ sesion: [] }]
       requestBody:
@@ -2311,7 +2313,8 @@ paths:
       summary: Saca de la sala guiada a todas las conexiones del hogar de esa identidad (RoomService.RemoveParticipant); 15 min sin volver a esa visita
       description: >
         El guía del evento o la oficina; solo a familias apuntadas (la oficina saca a cualquiera de todas las salas con POST /api/admin/presencia/expulsar).
-        Le quita la palabra si la tenía y saca sus manos de la cola. En memoria (no sobrevive a un reinicio). Auditoría guiada.expulsado (evento, hogar,
+        Le quita la palabra si la tenía y saca sus manos de la cola. La marca, en memoria y, antes de llamar a LiveKit, en la auditoría
+        (guiada.expulsion_marcada: evento y hogar; H-3), que es de donde se reconstruye tras un reinicio. Auditoría guiada.expulsado (evento, hogar,
         conexiones, motivo).
       security: [{ sesion: [] }]
       parameters: [{ name: evento, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 2147483647 } }]

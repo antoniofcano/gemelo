@@ -4,14 +4,21 @@
 // de la conexión, hace lo que sí puede: mientras dure la marca de expulsión, mira cada BARRIDO_MS las salas del mundo y vuelve a sacar a ese hogar si
 // está dentro. Sin marcas vivas no llama a LiveKit. No toca los clientes ni la configuración de LiveKit.
 // Un webhook de LiveKit («participant_joined») lo haría al instante, pero pide cambiar infra/livekit.yaml en el VPS (ADR-0033, MU3-2): queda como mejora.
-// Las marcas viven en memoria, pero cada expulsión queda en la auditoría (admin.presencia_expulsado, guiada.expulsado) con su hora: al arrancar,
-// reconstruyeMarcas las vuelve a poner desde ahí (un reinicio ya no deja entrar con el token anterior). Sin tabla nueva ni datos personales nuevos.
+// Las marcas viven en memoria, pero cada expulsión queda en la auditoría con su hora: al arrancar, reconstruyeMarcas las vuelve a poner desde ahí (un
+// reinicio ya no deja entrar con el token anterior). Sin tabla nueva ni datos personales nuevos.
+// H-3 (segunda mirada a los remates): la fila que deja la marca (MARCA_GENERAL, MARCA_GUIADA) se escribe ANTES de llamar a LiveKit, así que si LiveKit
+// falla en la expulsión la marca se reconstruye igual tras un reinicio; la de después (admin.presencia_expulsado, guiada.expulsado) dice qué pasó. Y si
+// la reconstrucción falla al arrancar, RecuperaMarcas la reintenta en cada pasada del centinela hasta que sale (no se queda sin marcas).
 import type { Bd } from "../bd/pool.ts";
 import type { ModeradorSala } from "./livekit.ts";
 import { SALA_GUIADA, TTL_S } from "./livekit.ts";
 
 /** Dónde apunta el centinela lo que falla (el registro de Fastify cumple). */
 export interface RegistroCentinela { warn(o: object, m: string): void }
+
+/** H-3: las acciones de la auditoría que dejan la marca antes de llamar a LiveKit (detalle: hogar; en la guiada, también evento). */
+export const MARCA_GENERAL = "admin.presencia_expulsion_marcada";
+export const MARCA_GUIADA = "guiada.expulsion_marcada";
 
 export interface DepsReingreso {
   moderador: Pick<ModeradorSala, "expulsaHogar">;
@@ -26,6 +33,8 @@ export interface DepsReingreso {
   ahora?: () => number;
   /** L9-06: un fallo de LiveKit en una sala se apunta aquí y la pasada sigue con las demás */
   log?: RegistroCentinela;
+  /** H-3: si la reconstrucción de las marcas falló al arrancar, se reintenta antes de cada pasada (RecuperaMarcas) */
+  recupera?: { intenta(): Promise<unknown> };
 }
 
 /** Una pasada: vuelve a sacar a los expulsados que estén dentro. Devuelve cuántas conexiones sacó (0 = nadie había vuelto). */
@@ -64,7 +73,8 @@ export function arrancaCentinela(d: DepsReingreso & { log: RegistroCentinela }, 
   const h = t.cada(ms, () => {
     if (enCurso) return;
     enCurso = true;
-    vuelveAExpulsar(d)
+    (d.recupera ? d.recupera.intenta() : Promise.resolve())
+      .then(() => vuelveAExpulsar(d))
       .then(n => { if (n > 0) d.log.warn({ conexiones: n }, "presencia: un expulsado volvió a entrar con un token anterior; se le ha vuelto a sacar"); })
       .catch(e => d.log.warn({ err: (e as Error).message }, "presencia: el centinela de reingresos falló"))
       .finally(() => { enCurso = false; });
@@ -80,7 +90,8 @@ export interface MarcasReingreso {
 export const SQL_EXPULSIONES_VIVAS =
   `SELECT accion, detalle->>'hogar' AS hogar, detalle->>'evento' AS evento, (extract(epoch FROM cuando) * 1000)::float8 AS en
      FROM auditoria
-    WHERE accion IN ('admin.presencia_expulsado', 'guiada.expulsado') AND cuando > now() - make_interval(secs => $1)
+    WHERE accion IN ('admin.presencia_expulsado', 'guiada.expulsado', 'admin.presencia_expulsion_marcada', 'guiada.expulsion_marcada')
+      AND cuando > now() - make_interval(secs => $1)
     ORDER BY cuando`;
 
 /**
@@ -93,12 +104,37 @@ export async function reconstruyeMarcas(bd: Pick<Bd, "query">, m: MarcasReingres
   for (const f of r.rows) {
     const hogar = Number(f.hogar), en = Number(f.en);
     if (!Number.isSafeInteger(hogar) || hogar < 1 || !Number.isFinite(en)) continue;
-    if (f.accion === "admin.presencia_expulsado") { m.expulsados.marca(hogar, en); n++; }
-    else if (f.accion === "guiada.expulsado" && m.guiada) {
+    if (f.accion === "admin.presencia_expulsado" || f.accion === MARCA_GENERAL) { m.expulsados.marca(hogar, en); n++; }
+    else if ((f.accion === "guiada.expulsado" || f.accion === MARCA_GUIADA) && m.guiada) {
       const evento = Number(f.evento);
       if (!Number.isSafeInteger(evento) || evento < 1) continue;
       m.guiada.marca(evento, hogar, en); n++;
     }
   }
   return n;
+}
+
+/**
+ * H-3: la reconstrucción de las marcas con reintento. `intenta()` la hace si sigue pendiente; si falla, lo apunta y la deja pendiente para la siguiente
+ * (el centinela la llama antes de cada pasada), en vez de quedarse sin marcas hasta el próximo reinicio. Hecha una vez, no vuelve a leer la auditoría.
+ */
+export class RecuperaMarcas {
+  private pendiente = true;
+  private readonly bd: Pick<Bd, "query">;
+  private readonly m: MarcasReingreso;
+  private readonly log: RegistroCentinela & { info?(o: object, m: string): void };
+  constructor(bd: Pick<Bd, "query">, m: MarcasReingreso, log: RegistroCentinela & { info?(o: object, m: string): void }) { this.bd = bd; this.m = m; this.log = log; }
+  get hecha(): boolean { return !this.pendiente; }
+  async intenta(): Promise<boolean> {
+    if (!this.pendiente) return true;
+    try {
+      const n = await reconstruyeMarcas(this.bd, this.m);
+      this.pendiente = false;
+      if (n > 0) this.log.info?.({ marcas: n }, "presencia: expulsiones vigentes recuperadas de la auditoría");
+      return true;
+    } catch (e) {
+      this.log.warn({ err: (e as Error).message }, "presencia: no se pudieron recuperar las expulsiones de la auditoría; se reintenta en la próxima pasada del centinela");
+      return false;
+    }
+  }
 }

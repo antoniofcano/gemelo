@@ -11,7 +11,7 @@ import { AVATAR_POR_DEFECTO, type Avatar, type ClaveSala, CLAVES_SALA, DISPOSITI
 import { LigaduraVisita, puedeEntrar } from "./acceso_visita.ts";
 import { rutasOficinaMundo } from "./oficina_mundo.ts";
 import { ExpulsadosGuiada, rutasVoz } from "./voz_rutas.ts";
-import { arrancaCentinela, reconstruyeMarcas } from "./reingreso.ts";
+import { arrancaCentinela, MARCA_GENERAL, RecuperaMarcas } from "./reingreso.ts";
 import { BARRIDO_MS } from "./corro.ts";
 import { creaCorros, rutasCorros } from "./corro_rutas.ts";
 import type { Corros } from "./corro.ts";
@@ -31,12 +31,14 @@ export type ResultadoExpulsion = { ok: true; estaba_en_sala: boolean; conexiones
  * Expulsión (solo la oficina): no se le dan tokens nuevos durante 15 min, se sacan con RoomService TODAS sus conexiones (una por aparato) de TODAS las
  * salas del mundo (OF10: la general y la de la visita) y se apunta en la auditoría (quién, a qué hogar, de qué salas, si estaba, cuántas y el motivo;
  * `sala` lleva las salas donde estaba, separadas por comas, o la libre si no estaba en ninguna). Si LiveKit falla, la marca se queda y el error sube
- * (500): la oficina lo ve y puede repetir.
+ * (500): la oficina lo ve y puede repetir. H-3: la marca se apunta en la auditoría (MARCA_GENERAL) ANTES de llamar a LiveKit: aunque falle, el centinela
+ * le saca en su siguiente pasada y un reinicio la reconstruye.
  */
 export async function expulsa(d: DepsExpulsion, adminId: number, hogarId: number, motivo: string | null): Promise<ResultadoExpulsion> {
   const r = await d.bd.query("SELECT 1 FROM hogares WHERE id = $1", [hogarId]);
   if (!r.rowCount) return { ok: false, motivo: "no_existe" };
   d.expulsados.marca(hogarId);
+  await audita(d.bd as Bd, adminId, MARCA_GENERAL, { hogar: hogarId });
   const prefijo = prefijoHogar(d.lk, hogarId), donde: string[] = [];
   let conexiones = 0;
   // F3k-1: primero se le saca de su corro (sale de la sala del corro con su RemoveParticipant y, si quedan menos de dos, el corro se deshace)
@@ -67,17 +69,14 @@ export async function rutasPresencia(app: FastifyInstance, ctx: Contexto): Promi
   // llama a LiveKit. Al arrancar, las marcas de los últimos TTL_S se reconstruyen desde la auditoría (un reinicio no las pierde)
   const expulsadosGuiada = new ExpulsadosGuiada();
   let paraCentinela: (() => void) | null = null;
+  // H-3: si leer la auditoría falla al arrancar, se reintenta en cada pasada del centinela (no se queda sin marcas)
+  const recupera = new RecuperaMarcas(bd, { expulsados, guiada: expulsadosGuiada }, app.log);
   if (lk && moderador && (ctx.temporizador || !ctx.relojVoz)) {
     const salasDelMundo = async () => [...CLAVES_SALA.map(k => SALAS[k]), ...(voz ? await voz.salasGuiadas() : []), ...(corros ? corros.salas() : [])];
-    paraCentinela = arrancaCentinela({ moderador, prefijo: h => prefijoHogar(lk, h), expulsados, guiada: expulsadosGuiada, salas: salasDelMundo, log: app.log }, BARRIDO_MS, ctx.temporizador);
+    paraCentinela = arrancaCentinela({ moderador, prefijo: h => prefijoHogar(lk, h), expulsados, guiada: expulsadosGuiada, salas: salasDelMundo, log: app.log, recupera }, BARRIDO_MS, ctx.temporizador);
   }
   if (lk) {
-    app.addHook("onReady", async () => {
-      try {
-        const n = await reconstruyeMarcas(bd, { expulsados, guiada: expulsadosGuiada });
-        if (n > 0) app.log.info({ marcas: n }, "presencia: expulsiones vigentes recuperadas de la auditoría");
-      } catch (e) { app.log.error({ err: (e as Error).message }, "presencia: no se pudieron recuperar las expulsiones de la auditoría"); }
-    });
+    app.addHook("onReady", async () => { await recupera.intenta(); });
   }
   app.addHook("onClose", async () => { paraCentinela?.(); });
 
