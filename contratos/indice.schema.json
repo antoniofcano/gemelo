@@ -1,9 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://gemelo.invalid/contratos/indice.schema.json",
-  "$comment": "Contrato del índice global (indice.json; las teselas van aparte, en t/<clave>.json y .jpg). JSON Schema 2020-12 estándar, sin palabras propias; lo valida ajv (draft 2020, modo estricto, allErrors) en pruebas/guardianes/contratos.test.js, que comprueba además la coherencia interna (referencias entre campos, tamaños de las rejillas decodificadas). Un array posicional es prefixItems + items:false + minItems; el patrón de las claves de un objeto, propertyNames. Versión del contrato = campo v.",
+  "$comment": "Contrato del índice global (indice.json; las teselas van aparte, en t/<clave>.json y .jpg). JSON Schema 2020-12 estándar, sin palabras propias; lo valida ajv (draft 2020, modo estricto, allErrors) en pruebas/guardianes/contratos.test.js, que comprueba además la coherencia interna (referencias entre campos, tamaños de las rejillas decodificadas). Un array posicional es prefixItems + items:false + minItems; el patrón de las claves de un objeto, propertyNames. Versión del contrato = campo v. Cerrado en la raíz (L4-09, L4-10): un campo que no está aquí no entra en el índice.",
   "title": "indice",
   "type": "object",
+  "additionalProperties": false,
   "required": ["v", "ts", "res", "srs", "orto_px", "finca_id", "centro_utm", "z0", "ext", "parcelas", "copas", "marcados", "ot", "avance", "teselas", "grueso", "mosaico"],
   "properties": {
     "v": { "enum": [2], "$comment": "versión del contrato de datos" },

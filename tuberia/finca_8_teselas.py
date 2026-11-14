@@ -27,6 +27,8 @@ RES = 1           # paso del relieve y de la copa (m)
 N = TS // RES     # celdas por lado
 RS = 2            # paso del color del suelo (m)
 NS = TS // RS
+# L4-10: los campos del índice son los del contrato (contratos/indice.schema.json): construye() copia del intermedio solo esos, no «todo menos cinco»
+CAMPOS_INDICE = frozenset(json.load(open(os.path.join(R, "contratos", "indice.schema.json"), encoding="utf-8"))["properties"])
 ORTO_PX = 768     # píxeles por lado de la ortofoto de una tesela (0,33 m/px)
 
 def b64(a): return base64.b64encode(np.ascontiguousarray(a).tobytes()).decode()
@@ -98,7 +100,10 @@ def construye(F, salida, anterior=None):
     b = io.BytesIO(); mos.save(b, "JPEG", quality=78, optimize=True)
     mosaico = dict(jpg="data:image/jpeg;base64," + base64.b64encode(b.getvalue()).decode(), w=W, h=H, x0=D["ext"][0], yN=D["ext"][1], res=1.0)
     # lo global: todo menos las rejillas y la nube, que ahora van en las teselas
-    I = {k: v for k, v in D.items() if k not in ("dtm", "chm", "suelo", "orto", "puntos")}
+    # (L4-10: lista blanca, la del contrato; lo demás del intermedio se queda fuera y se avisa, por si fuera algo de la explotación)
+    I = {k: v for k, v in D.items() if k in CAMPOS_INDICE}
+    fuera = sorted(set(D) - CAMPOS_INDICE - {"dtm", "chm", "suelo", "orto", "puntos", "marcados_id"})
+    if fuera: print("aviso: claves del intermedio fuera del contrato del índice, no se publican:", ", ".join(fuera))
     I.update(v=2, ts=TS, res=RES, srs=RS, orto_px=ORTO_PX, teselas=teselas, grueso=grueso, mosaico=mosaico, finca_id=F["finca_id"])
     # columnas paralelas de copas (CONTRATOS §1.1). Las marcas pueden no traer id del censo:
     # si el intermedio trae `marcados_id` (paralelo a marcados; None = sin id), la copa emparejada toma ese id; si no, todas provisionales.

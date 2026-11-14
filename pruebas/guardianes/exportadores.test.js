@@ -151,6 +151,17 @@ test("finca_8_teselas.py construye() (rejillas) sobre 1 tesela sintética: colum
   for (const k of Object.keys(C.teselas)) for (const ext of [".json", ".jpg"]) assert.ok(fs.existsSync(path.join(BASE, "rejillas", "t", k + ext)), "construye(): falta t/" + k + ext + " (se sirve con ficheros, como Hituelo; T8 fase 2)");
 });
 
+// L4-10: construye() copia del intermedio solo los campos del contrato (el sintético trae W y H, que no lo son); y ningún exportador escribe un campo
+// fuera de contratos/indice.schema.json
+test("los índices de los exportadores solo llevan campos del contrato (construye() no copia W ni H del intermedio)", t => {
+  if (SIN_DEPS) return t.skip(SIN_DEPS + ": los campos de los índices NO se han comprobado");
+  assert.ifError(FALLO);
+  for (const d of ["hituelo_a", "rejillas", "rejillas_prov", "rejillas_censo"]) {
+    const fuera = Object.keys(indice(d)).filter(k => !(k in ESQ.properties));
+    assert.deepStrictEqual(fuera, [], d + ": campos fuera del contrato del índice");
+  }
+});
+
 // copas_semilla dentro de los exportadores (ADR-0017, decisión 50, tuberia/semillas_copas.py): sin índice anterior, semilla = copas_id; con él (por
 // --anterior, por GEMELO_INDICE_ANTERIOR o el indice.json que ya había en la salida), la heredada por id o por posición, aunque cambie el orden, el
 // centro_utm o el id (provisional → censo).
