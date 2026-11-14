@@ -49,6 +49,9 @@ describe("olivos de nivel 0 (componente del exterior)", () => {
     const f = ent.ficha("olivo:prueba:101")!; expect(f.titulo).toBe("Olivo 1");
     expect(f.filas.find((x) => x.k === "Parcela")!.v).toBe("Parcela A"); expect(f.filas.find((x) => x.k === "Id")!.v).toMatch(/101 \(del censo\)/);
     expect(ent.ficha("olivo:prueba:i1")!.filas.find((x) => x.k === "Id")!.v).toMatch(/sin id estable/);
+    // L3-13: «no» no se afirma: sin marca emparejada se dice qué se comprobó; L3-23: la posición es la de la copa detectada, no la del tronco
+    expect(f.filas.find((x) => x.k === "Guardado en OlivarTrack")!.v).not.toBe("no");
+    expect(f.filas.find((x) => x.k.startsWith("UTM 30"))!.k).toMatch(/copa detectada, no tronco/);
     expect(ent.pos("olivo:prueba:101")!.x).toBe(copas[0]!.x);
   });
 
