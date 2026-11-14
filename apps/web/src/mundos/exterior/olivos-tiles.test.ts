@@ -39,7 +39,7 @@ function monta(o: { estado?: string; copasId?: number[] | null; subtle?: typeof 
   const ganchos: Partial<GanchosTiles> = {}, engancha: Partial<GanchosTiles>[] = [], avisos: string[] = [];
   const gArboles = o.gArboles || { visible: true };
   const OT = creaOlivosTiles({
-    D: { copas_id: o.copasId === undefined ? null : o.copasId }, copas: COPAS, gArboles, subtle: o.subtle === undefined ? subtle : o.subtle, consola: { warn: (s) => { avisos.push(String(s)); } },
+    D: { v: 2, copas_id: o.copasId === undefined ? null : o.copasId }, copas: COPAS, gArboles, subtle: o.subtle === undefined ? subtle : o.subtle, consola: { warn: (s) => { avisos.push(String(s)); } },
     Escena3D: { resumen: () => ({ estado: o.estado || "cargando" }), engancha: (g) => { engancha.push(g); Object.assign(ganchos, g); } },
   });
   return { OT, ganchos, engancha, avisos, gArboles };
@@ -49,7 +49,7 @@ async function tesela(h: Awaited<ReturnType<typeof huellaDe>>, m: Malla, extras:
   const tile = { extras: { gemelo: e }, content: { uri: "t.glb" }, traversal: { visible: true } };
   return { tile, escena: { traverse: (fn: (o: unknown) => void) => fn(m) } };
 }
-const TILESET = (h: { registro: string }, extra: Record<string, unknown> = {}) => ({ extras: { gemelo: { contrato_tileset: 2, id_fuente: "indice", huella_registro: h.registro, tipos: { "-1": null, "0": "viejo", "1": "joven" }, catalogo_tipos: "fixture", ...extra } } });
+const TILESET = (h: { registro: string }, extra: Record<string, unknown> = {}) => ({ extras: { gemelo: { contrato_tileset: 2, contrato_origen: 2, srs: "EPSG:25830", id_fuente: "indice", huella_registro: h.registro, tipos: { "-1": null, "0": "viejo", "1": "joven" }, catalogo_tipos: "fixture", ...extra } } });
 
 describe("IdTiles (puro)", () => {
   it("las copas de una tesela: los olivos dentro del cuadrado, en el orden de copas[]", () => {
@@ -86,6 +86,15 @@ describe("OlivosTiles: la resolución, los apagados y el ciclo de vida", () => {
     ganchos.alRaiz!(TILESET({ registro: "sha256:otra" })); await espera(() => OT.resumen().estado === "sin");
     expect(OT.dibuja()).toBe(false); expect(avisos.some((a) => /huella del registro/.test(a))).toBe(true);
     expect(ganchos.alModelo!(escena, tile)).toBe(false);
+  });
+
+  it("L4-14: un tileset de otro contrato de datos (contrato_origen) o de otro srs se apaga aunque la huella case", async () => {
+    for (const [extra, motivo] of [[{ contrato_origen: 3 }, /contrato de datos v3/], [{ srs: "EPSG:4326" }, /EPSG:25830/]] as const) {
+      const h = await huellaDe(null), { OT, ganchos, avisos } = monta(), m = mallaFalsa(), { tile, escena } = await tesela(h, m);
+      ganchos.alRaiz!(TILESET(h, extra)); await espera(() => OT.resumen().estado === "sin");
+      expect(OT.dibuja()).toBe(false); expect(avisos.some((a) => motivo.test(a))).toBe(true);
+      expect(ganchos.alModelo!(escena, tile)).toBe(false);
+    }
   });
 
   it("sin crypto.subtle: avisa y resuelve solo por el índice; una tesela con otra huella se retira", async () => {
