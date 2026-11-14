@@ -40,6 +40,15 @@ describe("marcadores LiDAR (componente del exterior)", () => {
     api.suelta();
   });
 
+  it("L2-10: cada coloca() reescribe el atributo del desfase en su sitio, sin dejar uno nuevo por llamada", () => {
+    const { api, scene, Estado, oyentes } = monta();
+    const geo = scene.children[2].children[0].geometry, pa = geo.getAttribute("position"), v0 = pa.version; let disp = 0; geo.addEventListener("dispose", () => { disp++; });
+    for (let i = 0; i < 5; i++) { Estado.exag = 1 + i; oyentes["mundo:aplica"]!(); }
+    expect(geo.getAttribute("position")).toBe(pa); expect(pa.version).toBe(v0 + 5); expect(disp).toBe(0);
+    expect(pa.array[1]).toBeCloseTo((100 + 0.5) * 5, 4);   // la exageración nueva, en el mismo búfer
+    api.suelta();
+  });
+
   it("montar y liberar (varias veces) deja la escena como estaba y suelta geometrías y materiales", () => {
     const sp = { geometria: 0, material: 0 };
     for (let v = 0; v < 3; v++) {
