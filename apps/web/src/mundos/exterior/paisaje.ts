@@ -27,10 +27,16 @@ export const ID_ARBOLES_VR = "arbolesPaisaje";
 
 /** lo que el índice trae del paisaje (contratos/indice.schema.json, «paisaje») */
 export interface DatosPaisaje {
-  edificios: { x: number; y: number; ang: number; largo: number; ancho: number; hAlero: number; hCumbrera: number; color: number[] }[];
+  edificios: { x: number; y: number; ang: number; largo: number; ancho: number; hAlero: number; hCumbrera: number; color?: number[] }[];
   tendido: { linea: number[][]; postes: PoDatos[]; derivaciones?: { postes: PoDatos[]; linea: number[][] }[] };
   arroyo: { eje?: number[][]; ejes?: number[][][] };
   arboles: { x: number; y: number; h: number; r: number; tipo?: string }[];
+}
+/** L4-05: el tejado de un edificio sin color válido (no debería llegar: el esquema lo exige) se pinta de este gris de teja, en vez de romper el montaje */
+export const COLOR_TEJADO_DEFECTO: readonly number[] = [150, 120, 100];
+/** el color del tejado de un edificio: el medido si trae tres componentes numéricas; si no, COLOR_TEJADO_DEFECTO */
+export function colorTejado(c: unknown): readonly number[] {
+  return Array.isArray(c) && c.length >= 3 && c.slice(0, 3).every(function (v) { return typeof v === "number" && Number.isFinite(v); }) ? c as number[] : COLOR_TEJADO_DEFECTO;
 }
 export interface PoDatos { x: number; y: number; zBase: number; zAlto: number }
 /** una copa del Mundo: de ellas, las de olivo reciben una mancha de sombra */
@@ -166,7 +172,8 @@ export function creaPaisaje(d: DepsPaisaje) {
     PA.edificios.forEach(function (e) {
       const g = new THREE.Group(), L = e.largo, A = e.ancho, hA = Math.max(2.6, e.hAlero), hC = Math.max(hA + 0.4, e.hCumbrera), prof = 2.2;
       const muro = new THREE.Mesh(new THREE.BoxGeometry(L, hA + prof, A), matMuro); muro.position.y = (hA - prof) / 2; g.add(muro);
-      const tj = materiales.estandar("MeshLambertMaterial", { color: new THREE.Color().setRGB(e.color[0]! / 255 * 0.9, e.color[1]! / 255 * 0.85, e.color[2]! / 255 * 0.8, SRGB) });   // el color medido en la ortofoto está en sRGB; un material por tejado
+      const co = colorTejado(e.color);   // L4-05: con guarda; un edificio sin color ya no tumba el montaje
+      const tj = materiales.estandar("MeshLambertMaterial", { color: new THREE.Color().setRGB(co[0]! / 255 * 0.9, co[1]! / 255 * 0.85, co[2]! / 255 * 0.8, SRGB) });   // el color medido en la ortofoto está en sRGB; un material por tejado
       g.add(creaTejado(L + 0.5, A + 0.5, hA, hC, tj));
       g.userData = { e: e }; gPaisaje.add(g); edifs.push(g);
     });

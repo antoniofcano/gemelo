@@ -2,6 +2,19 @@
  * Regenerar: node apps/web/herramientas/genera_tipos.mjs (el guardián tipos_contratos lo comprueba). */
 
 /**
+ * @minItems 2
+ */
+export type CentroUtm = [number, number];
+/**
+ * @minItems 3
+ */
+export type Punto3 = [number, number, number];
+/**
+ * @minItems 2
+ */
+export type PuntoEje = [number, number, ...number[]];
+
+/**
  * indice
  */
 export interface Indice {
@@ -11,10 +24,7 @@ export interface Indice {
   srs: 2;
   orto_px: number;
   finca_id: string;
-  /**
-   * @minItems 2
-   */
-  centro_utm: [number, number];
+  centro_utm: CentroUtm;
   z0: number;
   zmax?: number;
   cobertura_nube?: number;
@@ -81,10 +91,25 @@ export interface Indice {
   };
   avance: {};
   paisaje?: {
-    edificios: unknown[];
-    tendido: {};
-    arroyo: {};
-    arboles: unknown[];
+    fuente?: string;
+    centro_utm?: CentroUtm;
+    z0?: number;
+    edificios: Edificio[];
+    tendido: {
+      linea: Punto3[];
+      postes: Poste[];
+      derivaciones?: {
+        postes: Poste[];
+        linea: Punto3[];
+        nota?: string;
+      }[];
+    };
+    arroyo: {
+      ejes: PuntoEje[][];
+      eje?: PuntoEje[];
+      nota?: string;
+    };
+    arboles: Arbol[];
   };
   teselas: {
     [k: string]: {
@@ -142,4 +167,34 @@ export interface Parcela {
   finca?: number;
   decl?: number;
   pasto?: boolean;
+}
+export interface Edificio {
+  x: number;
+  y: number;
+  largo: number;
+  ancho: number;
+  ang: number;
+  zBase?: number;
+  hAlero: number;
+  hCumbrera: number;
+  /**
+   * @minItems 3
+   */
+  color: [number, number, number];
+}
+export interface Poste {
+  x: number;
+  y: number;
+  zBase: number;
+  zAlto: number;
+  puntos?: number;
+}
+export interface Arbol {
+  x: number;
+  y: number;
+  h: number;
+  r: number;
+  tipo?: string;
+  zBase?: number;
+  enCauce?: boolean;
 }

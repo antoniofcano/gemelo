@@ -67,7 +67,7 @@ Campos obligatorios: `v, ts, res, srs, orto_px, finca_id, centro_utm, z0, ext, p
 | `suelo_ndvi` | `w, h, a[], b[], f, fechas[]`: NDVI del suelo = NDVI − b·f/1000 por fecha (`f`: Int16 por celda) |
 | `ot` | instantánea de OlivarTrack: `fuente ("instantanea"\|"vivo"), fecha_consulta, pases_finca, entregas_finca, analiticas_finca, parcelas{id:{tareas[], fenologia[]}}` |
 | `avance` | avance de trabajos por parcela (`{}` si no hay) |
-| `paisaje` | `fuente, centro_utm, z0, edificios[], tendido{linea, postes, derivaciones}, arroyo{ejes, nota}, arboles[]` — **deducido** de la geometría |
+| `paisaje` | `fuente, centro_utm, z0, edificios[], tendido{linea, postes, derivaciones}, arroyo{ejes, nota}, arboles[]` — **deducido** de la geometría. La forma de cada elemento está en el esquema (`$defs` `edificio`, `poste`, `punto3`, `punto_eje`, `arbol`): edificio `x, y, largo, ancho, ang, hAlero, hCumbrera, color[r,g,b]` (+ `zBase`); poste `x, y, zBase, zAlto` (+ `puntos`); árbol `x, y, h, r` (+ `tipo, zBase, enCauce`). El motor pinta en gris el tejado de un edificio sin color válido en vez de romper (L4-05) |
 | `teselas{}` | `"kx_ky": {kx, ky, v[x0,y0,x1,y1], np}`; `v` = rectángulo con dato, en m relativos a `centro_utm`, dentro de la huella de la tesela (`kx·256 − cx` … `+256`); no tiene por qué estar alineado (`construye()` recorta a la ventana con dato; Hituelo escribe la tesela entera). `v` aquí no es la versión del contrato (esa es el `v` de la raíz). `np` = puntos de nube |
 | `grueso` | relieve de 8 m: `x0, yN, res, w, h, b64` (Int16, cm sobre `z0`) |
 | `mosaico` | ortofoto global: `jpg` (data URI), `w, h, x0, yN, res` (Hituelo 2 m/px; `construye()`, 1 m/px) |

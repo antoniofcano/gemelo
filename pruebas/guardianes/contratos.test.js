@@ -90,6 +90,14 @@ test("los esquemas rechazan lo que deben (arrays posicionales de otra longitud, 
     "copas_tipo menor que −1": I => { I.copas_tipo[0] = -2; },
     "ndvi sin u8 ni b64": I => { delete I.ndvi.u8; delete I.ndvi.b64; },
     "finca_id con mayúsculas": I => { I.finca_id = "Hituelo"; },
+    // L4-05: los subcampos del paisaje que lee el motor tienen forma
+    "edificio sin color": I => { delete I.paisaje.edificios[0].color; },
+    "color de tejado con 2 componentes": I => I.paisaje.edificios[0].color.pop(),
+    "color de tejado fuera de 0..255": I => { I.paisaje.edificios[0].color[0] = 300; },
+    "poste sin zAlto": I => { delete I.paisaje.tendido.postes[0].zAlto; },
+    "punto del tendido con 2 coordenadas": I => I.paisaje.tendido.linea[0].pop(),
+    "árbol sin radio": I => { delete I.paisaje.arboles[0].r; },
+    "eje de cauce con un punto de 1 coordenada": I => { I.paisaje.arroyo.ejes[0][0] = [0]; },
   };
   for (const [n, f] of Object.entries(casos)) assert.notDeepStrictEqual(roto(f), [], "el esquema del índice debería rechazar: " + n);
   const t = jsonFx("hituelo", "t", k0 + ".json");
