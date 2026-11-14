@@ -80,3 +80,9 @@ test("L3-07: el linde no se rotula «medido» (viene de la oficina) y la superfi
   assert.match(PL, /Linde \(barrera de luz\) <span class="pill p-guardado">oficial<\/span>/);
   assert.match(PL, /<dt>Superficie <span class="pill p-deducido">calculada sobre el linde<\/span><\/dt><dd id="kSup">/);
 });
+
+test("L3-12: Hituelo no escribe un desfase [0, 0] inventado por parcela (null: no se mide por parcela) y el esquema lo admite", () => {
+  assert.doesNotMatch(lee("tuberia/hituelo_conv.py"), /desfase=\[0, 0\]/);
+  assert.match(lee("tuberia/hituelo_conv.py"), /desfase=None/);
+  assert.deepStrictEqual(JSON.parse(lee("contratos/indice.schema.json")).definitions?.parcela?.properties?.desfase?.type ?? JSON.parse(lee("contratos/indice.schema.json"))["$defs"].parcela.properties.desfase.type, ["array", "null"]);
+});
