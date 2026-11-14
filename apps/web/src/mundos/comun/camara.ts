@@ -8,11 +8,36 @@ import type { T } from "./tipos.ts";
 
 export const ID_CAMARA = "camara-orbital";
 
+// [puro:inicio] L6-04: el teclado de la vista aérea (sin THREE ni DOM). Flechas o WASD desplazan; Mayús + ↑/↓ (o W/S) inclinan; + y − (o Re Pág y Av Pág) acercan
+// y alejan; Q y E giran. No hace nada paseando (las teclas son del paseo), con Ctrl, Alt o Cmd, con el foco en un campo, dentro de una ventana, la ficha, un menú o
+// unas pestañas (allí las flechas son suyas: desplazar, cambiar de pestaña), si otro ya usó la tecla (defaultPrevented) ni, con el recorrido de la historia, las
+// flechas (son «escena anterior y siguiente»). Devuelve la acción o null.
+export var TecladoAereo = (function () {
+  var PASO = 40, GIRO = 0.08, INCL = 0.05, ZOOM = 0.1;   // el paso en «píxeles de arrastre» (pan), radianes y fracción de la distancia
+  var MOV: Record<string, [number, number]> = { ArrowUp: [0, -1], KeyW: [0, -1], ArrowDown: [0, 1], KeyS: [0, 1], ArrowLeft: [1, 0], KeyA: [1, 0], ArrowRight: [-1, 0], KeyD: [-1, 0] };
+  var ACERCA: Record<string, number> = { PageUp: -1, NumpadAdd: -1, Equal: -1, PageDown: 1, NumpadSubtract: 1, Minus: 1 };
+  function accion(t: T, est: T) {
+    if (!t || est.paseando || t.ctrl || t.meta || t.alt || est.campo || est.panel || est.prevenido) return null;
+    if (/^Arrow/.test(t.code) && est.recorrido) return null;
+    var m = MOV[t.code];
+    if (m) { if (t.shift && m[1]) return { incl: m[1] * INCL }; return { pan: [m[0] * PASO, m[1] * PASO] }; }
+    if (t.key === "+" || t.key === "-") return { zoom: t.key === "+" ? -ZOOM : ZOOM };
+    if (ACERCA[t.code]) return { zoom: ACERCA[t.code]! * ZOOM };
+    if (t.code === "KeyQ") return { giro: GIRO };
+    if (t.code === "KeyE") return { giro: -GIRO };
+    return null;
+  }
+  return { accion: accion, PASO: PASO, GIRO: GIRO, INCL: INCL, ZOOM: ZOOM };
+})();
+// [puro:fin]
+
 export interface DepsCamara {
   THREE: T; camera: T; lienzo: T; Estado: T; $(id: string): T; fmt(n: number, dec?: number): string; DIST_MAX: number; DIST_INI: number; Usables: T;
   /** 08_marcadores (antes) */ aplica(): void; capas(): void; aplicaLuego(): void;
   /** lo que cambia o se declara después: 12_paseo, 02_mundo (kcor, que se escribe), 12c, 13_parcelas, 33_ajustes */
   paseando(): boolean; ponKcor(v: number): void; IrA(): T; parcelaSel(): number; elegirParcela(i: number): void; Ajustes(): T;
+  /** L6-04: la ventana donde se escucha el teclado de la vista aérea (sin ella, no hay teclado) y si el recorrido de la historia está en marcha (sus flechas) */
+  ventana?: T; recorrido?(): boolean;
 }
 
 export function creaCamara(d: DepsCamara) {
@@ -48,6 +73,21 @@ export function creaCamara(d: DepsCamara) {
     var tocar = Object.keys(punteros).length === 1 && movido < 6; delete punteros[e.pointerId]; if (tocar && e.type === "pointerup") elige(e.clientX, e.clientY); }
   escucha(lienzo, "pointerup", suelta); escucha(lienzo, "pointercancel", suelta); escucha(lienzo, "contextmenu", function (e: T) { e.preventDefault(); });
   escucha(lienzo, "wheel", function (e: T) { e.preventDefault(); if (paseando()) return; orb.dist = Math.max(30, Math.min(DIST_MAX, orb.dist * (1 + Math.sign(e.deltaY) * 0.1))); }, { passive: false });
+  // L6-04 y L6-22: el teclado de la vista aérea (TecladoAereo) y el lienzo como parada de tabulación con función (antes solo la tenía al pasear)
+  lienzo.tabIndex = 0;
+  var PANEL = ".ventana, .ficha, dialog, [role=dialog], [role=alertdialog], [role=menu], [role=tablist], .tarjeta-rec";
+  escucha(d.ventana, "keydown", function (e: T) {
+    var el = e.target, tag = el && el.tagName;
+    var a = TecladoAereo.accion({ code: e.code, key: e.key, ctrl: e.ctrlKey, meta: e.metaKey, alt: e.altKey, shift: e.shiftKey },
+      { paseando: paseando(), campo: tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA" || !!(el && el.isContentEditable), panel: !!(el && el.closest && el.closest(PANEL)),
+        prevenido: !!e.defaultPrevented, recorrido: !!(d.recorrido && d.recorrido()) });
+    if (!a) return;
+    e.preventDefault();
+    if (a.pan) pan(a.pan[0], a.pan[1]);
+    else if (a.incl) orb.el = Math.max(0.08, Math.min(1.5, orb.el + a.incl));
+    else if (a.zoom) orb.dist = Math.max(30, Math.min(DIST_MAX, orb.dist * (1 + a.zoom)));
+    else if (a.giro) orb.az += a.giro;
+  });
   function pan(dx: T, dy: T) { var f = orb.dist * 0.0016, rx = Math.cos(orb.az), rz = -Math.sin(orb.az); objetivo.x -= dx * f * rx; objetivo.z -= dx * f * rz; objetivo.x += dy * f * Math.sin(orb.az); objetivo.z += dy * f * Math.cos(orb.az); }
 
   // un toque corto o un clic: elige lo que haya debajo (C7: Usables, 02e_entidades.js; cada tipo de cosa del mundo dice si está bajo el dedo y gana por
@@ -62,7 +102,7 @@ export function creaCamara(d: DepsCamara) {
   escucha($("reiniciar"), "click", function () { elegirParcela(parcelaSel()); });
 
   function libera() { escuchas.splice(0).forEach(function (f) { f(); }); }
-  return { objetivo: objetivo, orb: orb, camara: camara, sensMirar: sensMirar, pon: pon, libera: libera };
+  return { objetivo: objetivo, orb: orb, camara: camara, sensMirar: sensMirar, pon: pon, libera: libera, TecladoAereo: TecladoAereo };
 }
 export type Camara = ReturnType<typeof creaCamara>;
 

@@ -14,7 +14,8 @@ export function creaTeclas(deps?: DepsTeclas) {
     Escape: "31_hud", F1: "31_hud", KeyF: "31_hud", Home: "31_hud", Enter: "31_hud", NumpadEnter: "31_hud",
     ArrowUp: "12_paseo", ArrowDown: "12_paseo", ArrowLeft: "12_paseo", ArrowRight: "12_paseo", KeyW: "12_paseo", KeyA: "12_paseo", KeyS: "12_paseo", KeyD: "12_paseo",
     ShiftLeft: "12_paseo", ShiftRight: "12_paseo", Space: "12_paseo", KeyC: "12_paseo", KeyV: "12_paseo", KeyQ: "12_paseo", KeyE: "12_paseo",
-    KeyL: "12b_llegada", KeyH: "13b_hazas", KeyM: "17_minimapa"
+    KeyL: "12b_llegada", KeyH: "13b_hazas", KeyM: "17_minimapa",
+    PageUp: "09_camara", PageDown: "09_camara", NumpadAdd: "09_camara", NumpadSubtract: "09_camara", Equal: "09_camara", Minus: "09_camara"   // L6-04: acercar y alejar en la vista aérea
   };
   for (var i = 0; i <= 6; i++) { RESERVADAS["Digit" + i] = "31_hud"; RESERVADAS["Numpad" + i] = "31_hud"; }
   var mapa: Record<string, { fn: (e: TeclaEvento) => unknown; dueno: string }> = {}, escuchando = false;

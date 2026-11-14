@@ -452,7 +452,7 @@ function arranca(): void {
   var Camara = Mundos.creaCamara({
     THREE: THREE, camera: camera, lienzo: lienzo, Estado: Estado, $: $, fmt: fmt, DIST_MAX: DIST_MAX, DIST_INI: DIST_INI, Usables: Usables, aplica: aplica, capas: capas, aplicaLuego: aplicaLuego,
     paseando: function () { return Paseo.E.paseando; }, ponKcor: function (v) { TinteOrto.E.kcor = v; }, IrA: function () { return IrA; }, parcelaSel: function () { return Parcelas.parcelaSel(); },
-    elegirParcela: function (i) { elegirParcela(i); }, Ajustes: function () { return typeof Ajustes !== "undefined" ? Ajustes : null; }
+    elegirParcela: function (i) { elegirParcela(i); }, Ajustes: function () { return typeof Ajustes !== "undefined" ? Ajustes : null; }, ventana: window, recorrido: function () { return typeof Ventanas !== "undefined" && !!Ventanas && Ventanas.recorrido(); }   // L6-04: el teclado de la vista aérea (32_ventanas, después)
   });
   var objetivo = Camara.objetivo, orb = Camara.orb, camara = Camara.camara, sensMirar = Camara.sensMirar, pon = Camara.pon;
   Componentes.registra(Mundos.manifiestoCamara(Camara));

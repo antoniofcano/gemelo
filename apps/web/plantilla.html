@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="./icono-apple-180.png">
 
 <div class="visor" id="visor">
-  <canvas id="lienzo" aria-label="Vista 3D de la finca; arrastra para girar, rueda para acercar"></canvas>
+  <canvas id="lienzo" aria-label="Vista 3D de la finca; arrastra o usa las flechas para moverte, la rueda o + y − para acercar, Q y E para girar"></canvas>
   <div class="sin-escena" id="sinEscena" role="alert" hidden><strong>Esta finca no tiene escena:</strong> <span id="sinEscenaMotivo">falta el tileset</span></div>
 
   <div class="hud" id="hud">
@@ -73,7 +73,7 @@
       </div>
       <button type="button" class="hud-atrib" id="hudAtrib" title="Créditos y fuentes de datos">© IGN-CNIG CC BY 4.0 · Copernicus · ISRIC · ⓘ qué es medido</button>
     </div>
-    <div class="ayuda" id="ayuda">Arrastra: girar · Rueda o pellizco: zoom · Mayús + arrastrar: mover · Toca un olivo para ver su ficha · Intro: pasear</div>
+    <div class="ayuda" id="ayuda">Arrastra: girar · Rueda o pellizco: zoom · Mayús + arrastrar: mover · Teclado: flechas, + −, Q E · Toca un olivo para ver su ficha · Intro: pasear</div>
     <div class="ayuda ayuda-paseo" id="ayudaPaseo" hidden>Flechas o WASD: andar y girar · Mayús: correr · clic en el suelo: ir andando · V: primera persona · Q: quad · E: dron · M: minimapa · Inicio: vista aérea</div>
 
     <!-- pulgares -->
@@ -227,11 +227,12 @@
         <p><span class="pill p-medido">medido</span> las copas (LiDAR 2024) y el relieve · <span class="pill p-deducido">deducido</span> el tendido, los postes, los cauces, el vigor (NDVI) y la clasificación de los árboles que no son olivos · <span class="pill p-ilustrativo">ilustrativo</span> los troncos y las ramas, la hierba y los animales · <span class="pill p-modelo">modelo</span> el suelo y la previsión · <span class="pill p-guardado">guardado</span> lo que viene de OlivarTrack.</p>
         <h3>Teclado</h3>
         <table class="atajos">
-          <tr><th><kbd>W A S D</kbd> / flechas</th><td>andar y girar</td></tr>
+          <tr><th><kbd>W A S D</kbd> / flechas</th><td>al pasear, andar y girar; en vista aérea, desplazar la vista (con <kbd>Mayús</kbd> + <kbd>↑</kbd> <kbd>↓</kbd>, inclinarla)</td></tr>
+          <tr><th><kbd>+</kbd> · <kbd>−</kbd> (o <kbd>Re Pág</kbd> · <kbd>Av Pág</kbd>)</th><td>en vista aérea, acercar y alejar</td></tr>
           <tr><th><kbd>Mayús</kbd></th><td>correr</td></tr>
           <tr><th><kbd>Intro</kbd></th><td>en vista aérea, pasear; con el dron, aterrizar</td></tr>
           <tr><th><kbd>Inicio</kbd> · <kbd>0</kbd></th><td>volver a la vista aérea</td></tr>
-          <tr><th><kbd>Q</kbd> · <kbd>E</kbd> · <kbd>V</kbd></th><td>quad · dron · primera o tercera persona</td></tr>
+          <tr><th><kbd>Q</kbd> · <kbd>E</kbd> · <kbd>V</kbd></th><td>al pasear, quad · dron · primera o tercera persona; en vista aérea, <kbd>Q</kbd> y <kbd>E</kbd> giran la vista</td></tr>
           <tr><th><kbd>Espacio</kbd> · <kbd>C</kbd> · <kbd>L</kbd></th><td>dron: subir · bajar · aterrizar</td></tr>
           <tr><th><kbd>1</kbd>–<kbd>6</kbd></th><td>mapa, capas, tiempo, historia, gente, chat</td></tr>
           <tr><th><kbd>M</kbd> · <kbd>H</kbd></th><td>zoom del minimapa · ficha de la haza donde estás</td></tr>
