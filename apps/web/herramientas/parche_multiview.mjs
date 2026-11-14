@@ -55,9 +55,30 @@ export function parcheaMultiview(code) {
 export const ORIGINAL = PARCHES[0].original;
 
 // el plugin de Vite: solo toca el three.module.js de super-three (la build de pantalla resuelve «three» a three y no pasa por aquí)
-export function multiviewSubeTexturas() {
+// L7-09: en `vite dev` las dependencias van preempaquetadas (node_modules/.vite/deps/…) y transform() no ve el fichero de super-three: el parche NO se aplica
+// y el Quest daría el mundo en negro sin decir por qué. Si se sirve la build de VR (un alias de «three» lleva a super-three) y super-three no está fuera del
+// preempaquetado (optimizeDeps.exclude), avisa UNA vez. opc.aviso: a quién (console.warn por defecto; las pruebas lo cambian)
+const AVISO_DEV = "[parche_multiview] vite dev con la build de VR (super-three): las dependencias van preempaquetadas y el parche del multiview NO se aplica " +
+  "(texturas y materiales en negro en el Quest). Prueba la VR con `vite build` (GEMELO_BUILD=vr) o saca three y super-three del preempaquetado (optimizeDeps.exclude).";
+const SUPER = /[\\/]super-three([\\/]|$)/;
+function sirveSuperThree(config) {
+  const alias = (config && config.resolve && config.resolve.alias) || [];
+  const lista = Array.isArray(alias) ? alias : Object.keys(alias).map((k) => ({ find: k, replacement: alias[k] }));
+  return lista.some((a) => typeof a.replacement === "string" && SUPER.test(a.replacement));
+}
+function fueraDelPreempaquetado(config) {
+  const ex = (config && config.optimizeDeps && config.optimizeDeps.exclude) || [];
+  return ex.indexOf("three") >= 0 || ex.indexOf("super-three") >= 0;
+}
+export function multiviewSubeTexturas(opc = {}) {
+  const aviso = opc.aviso || ((m) => console.warn(m));
+  let avisado = false;
   return {
     name: "gemelo-multiview-sube-texturas",
+    configResolved(config) {
+      if (avisado || config.command !== "serve" || !sirveSuperThree(config) || fueraDelPreempaquetado(config)) return;
+      avisado = true; aviso(AVISO_DEV);
+    },
     transform(code, id) {
       if (!FICHERO.test(id.split("?")[0])) return null;
       return { code: parcheaMultiview(code), map: null };

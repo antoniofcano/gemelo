@@ -37,6 +37,18 @@ test("si el trozo no está (otra versión), falla en vez de parchear a ciegas", 
   assert.strictEqual(pl.transform("x", "/a/otro.js"), null);
 });
 
+test("L7-09: en vite dev con la build de VR avisa UNA vez de que el parche no se aplica; en build, en pantalla o sin preempaquetar, calla", async () => {
+  const { multiviewSubeTexturas } = await carga();
+  const vr = [{ find: /^three$/, replacement: path.join(WEB, "node_modules", "super-three", "build", "three.module.js") }];
+  const pantalla = [{ find: /^three$/, replacement: path.join(WEB, "node_modules", "three", "build", "three.module.js") }];
+  const prueba = (config, veces = 1) => { const avisos = []; const pl = multiviewSubeTexturas({ aviso: (m) => avisos.push(m) }); for (let i = 0; i < veces; i++) pl.configResolved(config); return avisos; };
+  const dev = prueba({ command: "serve", resolve: { alias: vr }, optimizeDeps: {} }, 3);
+  assert.strictEqual(dev.length, 1, "una sola vez"); assert.match(dev[0], /NO se aplica/);
+  assert.deepStrictEqual(prueba({ command: "build", resolve: { alias: vr }, optimizeDeps: {} }), [], "vite build sí lo aplica");
+  assert.deepStrictEqual(prueba({ command: "serve", resolve: { alias: pantalla }, optimizeDeps: {} }), [], "la build de pantalla no lo necesita");
+  assert.deepStrictEqual(prueba({ command: "serve", resolve: { alias: vr }, optimizeDeps: { exclude: ["three"] } }), [], "sin preempaquetar, transform ve el fichero");
+});
+
 // el multiview define viewMatrix, modelViewMatrix, projectionMatrix y normalMatrix como macros: ningún PARÁMETRO de función GLSL puede llamarse así
 // (en el Quest 3 rompía todos los materiales de three: «array size must be a constant integer expression», 2026-11-05)
 const PARAM_PROHIBIDO = /\bin\s+mat[34]\s+(viewMatrix|modelViewMatrix|projectionMatrix|normalMatrix)\b(?!\w)/;
