@@ -339,6 +339,15 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 
 
 ### Corregido
+- Mundo y cámara (auditoría de noviembre, lente 8):
+  - La lluvia cae alrededor de quien pasea.
+  - La cámara aérea sigue el relieve real: el blanco se asienta en el suelo al desplazar y al cambiar la exageración, y la cámara no baja de él.
+  - La época de los olivos generados sale de la fecha del mundo (`?fecha=`).
+  - El color de los olivos lejanos lleva el mismo desfase que su copa.
+  - Con exageración alta, las teselas se ordenan por la cota exagerada.
+  - El minimapa cercano pinta el mosaico donde falta tesela.
+  - La geometría fusionada pasa a índices de 32 bits si hace falta.
+  - Comprobado solo en Vitest y Node; Chrome, iPhone y Quest sin mirar.
 - Seguridad (auditoría de noviembre, lente 9):
   - Expulsiones: quien es expulsado y vuelve con un token anterior sale otra vez en 20 s como mucho, también de los corros; no probado contra LiveKit real.
   - Alias: se rechazan los que imitan a la oficina («Ofícina», «0ficina», «La Oficina»…) con la misma normalización que el cliente.
