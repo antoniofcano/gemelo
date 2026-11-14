@@ -99,7 +99,8 @@ export function entornoDeSonda(THREE: T, renderer: T, sonda: number[]): { textur
 
 export function cableaInteriores(d: DepsCableaInteriores) {
   let primeraFuera: boolean | null = null, ultimo: IdMundo | null = null, destino: IdMundo | null = null, llegadaFuera: Pose2 | null = null;
-  const creados = new Map<IdMundo, { estado(): unknown; visita?(): { accion(a: string): void; estado(): unknown } | null; maquinas?(): { pon(on: boolean): void; estado(): unknown } | null }>();
+  const creados = new Map<IdMundo, { estado(): unknown; visita?(): { accion(a: string): void; estado(): unknown } | null; maquinas?(): { pon(on: boolean): void; estado(): unknown } | null;
+    presupuesto?(p: { clase: "pantalla" } | { clase: "vr"; nivel: number }): { triangulos: number; llamadas: number } }>();
   const aviso = (s: string, ms?: number): void => { const h = d.Hud(); if (h) h.aviso(s, ms); };
   // todo cambio de mundo pasa por aquí: recuerda adónde se va (para el quad y la VR al salir) y, si sale bien, lo apunta en la dirección
   function cambia(a: IdMundo, llegada?: Pose2 | null, puerta?: Puerta | null): Promise<ResultadoCambio> {
@@ -189,6 +190,16 @@ export function cableaInteriores(d: DepsCableaInteriores) {
   return {
     deps,
     portones,
+    /** ADR-0036 (T8): lo que el interior activo deja libre de su presupuesto (su tope del perfil, quest en VR o en el Quest, menos los triángulos y llamadas que dibuja),
+     *  para el cupo de VRM de los avatares; null fuera de un interior (o antes de cargarlo) */
+    libre(): { triangulos: number; llamadas: number } | null {
+      const id = d.gm.actual, w = id ? creados.get(id) : undefined;
+      if (!w || !w.presupuesto) return null;
+      const e = w.estado() as { triangulos?: unknown; llamadas?: unknown } | null, vr = !!d.VRX.on || d.Aparato.clase() === "quest";
+      const p = w.presupuesto(vr ? { clase: "vr", nivel: 0 } : { clase: "pantalla" });
+      const tri = e && typeof e.triangulos === "number" ? e.triangulos : 0, ll = e && typeof e.llamadas === "number" ? e.llamadas : 0;
+      return { triangulos: Math.max(0, p.triangulos - tri), llamadas: Math.max(0, p.llamadas - ll) };
+    },
     /** con el exterior ya cargado, a ?mundo=<id> (vacio, patios, fabrica…); si no se puede, lo dice */
     entraPorUrl(busqueda: string): void {
       const a = mundoDeUrl(busqueda) as IdMundo | null;

@@ -790,7 +790,7 @@ function arranca(): void {
   Componentes.registra(Mundos.manifiestoAvatares({
     THREE: THREE, location: location, window: window, consola: console, fetch: function (u, o: any) { return fetch(u, o); },
     cargaVrm: function () { return Promise.all([import("@pixiv/three-vrm"), import("three/addons/loaders/GLTFLoader.js")]); },
-    Aparato: Aparato, Materiales: Materiales, Componentes: Componentes, suelo: suelo, renderer: renderer, scene: scene, camera: camera, Estado: Estado,
+    Aparato: Aparato, Materiales: Materiales, Componentes: Componentes, suelo: function (x, y) { return typeof gm !== "undefined" && gm ? gm.suelo(x, y) : suelo(x, y); }, libreMundo: function () { return typeof Interiores !== "undefined" && Interiores ? Interiores.libre() : null; }, renderer: renderer, scene: scene, camera: camera, Estado: Estado,   // ADR-0036: el suelo del mundo activo y lo que deja libre un interior (T8), por función (gm e Interiores se crean después)
     get paseando() { return Paseo.E.paseando; }, get persona() { return Paseo.E.persona; }, get primera() { return Paseo.E.primera; }, get pp() { return pp; },
     get enQuad() { return Vida.E.enQuad; }, get enDron() { return Vida.E.enDron; }, get VRX() { return VRX; }, get VrPresupuesto() { return VrPresupuesto; }
   }));

@@ -20,6 +20,9 @@ export interface DepsAvatares {
   suelo(x: number, y: number): number;
   renderer: any; scene: any; camera: any; Estado: any;
   readonly paseando: boolean; readonly persona: any; readonly primera: boolean; readonly pp: any; readonly enQuad: boolean; readonly enDron: boolean; readonly VRX: any;
+  /** ADR-0036 (T8): lo que el mundo activo deja libre de su presupuesto de dibujo (un interior: su tope menos lo que dibuja), o null (el exterior: el cupo de siempre).
+   *  Por función: los interiores se cablean después (Interiores.libre) */
+  libreMundo?(): { triangulos: number; llamadas: number } | null;
 }
 export const ID_AVATARES = "avatares-vrm";
 
@@ -84,10 +87,21 @@ export const AvataresPuro: any = (function () {
   var BAJA: any = 1.25, CODO: any = 0.15, CODO_QUAD: any = 0.4, CODO_DRON: any = 0.9, RODILLA: any = 0.6, INCLINA: any = 0.35, CAB_YAW: any = 1.1, CAB_PITCH: any = 0.6;
   var ID: any = /^[a-z0-9-]{1,32}$/, FICHERO: any = /^[a-z0-9-]{1,32}\.vrm$/, SHA: any = /^[0-9a-f]{64}$/, HEX: any = /^#?([0-9a-fA-F]{6})$/, MALLA: any = /^pieza_[a-z0-9-]{1,32}$/;
   var TIPOS: any = ["pelo", "vello", "ropa", "accesorio"], EDADES: any = ["peque", "joven", "adulta", "mayor"], SOMBRERO: any = ["", "paja", "gorra"];
-  // cuántos VRM a la vez: con gafas, según el escalón de los perfiles de VR (29_vr.js); si no, por aparato
-  function cupo(disp?: any, vr?: any, nivelVR?: any) {
-    if (vr) { var n: any = nivelVR | 0; return CUPO_VR[Math.max(0, Math.min(CUPO_VR.length - 1, n))]; }
-    return CUPO[disp] != null ? CUPO[disp] : CUPO.escritorio;
+  // ADR-0036 (T8): lo que cuesta un VRM, para saber cuántos caben en lo que deja libre un mundo: los topes de la tubería (ADR-0020 §2: ≤ 20.000 triángulos y ≤ 4 primitivas
+  // por avatar). ESTIMADO, sin medir: un VRM real puede costar menos (y caber más)
+  var VRM_TRI: any = 20000, VRM_LLAMADAS: any = 4;
+  // cuántos VRM a la vez: con gafas, según el escalón de los perfiles de VR (29_vr.js); si no, por aparato. ADR-0036 (T8): con libre = { triangulos, llamadas } (lo que el
+  // mundo activo deja de su presupuesto: dentro de la fábrica, poco), nunca más de los que caben en eso; sin libre (null: el exterior), el de siempre
+  function cupo(disp?: any, vr?: any, nivelVR?: any, libre?: any) {
+    var c: any;
+    if (vr) { var n: any = nivelVR | 0; c = CUPO_VR[Math.max(0, Math.min(CUPO_VR.length - 1, n))]; }
+    else c = CUPO[disp] != null ? CUPO[disp] : CUPO.escritorio;
+    if (libre && typeof libre === "object") {
+      var t: any = Number(libre.triangulos), l: any = Number(libre.llamadas);
+      var caben: any = Math.min(isFinite(t) ? Math.floor(Math.max(0, t) / VRM_TRI) : c, isFinite(l) ? Math.floor(Math.max(0, l) / VRM_LLAMADAS) : c);
+      c = Math.max(0, Math.min(c, caben));
+    }
+    return c;
   }
   // a qué distancia (m) un VRM pasa a muñeco: DMAX fuera de VR; con gafas, la de la fila del escalón
   function distVrm(vr?: any, nivelVR?: any) {
@@ -245,7 +259,7 @@ export const AvataresPuro: any = (function () {
     if (!habla && st.v < 0.01) st.v = 0;
     return st.v;
   }
-  return { CUPO: CUPO, CUPO_VR: CUPO_VR, GENTE_VR: GENTE_VR, DMAX: DMAX, distVrm: distVrm, BAJA: BAJA, cupo: cupo, leeCatalogo: leeCatalogo, cualVrm: cualVrm, piezasDe: piezasDe, colorMaterial: colorMaterial, reparte: reparte, huesos: huesos, ik: ik, parpadeo: parpadeo, conBoca: conBoca, boca: boca, BOCA_MAX: BOCA_MAX };
+  return { CUPO: CUPO, CUPO_VR: CUPO_VR, GENTE_VR: GENTE_VR, DMAX: DMAX, VRM_TRI: VRM_TRI, VRM_LLAMADAS: VRM_LLAMADAS, distVrm: distVrm, BAJA: BAJA, cupo: cupo, leeCatalogo: leeCatalogo, cualVrm: cualVrm, piezasDe: piezasDe, colorMaterial: colorMaterial, reparte: reparte, huesos: huesos, ik: ik, parpadeo: parpadeo, conBoca: conBoca, boca: boca, BOCA_MAX: BOCA_MAX };
 })();
 // [puro:fin]
 
@@ -450,7 +464,8 @@ export function creaAvatares(dp: DepsAvatares, n?: any, Presencia?: any) {
     return l;
   }
   function propioVisible() { return !!(mio && mio.inst && dp.persona && dp.persona.visible && dp.paseando && !dp.primera && !dp.VRX.on); }
-  function cupo() { return AvataresPuro.cupo(disp, dp.VRX.on, dp.VRX.nivel); }
+  function libre() { try { return dp.libreMundo ? dp.libreMundo() : null; } catch (e: any) { return null; } }
+  function cupo() { return AvataresPuro.cupo(disp, dp.VRX.on, dp.VRX.nivel, libre()); }   // ADR-0036 (T8): dentro de un interior, los que caben en lo que deja libre
   function tic() {
     if (!cat) return;
     var n: any = Math.max(0, cupo() - (propioVisible() ? 1 : 0)), tengo: any = new Map(), cand: any = candidatos(), ids: any = [], i: any;
