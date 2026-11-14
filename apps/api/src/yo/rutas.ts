@@ -8,12 +8,12 @@ import type { Contexto } from "../contexto.ts";
 import { ACC_MAX, type Aspecto, ASPECTO, bytesReceta, limpiaAspecto, PATRON_PIEZA, RECETA_MAX_BYTES } from "../presencia/livekit.ts";
 import { borraFicheros, clavesDelHogar } from "../vida/medios.ts";
 import { fijaAvisosCorreo, leeAvisosCorreo } from "./avisos.ts";
+import { aliasReservado, pareceTelefono } from "./alias.ts";
 import { datosDelHogar } from "./datos.ts";
 import { rutasYoLlaves } from "./llaves_rutas.ts";
 
 // 3–20 letras, números, espacios y guiones (doc/sistema/UX.md §4.6)
 const PATRON_ALIAS = "^[\\p{L}\\p{N}][\\p{L}\\p{N} -]{1,18}[\\p{L}\\p{N}]$";
-const RESERVADOS = /^(guia|guía|admin|administracion|administración|oficina|corresponsal|olivartrack)$/i;
 
 export const TEXTO_VINCULO_DESDE_GAFAS = "Un código solo se aprueba con el enlace de tu correo, no desde unas gafas ya vinculadas.";
 const TEXTO_CODIGO_MALO = "Ese código no sirve: puede que haya caducado o que tenga un error. Escribe el que enseñan ahora las gafas.";
@@ -83,8 +83,8 @@ export async function rutasYo(app: FastifyInstance, ctx: Contexto): Promise<void
     schema: { body: { type: "object", additionalProperties: false, required: ["alias", "visible"], properties: { alias: { type: "string", pattern: PATRON_ALIAS }, visible: { type: "boolean" } } } },
   }, async (req, rep) => {
     const alias = req.body.alias.trim().replace(/\s+/g, " ");
-    // nada que parezca un teléfono (6 cifras o más seguidas) ni nombres reservados
-    if (RESERVADOS.test(alias) || /\d{6,}/.test(alias.replace(/[ -]/g, ""))) {
+    // nada que parezca un teléfono (6 cifras o más seguidas) ni nombres reservados, con la normalización del cliente (L9-07, yo/alias.ts)
+    if (aliasReservado(alias) || pareceTelefono(alias)) {
       return rep.code(400).send({ error: "alias_no_valido", mensaje: "Ese alias no se puede usar. Prueba con otro." });
     }
     try {
