@@ -1,6 +1,6 @@
 # ADR-0022 — Escalones de olivo por masa visual
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (decisiones 80-82 cerradas por Antonio el 2026-10-30; implementado)
 - **Fecha:** 2026-10-30
 
 ## Contexto

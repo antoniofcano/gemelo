@@ -1,6 +1,6 @@
 # ADR-0008 — Ficheros de apoyo en json y jpg, sin binario crudo
 
-- **Estado:** Aceptado (carga en el marco **con sesión** sin confirmar)
+- **Estado:** Aceptado (enmendado por [ADR-0021](0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md): la salida artefacto se retiró; el json y el jpg siguen siendo lo que lee `Mundo`)
 - **Fecha:** 2026-10-28
 
 ## Contexto

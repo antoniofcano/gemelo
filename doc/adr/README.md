@@ -29,12 +29,12 @@ Cada decisión con alternativas reales se escribe una vez, con su porqué y su c
 | [0014](0014-proyeccion-publica-por-haza.md) | Proyección pública por haza con lista blanca | Aceptado |
 | [0015](0015-escena-en-3d-tiles.md) | Escena en 3D Tiles 1.1 con 3DTilesRendererJS | Aceptado |
 | [0016](0016-actualizacion-de-three.md) | Actualización de three de r128 a 0.186.1 | Aceptado |
-| [0017](0017-constructor-de-olivos-generados.md) | Constructor de olivos generados: un árbol por olivo, con semilla, desde lo medido | Propuesto |
+| [0017](0017-constructor-de-olivos-generados.md) | Constructor de olivos generados: un árbol por olivo, con semilla, desde lo medido | Aceptado |
 | [0018](0018-hornero-de-olivos.md) | Hornero de olivos: variantes horneadas en el servidor, propios cercanos en el aparato | Aceptado |
 | [0019](0019-escalera-de-olivos.md) | Escalera de olivos: niveles del constructor e impostores | Aceptado |
 | [0020](0020-avatares-vrm.md) | Avatares VRM | Aceptado |
 | [0021](0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md) | Se retira la salida artefacto y la escena de siempre | Aceptado |
-| [0022](0022-escalones-de-olivo-por-masa-visual.md) | Escalones de olivo por masa visual | Propuesto |
+| [0022](0022-escalones-de-olivo-por-masa-visual.md) | Escalones de olivo por masa visual | Aceptado |
 | [0023](0023-componentes-del-mundo.md) | Componentes del mundo: núcleo estable y registro de componentes | Aceptado |
 | [0024](0024-la-oficina-roles-acceso-y-configuracion-versionada.md) | La oficina: roles, acceso y configuración versionada | Aceptado |
 | [0025](0025-avatares-por-piezas-contrato-v2.md) | Avatares por piezas: contrato `avatares` v2 y receta | Aceptado |
@@ -47,5 +47,5 @@ Cada decisión con alternativas reales se escribe una vez, con su porqué y su c
 | [0032](0032-voz-por-cercania-en-la-visita-libre.md) | Voz por cercanía en la visita libre (F3k): corros con aceptación | Aceptado (210, 211 y 213; 205-209 y 212 provisionales) |
 | [0033](0033-mundos.md) | Mundos: varias salas en un solo PWA, con fronteras tipadas y migración strangler | Aceptado |
 | [0034](0034-mapa-de-luz-aparte-y-maquinas.md) | Mapa de luz aparte del color y máquinas con eje en los interiores (contrato mundo-interior v1.2) | Aceptado (la tubería y el contrato; el motor aún no lo carga) |
-| [0035](0035-interiores-comprimidos-meshopt-y-ktx2.md) | Interiores comprimidos: meshopt para la geometría y KTX2 (Basis Universal) para las texturas (contrato mundo-interior v1.3) | Propuesto (la tubería, el contrato, el validador y el motor están hechos en la rama `eje-b-compresion`; publicar la fábrica comprimida lo decide Antonio: ver «Comprobación») |
+| [0035](0035-interiores-comprimidos-meshopt-y-ktx2.md) | Interiores comprimidos: meshopt para la geometría y KTX2 (Basis Universal) para las texturas (contrato mundo-interior v1.3) | Aceptado |
 | [0036](0036-visita-guiada-compartida-en-los-interiores.md) | Visita guiada compartida en los interiores: una sola sala que cruza mundos, el mundo en la pose y el estado de la visita en los metadatos de la sala | Aceptado |
