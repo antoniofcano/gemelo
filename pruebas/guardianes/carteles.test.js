@@ -17,7 +17,7 @@ const PROHIBIDO = ["TITULAR-SECRETO", "KILOS-SECRETOS", "PERSONA-SECRETA", "GPS-
 const ficha = (extra) => Object.assign({
   id: 7, codigo: "H-07", nombre: "La Loma", finca: "hituelo", es_mia: false, alias: "Casa Olmo", superficie_ha: 3.4217,
   olivos: { lidar: { n: 1234, fuente: "LiDAR PNOA 2024", naturaleza: "detectado" }, declarado: { n: 1300, fuente: "declaración PAC", naturaleza: "declarado" } },
-  tratamientos: [{ fecha: "2026-10-01", componentes: [{ tipo: "fitosanitario", producto: "TRATAMIENTO-SECRETO" }], plazo_seguridad_dias: 7 }],
+  tratamientos: [{ fecha: "2026-10-03", componentes: [{ tipo: "fitosanitario", producto: "TRATAMIENTO-SECRETO" }], plazo_seguridad_dias: 7 }],
   fenologia: [{ fecha: "2026-10-01", bbch: 85 }], analiticas: [{ fecha: "2026-09-01", tipo: "suelo" }], avance: { pct: 40, fecha: "2026-10-30", parcelas: 3, parcelas_con_dato: 2, nota: "AVANCE-SECRETO" },
   ndvi_relativo: { valor: 0.12, fuente: "Sentinel-2", fecha: "2026-10-20" }, datos_de: "2026-11-01T10:00:00Z", completo: true, avisos: [],
   titular: "TITULAR-SECRETO", kilos: "KILOS-SECRETOS", persona: "PERSONA-SECRETA", gps: "GPS-SECRETO", texto_libre: "NOTA-LIBRE", ot: "OT-SECRETO" }, extra || {});
@@ -63,7 +63,7 @@ test("contenido: nombre, alias público y lo medido (una línea), con su procede
   assert.strictEqual(c.datos.length, 2, JSON.stringify(c.datos));
   assert.ok(/^3,42 ha · 1\.?234 olivos$/.test(c.datos[0].txt) && /^detectado \(LiDAR \+ regla\) · linde y LiDAR PNOA 2024$/.test(c.datos[0].de), JSON.stringify(c.datos));
   assert.strictEqual(c.datos[1].txt, "Maduración · 40 % recogido");
-  assert.strictEqual(c.datos[1].de, "OlivarTrack · leído 1-nov-2026", "la procedencia que trae la ficha (datos_de)");
+  assert.strictEqual(c.datos[1].de, "OlivarTrack · anotada 1-oct-2026 · leído 1-nov-2026", "la fenología con la fecha de SU anotación y el % con la de la lectura (datos_de)");
   c.datos.forEach(d => assert.ok(d.de.length > 3, "todo dato lleva procedencia"));
   assert.strictEqual(P.contenido({ nombre: "La Loma", es_mia: true }, ficha(), REC).alias, "");
   assert.deepStrictEqual(P.contenido({ nombre: "La Loma", es_mia: true }, null, REC).datos, []);
@@ -87,7 +87,11 @@ test("fenología y % recogido: la fenología si la ficha la trae; el % solo en r
   assert.strictEqual(P.contenido({ nombre: "A" }, ficha({ fenologia: [], avance: { pct: null } }), REC).datos.length, 1);
   assert.strictEqual(P.contenido({ nombre: "A" }, ficha(), null).datos[1].txt, "Maduración", "sin contexto no hay recolección");
   assert.ok(P.recoleccion("2026-10-01") && P.recoleccion("2027-01-31") && !P.recoleccion("2026-09-30") && !P.recoleccion("2026-02-01") && !P.recoleccion(undefined));
-  assert.ok(/^OlivarTrack · leído 5-dic-2026$/.test(P.contenido({ nombre: "A" }, ficha({ datos_de: "2026-12-05T08:00:00Z" }), REC).datos[1].de));
+  assert.ok(/ · leído 5-dic-2026$/.test(P.contenido({ nombre: "A" }, ficha({ datos_de: "2026-12-05T08:00:00Z" }), REC).datos[1].de));
+  // L3-05: sin fecha en la anotación, «fecha desconocida»; nunca la de hoy
+  const sf = P.contenido({ nombre: "A" }, ficha({ fenologia: [{ bbch: 85 }], avance: null }), REC).datos[1];
+  assert.strictEqual(sf.de, "OlivarTrack · anotada fecha desconocida");
+  assert.ok(!/sin fecha/.test(sf.de));
 });
 
 test("guardián: nada fuera de la lista blanca llega a un cartel, venga lo que venga de la api", () => {
@@ -96,7 +100,7 @@ test("guardián: nada fuera de la lista blanca llega a un cartel, venga lo que v
       [REC, FUERA].forEach(ctx => {
       const c = P.contenido({ nombre: "La Loma", es_mia: mia }, f, ctx), todo = textos(c) + P.firma(c) + JSON.stringify(P.maqueta(c, medir).bloques);
       PROHIBIDO.forEach(p => assert.ok(todo.indexOf(p) < 0, "no debe salir " + p));
-      ["tratamiento", "fenolog", "analítica", "Recogido:", "NDVI", "kilos", "titular", "declar", "BBCH", "2026-10-01", "1-oct", "plazo"].forEach(p => assert.ok(!new RegExp(p, "i").test(todo), "no debe salir «" + p + "»"));
+      ["tratamiento", "fenolog", "analítica", "Recogido:", "NDVI", "kilos", "titular", "declar", "BBCH", "2026-10-01", "2026-10-03", "3-oct", "plazo"].forEach(p => assert.ok(!new RegExp(p, "i").test(todo), "no debe salir «" + p + "»"));
       });
     });
   });
