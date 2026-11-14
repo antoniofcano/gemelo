@@ -242,3 +242,14 @@ test("interruptor: lee el del hogar que se le da y el cambio solo toca ese hogar
   assert.equal(await fijaAvisosCorreo(bd, 6, true), null);
   assert.ok(!consultas.slice(antes).some(c => c.sql.includes("INSERT INTO auditoria")), "sin hogar no se audita");
 });
+
+test("baja (auditoría A-07): la firma nueva es con la clave derivada «baja-avisos», no con el secreto de la cookie; la de los correos ya mandados sigue valiendo", async () => {
+  const { createHmac } = await import("node:crypto");
+  const { claveDeUso } = await import("../../src/seguridad/cripto.ts");
+  const conSecreto = createHmac("sha256", SECRETO).update("baja-avisos:42").digest("base64url").slice(0, 32);
+  const conDerivada = createHmac("sha256", claveDeUso(SECRETO, "baja-avisos")).update("baja-avisos:42").digest("base64url").slice(0, 32);
+  assert.equal(tokenDeBaja(SECRETO, 42), "42." + conDerivada, "los correos nuevos firman con la clave de su uso");
+  assert.notEqual(conDerivada, conSecreto);
+  assert.equal(hogarDeBaja(SECRETO, "42." + conSecreto), 42, "un correo de antes de A-07 aún da de baja (no caduca)");
+  assert.equal(hogarDeBaja(SECRETO, "43." + conSecreto), null);
+});

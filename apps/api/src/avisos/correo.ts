@@ -13,6 +13,7 @@ import { icsDeEvento, partesDeRemitente, type EventoIcs } from "../agenda/ics.ts
 import { audita } from "../auth/servicio.ts";
 import type { Cartero, Mensaje } from "../auth/correo.ts";
 import type { Bd } from "../bd/pool.ts";
+import { claveDeUso } from "../seguridad/cripto.ts";
 
 /** Lo único que el repartidor pide a la base (un Pool de pg lo cumple; las pruebas ponen una de mentira). */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -24,8 +25,14 @@ export const LOTE = 50;
 export type TipoIcs = "inscripcion" | "cambio" | "cancelacion";
 
 // ---------------------------------------------------------------- baja de los avisos por correo
-/** Firma de la baja de un hogar: HMAC del id con el secreto de sesión. No caduca (un correo antiguo debe poder darse de baja) y solo sirve para eso. */
-const firma = (secreto: string, hogar: number): string => createHmac("sha256", secreto).update("baja-avisos:" + hogar).digest("base64url").slice(0, 32);
+/**
+ * Firma de la baja de un hogar: HMAC del id con la clave «baja-avisos», derivada del secreto del servidor (A-07: no la misma que firma la
+ * cookie). No caduca (un correo antiguo debe poder darse de baja) y solo sirve para eso.
+ */
+const firmaCon = (clave: string | Buffer, hogar: number): string => createHmac("sha256", clave).update("baja-avisos:" + hogar).digest("base64url").slice(0, 32);
+const firma = (secreto: string, hogar: number): string => firmaCon(claveDeUso(secreto, "baja-avisos"), hogar);
+/** La firma de los correos mandados antes de A-07 (2026-11-14), con el secreto tal cual: se sigue aceptando porque esos enlaces no caducan. */
+const firmaAntigua = (secreto: string, hogar: number): string => firmaCon(secreto, hogar);
 export const tokenDeBaja = (secreto: string, hogar: number): string => hogar + "." + firma(secreto, hogar);
 
 /** El id del hogar si el token es auténtico; si no, null. */
@@ -33,8 +40,11 @@ export function hogarDeBaja(secreto: string, token: string): number | null {
   const m = /^(\d{1,15})\.([A-Za-z0-9_-]{32})$/.exec(token);
   if (!m) return null;
   const hogar = Number(m[1]);
-  const esperado = Buffer.from(firma(secreto, hogar)), dado = Buffer.from(m[2]!);
-  return esperado.length === dado.length && timingSafeEqual(esperado, dado) ? hogar : null;
+  const dado = Buffer.from(m[2]!);
+  const coincide = (f: string) => { const e = Buffer.from(f); return e.length === dado.length && timingSafeEqual(e, dado); };
+  // las dos comparaciones siempre (sin atajo), de tiempo constante
+  const nueva = coincide(firma(secreto, hogar)), antigua = coincide(firmaAntigua(secreto, hogar));
+  return nueva || antigua ? hogar : null;
 }
 export const urlDeBaja = (urlPublica: string, secreto: string, hogar: number): string => urlPublica + "/api/avisos/baja?t=" + tokenDeBaja(secreto, hogar);
 
