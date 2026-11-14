@@ -107,6 +107,29 @@ components:
       properties:
         prefijo: { type: string, pattern: "^h_[A-Za-z0-9_-]{22}$" }
         alias: { type: [string, "null"] }
+    VisitaCambio:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      description: Lo que el guía cambia de la visita compartida (al menos un campo). `mundo` es uno de `mundos_pose` de livekit-roles.json sin «otro».
+      properties:
+        mundo: { type: string, enum: [exterior, patios, fabrica] }
+        parada: { type: [integer, "null"], minimum: 0, maximum: 63 }
+        maquinas: { type: object, additionalProperties: false, required: [marcha], properties: { marcha: { type: boolean } } }
+    Visita:
+      type: object
+      additionalProperties: false
+      required: [v, mundo, parada, maquinas, n]
+      description: El estado de la visita guiada compartida; es el JSON (512 B como mucho) de los metadatos de la sala `guiada-<evento>`, que solo escribe la api.
+      properties:
+        v: { const: 1 }
+        mundo: { type: string, enum: [exterior, patios, fabrica] }
+        parada: { type: [integer, "null"], minimum: 0, maximum: 63 }
+        maquinas:
+          oneOf:
+            - { type: "null" }
+            - { type: object, additionalProperties: false, required: [marcha, desde], properties: { marcha: { type: boolean }, desde: { type: integer, description: "ms epoch del último cambio de marcha (lo pone la api)" } } }
+        n: { type: integer, minimum: 0, description: "sube 1 en cada escritura" }
     Error:
       type: object
       additionalProperties: false
@@ -2315,6 +2338,34 @@ paths:
         "403": { description: "sin Origin, o sin_permiso", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "404": { description: "guiada_no_existe" }
         "409": { description: "ya se está cerrando (ya_cerrandose, con cierra_en)", content: { application/json: { schema: { type: object, additionalProperties: false, required: [error], properties: { error: { type: string }, mensaje: { type: string }, cierra_en: { type: string, format: date-time } } } } } }
+        "429": { $ref: "#/components/responses/Limite" }
+        "503": { description: la presencia está apagada en este servidor }
+
+  /api/presencia/guiadas/{evento}/visita:
+    post:
+      summary: Lleva a la visita guiada a un mundo o a una parada, o pone las máquinas en marcha o paradas (visita compartida en los interiores, decisiones 233-238)
+      description: >
+        El guía del evento o la oficina (los mismos que moderan; unas gafas vinculadas no heredan el papel de guía, ADR-0028). Solo vale dentro de la ventana
+        del evento y con la sala abierta (409 fuera de ella, o guiada_cerrada si se cerró, o sala_sin_abrir si aún no hay nadie en la sala de LiveKit). El estado
+        de la visita vive en los metadatos de la sala `guiada-<evento>` (JSON, 512 B como mucho) y SOLO lo escribe esta ruta (RoomService.UpdateRoomMetadata);
+        el cliente lo lee. La api lee los metadatos actuales (vacíos o ilegibles = {v: 1, mundo: exterior, parada: null, maquinas: null, n: 0}), mezcla lo
+        pedido, sube `n` en 1, pone `maquinas.desde` (ms epoch) solo cuando cambia `marcha`, escribe y responde con el resultado. Cambiar `mundo` pone `parada`
+        a null salvo que venga en el mismo cuerpo. Los mundos son los de `mundos_pose` de livekit-roles.json menos «otro». Dos peticiones a la vez para
+        la misma sala se atienden en fila. Auditoría guiada.visita (evento, n, mundo, parada o «ninguna», y marcha o paradas si tocó las máquinas).
+      security: [{ sesion: [] }]
+      parameters: [{ name: evento, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 2147483647 } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VisitaCambio" }
+      responses:
+        "200": { description: "escrito; la visita resultante", content: { application/json: { schema: { type: object, additionalProperties: false, required: [visita], properties: { visita: { $ref: "#/components/schemas/Visita" } } } } } }
+        "400": { $ref: "#/components/responses/EntradaNoValida" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "403": { description: "sin Origin, o sin_permiso (no es el guía ni la oficina)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "guiada_no_existe" }
+        "409": { description: "fuera de la ventana del evento (guiada_aun_no, guiada_terminada), cancelada o sin abrir (guiada_no_vigente), guiada_cerrada o sala_sin_abrir", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "429": { $ref: "#/components/responses/Limite" }
         "503": { description: la presencia está apagada en este servidor }
 
