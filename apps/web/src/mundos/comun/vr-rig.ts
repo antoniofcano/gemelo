@@ -62,7 +62,10 @@ export function creaVrRig(c: CtxVr) {
   }
   function vrIrA(px: T, py: T) { var gm = d.gm();   // lleva la cabeza a (px, py) del mundo (py hacia el norte), sin cambiar la dirección de la mirada
     var h = vrCabeza(); VRX.rig.x += px - h.x; VRX.rig.z += -py - h.z; VRX.rig.y = gm.suelo(px, py) * Estado.exag + vrBaseY(); VRX.salto = true;   // salto: con ?ui=capas el panel nace delante (EV2-A2)
+    VRX.esperaSuelo = gm.sueloListo && !gm.sueloListo(px, py) ? { x: px, y: py } : null;   // L7-12: sin el relieve fino aún, la cota es la del grueso; el fundido espera a negro (vr-teletransporte)
   }
+  /** L7-12: al llegar el relieve fino (o pasado el tope de espera), la altura definitiva del rig en el punto al que se fue, a oscuras */
+  function vrAsienta(px: T, py: T) { var gm = d.gm(); VRX.rig.y = gm.suelo(px, py) * Estado.exag + vrBaseY(); vrAplicaRig(); }
   function vrEjes(src: T) { var g = src && src.gamepad; if (!g || !g.axes) return { x: 0, y: 0, ok: false }; var a = g.axes, i = a.length >= 4 ? 2 : 0; return { x: a[i] || 0, y: a[i + 1] || 0, ok: true }; }
   function vrBoton(src: T, k: T) { var g = src && src.gamepad, b = g && g.buttons && g.buttons[k]; return !!(b && b.pressed); }
   function vrFlanco(clave: T, v: T) { var a = VRX.prev[clave]; VRX.prev[clave] = v; return v && !a; }
@@ -77,7 +80,7 @@ export function creaVrRig(c: CtxVr) {
   }
   /** tras un libera(): las escuchas otra vez y el rayo en su mando (la geometría y el material se vuelven a subir solos al dibujarse) */
   function monta() { if (escuchas.length) return; VRC.forEach(function (o: T) { if (!o.rayo.parent) o.c.add(o.rayo); engancha(o); }); }
-  return { vrRig, VRC, vrMano, vrRayoDe, vrAj, vrAjPon, vrBaseY, vrAplicaRig, vrCabeza, vrRecoloca, vrIrA, vrEjes, vrBoton, vrFlanco, vrPulso, vrPulsoIzq, vrDz,
+  return { vrRig, VRC, vrMano, vrRayoDe, vrAj, vrAjPon, vrBaseY, vrAplicaRig, vrCabeza, vrRecoloca, vrIrA, vrAsienta, vrEjes, vrBoton, vrFlanco, vrPulso, vrPulsoIzq, vrDz,
     vrV2, vrV3, vrEjeY, libera, monta };
 }
 export type VrRig = ReturnType<typeof creaVrRig>;

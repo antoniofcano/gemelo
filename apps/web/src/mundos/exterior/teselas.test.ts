@@ -84,6 +84,19 @@ describe("L1-05: la tesela se decodifica en la Cola del exterior, a rebanadas", 
   });
 });
 
+describe("L7-12: sueloListo dice si la cota ya es la del relieve fino", () => {
+  it("una tesela del índice sin cargar no está lista (suelo() es el grueso); cargada, sí; soltada, otra vez no; fuera del índice siempre lista", async () => {
+    const { M, cola, responde, imagenesListas } = monta({ n: 1 });
+    expect(M.sueloListo(2, 2)).toBe(false); expect(M.sueloListo(500, 500)).toBe(true);
+    M.actualiza(2, 50, -2); await responde(0, 5);
+    expect(M.sueloListo(2, 2)).toBe(false);   // el json llegó, pero se decodifica en la Cola
+    cola.corre(1e6); imagenesListas(); cola.corre(1e6);
+    expect(M.sueloListo(2, 2)).toBe(true); expect(M.suelo(2, 2)).toBeCloseTo(5);
+    M.liberaOrtoLejos(RADIO_SUELTA + 100, 50, 0); M.liberaOrtoLejos(RADIO_SUELTA + 100, 50, 0);
+    expect(M.sueloListo(2, 2)).toBe(false);
+  });
+});
+
 describe("L2-03: el Mundo suelta las teselas fuera de rango", () => {
   it("una tesela cargada a más de RADIO_SUELTA m en dos pasadas seguidas pierde dtm, chm, suel, pts, la ortofoto y los bins; alSoltar avisa; vuelve a «sin pedir»", async () => {
     const { M, cola, responde, imagenesListas } = monta({ n: 1 });

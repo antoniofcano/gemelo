@@ -1184,7 +1184,7 @@ function arranca(): void {
   var poseDelPaseo = { lee: function () { return pp; }, pon: function (p: Nucleo.Pose2) { pp.x = p.x; pp.y = p.y; pp.ang = p.ang; } };   // MU2-6: la pose de quien mira (12_paseo: pp)
   // MU2-7: lo que el Ambiente del exterior lee del legado al aplicarse (el tema, la perilla xrnear y el deslizador #exag pueden haber cambiado); los valores, en src/mundos/exterior.ts
   var ambienteExt = { fondo: function () { return colorCss("--sky").getHex(); }, niebla: { cerca: FOG0, lejos: FOG1 }, luces: [hemi, sol], extension: EXT, nearVr: function () { return XrPerillas.efectivas.near; }, exag: function () { return Number($("exag").value) || 1; } };
-  var exterior = Mundos.creaExterior({ suelo: suelo, ext: D.ext, copas: copas, recorre: function (p, dt, t) { Bucle.recorre(p, dt, t); }, cola: ColaExt, pose: poseDelPaseo, ambiente: ambienteExt,
+  var exterior = Mundos.creaExterior({ suelo: suelo, sueloListo: Mundo.sueloListo, ext: D.ext, copas: copas, recorre: function (p, dt, t) { Bucle.recorre(p, dt, t); }, cola: ColaExt, pose: poseDelPaseo, ambiente: ambienteExt,
     raices: function () { return scene.children.filter(function (o: unknown) { return !deTodoMundo(o); }); }, hud: function (): any { return hudExterior; }, pasos: [
       { bloque: Reparto.reg("entidades"), fn: function (dt) { Usables.actualiza(dt); } },   // la cercanía (02e_entidades.js): antes que las balizas, que la leen
       { bloque: Reparto.reg("tiempo"), fn: function (dt, t) { actualizaTiempo(dt, t); } }, { bloque: Reparto.reg("olivo (estación)"), fn: function (dt) { actualizaOlivo(dt); } },

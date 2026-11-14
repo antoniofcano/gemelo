@@ -127,6 +127,30 @@ describe("VR: el teletransporte", () => {
     o.c.position.set(95, 1.5, 0); o.c.rotation.set(0, -Math.PI / 2, 0); o.c.rotateX(0.2);   // hacia el este, desde el borde: cae fuera
     expect(m.vr.partes.tele.vrArco(o)).toBeNull();
   });
+  it("L7-12: un salto a una tesela sin relieve fino se queda a negro hasta que llega; entonces asienta la altura a oscuras y abre (tope 2 s)", async () => {
+    const m = monta(); await espera();
+    const gm = m.d.gm(); let listo = false; gm.suelo = () => (listo ? 30 : 10); gm.sueloListo = () => listo;
+    await m.vr.entraVR(); m.camera.position.set(0, 1.6, 0);
+    const TT = m.vr.partes.tele, fun = TT.fundido, vel = m.ventana.__vrVuelo;
+    expect(TT.vrSalta(50, 0, () => { m.vr.partes.rig.vrIrA(50, 0); })).toBe(true);
+    for (let i = 0; i < 30; i++) { TT.vrFundidoPaso(1 / 60); await espera(); }
+    expect(fun.fase).toBe("negro"); expect(vel().esperaSuelo).toBe(true);   // a negro y esperando
+    expect(m.vr.VRX.rig.y).toBeCloseTo(10);   // la del grueso, a oscuras
+    listo = true; TT.vrFundidoPaso(1 / 60);
+    expect(m.vr.VRX.rig.y).toBeCloseTo(30); expect(fun.fase).toBe("abriendo"); expect(m.vr.VRX.esperaSuelo).toBeNull();
+    for (let i = 0; i < 30; i++) TT.vrFundidoPaso(1 / 60);
+    expect(fun.fase).toBe("abierto");
+    // si el relieve fino no llega, a los 2 s se abre con el grueso
+    listo = false; TT.vrSalta(-50, 0, () => { m.vr.partes.rig.vrIrA(-50, 0); });
+    for (let i = 0; i < 60; i++) TT.vrFundidoPaso(1 / 60);
+    expect(fun.fase).toBe("negro");
+    for (let i = 0; i < 120; i++) TT.vrFundidoPaso(1 / 60);
+    expect(fun.fase).not.toBe("negro"); expect(m.vr.VRX.rig.y).toBeCloseTo(10);
+    // y con el suelo ya cargado, el fundido no espera (0,15 + 0,15 s)
+    listo = true; for (let i = 0; i < 30; i++) TT.vrFundidoPaso(1 / 60);
+    TT.vrSalta(50, 0, () => { m.vr.partes.rig.vrIrA(50, 0); }); for (let i = 0; i < 20; i++) TT.vrFundidoPaso(1 / 60);
+    expect(fun.fase).toBe("abierto");
+  });
   it("un salto corto (≤ 5 m) es inmediato; uno largo va por el fundido a negro y se hace a oscuras", async () => {
     const m = monta(); await espera();
     m.camera.position.set(0, 1.6, 0);

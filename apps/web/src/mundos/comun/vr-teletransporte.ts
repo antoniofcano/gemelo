@@ -7,7 +7,7 @@ import type { CtxVr } from "./vr-tipos.ts";
 
 export function creaVrTeletransporte(c: CtxVr) {
   var d = c.d, VRX = c.VRX, Nucleo = c.Nucleo, materiales = c.materiales, THREE = d.THREE, scene = d.scene, camera = d.camera, Estado = d.Estado, Llegada = d.Llegada, window: T = d.ventana, RG = c.rig;
-  var vrRayoDe = RG.vrRayoDe, vrCabeza = RG.vrCabeza, vrIrA = RG.vrIrA, vrAplicaRig = RG.vrAplicaRig, vrPulso = RG.vrPulso, vrBaseY = RG.vrBaseY, vrV2 = RG.vrV2, vrV3 = RG.vrV3, vrEjeY = RG.vrEjeY;
+  var vrRayoDe = RG.vrRayoDe, vrCabeza = RG.vrCabeza, vrIrA = RG.vrIrA, vrAsienta = RG.vrAsienta, vrAplicaRig = RG.vrAplicaRig, vrPulso = RG.vrPulso, vrBaseY = RG.vrBaseY, vrV2 = RG.vrV2, vrV3 = RG.vrV3, vrEjeY = RG.vrEjeY;
   var panel: T = null, ficha: T = null, fichaB: T = null;   // las láminas son del panel (vr-panel.ts), que se crea después: enlaza() las pone
   var arcoGeo = new THREE.BufferGeometry(), arcoPos = new Float32Array(34 * 3); arcoGeo.setAttribute("position", new THREE.BufferAttribute(arcoPos, 3));
   var arco = new THREE.Line(arcoGeo, materiales.estandar("LineBasicMaterial", { color: 0x7fe3ff, fog: false, transparent: true, opacity: 0.9 })); arco.frustumCulled = false; arco.visible = false;
@@ -39,8 +39,22 @@ export function creaVrTeletransporte(c: CtxVr) {
   function vrNegroPinta() { vrNegro.material.opacity = vrFun.opacidad; vrNegro.visible = vrFun.visible; }
   function vrCierra(alNegro: T) { var p = vrFun.cierra(alNegro); vrNegroPinta(); return p; }
   function vrAbre() { var p = vrFun.abre(); vrNegroPinta(); return p; }
-  function vrFundido(fn: T) { var ok = vrFun.funde(fn); vrNegroPinta(); return ok; }
-  function vrFundidoPaso(dt: T) { if (vrFun.fase === "abierto") return; try { vrFun.paso(dt); } finally { vrNegroPinta(); } }   // al principio de vrActualiza: lo que fn mueva ya cuenta
+  // L7-12: si fn lleva el rig (vrIrA) a un sitio cuya tesela aún no trae el relieve fino (VRX.esperaSuelo), el velo se QUEDA a negro hasta que llega (o ESPERA_SUELO_S),
+  // se asienta la altura a oscuras y entonces se abre: la cabeza no se desliza en vertical a la vista. Pasado el tope, se abre con el grueso y el suelo se sigue a dt·12 como siempre
+  var ESPERA_SUELO_S = 2, espera: T = null;
+  function vrFundido(fn: T) {
+    if (vrFun.fase !== "abierto") return false;
+    VRX.esperaSuelo = null;   // lo que dejara un salto corto anterior (sin fundido) no cuenta
+    vrFun.cierra(function () { try { if (fn) fn(); } finally { if (VRX.esperaSuelo) espera = { t: 0 }; else vrFun.abre(); } });
+    vrNegroPinta(); return true;
+  }
+  function vrEsperaPaso(dt: T) {
+    var e = VRX.esperaSuelo, gm = d.gm(); espera.t += dt;
+    if (e && !(gm.sueloListo ? gm.sueloListo(e.x, e.y) : true) && espera.t < ESPERA_SUELO_S) return;
+    if (e && !VRX.vuelo) vrAsienta(e.x, e.y);
+    VRX.esperaSuelo = null; espera = null; vrFun.abre();
+  }
+  function vrFundidoPaso(dt: T) { if (vrFun.fase === "abierto") return; try { if (espera) vrEsperaPaso(dt); else vrFun.paso(dt); } finally { vrNegroPinta(); } }   // al principio de vrActualiza: lo que fn mueva ya cuenta
   function vrSalta(px: T, py: T, fn: T) {   // dist null = siempre (el mirador); con otro fundido en curso el salto se descarta (como Llegada.funde)
     var h = vrCabeza(), d = px === null ? null : Math.hypot(px - h.x, -py - h.z);
     return d !== null && !Nucleo.FundidoPuro.necesitaFundido(d) ? (fn(), true) : vrFundido(function () { fn(); panel.ini = false; ficha.ini = false; fichaB.ini = false; VRX.sucio = true; });
@@ -69,9 +83,9 @@ export function creaVrTeletransporte(c: CtxVr) {
     }
     vrAplicaRig(); VRX.hMov = 0.35; VRX.sucio = true; panel.ini = false; ficha.ini = false; fichaB.ini = false;   // las láminas, ya delante al aclarar (sin cruzar el mundo)
   }
-  function vrVueloEntra() { camera.add(vrNegro); scene.add(vtLin); vrVueloOculta(); vrFun.reinicia(); vrNegroPinta(); }
-  function vrVueloSale() { camera.remove(vrNegro); scene.remove(vtLin); vrVueloOculta(); vrFun.reinicia(); vrNegroPinta(); }
-  window.__vrVuelo = function () { return { apuntando: VT.act, linea: vtLin.visible, fundido: vrFun.fase === "abierto" ? 0 : vrFun.fase === "cerrando" ? 1 : 2, negro: vrNegro.material.opacity }; };
+  function vrVueloEntra() { camera.add(vrNegro); scene.add(vtLin); vrVueloOculta(); espera = null; VRX.esperaSuelo = null; vrFun.reinicia(); vrNegroPinta(); }
+  function vrVueloSale() { camera.remove(vrNegro); scene.remove(vtLin); vrVueloOculta(); espera = null; VRX.esperaSuelo = null; vrFun.reinicia(); vrNegroPinta(); }
+  window.__vrVuelo = function () { return { apuntando: VT.act, linea: vtLin.visible, fundido: vrFun.fase === "abierto" ? 0 : vrFun.fase === "cerrando" ? 1 : 2, esperaSuelo: !!espera, negro: vrNegro.material.opacity }; };
 
   function vrMirador(on: T) {   // 230 m de golpe: siempre por el fundido (L7-05)
     var gm = d.gm();
