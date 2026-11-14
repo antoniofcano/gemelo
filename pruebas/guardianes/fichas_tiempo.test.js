@@ -16,7 +16,9 @@ function trozo(ini, fin, fuente = FUENTE) {
   return fuente.slice(i, f);
 }
 const LAMINAS = require("./_fuente").fuenteMotor("02d_laminas.js");   // el servicio de la lámina (C8): se monta debajo de la ficha, con el mismo THREE de mentira
-const F = new Function("\"use strict\";\n" + trozo("// [puro:inicio]", "// [puro:fin]") + "\nreturn FichasTiempoPuro;")();
+// L3-22: lo puro usa la regla única de «hace N» (nucleo/hace.ts): se toma el FichasTiempoPuro de verdad; donde se evalúa el texto (el motor), recibe la regla como argumento
+trozo("// [puro:inicio]", "// [puro:fin]");
+const F = require("./_mundos").FichasTiempoPuro, { haceMinutos } = require("../../apps/web/src/nucleo/hace.ts");
 
 // un contexto 2D de mentira: apunta los textos (con su fuente) y cuenta las operaciones de dibujo
 function ctx() {
@@ -186,7 +188,7 @@ function motor() {
   const n = { id: "fichas-tiempo", limpia: f => { reg.limpias.push(f); return f; }, on: (ev, f) => { (reg.bus[ev] = reg.bus[ev] || []).push(f); return n.limpia(() => { reg.bus[ev].splice(reg.bus[ev].indexOf(f), 1); }); } };
   const fuente = trozo("// [puro:inicio]", "// [puro:fin]") + trozo("// [motor:inicio]", "// [motor:fin]");
   const cuerpo = "\"use strict\";\n" + fuente + "\nreturn FichasTiempoMotor;";
-  const fn = new Function("THREE", "scene", "camera", "renderer", "texColor", "VRX", "paseando", "Hud", "ahoraMs", "nivel", "document", "window", "performance", "TiempoVivo", "Teclas", "PanelVR", "Laminas", cuerpo);
+  const fn = new Function("THREE", "scene", "camera", "renderer", "texColor", "VRX", "paseando", "Hud", "ahoraMs", "nivel", "document", "window", "performance", "TiempoVivo", "Teclas", "PanelVR", "Laminas", "haceMinutos", cuerpo);
   const est = { datos: sinteticos(), oyente: null, ahora: AHORA };
   const TV = { lee: () => est.datos, alCambiar: f => { est.oyente = f; reg.oyentesTV++; return () => { reg.oyentesTV--; est.oyente = null; }; } };
   const VRX = { on: false, cab: new V3() };
@@ -195,7 +197,7 @@ function motor() {
   const Laminas = new Function("THREE", "scene", "camera", "renderer", "texColor", "VRX", "document", "performance", "Bus", "console", "Materiales",
     "\"use strict\";\n" + trozo("// [puro:inicio]", "// [puro:fin]", LAMINAS) + trozo("// [motor:inicio]", "// [motor:fin]", LAMINAS) + "\nreturn Laminas;")(THREE, scene, camera, renderer, t => t, VRX, documento, perf, Bus, console, Materiales);
   const FTM = fn(THREE, scene, camera, renderer, t => t, VRX, true, { aviso() {} }, () => est.ahora, () => ({ d: 1 }),
-    documento, ventana, perf, TV, Teclas, PanelVR, Laminas);
+    documento, ventana, perf, TV, Teclas, PanelVR, Laminas, haceMinutos);
   const FT = FTM(n);
   const libera = () => { FT.cierra(); reg.limpias.splice(0).reverse().forEach(f => f()); };
   return { FT, reg, est, lienzos, ventana, VRX, libera };
