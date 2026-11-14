@@ -1,10 +1,9 @@
-// Las dos builds del mismo motor (ADR-0031, decisión de Antonio del 2026-11-04; doc/sistema/MULTIVIEW.md «Dos builds»). La de VR construye (F2a) y aún
-// no se publica ni la elige la página (F2c):
+// Las dos builds del mismo motor (ADR-0031, decisión de Antonio del 2026-11-04; doc/sistema/MULTIVIEW.md «Dos builds»). La de VR está publicada en el VPS
+// (AG-3c, 2026-11-05) y la elige la página al cargar (cargador.mjs, F2c):
 //   · «pantalla» (por defecto, la de siempre): three (apps/web/package.json, hoy 0.186.1) → apps/web/dist/. Escritorio y móvil; más adelante, el
 //     WebGPURenderer + TSL material a material (F4).
 //   · «vr» (GEMELO_BUILD=vr): el alias «three» apunta a super-three (la variante MIT de three que mantiene A-Frame, 0.185.0: multiview en el
-//     WebGLRenderer clásico, `multiviewStereo`, y conserva onBeforeCompile) → apps/web/dist-vr/. Solo para el Quest, y solo si la prueba de humo F2 lo
-//     justifica. super-three va en apps/web/package.json con versión exacta (F2a; GEMELO_SUPER_THREE=<carpeta del paquete> para probar otra).
+//     WebGLRenderer clásico, `multiviewStereo`, y conserva onBeforeCompile) → apps/web/dist-vr/. Solo para el Quest (la prueba de humo F2 lo justificó: ADR-0031, «Resultado en el gemelo real»). super-three va en apps/web/package.json con versión exacta (F2a; GEMELO_SUPER_THREE=<carpeta del paquete> para probar otra).
 //     El multiview lo pide el motor (03_escena, perilla xrmv de 02f_xr_perillas); este fichero solo cambia el three.
 // No pueden convivir dos three en la misma página (clases distintas: instanceof falla): todo lo que importa «three» o «three/…» (el motor,
 // 3d-tiles-renderer, three-vrm, three-mesh-bvh, gemelo-olivo) se resuelve a la MISMA carpeta. La página elige la build al cargar: eligeBuild().
@@ -50,7 +49,7 @@ export function salida(build, web, env = process.env) {
 }
 
 /**
- * Qué build carga la página (aún no se usa: la página carga siempre la de pantalla). clase: la de AparatoPuro.clasifica (01a_aparato.js: la única
+ * Qué build carga la página (la usa el cargador, cargador.mjs: el Quest carga la de VR si se publicó; lo demás, pantalla). clase: la de AparatoPuro.clasifica (01a_aparato.js: la única
  * detección del aparato; el cargador la recibirá de ese mismo trozo, no de otra regla). busqueda: location.search (?build=pantalla|vr fuerza una,
  * para probar). hayVR: ¿se publicó la build vr junto a la de pantalla? Sin ella, siempre pantalla.
  */
