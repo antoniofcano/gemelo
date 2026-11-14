@@ -122,7 +122,7 @@ Contrato: [presencia](../../contratos/presencia.md).
 | Medida | Valor |
 |---|---|
 | Nodos (glb) | **269**: 1 + 2 + 2 + 3 + 5 + 8 (32.768 → 1.024 m, sin olivos) + 18 (512 m) + **46 (256 m)** + 184 (128 m). Más que el límite de 255 ficheros por publicación de un artefacto |
-| Raíz | 32.768 m de lado: los datos cruzan la línea N = 4.177.920 (múltiplo de 16.384) y la regla «menor cuadrado alineado que lo contiene» sube hasta ahí. Los 21 nodos de 1.024 m o más pesan 0,9 MB en total |
+| Raíz | 32.768 m de lado: los datos cruzan una línea N múltiplo de 16.384 m y la regla «menor cuadrado alineado que lo contiene» sube hasta ahí. Los 21 nodos de 1.024 m o más pesan 0,9 MB en total |
 | glb, total | **40,9 MB** (mediana 142 KB, máx. 388 KB por glb) + `tileset.json` 0,23 MB |
 | glb por nivel | 128 m: 27,1 MB · 256 m: 9,7 MB · 512 m: 3,2 MB · ≥ 1.024 m: 0,9 MB |
 | Triángulos por nivel (terreno + olivos) | 128 m: 971 k + 844 k · 256 m: 360 k + 141 k · 512 m: 109 k + 141 k; máx. por glb 40.534 (tope 60.000) |
