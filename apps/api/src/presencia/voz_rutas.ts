@@ -60,7 +60,11 @@ const MENSAJES: Record<string, string> = {
 };
 const falla = (rep: FastifyReply, http: number, codigo: string) => rep.code(http).send({ error: codigo, mensaje: MENSAJES[codigo] ?? codigo });
 
-export interface DepsVoz { lk: ConfigLiveKit | null; voz: ModeradorVoz | null; expulsados: Expulsados; reloj?: Reloj; /** F3k-1: los corros, para sacar al hogar que retira su consentimiento de cercanía */ corros?: Corros | null }
+export interface DepsVoz {
+  lk: ConfigLiveKit | null; voz: ModeradorVoz | null; expulsados: Expulsados; reloj?: Reloj; /** F3k-1: los corros, para sacar al hogar que retira su consentimiento de cercanía */ corros?: Corros | null;
+  /** L9-06: los expulsados de cada guiada, compartidos con el centinela de reingresos (rutas.ts); sin él, unos propios */
+  expulsadosGuiada?: ExpulsadosGuiada;
+}
 
 /** Expulsados de una sala guiada por el guía o la oficina: 15 min sin token de ESA sala (en memoria, como Expulsados). */
 export class ExpulsadosGuiada {
@@ -71,6 +75,12 @@ export class ExpulsadosGuiada {
     e.marca(hogar, ahora);
   }
   esta(evento: number, hogar: number, ahora = Date.now()): boolean { return this.porEvento.get(evento)?.esta(hogar, ahora) ?? false; }
+  /** L9-06: las marcas vigentes (evento y hogar), para que el centinela vuelva a sacar de `guiada-<evento>` a quien entre con un token anterior */
+  vivos(ahora = Date.now()): { evento: number; hogar: number }[] {
+    const r: { evento: number; hogar: number }[] = [];
+    for (const [evento, e] of this.porEvento) { const hs = e.vivos(ahora); if (!hs.length) this.porEvento.delete(evento); for (const hogar of hs) r.push({ evento, hogar }); }
+    return r;
+  }
 }
 
 async function cargaEvento(bd: Pick<Bd, "query">, id: number): Promise<EventoGuiada | null> {
@@ -93,7 +103,7 @@ export async function rutasVoz(app: FastifyInstance, bd: Bd, d: DepsVoz): Promis
   const { lk, voz } = d;
   const auditor: Auditor = (actor, accion, detalle) => audita(bd, actor, accion, detalle);
   const palabra = voz ? new Palabra(voz, auditor, d.reloj ?? RELOJ_REAL, app.log, hogar => consiente(bd, hogar)) : null;
-  const expulsadosGuiada = new ExpulsadosGuiada();
+  const expulsadosGuiada = d.expulsadosGuiada ?? new ExpulsadosGuiada();
   const reloj = d.reloj ?? RELOJ_REAL, cierres = new Cierres(), borrados = new Map<number, unknown>();
   app.addHook("onClose", async () => { palabra?.cierra(); for (const h of borrados.values()) reloj.cancela(h); borrados.clear(); });
 

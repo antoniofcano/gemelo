@@ -10,7 +10,9 @@ import type { Contexto } from "../contexto.ts";
 import { AVATAR_POR_DEFECTO, type Avatar, type ClaveSala, CLAVES_SALA, DISPOSITIVOS, limpiaAspecto, type Dispositivo, Expulsados, esRolOficina, firmaToken, ModeradorLiveKit, type ModeradorSala, prefijoHogar, SALA_LIBRE, SALAS } from "./livekit.ts";
 import { LigaduraVisita, puedeEntrar } from "./acceso_visita.ts";
 import { rutasOficinaMundo } from "./oficina_mundo.ts";
-import { rutasVoz } from "./voz_rutas.ts";
+import { ExpulsadosGuiada, rutasVoz } from "./voz_rutas.ts";
+import { vuelveAExpulsar } from "./reingreso.ts";
+import { BARRIDO_MS } from "./corro.ts";
 import { creaCorros, rutasCorros } from "./corro_rutas.ts";
 import type { Corros } from "./corro.ts";
 
@@ -60,6 +62,20 @@ export async function rutasPresencia(app: FastifyInstance, ctx: Contexto): Promi
   // F3k-1: los corros de la visita libre (en memoria; null sin LiveKit o sin voz: sus rutas dan 503)
   const depsCorros = { lk: lk ?? null, voz, moderador, expulsados, permitida: ctx.config.vozCercania.permitida, ...(ctx.relojVoz ? { reloj: ctx.relojVoz } : {}) };
   const corros = creaCorros(bd, depsCorros, app.log);
+  // L9-06: el centinela de reingresos (reingreso.ts): mientras dure una expulsión, cada BARRIDO_MS vuelve a sacar de las salas a quien entre con un token
+  // firmado antes de ella. Con un reloj de pruebas no se arranca (como el barrido de los corros); sin expulsados vivos no llama a LiveKit
+  const expulsadosGuiada = new ExpulsadosGuiada();
+  let centinela: NodeJS.Timeout | null = null;
+  if (lk && moderador && !ctx.relojVoz) {
+    const salasDelMundo = async () => [...CLAVES_SALA.map(k => SALAS[k]), ...(voz ? await voz.salasGuiadas() : []), ...(corros ? corros.salas() : [])];
+    centinela = setInterval(() => {
+      vuelveAExpulsar({ moderador, prefijo: h => prefijoHogar(lk, h), expulsados, guiada: expulsadosGuiada, salas: salasDelMundo })
+        .then(n => { if (n > 0) app.log.warn({ conexiones: n }, "presencia: un expulsado volvió a entrar con un token anterior; se le ha vuelto a sacar"); })
+        .catch(e => app.log.warn({ err: (e as Error).message }, "presencia: el centinela de reingresos falló"));
+    }, BARRIDO_MS);
+    centinela.unref();
+  }
+  app.addHook("onClose", async () => { if (centinela) clearInterval(centinela); });
 
   // F2b: ¿hay presencia en red en este servidor? Barato y sin secretos (solo si LiveKit está configurado); con sesión, como el resto. El motor lo
   // pregunta una vez para activarse solo, sin ?presencia=red
@@ -112,7 +128,7 @@ export async function rutasPresencia(app: FastifyInstance, ctx: Contexto): Promi
   // OF10: el mundo en modo oficina (anunciar, llevar a otra sala, balizas oficiales): src/presencia/oficina_mundo.ts
   await rutasOficinaMundo(app, ctx, moderador, ligadura, voz ? () => voz.salasGuiadas() : undefined);
   // F3c: la voz de las visitas guiadas (sala `guiada-<evento>`, la palabra, silenciar, expulsar): src/presencia/voz_rutas.ts
-  await rutasVoz(app, bd, { lk: lk ?? null, voz, expulsados, corros, ...(ctx.relojVoz ? { reloj: ctx.relojVoz } : {}) });
+  await rutasVoz(app, bd, { lk: lk ?? null, voz, expulsados, expulsadosGuiada, corros, ...(ctx.relojVoz ? { reloj: ctx.relojVoz } : {}) });
   // F3k-1 (ADR-0032): la voz por cercanía en corros (invitar, aceptar, salir, token de `corro-<id>`, bloqueos, avisos, suspensiones, interruptor): corro_rutas.ts
   await rutasCorros(app, bd, depsCorros, corros);
 }
