@@ -283,7 +283,7 @@ test("ir con alguien y minimapa: en la página, solo con la bandera; con ella, s
   assert.match(M, /Usables\.usa\(mejor\.id, "ir"\)/, "el segundo toque va con esa persona por su acción «ir»");
   assert.match(F, /function registraPersona\(\) \{ quitaPersona = Entidades\.registra\(\{ tipo: "persona"/);
   assert.match(F, /if \(variante\) registraPersona\(\);/, "el tipo «persona» solo con presencia activa: ?presencia=sim|red, o el arranque solo de F2b, que lo registra al activarse");
-  assert.match(F, /function seVe\(a, tMs\) \{ return !!a && a\.visto && \(variante !== "red" \|\| SalaPose\.seVe\(SP, a\.id, tMs, bloqueados\)\); \}/);
+  assert.match(F, /function seVe\(a, tMs\) \{ return !!a && enExterior\(\) && a\.visto && \(variante !== "red" \|\| SalaPose\.seVe\(SP, a\.id, tMs, bloqueados\)\); \}/);
   assert.match(F, /function irCon\(id\) \{\s*if \(!activo\) return false;\s*var a = busca\(id\); if \(!seVe\(a, performance\.now\(\)\)\) return false;/, "irCon solo va con quien se ve");
   assert.match(F, /if \(x\.enMundo && !bl\) \{/, "el botón «Ir con» solo para quien está en el olivar y no está bloqueado");
 });
