@@ -339,6 +339,16 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 
 
 ### Corregido
+- Seguridad (auditoría de noviembre, lente 9):
+  - Expulsiones: quien es expulsado y vuelve con un token anterior sale otra vez en 20 s como mucho, también de los corros; no probado contra LiveKit real.
+  - Alias: se rechazan los que imitan a la oficina («Ofícina», «0ficina», «La Oficina»…) con la misma normalización que el cliente.
+  - Datos de OlivarTrack: el índice solo lleva sus campos en lista blanca, nada por persona.
+  - Guardián de secretos: reconoce también `secreto`/`clave`, `Bearer`, enlaces de chat y la franja UTM de las fincas.
+- Contratos y tubería (lente 4):
+  - Paisaje: tiene la forma de cada elemento, y un edificio sin color ya no rompe el montaje.
+  - Suelo: el margen de color sale de la tesela vecina (sin costura) y la exportación para si se desborda Int16.
+  - Índice: es cerrado y solo publica campos del contrato; `titulo_vr` y `config` tienen contrato.
+  - Olivos del tileset: se apagan si su contrato o su sistema de coordenadas no casan con el índice.
 - Los rótulos de datos dicen la verdad (auditoría de noviembre, lente 3):
   - el pie avisa de que la copa se dibuja a la mitad del radio medido;
   - la nota del NDVI dice que la escala sale de toda la rejilla;

@@ -152,7 +152,6 @@ export interface Indice {
     desfase_txt?: string;
     puntos_m2?: number;
     intro_historia?: string;
-    /** AAAA-MM-DD de la consulta a SoilGrids; sin él, la ficha del suelo no pone fecha (L3-18) */
     suelo_consulta?: string;
   };
 }
@@ -168,7 +167,7 @@ export interface Parcela {
    * @minItems 2
    */
   centro: [number, number];
-  desfase?: unknown[];
+  desfase?: unknown[] | null;
   suelo?: {}[] | null;
   finca?: number;
   decl?: number;
