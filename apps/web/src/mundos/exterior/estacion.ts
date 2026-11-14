@@ -176,7 +176,7 @@ export function creaEstacion(d: DepsEstacion) {
     h += '<dl class="t-cifras"><div><dt>Fenología (BBCH)</dt><dd>' + Math.round(bb) + ' <small>' + esc(textoBBCH(bb)) + '</small></dd></div><div><dt>NDVI de la copa</dt><dd>' + (COPA.length ? num1(COPA[ndviIdx], 2) : "—") + ' <small>' + (v > 0.66 ? "vigorosa" : v > 0.33 ? "normal" : "apagada") + '</small></dd></div><div><dt>NDVI del suelo</dt><dd>' + (a != null ? num1(a, 2) : "—") + '</dd></div></dl>';
     h += '<p class="t-sub">' + esc(EST.origen) + ".</p>";
     if (EST.activa) {
-      if (EST.clima) h += '<p class="t-sub">Clima de esa semana (estación de Vigía): máx. <strong>' + num1(EST.clima.tmax, 1) + '</strong> °C · mín. <strong>' + num1(EST.clima.tmin, 1) + '</strong> °C · lluvia <strong>' + num1(EST.clima.lluvia, 1) + "</strong> mm" + (EST.clima.tmin <= 0 ? " · <strong>semana con helada</strong>" : "") + (EST.clima.lluvia >= 12 ? " · el arroyo lleva agua" : "") + ".</p>";
+      if (EST.clima) h += '<p class="t-sub">Clima de esa semana (estación de Vigía): máx. <strong>' + num1(EST.clima.tmax, 1) + '</strong> °C · mín. <strong>' + num1(EST.clima.tmin, 1) + '</strong> °C · lluvia <strong>' + num1(EST.clima.lluvia, 1) + "</strong> mm" + (EST.clima.tmin <= 0 ? " · <strong>semana con helada</strong>" : "") + (EST.clima.lluvia >= 12 ? " · el arroyo se dibuja con agua (suposición de más de 12 mm en la semana; sin dato de caudal)" : "") + ".</p>";
       else if (EST.estado) h += '<p class="t-sub">' + esc(EST.estado) + ".</p>";
     }
     if (Estado.modo !== "gem") h += '<p class="t-aviso">Las flores y las aceitunas solo se ven en el modo «Gemelo» (copas en 3D). <button type="button" class="h-btn" id="tVerGem">Ver en Gemelo</button></p>';

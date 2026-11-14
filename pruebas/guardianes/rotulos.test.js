@@ -86,3 +86,11 @@ test("L3-12: Hituelo no escribe un desfase [0, 0] inventado por parcela (null: n
   assert.match(lee("tuberia/hituelo_conv.py"), /desfase=None/);
   assert.deepStrictEqual(JSON.parse(lee("contratos/indice.schema.json")).definitions?.parcela?.properties?.desfase?.type ?? JSON.parse(lee("contratos/indice.schema.json"))["$defs"].parcela.properties.desfase.type, ["array", "null"]);
 });
+
+test("L3-16, L3-17 y L3-18: lo supuesto se dice (alturas mínimas, arroyo con agua por regla de lluvia) y la fecha de SoilGrids no está escrita a mano", () => {
+  assert.match(PL, /alturas mínimas supuestas[^<]*no por un caudal medido/);
+  const est = lee("apps/web/src/mundos/exterior/estacion.ts");
+  assert.match(est, /el arroyo se dibuja con agua \(suposición de más de 12 mm en la semana; sin dato de caudal\)/);
+  assert.doesNotMatch(est, /el arroyo lleva agua/);
+  assert.doesNotMatch(lee("apps/web/src/mundos/exterior/parcelas.ts"), /consultado el 25-oct-2026/);
+});
