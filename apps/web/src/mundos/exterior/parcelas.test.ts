@@ -2,7 +2,7 @@
 // «Toda la finca» y una por parcela; varias fincas: las fincas y, de la elegida, sus parcelas), elegir mueve la órbita a la parcela y pinta las cifras y el suelo; libera() quita las escuchas,
 // los nodos, el aplazado de la unidad y la suscripción a Configuración. HONESTIDAD: sin navegador ni maquetación; el selector de verdad en la página, en el banco.
 import { afterEach, describe, expect, it } from "vitest";
-import { ID_PARCELAS, creaParcelas, manifiestoParcelas } from "./parcelas.ts";
+import { ID_PARCELAS, areaHaLinde, creaParcelas, manifiestoParcelas } from "./parcelas.ts";
 import { creaMundo, type Mundo } from "../../nucleo/prueba-dom.ts";
 
 let m: Mundo | null = null;
@@ -13,7 +13,7 @@ const parcela = (id: string, nombre: string, finca: number, x: number, o: { suel
 
 function monta(o: { fincas?: boolean; sueloUna?: unknown } = {}) {
   m = creaMundo();
-  for (const id of ["chips", "calidad", "sueloCuerpo", "tMedido", "kCopas", "kMarc", "kAlt", "kDes", "nMarc", "tParcelasFinca"]) m.documento.body.appendChild(m.el("div", id));
+  for (const id of ["chips", "calidad", "sueloCuerpo", "tMedido", "kCopas", "kMarc", "kAlt", "kDes", "kSup", "nMarc", "tParcelasFinca"]) m.documento.body.appendChild(m.el("div", id));
   const D = { parcelas: [parcela("a", "Alta <b>", 0, 100), parcela("b", "Baja", o.fincas ? 1 : 0, -100, { suelo: o.sueloUna })], fincas: o.fincas ? [{ nombre: "Una", ha: 2, olivos: 5, parcelas: [0] }, { nombre: "Otra", ha: 2, olivos: 5, parcelas: [1] }] : undefined };
   const orb = { dist: 0, el: 0 }, objetivo = { x: 0, y: 0, z: 0, set(x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z; } };
   const cambios: Array<() => void> = []; let sub = 0;
@@ -23,6 +23,18 @@ function monta(o: { fincas?: boolean; sueloUna?: unknown } = {}) {
   });
   return { P, D, orb, objetivo, m, sub: () => sub, chips: m.documento.getElementById("chips"), suelo: m.documento.getElementById("sueloCuerpo") };
 }
+
+describe("L3-07: hectáreas calculadas sobre el linde", () => {
+  it("el área del polígono sale de su geometría, no de lo declarado; sin polígono es 0", () => {
+    expect(areaHaLinde([[0, 0], [100, 0], [100, 100], [0, 100]])).toBeCloseTo(1, 6);
+    expect(areaHaLinde([[0, 0], [100, 0], [0, 100]])).toBeCloseTo(0.5, 6);
+    expect(areaHaLinde(null)).toBe(0); expect(areaHaLinde([[0, 0], [1, 1]])).toBe(0);
+  });
+  it("la ficha de cifras pone la superficie calculada de la parcela (20 x 20 m = 0,0 ha con un decimal; la declarada, 2 ha, no entra)", () => {
+    const { P } = monta(); P.elegirParcela(0);
+    expect(m!.documento.getElementById("kSup").textContent).toBe("0.0 ha");
+  });
+});
 
 describe("parcelas: el selector", () => {
   it("una sola finca: «Toda la finca» y una chip por parcela; elegir una mueve la órbita a su centro y pinta el suelo (con el nombre escapado)", () => {

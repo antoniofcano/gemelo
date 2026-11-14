@@ -74,3 +74,9 @@ test("L3-03 y L3-21: la nota del NDVI dice de dónde sale la escala y el desfase
   assert.match(PL, /<dt>Desfase típico \(mediana\)<\/dt>/);
   assert.doesNotMatch(PL, /Desfase medio/);
 });
+
+test("L3-07: el linde no se rotula «medido» (viene de la oficina) y la superficie calculada sobre el linde tiene su fila", () => {
+  assert.doesNotMatch(PL, /Linde \(barrera de luz\) <span class="pill p-medido">/);
+  assert.match(PL, /Linde \(barrera de luz\) <span class="pill p-guardado">oficial<\/span>/);
+  assert.match(PL, /<dt>Superficie <span class="pill p-deducido">calculada sobre el linde<\/span><\/dt><dd id="kSup">/);
+});

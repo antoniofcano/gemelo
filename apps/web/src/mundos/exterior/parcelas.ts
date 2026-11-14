@@ -21,6 +21,14 @@ export interface DepsParcelas {
   readonly Ajustes: T; documento?: T;
 }
 
+/** L3-07: hectáreas CALCULADAS sobre un polígono (fórmula del topógrafo; x, y en metros locales). Es la cifra que el gemelo mide sobre el linde que le llega, distinta de las «ha declaradas» de OlivarTrack */
+export function areaHaLinde(linde: ReadonlyArray<ReadonlyArray<number>> | null | undefined): number {
+  if (!linde || linde.length < 3) return 0;
+  let s = 0;
+  for (let i = 0; i < linde.length; i++) { const a = linde[i] as ReadonlyArray<number>, b = linde[(i + 1) % linde.length] as ReadonlyArray<number>; s += (a[0] as number) * (b[1] as number) - (b[0] as number) * (a[1] as number); }
+  return Math.abs(s) / 2 / 10000;
+}
+
 export function creaParcelas(dp: DepsParcelas) {
   var D: T = dp.D, $ = dp.$, tinta = dp.tinta, fmt = dp.fmt, DIST_INI = dp.DIST_INI, suelo = dp.suelo, copas: T = dp.copas, cIn: T = dp.cIn, marc: T = dp.marc, med = dp.med, Estado: T = dp.Estado;
   var aplicaLuego = dp.aplicaLuego, objetivo: T = dp.objetivo, orb: T = dp.orb, document: T = dp.documento || globalThis.document;
@@ -61,6 +69,8 @@ export function creaParcelas(dp: DepsParcelas) {
     $("kCopas").textContent = fmt(ci.length); $("kMarc").textContent = fmt(mm.length);
     $("kAlt").textContent = fmt(med(ci.map(function (c?: T) { return c.h; })), 1) + " m"; $("kDes").textContent = fmt(Math.hypot(med(dx), med(dy)), 1) + " m";
     $("nMarc").textContent = fmt(marc.length);
+    const eSup = $("kSup");   // L3-07: las hectáreas calculadas sobre el linde (sin linde en el índice, no se inventa nada: «–»)
+    if (eSup) { const sel = k >= 0 ? [parcelas[k]] : parcelas.filter(function (p?: T) { return fincaSel < 0 || p.finca === fincaSel; }), conLinde = sel.filter(function (p?: T) { return p && p.linde && p.linde.length >= 3; }); eSup.textContent = conLinde.length ? fmt(conLinde.reduce(function (a?: T, p?: T) { return a + areaHaLinde(p.linde); }, 0), 1) + " ha" : "–"; }
   }
   function elegirParcela(k?: T) {
     parcelaSel = k; if (k >= 0 && fincas.length > 1) fincaSel = parcelas[k].finca;
