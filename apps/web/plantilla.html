@@ -26,7 +26,7 @@
           <button type="button" class="boton" role="menuitemradio" data-modo="dron" aria-checked="false">🚁 Dron <span class="sub">E</span></button>
         </div>
       </div>
-      <button type="button" class="cristal t-ins" id="tIns" aria-label="El tiempo ahora; abre la ventana del tiempo" title="El tiempo · 3"><span class="t-flecha" id="tFlecha" aria-hidden="true">↑</span><span id="tInsT">Cielo despejado</span></button>
+      <button type="button" class="cristal t-ins" id="tIns" aria-label="El tiempo: Cielo despejado. Abre la ventana del tiempo" title="El tiempo · 3"><span class="t-flecha" id="tFlecha" aria-hidden="true">↑</span><span id="tInsT">Cielo despejado</span></button>
       <!-- lo tuyo en pantalla (EV2-A4): hora · tu haza · hablar · volver; lo rellena 31b_hud_personal.js -->
       <div class="hud-personal" id="hudPersonal" role="group" aria-label="Lo tuyo: hora, tu haza, hablar y volver">
         <button type="button" class="boton hp-btn" id="hpHora" aria-label="Hora del mundo; abre el tiempo" title="Hora del mundo · 3"><b aria-hidden="true">🕐</b><span class="hp-txt" id="hpHoraT">--:--</span></button>
@@ -71,7 +71,7 @@
         <button type="button" class="boton prim pasear" id="btnPaseo" aria-pressed="false" title="Pasear · Intro">🚶 Pasear</button>
         <button type="button" class="boton prim pasear" id="padAterriza" aria-label="Aterrizar: guardar el dron donde estás" hidden>Aterrizar</button>
       </div>
-      <button type="button" class="hud-atrib" id="hudAtrib" aria-label="Créditos y fuentes de datos">© IGN-CNIG CC BY 4.0 · Copernicus · ISRIC · ⓘ qué es medido</button>
+      <button type="button" class="hud-atrib" id="hudAtrib" title="Créditos y fuentes de datos">© IGN-CNIG CC BY 4.0 · Copernicus · ISRIC · ⓘ qué es medido</button>
     </div>
     <div class="ayuda" id="ayuda">Arrastra: girar · Rueda o pellizco: zoom · Mayús + arrastrar: mover · Toca un olivo para ver su ficha · Intro: pasear</div>
     <div class="ayuda ayuda-paseo" id="ayudaPaseo" hidden>Flechas o WASD: andar y girar · Mayús: correr · clic en el suelo: ir andando · V: primera persona · Q: quad · E: dron · M: minimapa · Inicio: vista aérea</div>
@@ -235,12 +235,14 @@
           <tr><th><kbd>Espacio</kbd> · <kbd>C</kbd> · <kbd>L</kbd></th><td>dron: subir · bajar · aterrizar</td></tr>
           <tr><th><kbd>1</kbd>–<kbd>6</kbd></th><td>mapa, capas, tiempo, historia, gente, chat</td></tr>
           <tr><th><kbd>M</kbd> · <kbd>H</kbd></th><td>zoom del minimapa · ficha de la haza donde estás</td></tr>
+          <tr><th><kbd>T</kbd></th><td>hablar (en una visita guiada o en un corro con voz)</td></tr>
           <tr><th><kbd>F</kbd> · <kbd>F1</kbd></th><td>pantalla completa · esta ayuda</td></tr>
           <tr><th><kbd>Esc</kbd></th><td>cierra lo último abierto; si no hay nada, abre el menú</td></tr>
           <tr><th><kbd>←</kbd> <kbd>→</kbd></th><td>con el recorrido de la historia, escena anterior o siguiente</td></tr>
         </table>
         <h3>Ratón y dedos</h3>
-        <p>Arrastrar gira la vista; la rueda o el pellizco acercan; con Mayús o dos dedos se desplaza. Un toque corto en un olivo abre su ficha; con el dron, marca dónde aterrizar. En una pantalla táctil, al pasear, la cruceta va abajo a la izquierda y las acciones abajo a la derecha (al revés con «mano zurda» en Configuración).</p>
+        <p>Arrastrar gira la vista; la rueda o el pellizco acercan; con Mayús o dos dedos se desplaza. Un toque corto en un olivo abre su ficha; con el dron, marca dónde aterrizar. Al pasear, un toque corto en el suelo te lleva andando hasta allí (con el ratón, un clic).</p>
+        <p>En una pantalla táctil, al pasear: apoya el pulgar en la mitad izquierda de la pantalla y empuja para andar (la palanca aparece donde lo apoyas) y arrastra en la otra mitad para mirar; las acciones (correr, cámara, quad, dron) van abajo a la derecha. Con «mano zurda» (Configuración → Controles) cambian de lado. Si apagas «Palanca para andar», vuelve la cruceta abajo a la izquierda.</p>
         <h3>Gafas de realidad virtual</h3>
         <p>Con unas gafas compatibles sale «🥽 VR» junto al selector de modo. Los mandos se explican dentro (botón Y: el panel).</p>
       </div>

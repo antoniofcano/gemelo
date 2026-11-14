@@ -126,13 +126,13 @@ const reglas = [...css.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^{
 test("L6-01: el tamaño del texto escala la raíz y TODO texto de la página va en rem (el HUD, el menú, las ventanas y las cajas que crea el cliente)", () => {
   assert.match(css, /:root \{ font-size: calc\(100% \* var\(--escala-texto\)\); \}/, "la raíz escala con --escala-texto (Configuración → Accesibilidad)");
   assert.match(css, /--escala-texto: 1;/, "con su valor por defecto");
-  const px = reglas.filter(r => /font(-size)?:\s*[^;]*\d+(\.\d+)?px/.test(r.cuerpo)).map(r => r.sel);
+  const px = reglas.filter(r => /font(-size)?:\s*[^;]*\b\d+(\.\d+)?px/.test(r.cuerpo)).map(r => r.sel);
   assert.deepStrictEqual(px, [], "font-size en px en plantilla.css (no crece con el ajuste): pásalo a rem");
   const ajustes = lee("apps/web/src/ui/ajustes.ts");
   assert.match(ajustes, /setProperty\("--escala-texto"/, "ajustes.ts pone --escala-texto en <html>");
   // el DOM que crea el cliente con estilos en línea: font-size y font en rem (los lienzos, cx.font = "…px", no son CSS y no cuentan)
   const malos = [];
-  for (const [f, t] of CLIENTE) for (const m of t.matchAll(/(font-size:\s*\d+(\.\d+)?px|font:\s*(\d{3} )?\d+(\.\d+)?px)/g)) malos.push(f + ": " + m[0]);
+  for (const [f, t] of CLIENTE) for (const m of t.matchAll(/(font-size:\s*\d+(\.\d+)?px|\bfont:\s*(\d{3} )?\d+(\.\d+)?px)/g)) malos.push(f + ": " + m[0]);
   assert.deepStrictEqual(malos, [], "estilos en línea con el texto en px: no crecen con «Tamaño del texto»");
 });
 
@@ -155,7 +155,7 @@ test("L6-14 y L6-15: la pestaña activa de Configuración y los textos fijos del
 });
 
 test("L6-17: los controles que se tocan miden 44 px como mínimo (min-height, alto o ancho en px por debajo de 44)", () => {
-  const TOCABLES = /(button|select|input|\.boton|\.chip|\.h-btn|\.h-punto|\.reiniciar|\[role="tab"\]|summary)/;
+  const TOCABLES = /(button|select|input|\.boton|\.chip|\.h-btn|\.h-punto|\.reiniciar|\[role="tab"\]|summary)(?![\w-])/;
   const EXCEPCION = { ".hud-atrib": "solo en escritorio (en táctil va al menú, plantilla.css); 24 px, WCAG 2.5.8" };
   const malos = [];
   for (const r of reglas) {
@@ -180,8 +180,8 @@ test("L6-18: en táctil la ficha y la baliza del paseo caen bajo «lo tuyo» (la
 
 test("L6-21 y botones solo-icono: todo botón de la plantilla sin letras visibles lleva aria-label (o un .vh), y el aria-label contiene el rótulo visible (WCAG 2.5.3)", () => {
   const sinNombre = [], noContiene = [];
-  for (const m of PL.matchAll(/<button([^>]*)>([\s\S]*?)<\/button>/g)) {
-    const at = m[1], dentro = m[2], id = (/id="([^"]+)"/.exec(at) || [, "?"])[1];
+  for (const m of PL.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)) {
+    const at = m[1], dentro = m[2], id = (/\bid="([^"]+)"/.exec(at) || [, "?"])[1];
     const visible = dentro.replace(/<span class="vh">[\s\S]*?<\/span>/g, "").replace(/<[^>]*aria-hidden="true"[^>]*>[\s\S]*?<\/[a-z]+>/g, "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
     const oculto = /class="vh"/.test(dentro), label = (/aria-label="([^"]*)"/.exec(at) || [])[1];
     const letras = /\p{L}{2,}/u.test(visible);
@@ -190,4 +190,12 @@ test("L6-21 y botones solo-icono: todo botón de la plantilla sin letras visible
   }
   assert.deepStrictEqual(sinNombre, [], "botones solo-icono sin nombre accesible");
   assert.deepStrictEqual(noContiene, [], "aria-label que no contiene el texto visible");
+});
+
+test("L6-09: la Ayuda describe los controles de hoy (la palanca, tocar el suelo para ir andando) y su tabla trae todas las teclas reservadas y la T de hablar", () => {
+  const ayuda = PL.slice(PL.indexOf('id="ventanaAyuda"'), PL.indexOf("</section>", PL.indexOf('id="ventanaAyuda"')));
+  assert.doesNotMatch(ayuda, /al pasear, la cruceta va abajo/, "la cruceta ya no es lo de por defecto (la palanca, EV2-B2)");
+  assert.match(ayuda, /palanca/i); assert.match(ayuda, /toque corto en el suelo te lleva andando/);
+  const kbd = new Set([...ayuda.matchAll(/<kbd>([^<]+)<\/kbd>/g)].map(m => m[1]));
+  for (const k of ["W A S D", "Mayús", "Intro", "Inicio", "0", "Q", "E", "V", "Espacio", "C", "L", "1", "6", "M", "H", "F", "F1", "Esc", "←", "→", "T"]) assert.ok(kbd.has(k), "falta <kbd>" + k + "</kbd> en la Ayuda");
 });
