@@ -12,6 +12,7 @@
 //   POST   /api/presencia/guiadas/:evento/palabra/alargar {}               +1 min
 //   DELETE /api/presencia/guiadas/:evento/palabra                          quitarla (cortar)
 //   POST   /api/presencia/guiadas/:evento/silenciar      {}                silenciar a todos menos al guía (MutePublishedTrack) y quitar la palabra
+//   POST   /api/presencia/guiadas/:evento/visita        { mundo?, parada?, maquinas? }  la visita compartida en los interiores (decisiones 233-238): lleva al grupo a un mundo o a una parada, o pone las máquinas en marcha/paradas; la api lo escribe en los metadatos de la sala
 //   POST   /api/presencia/guiadas/:evento/expulsar       { identidad, motivo? }  sacar de la sala a todas las conexiones de ese hogar (RemoveParticipant), 15 min
 //   POST   /api/presencia/guiadas/:evento/cerrar         { segundos? }     F3f (decisión 155): aviso por el tema «cierre» y, a los segundos (15 por omisión), DeleteRoom
 //  Cualquiera con sesión, F3j (decisión 163; contratos/voz-consentimiento.md): el consentimiento de voz de SU hogar
@@ -30,6 +31,7 @@ import type { Bd } from "../bd/pool.ts";
 import type { ConfigLiveKit } from "../config.ts";
 import { OFICINA } from "../oficina/acceso.ts";
 import { aceptaVoz, type AmbitoVoz, AMBITOS_VOZ, consiente, estadoConsentimiento, retiraVoz, VERSION_AVISO } from "./consentimiento_voz.ts";
+import { ESQUEMA_CUERPO_VISITA, type CuerpoVisita, leeVisita, mezclaVisita, visitaATexto, visitaCabe } from "./visita.ts";
 import { poneAjuste } from "./cercania.ts";
 import type { Corros } from "./corro.ts";
 import { AVATAR_POR_DEFECTO, type Avatar, DISPOSITIVOS, type Dispositivo, Expulsados, firmaTokenGuiada, identidadOpaca, limpiaAspecto, type ModeradorVoz, prefijoHogar, SALA_GUIADA } from "./livekit.ts";
@@ -300,6 +302,41 @@ export async function rutasVoz(app: FastifyInstance, bd: Bd, d: DepsVoz): Promis
     const motivo = req.body.motivo?.trim().replace(/\s+/g, " ") || null;
     await audita(bd, req.session.hogarId!, "guiada.expulsado", { evento: ev, hogar, conexiones, ...(motivo ? { motivo } : {}) });
     return { conexiones };
+  });
+
+  // ---- la visita compartida en los interiores (decisiones 233-238, acuerdo del 2026-11-14): el estado vive en los metadatos de la sala de LiveKit y solo lo escribe esta ruta.
+  // Leer, mezclar y escribir va en fila por sala: dos cambios a la vez no pueden pisarse (n sube de uno en uno)
+  const colaVisita = new Map<number, Promise<unknown>>();
+  app.post<{ Params: { evento: number }; Body: CuerpoVisita }>("/api/presencia/guiadas/:evento/visita", {
+    preHandler: requiereSesion,
+    config: { rateLimit: { max: 60, timeWindow: 60_000 } },
+    schema: { params: EVENTO, body: ESQUEMA_CUERPO_VISITA },
+  }, async (req, rep) => {
+    if (!lk || !voz) return rep.code(503).send(APAGADA);
+    const e = await moderable(req, rep, req.params.evento);
+    if (!e) return rep;
+    const ev = req.params.evento, sala = SALA_GUIADA(ev), ahora = reloj.ahora();
+    // la misma ventana que el token del que modera (y cancelada/sin abrir): fuera de ella, 409
+    const dec = decideGuiada(e, await quien(req, ev));
+    if (!dec.ok) return rechaza(rep, dec);
+    if (cierres.cerrada(ev, ahora) !== null) return rep.code(409).send({ error: "guiada_cerrada", mensaje: "La visita guiada ha terminado: el guía ha cerrado la sala." });
+    const previa = colaVisita.get(ev) ?? Promise.resolve();
+    const hecho = previa.catch(() => undefined).then(async () => {
+      const crudo = await voz.leeMetadatosSala(sala);
+      if (crudo === null) return { http: 409 as const, error: "sala_sin_abrir", mensaje: "La sala de la visita aún no está abierta: entra en ella antes de llevar al grupo." };
+      const visita = mezclaVisita(leeVisita(crudo), req.body, ahora), texto = visitaATexto(visita);
+      if (!visitaCabe(texto)) return { http: 400 as const, error: "visita_demasiado_grande", mensaje: "El estado de la visita no cabe en los metadatos de la sala." };
+      if (!(await voz.escribeMetadatosSala(sala, texto))) return { http: 409 as const, error: "sala_sin_abrir", mensaje: "La sala de la visita aún no está abierta: entra en ella antes de llevar al grupo." };
+      return { http: 200 as const, visita };
+    });
+    colaVisita.set(ev, hecho);
+    const r = await hecho.finally(() => { if (colaVisita.get(ev) === hecho) colaVisita.delete(ev); });
+    if (r.http !== 200) return rep.code(r.http).send({ error: r.error, mensaje: r.mensaje });
+    await audita(bd, req.session.hogarId!, "guiada.visita", {
+      evento: ev, n: r.visita.n, mundo: r.visita.mundo, parada: r.visita.parada ?? "ninguna",
+      ...(req.body.maquinas ? { maquinas: req.body.maquinas.marcha ? "marcha" : "paradas" } : {}),
+    });
+    return { visita: r.visita };
   });
 
   // ---- cerrar la sala (F3f, decisión 155): aviso a todos por el tema «cierre» (sin participante: solo lo manda la api) con el instante del borrado y la sala a la

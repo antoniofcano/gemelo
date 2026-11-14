@@ -318,7 +318,7 @@ test("rutas de la voz: sin Origin 403, forma mala 400, sin sesión 401 (antes de
       ["POST", "/api/presencia/guiadas/9/token", { dispositivo: "quest" }], ["POST", "/api/presencia/guiadas/9/mano", {}], ["DELETE", "/api/presencia/guiadas/9/mano", undefined],
       ["POST", "/api/presencia/guiadas/9/palabra", { identidad: I }], ["POST", "/api/presencia/guiadas/9/palabra/alargar", {}], ["DELETE", "/api/presencia/guiadas/9/palabra", undefined],
       ["POST", "/api/presencia/guiadas/9/silenciar", {}], ["POST", "/api/presencia/guiadas/9/expulsar", { identidad: I }], ["PUT", "/api/admin/eventos/9/guia", { hogar_id: 3 }],
-      ["POST", "/api/presencia/guiadas/9/cerrar", {}],
+      ["POST", "/api/presencia/guiadas/9/cerrar", {}], ["POST", "/api/presencia/guiadas/9/visita", { mundo: "fabrica" }],
     ];
     for (const [method, url, payload] of rutas) {
       const conCuerpo = payload ? { payload } : {};
@@ -334,6 +334,10 @@ test("rutas de la voz: sin Origin 403, forma mala 400, sin sesión 401 (antes de
       ["POST", "/api/presencia/guiadas/9/palabra/alargar", { minutos: 5 }], ["POST", "/api/presencia/guiadas/9/mano", { hogar: 2 }],
       ["POST", "/api/presencia/guiadas/9/expulsar", { identidad: I, motivo: "x".repeat(201) }], ["PUT", "/api/admin/eventos/9/guia", { hogar_id: 0 }], ["PUT", "/api/admin/eventos/9/guia", {}],
       ["POST", "/api/presencia/guiadas/9/cerrar", { segundos: 4 }], ["POST", "/api/presencia/guiadas/9/cerrar", { segundos: 61 }], ["POST", "/api/presencia/guiadas/9/cerrar", { segundos: 10, a: "visita" }],
+      ["POST", "/api/presencia/guiadas/9/visita", {}], ["POST", "/api/presencia/guiadas/9/visita", { mundo: "otro" }], ["POST", "/api/presencia/guiadas/9/visita", { mundo: "luna" }],
+      ["POST", "/api/presencia/guiadas/9/visita", { parada: 64 }], ["POST", "/api/presencia/guiadas/9/visita", { parada: -1 }], ["POST", "/api/presencia/guiadas/9/visita", { parada: 1.5 }],
+      ["POST", "/api/presencia/guiadas/9/visita", { maquinas: {} }], ["POST", "/api/presencia/guiadas/9/visita", { maquinas: { marcha: "si" } }],
+      ["POST", "/api/presencia/guiadas/9/visita", { maquinas: { marcha: true, desde: 1 } }], ["POST", "/api/presencia/guiadas/9/visita", { n: 5, mundo: "fabrica" }],
     ] as const) assert.equal((await app.inject({ method, url, headers: deLaWeb(), payload })).statusCode, 400, method + " " + url + " " + JSON.stringify(payload));
     assert.deepEqual(lk.llamadas, [], "no se ha tocado LiveKit");
   } finally { await app.close(); await pool.end(); }

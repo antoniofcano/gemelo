@@ -171,6 +171,48 @@ test("F3f, preparar la visita: GET …/palabra dice cuántas familias apuntadas 
   assert.ok(!/@/.test(JSON.stringify(e)), "sin correos");
 });
 
+test("visita compartida (decisiones 233-238): solo el guía o la oficina; 400 a cuerpos malos; 409 fuera de ventana o sin sala; mezcla, n, desde y auditoría", async t => {
+  if (salta(t)) return;
+  const V = G() + "/visita";
+  assert.equal((await pide("POST", V, ses[ANA]!, { mundo: "fabrica" })).statusCode, 403, "una familia no lleva al grupo");
+  assert.equal((await pide("POST", V, ses[DELTA]!, { mundo: "fabrica" })).statusCode, 403, "ni quien no está apuntada");
+  assert.equal(sala.metadatos.get(SALA()), undefined, "los rechazados no escriben nada");
+  for (const cuerpo of [{}, { mundo: "otro" }, { mundo: "luna" }, { parada: 64 }, { parada: -1 }, { maquinas: {} }, { maquinas: { marcha: true, desde: 1 } }, { n: 9, mundo: "fabrica" }])
+    assert.equal((await pide("POST", V, ses[GUIA]!, cuerpo)).statusCode, 400, JSON.stringify(cuerpo));
+  assert.equal((await pide("POST", "/api/presencia/guiadas/" + otro + "/visita", ses[GUIA]!, { mundo: "fabrica" })).statusCode, 404, "un taller no es una guiada");
+  // metadatos vacíos: el valor por defecto; el guía lleva al grupo a la fábrica y pone las máquinas en marcha
+  const t0 = reloj.ahora();
+  const a = await pide("POST", V, ses[GUIA]!, { mundo: "fabrica", maquinas: { marcha: true } });
+  assert.equal(a.statusCode, 200, a.body);
+  assert.deepEqual(a.json(), { visita: { v: 1, mundo: "fabrica", parada: null, maquinas: { marcha: true, desde: t0 }, n: 1 } });
+  assert.deepEqual(JSON.parse(sala.metadatos.get(SALA())!), a.json().visita, "lo escrito en la sala es lo que se responde");
+  assert.ok(Buffer.byteLength(sala.metadatos.get(SALA())!) <= 512);
+  // la oficina también; parada sin cambiar de mundo; la misma marcha no mueve `desde`
+  const b = await pide("POST", V, ses[OFI]!, { parada: 3, maquinas: { marcha: true } });
+  assert.deepEqual(b.json().visita, { v: 1, mundo: "fabrica", parada: 3, maquinas: { marcha: true, desde: t0 }, n: 2 });
+  // cambiar de mundo borra la parada; parar las máquinas cambia `desde`
+  await reloj.avanza(1000);
+  const c = await pide("POST", V, ses[GUIA]!, { mundo: "exterior", maquinas: { marcha: false } });
+  assert.deepEqual(c.json().visita, { v: 1, mundo: "exterior", parada: null, maquinas: { marcha: false, desde: reloj.ahora() }, n: 3 });
+  // ilegibles = el valor por defecto
+  sala.metadatos.set(SALA(), "{roto");
+  assert.deepEqual((await pide("POST", V, ses[GUIA]!, { parada: 0 })).json().visita, { v: 1, mundo: "exterior", parada: 0, maquinas: null, n: 1 });
+  assert.deepEqual(await auditoria("guiada.visita"), { hogar_id: ids[GUIA], detalle: { evento: ev, n: 1, mundo: "exterior", parada: 0 } });
+  // fuera de la ventana del evento: 409 (como el token)
+  await bd.dueno.query("UPDATE visitas SET empieza_en = now() + interval '3 hours', termina_en = now() + interval '4 hours' WHERE id = $1", [ev]);
+  assert.equal((await pide("POST", V, ses[GUIA]!, { parada: 1 })).json().error, "guiada_aun_no");
+  await bd.dueno.query("UPDATE visitas SET empieza_en = now() + interval '5 minutes', termina_en = now() + interval '65 minutes' WHERE id = $1", [ev]);
+  // sala sin abrir en LiveKit (nadie dentro): 409 y nada escrito
+  const ev2 = Number((await bd.dueno.query<{ id: number }>("INSERT INTO visitas (titulo, tipo, empieza_en, termina_en, estado, guia_id) VALUES ('Guiada vacía', 'guiada', now() + interval '5 minutes', now() + interval '65 minutes', 'abierta', $1) RETURNING id", [ids[GUIA]])).rows[0]!.id);
+  const vacia = await pide("POST", "/api/presencia/guiadas/" + ev2 + "/visita", ses[GUIA]!, { mundo: "patios" });
+  assert.equal(vacia.statusCode, 409); assert.equal(vacia.json().error, "sala_sin_abrir");
+  assert.equal(sala.metadatos.get("guiada-" + ev2), undefined);
+  // dos a la vez no se pisan: n sube de uno en uno
+  const antes = JSON.parse(sala.metadatos.get(SALA())!).n as number;
+  const dos = await Promise.all([pide("POST", V, ses[GUIA]!, { parada: 4 }), pide("POST", V, ses[OFI]!, { parada: 5 })]);
+  assert.deepEqual(dos.map(r => r.json().visita.n).sort(), [antes + 1, antes + 2]);
+});
+
 test("F3f, cerrar la sala (decisión 155): aviso por el tema «cierre» con el instante y la vuelta a la general; a los segundos, DeleteRoom; las familias ya no entran", async t => {
   if (salta(t)) return;
   assert.equal((await pide("POST", G() + "/cerrar", ses[ANA]!, {})).statusCode, 403, "una familia no cierra la sala");

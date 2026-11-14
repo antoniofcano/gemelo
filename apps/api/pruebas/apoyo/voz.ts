@@ -57,5 +57,9 @@ export class SalaFalsa implements ModeradorVoz {
     if (!this.salas.has(sala)) return false;
     this.enviados.push({ sala, tema, datos: JSON.parse(new TextDecoder().decode(datos)) }); return true;
   }
+  /** Visita compartida: los metadatos de cada sala (la sala existe si tiene participantes o metadatos puestos) */
+  readonly metadatos = new Map<string, string>();
+  async leeMetadatosSala(sala: string) { if (this.falla) throw new Error("LiveKit no responde"); return this.salas.has(sala) ? this.metadatos.get(sala) ?? "" : null; }
+  async escribeMetadatosSala(sala: string, m: string) { this.llamadas.push("metadatos " + sala); if (this.falla) throw new Error("LiveKit no responde"); if (!this.salas.has(sala)) return false; this.metadatos.set(sala, m); return true; }
   async borraSala(sala: string) { this.llamadas.push("borra " + sala); const habia = this.salas.delete(sala); if (habia) this.borradas.push(sala); return habia; }
 }

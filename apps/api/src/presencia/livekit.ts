@@ -215,6 +215,10 @@ export interface ModeradorVoz {
   envia(sala: string, tema: string, datos: Uint8Array): Promise<boolean>;
   /** F3f (decisión 155): borra la sala (RoomService.DeleteRoom; LiveKit desconecta a todos los que siguen dentro). false si ya no existía. */
   borraSala(sala: string): Promise<boolean>;
+  /** Visita compartida (decisiones 233-238): los metadatos de la sala tal cual (string, vacío si no tiene); null si la sala no existe en LiveKit. */
+  leeMetadatosSala(sala: string): Promise<string | null>;
+  /** Escribe los metadatos de la sala (RoomService.UpdateRoomMetadata); false si la sala no existe. Solo la api los escribe. */
+  escribeMetadatosSala(sala: string, metadatos: string): Promise<boolean>;
 }
 
 const papelDe = (metadata: string): Papel | null => {
@@ -276,6 +280,8 @@ export class ModeradorLiveKit implements ModeradorSala, ModeradorVoz {
   async salasGuiadas(): Promise<string[]> { return (await this.rs.listRooms()).map(r => r.name).filter(n => PATRON_SALA_GUIADA.test(n)); }
   // DeleteRoom pide el permiso roomCreate, que tiene la clave de servidor (ADR-0026 §2) [el 404 de una sala que no existe: NO VERIFICADO contra la 1.13.11]
   async borraSala(sala: string): Promise<boolean> { try { await this.rs.deleteRoom(sala); return true; } catch (e) { if (esNoEncontrado(e)) return false; throw e; } }
+  async leeMetadatosSala(sala: string): Promise<string | null> { return (await this.rs.listRooms([sala]))[0]?.metadata ?? null; }
+  async escribeMetadatosSala(sala: string, metadatos: string): Promise<boolean> { try { await this.rs.updateRoomMetadata(sala, metadatos); return true; } catch (e) { if (esNoEncontrado(e)) return false; throw e; } }
 }
 
 /**
