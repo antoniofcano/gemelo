@@ -55,3 +55,13 @@ test("la cabecera sale del índice: las hectáreas llevan «declaradas (OlivarTr
 test("el chip de cada finca dice «declaradas» en hectáreas y olivos (13_parcelas.js)", () => {
   assert.match(require("./_fuente").fuenteMotor("13_parcelas.js"), /" ha declaradas · " \+ fmt\(f\.olivos\) \+ " olivos declarados"/);
 });
+
+test("L3-02: el pie dice que el olivo se dibuja a la mitad del radio medido (no que la copa es medida a secas)", async () => {
+  const { textosFinca } = await import(pathToFileURL(path.join(RAIZ, "apps", "web", "herramientas", "genera_motor.mjs")).href);
+  for (const out of [PL, textosFinca(PL, { finca: "F", fincas: 1, parcelas: 5, ha: 7.1, olivos: 812 })]) {
+    const pie = out.match(/<p class="pie">[\s\S]*?<\/p>/)[0];
+    assert.match(pie, /a la mitad de ese radio/);
+    assert.doesNotMatch(pie, /La copa de cada olivo es medida/);
+  }
+  assert.match(lee("apps/web/src/mundos/exterior/marcadores.ts"), /a la mitad del radio medido/);
+});

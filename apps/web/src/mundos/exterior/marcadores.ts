@@ -37,7 +37,7 @@ export interface DepsMarcadores {
 /** lo que dice la nota de cada modo del menú (qué es medido y qué ilustrativo) */
 export const NOTAS: Record<string, string> = {
   nube: "Los puntos del vuelo de 2024, con el color de la ortofoto corregido por altura. Los puntos bajos bajo cada copa, en color corteza, son el tronco.",
-  gem: "Cada punto del LiDAR es un montoncito de hojas de olivo, de modo que la copa conserva el volumen medido. Los troncos y las ramas son una forma ilustrativa con los 2 o 3 pies habituales del olivo en vaso: el LiDAR mide la copa, no cuántos pies tiene cada árbol (solo llega un punto por olivo a la altura del tronco). Color de la ortofoto.",
+  gem: "Cada punto del LiDAR es un montoncito de hojas de olivo, de modo que la copa sigue la posición del LiDAR; su tamaño se dibuja a la mitad del radio medido hasta que la cinta de campo lo confirme. Los troncos y las ramas son una forma ilustrativa con los 2 o 3 pies habituales del olivo en vaso: el LiDAR mide la copa, no cuántos pies tiene cada árbol (solo llega un punto por olivo a la altura del tronco). Color de la ortofoto.",
   orto: "El terreno real con la ortofoto del PNOA tal cual, sin vegetación en 3D. Las copas se ven desplazadas hacia el este."
 };
 
