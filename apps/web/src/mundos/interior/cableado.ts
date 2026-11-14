@@ -11,6 +11,7 @@
 //   · la dirección: cada cambio que sale bien deja ?mundo=<id> con history.replaceState (recargar te deja en ese mundo; volver al exterior lo quita);
 //   · la puerta del cortijo (porton.ts): el componente «porton-cortijo» del exterior, y al entrar y salir de un interior, el quad aparcado y el dron;
 //   · la visita del museo (visita.ts, v1.1): lo de la UI que necesita (THREE, el documento, el panel de VR y cómo abrirlo en la pestaña «Mundo»);
+//   · la lectura de las fichas en voz alta (voz.ts): speechSynthesis y SpeechSynthesisUtterance de la ventana, si los hay;
 //   · la luz aparte (v1.2): el entorno de las piezas con luz propia, hecho con la sonda (entornoDeSonda: SphericalHarmonics3 de three en un
 //     equirectangular pequeño y PMREMGenerator), y si el sistema pide reducir el movimiento (las máquinas entran paradas).
 import type { Manifiesto } from "../../nucleo/componentes.ts";
@@ -150,7 +151,7 @@ export function cableaInteriores(d: DepsCableaInteriores) {
         if (portones) portones.alSaleInterior(destino, llegadaFuera);
       },
       consola: d.consola || null,
-      visita: documento ? { THREE: d.THREE, documento, PanelVR: d.PanelVR || null, abrePanel } : null,
+      visita: documento ? { THREE: d.THREE, documento, PanelVR: d.PanelVR || null, abrePanel, voz: { synth: (d.ventana.speechSynthesis as T) || null, Utterance: (d.ventana.SpeechSynthesisUtterance as T) || null } } : null,
       entorno: sonda => entornoDeSonda(d.THREE, d.renderer, sonda),
       reducido: () => { const mm = d.ventana.matchMedia as ((q: string) => { matches: boolean }) | undefined; try { return !!(mm && mm.call(d.ventana, "(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; } },
     };
