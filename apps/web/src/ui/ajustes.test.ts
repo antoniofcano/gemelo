@@ -69,6 +69,23 @@ describe("Configuración", () => {
     (m.ventana._escuchas.storage as ((e: unknown) => void)[]).forEach((f) => f({ key: "gemelo.ajustes.vr.giro" }));
     expect(A.lee("vr.giro")).toBe("45");
   });
+  it("L1-10: tras libera() (sin escucha de «storage»), lee() ya no se queda con lo viejo: un cambio de otra pestaña se ve", () => {
+    const { A, m } = monta();
+    expect(A.lee("vr.giro")).toBe("30");
+    A.libera();
+    m.ventana.localStorage.setItem("gemelo.ajustes.vr.giro", JSON.stringify("45"));
+    expect(A.lee("vr.giro")).toBe("45");
+    m.ventana.localStorage.setItem("gemelo.ajustes.vr.giro", JSON.stringify("15"));
+    expect(A.lee("vr.giro")).toBe("15");
+    expect(A.pon("vr.giro", "30")).toBe(true); expect(A.lee("vr.giro")).toBe("30");   // pon sigue valiendo
+  });
+  it("L1-10: el almacén puro: sinCache() vacía y apaga la caché (olvida() solo la vacía)", () => {
+    const datos: Record<string, string> = {}, almacen = { getItem: (k: string) => datos[k] ?? null, setItem: (k: string, v: string) => { datos[k] = v; }, removeItem: (k: string) => { delete datos[k]; } };
+    const api = AjustesPuro.crea(almacen, "");
+    expect(api.lee("vr.giro")).toBe("30"); datos["gemelo.ajustes.vr.giro"] = JSON.stringify("45"); expect(api.lee("vr.giro")).toBe("30");
+    api.olvida(); expect(api.lee("vr.giro")).toBe("45"); datos["gemelo.ajustes.vr.giro"] = JSON.stringify("15"); expect(api.lee("vr.giro")).toBe("45");
+    api.sinCache(); expect(api.lee("vr.giro")).toBe("15"); datos["gemelo.ajustes.vr.giro"] = JSON.stringify("45"); expect(api.lee("vr.giro")).toBe("45");
+  });
   it("el componente es de todos los mundos y solo de ciclo de vida", () => {
     const c = manifiestoAjustes(monta().A);
     expect(c.id).toBe(ID_CONFIGURACION); expect(c.mundos).toBe("todos"); expect(c.fases).toEqual({});

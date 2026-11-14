@@ -50,7 +50,7 @@ export var AjustesPuro: T = (function () {
     // L1-10: lee() guarda en caché lo que devuelve (hay quien lee cada fotograma: graficos.ahorro, avanzado.contador, vista.altura); la vacían pon (wr/rm), restablece,
     // un cambio del esquema y olvida() (otra pestaña cambió el almacén: el evento «storage» de la ventana)
     function crea(almacen?: T, busqueda?: T) {
-      var mem: T = {}, oyentes: T = [], cache: T = {}, genCache = genEsq;
+      var mem: T = {}, oyentes: T = [], cache: T = {}, genCache = genEsq, conCache = true;
       function rd(clave?: T) {
         try { if (almacen) { var s: T = almacen.getItem(PREFIJO + clave); if (s != null) return JSON.parse(s); } } catch (e: T) {}
         return Object.prototype.hasOwnProperty.call(mem, clave) ? mem[clave] : undefined;
@@ -62,10 +62,12 @@ export var AjustesPuro: T = (function () {
       function lee(clave?: T) {
         if (!ESQUEMA[clave]) return undefined;
         if (genCache !== genEsq) { cache = {}; genCache = genEsq; }
-        if (Object.prototype.hasOwnProperty.call(cache, clave)) return cache[clave];
-        var f: T = forzado(clave); return (cache[clave] = f !== undefined ? f : guardado(clave));
+        if (conCache && Object.prototype.hasOwnProperty.call(cache, clave)) return cache[clave];
+        var f: T = forzado(clave), v: T = f !== undefined ? f : guardado(clave); if (conCache) cache[clave] = v; return v;
       }
       function olvida() { cache = {}; }
+      // L1-10: sin quien la vacíe (la Configuración se liberó y con ella la escucha de «storage»), la caché se apaga: cada lee() va al almacén, como antes de L1-10
+      function sinCache() { cache = {}; conCache = false; }
       function avisa(clave?: T, v?: T, antes?: T) { oyentes.slice().forEach(function (fn?: T) { try { fn(clave, v, antes); } catch (e: T) {} }); }
       function pon(clave?: T, v?: T) {
         if (!ESQUEMA[clave]) return false;
@@ -77,7 +79,7 @@ export var AjustesPuro: T = (function () {
       }
       function restablece() { Object.keys(ESQUEMA).forEach(function (k?: T) { var antes: T = lee(k); rm(k); if (lee(k) !== antes) avisa(k, lee(k), antes); }); }
       function alCambiar(fn?: T) { if (typeof fn === "function") oyentes.push(fn); return function () { var i: T = oyentes.indexOf(fn); if (i >= 0) oyentes.splice(i, 1); }; }
-      return { lee: lee, pon: pon, alCambiar: alCambiar, restablece: restablece, olvida: olvida, defecto: function (c?: T) { return ESQUEMA[c] && ESQUEMA[c].def; }, forzado: forzado, claves: function () { return Object.keys(ESQUEMA); } };
+      return { lee: lee, pon: pon, alCambiar: alCambiar, restablece: restablece, olvida: olvida, sinCache: sinCache, defecto: function (c?: T) { return ESQUEMA[c] && ESQUEMA[c].def; }, forzado: forzado, claves: function () { return Object.keys(ESQUEMA); } };
     }
     // superficie en hectáreas o metros cuadrados (decisión de Configuración → Vista); fmt: formateador (n, decimales) → texto
     function superficie(ha?: T, unidades?: T, fmt?: T) { return unidades === "m2" ? fmt(Math.round(ha * 10000), 0) + " m²" : fmt(ha, 1) + " ha"; }
@@ -338,6 +340,8 @@ export function creaAjustes(dp: DepsAjustes) {
     // A3-7a: libera() quita las escuchas (controles, deslizadores de la página y media queries) y saca la interfaz pintada en #menuAjustes; el almacén sigue (Ajustes.lee vale)
     api.libera = function () {
       sol.suelta();
+      // L1-10: sin la escucha de «storage» (y de la media query), lo recordado ya no se entera de otra pestaña ni del sistema: se deja de recordar
+      api.sinCache(); reducidoYa = null;
       if (cont) { while (cont.firstChild) cont.removeChild(cont.firstChild); cont.removeAttribute("data-ajustes"); cont.classList.remove("ajustes"); if (cont.getAttribute("aria-label") === "Configuración" && !cont.children.length && cont.parentNode && cont.parentNode.id === "menu") cont.parentNode.removeChild(cont); }
       cont = null; lista = null; hojas = {};
     };
