@@ -388,6 +388,7 @@ function arranca(): void {
     THREE: THREE, D: D, VRP: VRP, Aparato: Aparato, Config: Config, Materiales: Materiales, gArboles: gArboles, camera: camera, Estado: Estado, suelo: suelo,
     factorR8Gen: function () { return FactorR8.E.gen; }, factorCopaDeConfig: factorCopaDeConfig, parcheTiempo: function (sh, viento) { parcheTiempo(sh, viento); }, tiempoTsl: function () { return typeof nodosTiempoTsl === "function" ? nodosTiempoTsl : null; },   // A3-4: los nodos del tiempo (15_tiempo) para la TSL apagada
     busqueda: location.search, reloj: performance, consola: console, ventana: typeof window !== "undefined" ? window : null,
+    ahoraMs: function () { return typeof ahoraMs === "function" ? ahoraMs() : Date.now(); },   // L8-06: el reloj del mundo (Tiempo.ahoraMs, se monta después)
     cargaConstructor: function () { return typeof window !== "undefined" && window.OlivoGen ? Promise.resolve(window.OlivoGen) : import("gemelo-olivo"); },
     renderer: function () { return typeof renderer !== "undefined" ? renderer : null; },
     scene: function () { return typeof scene !== "undefined" ? scene : null; },

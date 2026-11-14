@@ -203,3 +203,13 @@ describe("olivos generados (componente del exterior)", () => {
     man.libera(api as never); expect(m.G.liberado()).toBe(true); expect(() => man.libera(null as never)).not.toThrow();
   });
 });
+
+describe("L8-06: la época de los olivos sale de la fecha del mundo", () => {
+  it("el calendario de épocas se consulta con el reloj del mundo (?fecha=), no con el del navegador; la prueba (_prueba.fecha) sigue mandando", async () => {
+    const vistas: Date[] = [], FECHA_MUNDO = Date.UTC(2026, 3, 20, 10);   // 20 de abril, aunque el navegador diga otra cosa
+    const Config = { listo: Promise.resolve(null), param: (_r: string, c: unknown, u: unknown) => (u !== undefined && u !== null ? u : c), umbrales: (c: unknown, u: unknown) => u || c,
+      tablaEpocas: () => ({}), epocaDeFecha: (_t: unknown, f: Date) => { vistas.push(f); return "envero"; } };
+    const m = monta("?olivos=gen", { Config, ahoraMs: () => FECHA_MUNDO }); await conLote(m);
+    expect(vistas.length).toBeGreaterThan(0); expect(vistas.every(f => f.getTime() === FECHA_MUNDO)).toBe(true);
+  });
+});
