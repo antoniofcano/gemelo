@@ -1,14 +1,21 @@
-// Validador de mundos interiores (contratos/mundo-interior.md, ADR-0033, PLAN MU0-7; v1.2, luz aparte y máquinas: ADR-0034): dice si un glb y su manifiesto mundo.json
+// Validador de mundos interiores (contratos/mundo-interior.md, ADR-0033, PLAN MU0-7; v1.2, luz aparte y máquinas: ADR-0034; v1.3, el glb comprimido con meshopt y
+// KTX2: ADR-0035): dice si un glb y su manifiesto mundo.json
 // pueden entrar en el gemelo y cuánto cuestan en cada perfil. No hace falta el motor: lo usa quien modela (eje B) para saber
 // antes de entregar si su modelo cabe en el Quest.
 //   node tuberia/interiores/valida.js <carpeta con mundo.json | ruta de mundo.json> [--json]
 // Sale con 0 si pasa y con 1 si no. No usa la red. Reutiliza lo que el repo ya fija: ajv (esquema), gltf-validator (Khronos)
-// y @gltf-transform (lectura del glb y tamaño de las imágenes); lo propio son solo las reglas del contrato.
+// y @gltf-transform (lectura del glb y tamaño de las imágenes); lo propio son solo las reglas del contrato. v1.3: la geometría con meshopt se lee con
+// el decodificador de meshoptimizer y los KTX2 con ktx-parse (cabecera, niveles y modelo de color); su memoria en la GPU se cuenta por bloques del
+// formato al que los transcodifica three en cada perfil ($defs.presupuesto.ktx2_bloque), no como RGBA8. gltf-validator (2.0.0-dev.3.10) no conoce
+// EXT_meshopt_compression ni KHR_texture_basisu: lo que no comprueba él (que la geometría se descomprime y que cada KTX2 es una textura 2D de Basis
+// Universal con todos sus mipmaps) lo comprueba este validador.
 "use strict";
 const fs = require("fs"), path = require("path");
 const Ajv2020 = require("ajv/dist/2020").default, validador = require("gltf-validator");
 const { NodeIO, ImageUtils, getBounds } = require("@gltf-transform/core");
 const { ALL_EXTENSIONS } = require("@gltf-transform/extensions");
+const { MeshoptDecoder } = require("meshoptimizer");
+const ktx = require("ktx-parse");
 
 const ESQ = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "contratos", "mundo-interior.schema.json"), "utf8"));
 const PRES = ESQ.$defs.presupuesto.const;
@@ -39,10 +46,48 @@ function simple(anillo) {
   return true;
 }
 
-/** Lo que cuesta dibujar el glb: recorre la escena (un nodo con malla cuenta una vez por instancia en el árbol). */
+/** las extensiones que declara el glb y el mimeType de cada imagen, leídos de su trozo JSON (no de gltf-validator, que no da su informe con extensiones
+ *  que no conoce) */
+function extensionesDe(bytes) {
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (bytes.byteLength < 20 || dv.getUint32(0, true) !== 0x46546c67 || dv.getUint32(16, true) !== 0x4e4f534a) return { usadas: [], requeridas: [], mimes: [] };
+  const j = JSON.parse(new TextDecoder().decode(bytes.subarray(20, 20 + dv.getUint32(12, true))));
+  return { usadas: j.extensionsUsed || [], requeridas: j.extensionsRequired || [], mimes: (j.images || []).map(i => i.mimeType || null) };
+}
+
+const KHR_DF_MODEL_ETC1S = 163, KHR_DF_MODEL_UASTC = 166;
+/**
+ * v1.3: un KTX2 de la textura de un glb → { codec, alfa, ancho, alto, niveles, error }. Vale una textura 2D de Basis Universal (vkFormat 0, ETC1S o
+ * UASTC) con TODOS sus mipmaps: three no puede generarlos para una textura comprimida y el GLTFLoader le pone un filtro con mipmaps (se vería negra).
+ */
+function ktx2(bytes) {
+  let k;
+  try { k = ktx.read(bytes); } catch (e) { return { error: "no es un KTX2 que se pueda leer (" + e.message + ")" }; }
+  const dfd = k.dataFormatDescriptor[0], w = k.pixelWidth, h = Math.max(1, k.pixelHeight), niveles = Math.max(1, k.levels.length);
+  const r = { ancho: w, alto: h, niveles, codec: null, alfa: false, error: null };
+  if (k.vkFormat !== 0) { r.error = "no es Basis Universal (vkFormat " + k.vkFormat + ")"; return r; }
+  if (dfd.colorModel === KHR_DF_MODEL_ETC1S) { r.codec = "etc1s"; r.alfa = (dfd.samples || []).length === 2; }
+  else if (dfd.colorModel === KHR_DF_MODEL_UASTC) { r.codec = "uastc"; r.alfa = ((dfd.samples[0] || {}).channelType & 0xf) === 3; }
+  else { r.error = "modelo de color " + dfd.colorModel + " (ni ETC1S ni UASTC)"; return r; }
+  if (k.layerCount > 1 || k.faceCount !== 1 || k.pixelDepth > 1) r.error = "no es una textura 2D (capas " + k.layerCount + ", caras " + k.faceCount + ")";
+  else if (niveles !== Math.floor(Math.log2(Math.max(w, h))) + 1) r.error = "lleva " + niveles + " niveles y le tocan " + (Math.floor(Math.log2(Math.max(w, h))) + 1) + ": sin todos sus mipmaps se vería negra";
+  return r;
+}
+/** bytes en la GPU de un KTX2 transcodificado: bloques de 4 × 4 enteros en cada nivel, por los bytes por bloque del perfil */
+function bytesKtx2(k, porBloque) {
+  let s = 0;
+  for (let l = 0, w = k.ancho, h = k.alto; l < k.niveles; l++, w = Math.max(1, w >> 1), h = Math.max(1, h >> 1)) s += Math.ceil(w / 4) * Math.ceil(h / 4) * porBloque;
+  return s;
+}
+
+/**
+ * Lo que cuesta dibujar el glb: recorre la escena (un nodo con malla cuenta una vez por instancia en el árbol). La memoria de texturas es por perfil
+ * (texturas_mb_perfil): una imagen PNG o JPEG, RGBA8 con mipmaps en todos; un KTX2, por bloques del formato al que se transcodifica en cada uno.
+ * texturas_mb es la del perfil objetivo.
+ */
 function mide(doc) {
   const raiz = doc.getRoot(), escena = raiz.getDefaultScene() || raiz.listScenes()[0];
-  const m = { triangulos: 0, llamadas: 0, materiales: raiz.listMaterials().length, texturas: 0, texturas_mb: 0, lado_max: 0, modos: new Set(), morph: 0 };
+  const m = { triangulos: 0, llamadas: 0, materiales: raiz.listMaterials().length, texturas: 0, texturas_mb: 0, lado_max: 0, modos: new Set(), morph: 0, ktx2: 0, texturas_mb_perfil: {}, ktx2_errores: [] };
   if (escena) escena.traverse(n => {
     const malla = n.getMesh(); if (!malla) return;
     for (const pr of malla.listPrimitives()) {
@@ -52,12 +97,24 @@ function mide(doc) {
       if (pr.getMode() === 4) m.triangulos += Math.floor(k / 3); else if (pr.getMode() === 5 || pr.getMode() === 6) m.triangulos += Math.max(0, k - 2);
     }
   });
+  const perfiles = Object.keys(PRES.perfiles), mb = Object.fromEntries(perfiles.map(p => [p, 0]));
   for (const t of raiz.listTextures()) {
-    const img = t.getImage(), tam = img ? ImageUtils.getSize(img, t.getMimeType()) : null;
+    const img = t.getImage();
     m.texturas++;
-    if (tam) { m.lado_max = Math.max(m.lado_max, tam[0], tam[1]); m.texturas_mb += tam[0] * tam[1] * 4 * 4 / 3 / MB; }   // RGBA8 con mipmaps
+    if (!img) continue;
+    if (t.getMimeType() === "image/ktx2") {
+      const k = ktx2(img);
+      m.ktx2++;
+      if (k.error) { m.ktx2_errores.push("«" + (t.getName() || t.getURI()) + "»: " + k.error); if (!k.codec) continue; }
+      m.lado_max = Math.max(m.lado_max, k.ancho, k.alto);
+      for (const p of perfiles) { const b = PRES.ktx2_bloque[p]; mb[p] += bytesKtx2(k, k.codec === "uastc" ? b.uastc : k.alfa ? b.etc1s_alfa : b.etc1s) / MB; }
+      continue;
+    }
+    const tam = ImageUtils.getSize(img, t.getMimeType());
+    if (tam) { m.lado_max = Math.max(m.lado_max, tam[0], tam[1]); for (const p of perfiles) mb[p] += tam[0] * tam[1] * 4 * 4 / 3 / MB; }   // RGBA8 con mipmaps
   }
-  m.texturas_mb = Math.round(m.texturas_mb * 10) / 10;
+  for (const p of perfiles) m.texturas_mb_perfil[p] = Math.round(mb[p] * 10) / 10;
+  m.texturas_mb = m.texturas_mb_perfil[PRES.objetivo];
   return m;
 }
 
@@ -139,15 +196,20 @@ async function valida(manifiesto, bytes) {
   const errores = [], avisos = [];
   const esq = esquema();
   if (!esq(manifiesto)) for (const e of esq.errors) errores.push("mundo.json" + (e.instancePath || "") + ": " + e.message);
-  const inf = await validador.validateBytes(bytes, { format: "glb", maxIssues: 50, externalResourceFunction: () => Promise.reject(new Error("recurso externo")) });
-  const msgs = inf.issues.messages || [];
+  const inf = await validador.validateBytes(bytes, { format: "glb", maxIssues: 200, externalResourceFunction: () => Promise.reject(new Error("recurso externo")) });
+  const { usadas, requeridas, mimes } = extensionesDe(bytes), basisu = usadas.includes("KHR_texture_basisu");
+  // v1.3: lo que gltf-validator dice solo porque no conoce las dos extensiones de compresión admitidas: de una imagen KTX2 de KHR_texture_basisu, que su
+  // mimeType no está en su lista y que no reconoce su formato. Lo que de verdad hay que mirar de ellas lo mira este validador (ktx2())
+  const esKtx2 = ptr => { const m = /^\/images\/(\d+)(\/mimeType)?$/.exec(ptr || ""); return !!m && mimes[+m[1]] === "image/ktx2"; };
+  const ignora = x => basisu && (x.code === "VALUE_NOT_IN_LIST" || x.code === "IMAGE_UNRECOGNIZED_FORMAT") && esKtx2(x.pointer);
+  const msgs = (inf.issues.messages || []).filter(x => !ignora(x));
   msgs.filter(x => x.severity === 0).slice(0, 10).forEach(x => errores.push("gltf-validator: " + x.code + " " + (x.pointer || "") + " " + x.message));
-  if (inf.issues.numWarnings) avisos.push("gltf-validator: " + inf.issues.numWarnings + " avisos (" + [...new Set(msgs.filter(x => x.severity === 1).map(x => x.code))].slice(0, 6).join(", ") + ")");
-  const I = inf.info || {};
-  const usadas = I.extensionsUsed || [];
-  for (const e of usadas) if (!PRES.extensiones.includes(e)) errores.push("extensión no admitida en v1: " + e + (e === "KHR_lights_punctual" ? " (sin luces: la luz va horneada)" : /draco|meshopt|basisu|ktx|webp|avif/i.test(e) ? " (pediría un decodificador que el motor no carga)" : ""));
+  const nAvisos = msgs.filter(x => x.severity === 1).length;
+  if (nAvisos) avisos.push("gltf-validator: " + nAvisos + " avisos (" + [...new Set(msgs.filter(x => x.severity === 1).map(x => x.code))].slice(0, 6).join(", ") + ")");
+  for (const e of usadas) if (!PRES.extensiones.includes(e)) errores.push("extensión no admitida: " + e + (e === "KHR_lights_punctual" ? " (sin luces: la luz va horneada)" : /draco|webp|avif/i.test(e) ? " (pediría un decodificador que el motor no carga: v1.3 admite meshopt y KTX2)" : ""));
+  for (const e of ["EXT_meshopt_compression", "KHR_texture_basisu"]) if (usadas.includes(e) && !requeridas.includes(e)) errores.push(e + " va en extensionsUsed y no en extensionsRequired: el contrato no admite respaldo sin comprimir dentro del glb");
   let doc = null;
-  try { doc = await new NodeIO().registerExtensions(ALL_EXTENSIONS).readBinary(bytes); }
+  try { await MeshoptDecoder.ready; doc = await new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ "meshopt.decoder": MeshoptDecoder }).readBinary(bytes); }
   catch (e) { errores.push("el glb no se puede leer (¿no es autocontenido?): " + e.message); }
   let medidas = null, fueraCaja = null, nodos = null; const perfiles = {};
   if (doc) {
@@ -156,10 +218,13 @@ async function valida(manifiesto, bytes) {
     if (raiz.listCameras().length) errores.push("sin cámaras: el glb trae " + raiz.listCameras().length);
     if (raiz.listSkins().length) errores.push("sin esqueletos en v1: el glb trae " + raiz.listSkins().length);
     medidas = mide(doc);
+    medidas.meshopt = usadas.includes("EXT_meshopt_compression");
     if (medidas.morph) errores.push("sin morph targets en v1: " + medidas.morph + " primitivas los llevan");
     const malos = [...medidas.modos].filter(x => x !== 4);
     if (malos.length) errores.push("solo triángulos (modo 4): hay primitivas en modo " + malos.join(", "));
-    for (const t of raiz.listTextures()) if (!PRES.imagenes.includes(t.getMimeType())) errores.push("imagen «" + (t.getName() || t.getURI()) + "» en " + t.getMimeType() + ": solo PNG o JPEG en v1");
+    for (const t of raiz.listTextures()) if (!PRES.imagenes.includes(t.getMimeType())) errores.push("imagen «" + (t.getName() || t.getURI()) + "» en " + t.getMimeType() + ": solo PNG, JPEG o KTX2 (v1.3)");
+    for (const e of medidas.ktx2_errores) errores.push("KTX2 " + e);
+    delete medidas.ktx2_errores;
     const anims = raiz.listAnimations();
     for (const a of anims) for (const c of a.listChannels()) if (!["translation", "rotation", "scale"].includes(c.getTargetPath())) errores.push("animación «" + a.getName() + "»: solo mueve nodos (translation, rotation, scale), no " + c.getTargetPath());
     const enGlb = anims.map(a => a.getName()).sort(), enMan = (manifiesto.animaciones || []).map(a => a.nombre).sort();
@@ -179,7 +244,10 @@ async function valida(manifiesto, bytes) {
     } else errores.push("el glb no tiene escena");
     for (const [nom, tope] of Object.entries(PRES.perfiles)) {
       const excesos = [];
-      for (const k of ["triangulos", "llamadas", "texturas_mb", "lado_max", "materiales"]) if (medidas[k] > tope[k]) excesos.push(k + " " + medidas[k] + " > " + tope[k]);
+      for (const k of ["triangulos", "llamadas", "texturas_mb", "lado_max", "materiales"]) {
+        const v = k === "texturas_mb" ? medidas.texturas_mb_perfil[nom] : medidas[k];
+        if (v > tope[k]) excesos.push(k + " " + v + " > " + tope[k]);
+      }
       perfiles[nom] = { cabe: !excesos.length, excesos };
     }
     if (!perfiles[PRES.objetivo].cabe) errores.push("no cabe en el perfil «" + PRES.objetivo + "»: " + perfiles[PRES.objetivo].excesos.join("; "));
@@ -250,7 +318,7 @@ function texto(nombre, r) {
   const l = [(r.ok ? "PASA" : "NO PASA") + " · " + nombre];
   if (r.medidas) {
     const m = r.medidas;
-    l.push("  triángulos " + m.triangulos + " · llamadas " + m.llamadas + " · materiales " + m.materiales + " · texturas " + m.texturas + " (" + m.texturas_mb + " MB en GPU, lado máx. " + m.lado_max + " px) · animaciones " + m.animaciones + (m.maquinas ? " · máquinas " + m.maquinas : "") + (m.mapas_luz ? " · mapas de luz " + m.mapas_luz : ""));
+    l.push("  triángulos " + m.triangulos + " · llamadas " + m.llamadas + " · materiales " + m.materiales + " · texturas " + m.texturas + (m.ktx2 ? " (" + m.ktx2 + " KTX2)" : "") + " (" + m.texturas_mb + " MB en GPU en " + PRES.objetivo + (m.ktx2 ? ", " + m.texturas_mb_perfil.pantalla + " en pantalla" : "") + ", lado máx. " + m.lado_max + " px) · animaciones " + m.animaciones + (m.maquinas ? " · máquinas " + m.maquinas : "") + (m.mapas_luz ? " · mapas de luz " + m.mapas_luz : "") + (m.meshopt ? " · meshopt" : ""));
     l.push("  perfiles: " + Object.entries(r.perfiles).map(([k, v]) => k + (v.cabe ? " cabe" : " NO cabe (" + v.excesos.join("; ") + ")")).join(" · "));
     l.push("  (topes de partida [SUPUESTO], sin medir en el Quest: contratos/mundo-interior.md)");
   }
@@ -270,5 +338,5 @@ async function principal(argv) {
   return r.ok ? 0 : 1;
 }
 
-module.exports = { valida, mide, dentro, simple, area, luzYMaquinas, PRES, TEXTO_MIN, TEXTO_MAX };
+module.exports = { valida, mide, dentro, simple, area, luzYMaquinas, ktx2, bytesKtx2, extensionesDe, PRES, TEXTO_MIN, TEXTO_MAX };
 if (require.main === module) principal(process.argv.slice(2)).then(c => { process.exitCode = c; }, e => { console.error(e); process.exitCode = 1; });

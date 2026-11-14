@@ -295,7 +295,30 @@ function accesos(m: Pick<MundoInterior, "id" | "puertas" | "anclaje">): Acceso[]
   return out;
 }
 
+// ---- v1.3 (ADR-0035): el glb comprimido. Antes de leerlo, qué decodificadores pide: las extensiones que declara su trozo JSON (la cabecera del glb:
+// «glTF», versión, largo; el primer trozo, «JSON»). Solo esas dos piden algo que el motor carga aparte (y solo entonces se descarga): meshopt, el
+// decodificador de three (libs/meshopt_decoder.module.js, WebAssembly dentro del módulo), y KHR_texture_basisu, el KTX2Loader con el transcodificador
+// Basis del mismo origen (<página>/basis/, el del suelo de fotos). Las demás de compresión (Draco, WebP…) no las admite el contrato.
+
+/** Las extensiones de un glb (usadas y requeridas), o null si no es un glb binario con su trozo JSON. */
+function extensionesGlb(datos: ArrayBuffer): { usadas: string[]; requeridas: string[] } | null {
+  if (datos.byteLength < 20) return null;
+  const dv = new DataView(datos);
+  if (dv.getUint32(0, true) !== 0x46546c67 || dv.getUint32(16, true) !== 0x4e4f534a) return null;   // «glTF» y el trozo «JSON»
+  const largo = dv.getUint32(12, true);
+  if (20 + largo > datos.byteLength) return null;
+  try {
+    const j = JSON.parse(new TextDecoder().decode(new Uint8Array(datos, 20, largo))) as { extensionsUsed?: unknown; extensionsRequired?: unknown };
+    const lista = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
+    return { usadas: lista(j.extensionsUsed), requeridas: lista(j.extensionsRequired) };
+  } catch (e) { return null; }
+}
+/** ¿Qué decodificadores pide un glb? (por sus extensiones usadas) */
+function decodificadores(usadas: readonly string[]): { meshopt: boolean; ktx2: boolean } {
+  return { meshopt: usadas.includes("EXT_meshopt_compression"), ktx2: usadas.includes("KHR_texture_basisu") };
+}
+
 export const InteriorPuro = {
-  RADIO, HISTERESIS, PRESUPUESTO, perfil, ruta, valida, enPoligono, angDeRumbo, poseDe, llegada, creaZonas, puertasPose, aUmbral, creaVigia, rotulo,
+  RADIO, HISTERESIS, PRESUPUESTO, perfil, ruta, valida, enPoligono, angDeRumbo, poseDe, llegada, creaZonas, puertasPose, aUmbral, creaVigia, rotulo, extensionesGlb, decodificadores,
   RADIO_EXT, HISTERESIS_EXT, FUERA, FRENTE, PRECARGA, SUELTA, transformacion, aExterior, deExterior, accesos,
 };
