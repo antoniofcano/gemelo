@@ -35,11 +35,12 @@ test("los enlaces relativos de todos los .md apuntan a ficheros y anclas que exi
 });
 
 test("las rutas de ficheros citadas entre comillas inversas en los .md existen", () => {
-  const re = /`((?:src|pruebas|doc|contratos|datos|\.claude)\/[A-Za-z0-9_./\-]+\.(?:js|py|md|json|html))`/g, mal = [];
+  const re = /`((?:src|pruebas|doc|contratos|datos|apps|tuberia|infra|\.claude)\/[A-Za-z0-9_./\-]+\.(?:js|py|md|json|html))`/g, mal = [];
   for (const f of MD) {
     if (f.startsWith("doc/historico/") || f.startsWith("doc/auditoria-") || f === "CHANGELOG.md") continue;   // las fotos, los informes de auditoría y el CHANGELOG citan cosas de su momento
     for (const m of lee(f).matchAll(re)) {
       if (/(^|\/)salida\//.test(m[1]) || m[1].includes("<")) continue;     // generados
+      if (m[1].startsWith("apps/web/motor/") || m[1].startsWith("tuberia/salida_artefacto/")) continue;   // el motor legado (A3-8c) y la salida artefacto (ADR-0021): los docs los nombran como lo que fueron
       if (!existe(m[1])) mal.push(f + " cita " + m[1]);
     }
   }

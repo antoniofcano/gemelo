@@ -137,7 +137,7 @@ Tamaño publicado para B0+B1 (cálculo): tabla de 30-60 especies × 12 meses con
 
 ### B.5 Versión mínima (B0)
 
-Script `tuberia/biodiversidad/gbif.py` (o `.mjs`) que, con la cuenta GBIF de Antonio (variable `GEMELO_GBIF_*`, nunca en el repo), pide una descarga del cuadro de ~10 km alrededor de la finca, filtra por la lista de aves del olivar, agrega **especie × mes** y escribe `biodiversidad.json` con **DOI de la descarga, licencia por conjunto y créditos**; el contrato (un esquema «biodiversidad» nuevo en la carpeta de contratos y su fixture sintético) entra en el mismo commit (regla 3). El motor solo lo lee y lo muestra en la ficha del mes («aves probables en mayo», nivel *probable*, fuente con DOI) **sin cambiar la fauna dibujada**: 0 llamadas, 0 triángulos. Criterio para seguir: que la lista tenga sentido para Antonio y la familia.
+Script `tuberia/biodiversidad/gbif_aves.py` (antes `gbif.py`; o `.mjs`) que, con la cuenta GBIF de Antonio (variable `GEMELO_GBIF_*`, nunca en el repo), pide una descarga del cuadro de ~10 km alrededor de la finca, filtra por la lista de aves del olivar, agrega **especie × mes** y escribe `biodiversidad.json` con **DOI de la descarga, licencia por conjunto y créditos**; el contrato (un esquema «biodiversidad» nuevo en la carpeta de contratos y su fixture sintético) entra en el mismo commit (regla 3). El motor solo lo lee y lo muestra en la ficha del mes («aves probables en mayo», nivel *probable*, fuente con DOI) **sin cambiar la fauna dibujada**: 0 llamadas, 0 triángulos. Criterio para seguir: que la lista tenga sentido para Antonio y la familia.
 
 ### B.6 Riesgos
 

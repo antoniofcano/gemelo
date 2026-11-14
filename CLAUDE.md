@@ -99,7 +99,7 @@ Ejecuta la [skill `release`](.claude/skills/release/SKILL.md); no la redefine. R
 - **El estado vive en el repo, no en la conversación.** `doc/ESTADO.md` es la memoria viva; `doc/historico/` archiva lo cerrado. Nada importante vive solo en un chat.
 - Trabajo incremental, en rama, con su comprobación, y commits en español con `Co-Authored-By`.
 - **Rama de trabajo: `main`** (decisión de Antonio, 2026-10-28); sin ramas por ahora. Commits pequeños y puerta antes de cada uno.
-- **Agente `arquitecto-multiusuario`** (`.claude/agents/`): estudia la visión multiusuario ([ARQUITECTURA-MULTIUSUARIO](doc/sistema/ARQUITECTURA-MULTIUSUARIO.md), [ADR-0009](doc/adr/0009-plataforma-multiusuario-cuarenta-hazas.md)) frente al repo. Solo lectura; ejecutarlo antes de cualquier código de la fase 2 en adelante.
+- **Agente `arquitecto-multiusuario`** (`.claude/agents/`): estudia la visión multiusuario ([ARQUITECTURA-MULTIUSUARIO](doc/sistema/ARQUITECTURA-MULTIUSUARIO.md), [ADR-0009](doc/adr/0009-plataforma-multiusuario-cuarenta-hazas.md)) frente al repo. Solo lectura; ejecutarlo antes de abrir una fase nueva o un ADR nuevo de esa visión (las fases 1 a 3 ya están hechas o en marcha: PLAN).
 - Decisiones técnicas: el agente decide y lo cuenta. Decisiones de Antonio (licencia, qué se publica, ramas, datos de la explotación): se preguntan o van a [DECISIONS-PENDING](doc/rumbo/DECISIONS-PENDING.md).
 - Lo que no está en el repo ni en `doc/` se marca **[SUPUESTO]** o se pregunta; nunca se inventa.
 - Agentes largos: cerrarlos en primer plano y verificar su resultado; lo publicado hay que comprobar que es lo nuevo.
