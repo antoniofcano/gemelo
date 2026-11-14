@@ -35,3 +35,5 @@ Regla del skill: un agente **propone**; lo de producto, datos o legal lo acepta 
 | PLAN tanda 2 | Autorizar medidas en Quest con datos reales de Hituelo (fuera del repo) | Sin medida real, las tandas 2, 3 y 6 no se pueden dar por cerradas. |
 
 Firma y fecha de Antonio para cada fila aceptada: _(pendiente)_
+
+**2026-11-14, por encargo de Antonio** («resuélvelos; si no conseguimos un 10, que se acerque»), Claude firma en su nombre SOLO estas filas, que no compensa tocar hoy: **L9-05** (CSP informativa: se revisa al activar la CSP completa), **L5-05, L5-06, L5-09, L5-10, L5-11** (se rehacen en TSL con el renderer nuevo, MU6), **L7-08** (inherente al parche de super-three), **L7-11** (parámetro de depuración), **L8-10, L8-11** (error < 1° y `?hora` de depuración). El resto de las filas propuestas **no se aceptan: se arreglan** en las tandas del 2026-11-14 (documentación, datos, interacción, VR); las que no se cierren volverán aquí con su motivo. Decisiones: L6-07 → decisión 239 (deshacer en el cliente); L2-02/L2-04 → ya resueltas en el código (nube bajo demanda, caché por aparato); medidas en el Quest → siguen siendo de Antonio con el casco.
