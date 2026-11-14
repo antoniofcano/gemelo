@@ -2,7 +2,7 @@
 // «Toda la finca» y una por parcela; varias fincas: las fincas y, de la elegida, sus parcelas), elegir mueve la órbita a la parcela y pinta las cifras y el suelo; libera() quita las escuchas,
 // los nodos, el aplazado de la unidad y la suscripción a Configuración. HONESTIDAD: sin navegador ni maquetación; el selector de verdad en la página, en el banco.
 import { afterEach, describe, expect, it } from "vitest";
-import { ID_PARCELAS, creaParcelas, manifiestoParcelas } from "./parcelas.ts";
+import { ID_PARCELAS, areaHaLinde, creaParcelas, manifiestoParcelas } from "./parcelas.ts";
 import { creaMundo, type Mundo } from "../../nucleo/prueba-dom.ts";
 
 let m: Mundo | null = null;
@@ -11,10 +11,10 @@ afterEach(() => { if (m) m.limpia(); m = null; });
 const suelo = [{ p: "0-5", a: 30, l: 30, c: 40, ph: 7.5, mo: 1.2, cec: 20, dens: 1.3, pedr: 10 }, { p: "5-15", a: 32, l: 28, c: 40, ph: 7.6, mo: 1.1, cec: 21, dens: 1.4, pedr: 12 }];
 const parcela = (id: string, nombre: string, finca: number, x: number, o: { suelo?: unknown } = {}) => ({ id, nombre, finca, ha: 2, centro: [x, 0], linde: [[x - 10, -10], [x + 10, -10], [x + 10, 10], [x - 10, 10]], suelo: o.suelo === undefined ? suelo : o.suelo });
 
-function monta(o: { fincas?: boolean; sueloUna?: unknown } = {}) {
+function monta(o: { fincas?: boolean; sueloUna?: unknown; textos?: unknown } = {}) {
   m = creaMundo();
-  for (const id of ["chips", "calidad", "sueloCuerpo", "tMedido", "kCopas", "kMarc", "kAlt", "kDes", "nMarc", "tParcelasFinca"]) m.documento.body.appendChild(m.el("div", id));
-  const D = { parcelas: [parcela("a", "Alta <b>", 0, 100), parcela("b", "Baja", o.fincas ? 1 : 0, -100, { suelo: o.sueloUna })], fincas: o.fincas ? [{ nombre: "Una", ha: 2, olivos: 5, parcelas: [0] }, { nombre: "Otra", ha: 2, olivos: 5, parcelas: [1] }] : undefined };
+  for (const id of ["chips", "calidad", "sueloCuerpo", "tMedido", "kCopas", "kMarc", "kAlt", "kDes", "kSup", "nMarc", "tParcelasFinca"]) m.documento.body.appendChild(m.el("div", id));
+  const D = { parcelas: [parcela("a", "Alta <b>", 0, 100), parcela("b", "Baja", o.fincas ? 1 : 0, -100, { suelo: o.sueloUna })], fincas: o.fincas ? [{ nombre: "Una", ha: 2, olivos: 5, parcelas: [0] }, { nombre: "Otra", ha: 2, olivos: 5, parcelas: [1] }] : undefined, textos: o.textos };
   const orb = { dist: 0, el: 0 }, objetivo = { x: 0, y: 0, z: 0, set(x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z; } };
   const cambios: Array<() => void> = []; let sub = 0;
   const P = creaParcelas({
@@ -23,6 +23,25 @@ function monta(o: { fincas?: boolean; sueloUna?: unknown } = {}) {
   });
   return { P, D, orb, objetivo, m, sub: () => sub, chips: m.documento.getElementById("chips"), suelo: m.documento.getElementById("sueloCuerpo") };
 }
+
+describe("L3-07: hectáreas calculadas sobre el linde", () => {
+  it("el área del polígono sale de su geometría, no de lo declarado; sin polígono es 0", () => {
+    expect(areaHaLinde([[0, 0], [100, 0], [100, 100], [0, 100]])).toBeCloseTo(1, 6);
+    expect(areaHaLinde([[0, 0], [100, 0], [0, 100]])).toBeCloseTo(0.5, 6);
+    expect(areaHaLinde(null)).toBe(0); expect(areaHaLinde([[0, 0], [1, 1]])).toBe(0);
+  });
+  it("la ficha de cifras pone la superficie calculada de la parcela (20 x 20 m = 0,0 ha con un decimal; la declarada, 2 ha, no entra)", () => {
+    const { P } = monta(); P.elegirParcela(0);
+    expect(m!.documento.getElementById("kSup").textContent).toBe("0.0 ha");
+  });
+});
+
+describe("L3-18: la fecha de la consulta a SoilGrids sale del índice, no está escrita a mano", () => {
+  it("sin textos.suelo_consulta no se pone fecha; con ella, esa", () => {
+    let r = monta(); r.P.elegirParcela(0); expect(r.suelo.innerHTML).not.toMatch(/consultado el/); expect(r.suelo.innerHTML).not.toMatch(/25-oct/); m!.limpia();
+    r = monta({ textos: { finca: "x", suelo_consulta: "2026-11-02" } }); r.P.elegirParcela(0); expect(r.suelo.innerHTML).toMatch(/consultado el 02\/11\/2026/);
+  });
+});
 
 describe("parcelas: el selector", () => {
   it("una sola finca: «Toda la finca» y una chip por parcela; elegir una mueve la órbita a su centro y pinta el suelo (con el nombre escapado)", () => {

@@ -192,10 +192,10 @@ export function creaArbolesL0(d: DepsArbolesL0) {
       var b = copaDe(id); if (!b) return null;
       var m = marc.filter(function (q: any) { return q.par === b.i; })[0], f = [];
       f.push({ k: "Parcela", v: b.dentro ? d.parcelas()[b.parc].nombre : "fuera de las parcelas" }, { k: "Altura", v: fmt(b.h, 1) + " m" }, { k: "Radio de copa", v: fmt(rm(b), 1) + " m" },
-        { k: "Guardado en OlivarTrack", v: b.dentro ? (m ? "sí" : "no") : "fuera de esta parcela" });
+        { k: "Guardado en OlivarTrack", v: b.dentro ? (m ? "sí" : "sin marca emparejada a ≤ 4 m (puede estar sin cargar o desplazada)") : "fuera de esta parcela" });   // L3-13: «no» era una deducción, no un dato
       if (m) f.push({ k: "Desfase", v: fmt(Math.hypot(m.x - b.x, m.y - b.y), 1) + " m" });
       f.push({ k: "Pies del olivo", v: "2–3, lo habitual (no medido)" }); rotuloGenerado(b.i, f); f.push(filaId(b));
-      f.push({ k: "UTM 30 (ETRS89)", v: fmt(D.centro_utm[0] + b.x) + ", " + fmt(D.centro_utm[1] + b.y) });
+      f.push({ k: "UTM 30 (ETRS89) · copa detectada, no tronco", v: fmt(D.centro_utm[0] + b.x) + ", " + fmt(D.centro_utm[1] + b.y) });
       return { titulo: "Olivo " + (b.i + 1), filas: f };
     }
     return Entidades.registra({ tipo: "olivo", dueno: "06_arboles", prioridad: 10, pantalla: enPantalla, rayo: enRayo, ficha: fichaOlivo,

@@ -47,13 +47,14 @@ export function creaNdvi(deps: DepsNdvi) {
     ndLo = lo; ndHi = hi;
     deps.bus.emite("ndvi:cambia", { lo: lo, hi: hi });
   }
+  /** el NDVI relativo (0-1) de un punto, o NaN si no hay dato (L3-19: antes daba 0,5 y el tinte de las copas lo pintaba como un vigor «normal», mientras la capa de terreno lo pinta en gris) */
   function rel(x: number, y: number): number {
-    if (!NDV) return 0.5;
+    if (!NDV) return NaN;
     let u = (x - x0) / ANCHO * NDV.w - 0.5, v = (yN - y) / ALTO * NDV.h - 0.5;
     u = Math.max(0, Math.min(NDV.w - 1.001, u)); v = Math.max(0, Math.min(NDV.h - 1.001, v));
     const iu = Math.floor(u), iv = Math.floor(v), tu = u - iu, tv = v - iv, off = deps.idx() * NDV.w * NDV.h, w = NDV.w, d = NDV.datos;
     const q = [d[off + iv * w + iu] as number, d[off + iv * w + iu + 1] as number, d[off + (iv + 1) * w + iu] as number, d[off + (iv + 1) * w + iu + 1] as number];
-    for (let i = 0; i < 4; i++) if ((q[i] as number) <= -30000) return 0.5;
+    for (let i = 0; i < 4; i++) if ((q[i] as number) <= -30000) return NaN;
     const val = (((q[0] as number) * (1 - tu) + (q[1] as number) * tu) * (1 - tv) + ((q[2] as number) * (1 - tu) + (q[3] as number) * tu) * tv) / 1000;
     return (val - ndLo) / Math.max(ndHi - ndLo, 0.02);
   }

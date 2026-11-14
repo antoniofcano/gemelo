@@ -43,7 +43,7 @@ def hituelo(salida=None, anterior=None):
         fn = arr(p["finca"]); fi = next((i for i, f in enumerate(fincas) if f["nombre"] == fn), None)
         if fi is None: fincas.append(dict(nombre=fn, parcelas=[], ha=0.0, olivos=0)); fi = len(fincas) - 1
         u = np.array(p["utm"], float); linde = [[round(float(x) - cx, 2), round(float(y) - cy, 2)] for x, y in u]
-        parcelas.append(dict(id=p["id"], nombre=arr(p["nombre"]), ha=p["ha"], linde=linde, centro=[round(float(u[:, 0].mean()) - cx, 2), round(float(u[:, 1].mean()) - cy, 2)], desfase=[0, 0], suelo=None, finca=fi,
+        parcelas.append(dict(id=p["id"], nombre=arr(p["nombre"]), ha=p["ha"], linde=linde, centro=[round(float(u[:, 0].mean()) - cx, 2), round(float(u[:, 1].mean()) - cy, 2)], desfase=None, suelo=None, finca=fi,
                              decl=p["olivos"] or 0, pasto="pasto" in p["nombre"].lower()))
         fincas[fi]["parcelas"].append(k); fincas[fi]["ha"] += p["ha"]; fincas[fi]["olivos"] += p["olivos"] or 0
     for f in fincas: f["ha"] = round(f["ha"], 1)

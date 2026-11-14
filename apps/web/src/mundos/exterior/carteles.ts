@@ -78,7 +78,7 @@ export const CartelesPuro = (function () {
   // ---- fechas y fenología (decisión de Antonio, 2026-11-05: la cartelería de «La Linde» lleva la fenología del momento y, solo en recolección, el % recogido)
   const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
   function dia(s: unknown): string { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(typeof s === "string" ? s : ""); return m ? Number(m[3]) + "-" + MESES[Number(m[2]) - 1] + "-" + m[1] : ""; }
-  function ultimo(hs: unknown): Cualquiera { let u: Cualquiera = null; (Array.isArray(hs) ? hs : []).forEach(function (e) { if (e && typeof e.fecha === "string" && num(e.bbch) && e.bbch <= 99 && (!u || e.fecha > u.fecha)) u = e; }); return u; }
+  function ultimo(hs: unknown): Cualquiera { let u: Cualquiera = null; (Array.isArray(hs) ? hs : []).forEach(function (e) { if (e && num(e.bbch) && e.bbch <= 99 && (!u || String(e.fecha || "") > String(u.fecha || ""))) u = e; }); return u; }
   // BBCH del olivo → palabra de campo (escala BBCH: 51-59 botón floral, 60-69 floración, 70-79 fruto, 80-89 maduración); es lo que la ficha dice, solo traducido
   function fenologia(b: number): string { return b < 10 ? "Reposo" : b < 50 ? "Brotación" : b < 60 ? "Botón floral" : b < 70 ? "En flor" : b < 80 ? "Cuajado" : b < 85 ? "Envero" : "Maduración"; }
   // [SUPUESTO] la campaña de recolección va de octubre a enero (calendario típico del olivar de Jaén); el cartel enseña el % recogido solo entonces. hoy = «AAAA-MM-DD»
@@ -98,7 +98,11 @@ export const CartelesPuro = (function () {
     const fe = ultimo(f.fenologia), av = ctx && recoleccion(ctx.hoy) ? f.avance : null, porc = av && num(av.pct) && av.pct <= 100 ? av.pct : null, partes: string[] = [];   // fuera de recolección ni se mira el avance
     if (fe) partes.push(fenologia(fe.bbch));
     if (porc !== null) partes.push(n1(porc) + " % recogido");
-    if (partes.length) o.datos.push({ txt: partes.join(" · "), de: "OlivarTrack · leído " + (dia(f.datos_de) || dia(fe && fe.fecha) || "sin fecha") });
+    // L3-05: la fenología es una ANOTACIÓN con su fecha (no la hora de la lectura); sin fecha, «fecha desconocida», nunca la de hoy. El % recogido sí es de la lectura (datos_de)
+    if (partes.length) {
+      const anotada = fe ? "anotada " + (dia(fe.fecha) || "fecha desconocida") : "", leida = porc !== null || !fe ? "leído " + (dia(f.datos_de) || "fecha desconocida") : "";
+      o.datos.push({ txt: partes.join(" · "), de: "OlivarTrack · " + [anotada, leida].filter(Boolean).join(" · ") });
+    }
     return o;
   }
   function firma(c: Cualquiera): string { return JSON.stringify([c.titulo, c.alias, c.es_mia, c.datos.map(function (dd: Cualquiera) { return dd.txt + "|" + dd.de; })]); }

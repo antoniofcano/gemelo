@@ -55,3 +55,42 @@ test("la cabecera sale del índice: las hectáreas llevan «declaradas (OlivarTr
 test("el chip de cada finca dice «declaradas» en hectáreas y olivos (13_parcelas.js)", () => {
   assert.match(require("./_fuente").fuenteMotor("13_parcelas.js"), /" ha declaradas · " \+ fmt\(f\.olivos\) \+ " olivos declarados"/);
 });
+
+test("L3-02: el pie dice que el olivo se dibuja a la mitad del radio medido (no que la copa es medida a secas)", async () => {
+  const { textosFinca } = await import(pathToFileURL(path.join(RAIZ, "apps", "web", "herramientas", "genera_motor.mjs")).href);
+  for (const out of [PL, textosFinca(PL, { finca: "F", fincas: 1, parcelas: 5, ha: 7.1, olivos: 812 })]) {
+    const pie = out.match(/<p class="pie">[\s\S]*?<\/p>/)[0];
+    assert.match(pie, /a la mitad de ese radio/);
+    assert.doesNotMatch(pie, /La copa de cada olivo es medida/);
+  }
+  assert.match(lee("apps/web/src/mundos/exterior/marcadores.ts"), /a la mitad del radio medido/);
+});
+
+test("L3-03 y L3-21: la nota del NDVI dice de dónde sale la escala y el desfase se rotula como mediana", () => {
+  assert.match(PL, /relativo a toda la ventana de la finca[^<]*toda la rejilla/);
+  assert.doesNotMatch(PL, /relativo dentro de esta parcela/);
+  // ndvi.ts calcula los percentiles de NDV.w * NDV.h (toda la rejilla): si deja de hacerlo, la nota miente
+  assert.match(lee("apps/web/src/mundos/exterior/ndvi.ts"), /const n = NDV\.w \* NDV\.h/);
+  assert.match(PL, /<dt>Desfase típico \(mediana\)<\/dt>/);
+  assert.doesNotMatch(PL, /Desfase medio/);
+});
+
+test("L3-07: el linde no se rotula «medido» (viene de la oficina) y la superficie calculada sobre el linde tiene su fila", () => {
+  assert.doesNotMatch(PL, /Linde \(barrera de luz\) <span class="pill p-medido">/);
+  assert.match(PL, /Linde \(barrera de luz\) <span class="pill p-guardado">oficial<\/span>/);
+  assert.match(PL, /<dt>Superficie <span class="pill p-deducido">calculada sobre el linde<\/span><\/dt><dd id="kSup">/);
+});
+
+test("L3-12: Hituelo no escribe un desfase [0, 0] inventado por parcela (null: no se mide por parcela) y el esquema lo admite", () => {
+  assert.doesNotMatch(lee("tuberia/hituelo_conv.py"), /desfase=\[0, 0\]/);
+  assert.match(lee("tuberia/hituelo_conv.py"), /desfase=None/);
+  assert.deepStrictEqual(JSON.parse(lee("contratos/indice.schema.json")).definitions?.parcela?.properties?.desfase?.type ?? JSON.parse(lee("contratos/indice.schema.json"))["$defs"].parcela.properties.desfase.type, ["array", "null"]);
+});
+
+test("L3-16, L3-17 y L3-18: lo supuesto se dice (alturas mínimas, arroyo con agua por regla de lluvia) y la fecha de SoilGrids no está escrita a mano", () => {
+  assert.match(PL, /alturas mínimas supuestas[^<]*no por un caudal medido/);
+  const est = lee("apps/web/src/mundos/exterior/estacion.ts");
+  assert.match(est, /el arroyo se dibuja con agua \(suposición de más de 12 mm en la semana; sin dato de caudal\)/);
+  assert.doesNotMatch(est, /el arroyo lleva agua/);
+  assert.doesNotMatch(lee("apps/web/src/mundos/exterior/parcelas.ts"), /consultado el 25-oct-2026/);
+});

@@ -25,11 +25,11 @@ describe("el NDVI del exterior", () => {
     expect(avisos).toEqual([["ndvi:cambia", { lo: N.escala().lo, hi: N.escala().hi }]]);
     expect(N.rel(5, 15)).toBeCloseTo(0);   // la celda (0, 0) de la segunda fecha vale 0,1: el extremo bajo
     idx.i = 0; N.pinta(); expect(N.escala().lo).toBeCloseTo(0.2);
-    expect(N.rel(5, 15)).toBe(0.5);   // una celda sin dato: el medio
+    expect(N.rel(5, 15)).toBeNaN();   // L3-19: una celda sin dato no es un vigor «medio»: es NaN (el tinte no la pinta)
   });
   it("sin NDVI en el índice no hay datos y todo contesta con neutros; el componente es del exterior y su libera() vuelve a la escala de partida", () => {
     const N = creaNdvi({ D: {}, b64: () => [], i16: () => new Int16Array(0), x0: 0, yN: 0, ANCHO: 1, ALTO: 1, idx: () => 0, bus: { emite: () => 0 } });
-    expect(N.NDV).toBeNull(); expect(N.rel(0, 0)).toBe(0.5); N.pinta();
+    expect(N.NDV).toBeNull(); expect(N.rel(0, 0)).toBeNaN(); N.pinta();
     expect(ComponentesPuro.valida(N.componente)).toEqual([]); expect(N.componente.mundos).toEqual(["exterior"]);
     const { N: M } = monta({ i: 1 }); M.pinta(); M.componente.libera(null); expect(M.escala()).toEqual({ lo: 0, hi: 1 });
   });

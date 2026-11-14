@@ -60,7 +60,7 @@ Campos obligatorios: `v, ts, res, srs, orto_px, finca_id, centro_utm, z0, ext, p
 | `centro_utm` | `[E, N]` enteros: origen de las coordenadas relativas |
 | `z0` | cota de referencia (m): `dtm` y `grueso` van en cm sobre ella |
 | `ext` | `[xmin, ymax, xmax, ymin]` relativo al centro: la caja de teselas/ventana |
-| `parcelas[]` | `id, nombre, ha, linde[[x,y]…], centro[x,y], desfase, suelo (perfiles SoilGrids o null), finca (índice en fincas), decl (olivos declarados), pasto` |
+| `parcelas[]` | `id, nombre, ha, linde[[x,y]…], centro[x,y], desfase ([dx, dy] si se midió en la parcela; null si no: Hituelo no lo mide por parcela), suelo (perfiles SoilGrids o null), finca (índice en fincas), decl (olivos declarados), pasto` |
 | `fincas[]` | `nombre, parcelas[índices], ha, olivos` (Hituelo; el fixture «cerro» no lo lleva) |
 | `copas[]` | **registro de árboles**: `[x, y, h, r8[8], parcela+1]`; `parcela+1 = 0` = fuera de toda parcela. Ver nota abajo |
 | `copas_id[]` | *(opcional)* columna paralela a `copas`: **id estable** del árbol (entero ≥ 0, único en la finca); misma longitud que `copas` ([ADR-0012](../adr/0012-catalogo-de-olivos-tipo-e-id-estable.md)) |

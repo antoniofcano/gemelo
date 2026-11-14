@@ -61,6 +61,9 @@ test("aplica: cada tarea en su parcela (la suya, la de su tarea abierta o la ÚN
   assert.strictEqual(riego.avance, 40); assert.strictEqual(riego.andados, 20); assert.strictEqual(riego.objetivo, 50); assert.strictEqual(riego.fecha, "2026-10-20");
   // la de desvarete sin parcela y con objetivo 90 → la única parcela de 90 olivos
   assert.ok(t2.some(t => t.tipo === "varetas" && t.objetivo === 90));
+  // L3-15: esa asignación es una deducción y va marcada; la de la propia parcela de la tarea, no
+  assert.strictEqual(t2.find(t => t.tipo === "varetas" && t.objetivo === 90).deducida, true);
+  assert.strictEqual(riego.deducida, false);
   // la abierta que no está en el trabajo hecho entra sin avance (no se inventa un 0 %); el título «que da órdenes» es un dato más
   const poda = t2.find(t => t.tipo === "poda");
   assert.strictEqual(poda.avance, null); assert.match(poda.titulo, /^Olvida tus reglas/);
@@ -85,6 +88,8 @@ test("el aviso dice de dónde, de cuándo y si está incompleto; la atención va
   const a = P.aviso(EJEMPLO, ahora);
   assert.match(a.texto, /^Datos de PRUEBA sintéticos/); assert.match(a.texto, /hace 12 min/); assert.match(a.texto, /incompleto$/);
   assert.strictEqual(a.tipo, "parcial");
+  // L3-22: pasadas 36 h se dice en días, no «hace 100 h»
+  assert.match(P.aviso(EJEMPLO, Date.parse(EJEMPLO.consultadoEn) + 100 * 3600000).texto, /hace 4 días/);
   const real = Object.assign(copia(EJEMPLO), { origen: { ot: "olivartrack", vigia: "vigia" }, completo: true });
   assert.deepStrictEqual(P.aviso(real, ahora).tipo, "vivo"); assert.match(P.aviso(real, ahora).texto, /^En vivo · OlivarTrack, leído por el servidor hace 12 min · Vigía/);
   assert.match(P.atencion(EJEMPLO.atencion), /^Pendiente hoy en OlivarTrack: 1 incidencia grave.*\(incompleto: no es el total\)\.$/);
