@@ -93,13 +93,13 @@ export var HistoriaPuro: T = (function () {
         ((ab && ab.tareas) || []).forEach(function (t?: T) { abiertas[t.clave] = t; });
         ((tr && tr.tareas) || []).forEach(function (t?: T) {
           if (t.finca !== finca) return;
-          var a = abiertas[t.clave], obj = t.avance ? t.avance.objetivo : null, pid: T = null;
+          var a = abiertas[t.clave], obj = t.avance ? t.avance.objetivo : null, pid: T = null, ded = false;
           if (a && dentro(a.parcela)) pid = a.parcela;
           else if (dentro(t.parcela)) pid = t.parcela;
-          else if (obj != null) { var c = ids.filter(function (id?: T) { return olivosDe(id) === obj; }); if (c.length === 1) pid = c[0]; }
+          else if (obj != null) { var c = ids.filter(function (id?: T) { return olivosDe(id) === obj; }); if (c.length === 1) { pid = c[0]; ded = true; } }   // L3-15: la parcela se DEDUCE del recuento de olivos (OlivarTrack no la trae): se rotula
           if (!pid) return;
           vistos[t.clave] = 1;
-          ot.parcelas[pid].tareas.push({ tipo: t.tipo, titulo: t.titulo, fecha: t.completadaEn || (a && a.fecha) || null, estado: t.estado, avance: t.avance ? t.avance.pct : null, fuente: null, andados: t.avance ? t.avance.hecho : null, objetivo: obj });
+          ot.parcelas[pid].tareas.push({ tipo: t.tipo, titulo: t.titulo, fecha: t.completadaEn || (a && a.fecha) || null, estado: t.estado, avance: t.avance ? t.avance.pct : null, fuente: null, andados: t.avance ? t.avance.hecho : null, objetivo: obj, deducida: ded });
         });
         Object.keys(abiertas).forEach(function (k?: T) { var a = abiertas[k]; if (vistos[k] || a.finca !== finca || !dentro(a.parcela)) return; ot.parcelas[a.parcela].tareas.push({ tipo: a.tipo, titulo: a.nombre, fecha: a.fecha, estado: a.estado, avance: null, fuente: null, andados: null, objetivo: null }); });
       }
@@ -197,10 +197,11 @@ export function creaHistoria(dp: DepsHistoria) {
     return "<p class='h-nota'>Instantánea de OlivarTrack del " + dd(OT.fecha_consulta) + ". La lectura en vivo (MCP) no está activada en Hituelo: el MCP no devuelve la parcela de cada trabajo y, con 27 parcelas, no hay forma segura de asignarlo.</p>";
   }
   var tareaH = function (k?: T, titulo?: T) { return tareasDe(k).filter(function (t?: T) { return t.titulo === titulo; })[0]; };
+  var DED = " (parcela deducida por el recuento de olivos)";   // L3-15
   function celdaTarea(t?: T) {
     if (!t) return "–";
-    if (t.estado === "completado") return dd(t.fecha) + (t.andados != null && t.objetivo != null ? " · " + fmt(t.andados) + "/" + fmt(t.objetivo) : "");
-    return t.estado === "cancelada" ? "cancelada" : "pendiente";
+    if (t.estado === "completado") return dd(t.fecha) + (t.andados != null && t.objetivo != null ? " · " + fmt(t.andados) + "/" + fmt(t.objetivo) : "") + (t.deducida ? DED : "");
+    return (t.estado === "cancelada" ? "cancelada" : "pendiente") + (t.deducida ? DED : "");
   }
   function desfaseH(ok?: T) {   // diferencia marca − copa pareada, en metros (x este, y norte)
     var dx: T = [], dy: T = [];
@@ -269,7 +270,7 @@ export function creaHistoria(dp: DepsHistoria) {
       html: function () {
         var ab: T = [], ca: T = [];
         parcelas.forEach(function (p?: T, k?: T) { tareasDe(k).forEach(function (t?: T) { if (t.estado === "pendiente") ab.push({ k: k, t: t }); else if (t.estado === "cancelada") ca.push({ k: k, t: t }); }); });
-        var fila = function (x?: T, e?: T) { return { c: [swH(x.k) + esc(parcelas[x.k].nombre), esc(x.t.titulo), dd(x.t.fecha), e] }; };
+        var fila = function (x?: T, e?: T) { return { c: [swH(x.k) + esc(parcelas[x.k].nombre), esc(x.t.titulo), dd(x.t.fecha), e + (x.t.deducida ? DED : "")] }; };
         var filas = ab.map(function (x?: T) { return fila(x, "abierta" + (x.t.avance ? " · " + fmt(x.t.avance) + " %" : "")); }).concat(ca.map(function (x?: T) { return fila(x, "cancelada"); }));
         var desv = ca.filter(function (x?: T) { return x.t.titulo === "Desvaretar"; });
         return "<p>Hay <strong>" + ab.length + " tareas abiertas</strong> (en ámbar) y <strong>" + ca.length + " canceladas</strong> (en rojo apagado). En el panel una tarea abierta sale en Hoy › Atención; aquí se ve <em>dónde</em> está.</p>" +
