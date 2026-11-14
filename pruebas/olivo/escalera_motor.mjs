@@ -325,7 +325,7 @@ if (fs.existsSync(FX)) {
     const tiles = { cerca: [], triPor: 24 }, cola = { add: [], cancela: 0 }, mat = () => [{ geo: new THREE.BufferGeometry(), mat: new THREE.MeshBasicMaterial() }, { geo: new THREE.BufferGeometry(), mat: new THREE.MeshBasicMaterial() }];
     const glob = {
       fetch: url => Promise.resolve(/manifiesto\.json$/.test(url) ? { ok: true, status: 200, json: () => Promise.resolve(man) } : { ok: false, status: 404 }),
-      copas, hash: x => x - Math.floor(x), copaAlta: () => 3, TinteOrto: { E: { kcor: 1, tinte: 0 } }, aviva: () => {}, FechaNdvi: { E: { idx: 0 } },   /* A3-8a: kcor y tinte en TinteOrto.E; la fecha del NDVI en FechaNdvi.E */ modo: "gemelo", calidad: 1, ALTO_MAX: 12, nube: null,
+      copas, hash: x => x - Math.floor(x), copaAlta: () => 3, TinteOrto: { E: { kcor: 1, tinte: 0 }, desfase: (h, out) => { out[0] = 0; out[1] = 0; } /* L3-01: el color de L1/L2 lleva el desfase de la copa; aquí, sin desfase */ }, aviva: () => {}, FechaNdvi: { E: { idx: 0 } },   /* A3-8a: kcor y tinte en TinteOrto.E; la fecha del NDVI en FechaNdvi.E */ modo: "gemelo", calidad: 1, ALTO_MAX: 12, nube: null,
       tronco: null, arbolesG: function* () { return []; }, follajeG: function* () {}, construyeSombras: () => {}, objetivo: new THREE.Vector3(0, 0, 0), orb: { dist: 60 },
       paseando: false, pp: { x: 0, y: 0 }, nivel: 0, esc: 1, hace: 0, mira: null, VR_PERFILES: [], Ajustes: { escalaArboles: () => null },
       renderer: { info: { render: { triangles: 0 } }, shadowMap: { enabled: false }, xr: { isPresenting: false } },

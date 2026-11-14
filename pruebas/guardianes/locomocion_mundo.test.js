@@ -158,7 +158,7 @@ test("29_vr (mundos/comun/vr*.ts): se mueve con gm; suelo( solo en la marca del 
 
 test("90_final.js da al exterior su caja y su censo (creaExterior({ ext: D.ext, copas: copas, … }))", () => {
   const fin = pasoArranque("90_final.js");
-  assert.match(fin, /Mundos\.creaExterior\(\{ suelo: suelo, ext: D\.ext, copas: copas,/);
+  assert.match(fin, /Mundos\.creaExterior\(\{ suelo: suelo, sueloListo: Mundo\.sueloListo, ext: D\.ext, copas: copas,/);
 });
 
 test("la regla del guardián, sobre un montaje inventado: ve suelo(, D.ext, copas y fueraDeTroncos en los vigilados, con su función, y no fuera de ellos", () => {

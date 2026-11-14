@@ -108,7 +108,7 @@ function cargaOT(o) {   // evalúa 04c_olivos_tiles.js con sus dependencias de m
   const { I } = o, ganchos = {}, avisos = [];
   const copas = I.copas.map((c, i) => { const rm = c[3].reduce((a, b) => a + b, 0) / 8; return { i, x: c[0], y: c[1], h: c[2], oliv: !(c[2] > 8 || (c[2] > 6.5 && rm < 2.2)) }; });   // la regla de 02_mundo.js
   const r = { IdTiles: MUNDOS.IdTiles, OlivosTiles: MUNDOS.creaOlivosTiles({
-    D: { copas: I.copas, copas_id: o.copasId === undefined ? I.copas_id : o.copasId }, copas, Escena3D: { engancha: g => Object.assign(ganchos, g), resumen: () => ({ estado: o.pedida === false ? "sin" : "cargando" }) }, gArboles: { visible: true },
+    D: { copas: I.copas, copas_id: o.copasId === undefined ? I.copas_id : o.copasId, v: I.v }, copas, Escena3D: { engancha: g => Object.assign(ganchos, g), resumen: () => ({ estado: o.pedida === false ? "sin" : "cargando" }) }, gArboles: { visible: true },
     subtle: o.subtle === null ? null : require("crypto").webcrypto.subtle, consola: { warn: s => avisos.push(s) } }) };
   return Object.assign(r, { ganchos, avisos, copas });
 }
@@ -212,7 +212,7 @@ test("los enganches de 04c: 04b solo retira los olivos si 04c no se queda con el
   assert.match(b, /if \(!\(ganchos\.alModelo && ganchos\.alModelo\(e\.scene, e\.tile\)\)\) quitaOlivos\(e\.scene\)/);
   assert.match(b, /"dispose-model"/); assert.match(b, /ganchos\.alApagar/); assert.match(b, /ganchos\.fotograma\(\)/);
   assert.match(FUENTE_OT, /if \(estado === "esperando"\) Escena3D\.engancha\(/, "04c solo se engancha si la escena no está «sin»");
-  assert.match(a, /if \(TIL\) return;/, "07b: con el tileset, los olivos de media y larga distancia no van a sus niveles 1 y 2");
+  assert.match(a, /if \(TIL\) \{ c\.niv = 0; return; \}/, "07b: con el tileset, los olivos de media y larga distancia no van a sus niveles 1 y 2");
   assert.match(a, /OlivosTiles\.cerca\(cerca\)/); assert.match(a, /TOPE_TRI - triTil/, "los triángulos del tileset se restan del tope de los generados");
 });
 
