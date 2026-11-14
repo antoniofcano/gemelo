@@ -11,10 +11,10 @@ afterEach(() => { if (m) m.limpia(); m = null; });
 const suelo = [{ p: "0-5", a: 30, l: 30, c: 40, ph: 7.5, mo: 1.2, cec: 20, dens: 1.3, pedr: 10 }, { p: "5-15", a: 32, l: 28, c: 40, ph: 7.6, mo: 1.1, cec: 21, dens: 1.4, pedr: 12 }];
 const parcela = (id: string, nombre: string, finca: number, x: number, o: { suelo?: unknown } = {}) => ({ id, nombre, finca, ha: 2, centro: [x, 0], linde: [[x - 10, -10], [x + 10, -10], [x + 10, 10], [x - 10, 10]], suelo: o.suelo === undefined ? suelo : o.suelo });
 
-function monta(o: { fincas?: boolean; sueloUna?: unknown } = {}) {
+function monta(o: { fincas?: boolean; sueloUna?: unknown; textos?: unknown } = {}) {
   m = creaMundo();
   for (const id of ["chips", "calidad", "sueloCuerpo", "tMedido", "kCopas", "kMarc", "kAlt", "kDes", "kSup", "nMarc", "tParcelasFinca"]) m.documento.body.appendChild(m.el("div", id));
-  const D = { parcelas: [parcela("a", "Alta <b>", 0, 100), parcela("b", "Baja", o.fincas ? 1 : 0, -100, { suelo: o.sueloUna })], fincas: o.fincas ? [{ nombre: "Una", ha: 2, olivos: 5, parcelas: [0] }, { nombre: "Otra", ha: 2, olivos: 5, parcelas: [1] }] : undefined };
+  const D = { parcelas: [parcela("a", "Alta <b>", 0, 100), parcela("b", "Baja", o.fincas ? 1 : 0, -100, { suelo: o.sueloUna })], fincas: o.fincas ? [{ nombre: "Una", ha: 2, olivos: 5, parcelas: [0] }, { nombre: "Otra", ha: 2, olivos: 5, parcelas: [1] }] : undefined, textos: o.textos };
   const orb = { dist: 0, el: 0 }, objetivo = { x: 0, y: 0, z: 0, set(x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z; } };
   const cambios: Array<() => void> = []; let sub = 0;
   const P = creaParcelas({
@@ -33,6 +33,13 @@ describe("L3-07: hectáreas calculadas sobre el linde", () => {
   it("la ficha de cifras pone la superficie calculada de la parcela (20 x 20 m = 0,0 ha con un decimal; la declarada, 2 ha, no entra)", () => {
     const { P } = monta(); P.elegirParcela(0);
     expect(m!.documento.getElementById("kSup").textContent).toBe("0.0 ha");
+  });
+});
+
+describe("L3-18: la fecha de la consulta a SoilGrids sale del índice, no está escrita a mano", () => {
+  it("sin textos.suelo_consulta no se pone fecha; con ella, esa", () => {
+    let r = monta(); r.P.elegirParcela(0); expect(r.suelo.innerHTML).not.toMatch(/consultado el/); expect(r.suelo.innerHTML).not.toMatch(/25-oct/); m!.limpia();
+    r = monta({ textos: { finca: "x", suelo_consulta: "2026-11-02" } }); r.P.elegirParcela(0); expect(r.suelo.innerHTML).toMatch(/consultado el 02\/11\/2026/);
   });
 });
 

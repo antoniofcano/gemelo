@@ -58,9 +58,11 @@ export function creaParcelas(dp: DepsParcelas) {
     h += '<table class="sg-tabla"><thead><tr><th>cm</th><th>pH</th><th>MO %</th><th>CIC</th></tr></thead><tbody>';
     f.forEach(function (r?: T) { h += '<tr><td>' + r.p + '</td><td>' + fmt(r.ph, 1) + '</td><td>' + fmt(r.mo, 1) + '</td><td>' + fmt(r.cec) + '</td></tr>'; });
     h += '</tbody></table><p class="nota">' + (f[1] ? 'Densidad ' + fmt(f[1].dens, 2) + ' kg/dm³ y ' + fmt(f[1].pedr) + ' % de elementos gruesos a 5-15 cm. ' : '') + 'CIC en cmol(c)/kg. MO = carbono orgánico × 1,724.</p>' +
-      '<p class="nota sep6">Modelo del ISRIC a 250 m, consultado el 25-oct-2026: un valor por parcela, no un mapa dentro de ella. Las parcelas cercanas pueden compartir celda y por tanto valores casi iguales. No hay analítica de suelo propia con la que contrastarlo.</p>';
+      '<p class="nota sep6">Modelo del ISRIC a 250 m' + fechaSuelo() + ': un valor por parcela, no un mapa dentro de ella. Las parcelas cercanas pueden compartir celda y por tanto valores casi iguales. No hay analítica de suelo propia con la que contrastarlo.</p>';
     cu.innerHTML = h; tinta(cu);
   }
+  /** L3-18: «, consultado el D-MM-AAAA» solo si el índice trae la fecha (textos.suelo_consulta); antes estaba escrita a mano («25-oct-2026») para todas las fincas */
+  function fechaSuelo(): string { const f = D.textos && D.textos.suelo_consulta, m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(typeof f === "string" ? f : ""); return m ? ", consultado el " + m[3] + "/" + m[2] + "/" + m[1] : ""; }
   function estadisticas(k?: T) {
     var enF = function (p?: T) { return fincaSel < 0 || (parcelas[p] && parcelas[p].finca === fincaSel); };
     var ci = cIn.filter(function (c?: T) { return k < 0 ? enF(c.parc) : c.parc === k; }), mm = marc.filter(function (m?: T) { return k < 0 ? enF(m.parc) : m.parc === k; }), ee = mm.filter(function (m?: T) { return m.par >= 0; });
