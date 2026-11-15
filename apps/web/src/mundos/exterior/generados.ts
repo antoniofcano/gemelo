@@ -562,7 +562,9 @@ export function creaGenerados(d: DepsGenerados) {
   function rotulo(i: A) {
     var p: A = listos[i]; if (!p && !(ESCALERA && estado === "activo")) return null;   // con la escalera, todo olivo es del constructor: el que no está en 3D es «lejano»
     var id: A = D.copas_id ? D.copas_id[i] : -1, prov: A = !(id >= 0 && id < 2147483648);
-    return p ? { forma: "ilustrativa con medidas del LiDAR", provisional: prov, niv: p.niv, variante: !p.propio } : { forma: "ilustrativa con medidas del LiDAR", provisional: prov, niv: "lejano", variante: true, lejano: true };
+    // D-04: lo medido que el constructor dibuja recortado a sus rangos (p. ej. un olivo de 8 m, a 7 m)
+    var rec: A = M && D.copas[i] ? (M.parametrosDeCopa(D.copas[i], D.copas_param ? D.copas_param[i] : null, "centenario3", { factorR8: d.factorR8Gen() }).recortes || {}) : {};
+    return p ? { forma: "ilustrativa con medidas del LiDAR", provisional: prov, niv: p.niv, variante: !p.propio, recortes: rec } : { forma: "ilustrativa con medidas del LiDAR", provisional: prov, niv: "lejano", variante: true, lejano: true, recortes: rec };
   }
   /** O2 (medida, no dibuja; sin índice, indexCount es -1 y se cuentan los vértices): qué cuesta cada pieza del lote que se está dibujando. Por malla fundida (gen-corteza, gen-olivas, gen-tarjeta…): tipo, instancias visibles,
    *  triángulos de UNA pasada (los de la pasada de sombras se suman aparte si la malla proyecta: sombra) y llamadas (1, más 1 si proyecta sombra); y por escalón

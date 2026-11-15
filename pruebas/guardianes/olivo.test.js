@@ -247,6 +247,7 @@ test("semillas, épocas y parámetros desde el registro", t => {
       sinParam: O.parametrosDeCopa([0, 0, 4.4, [2,2,2,2,3,3,3,3], 1], null, null),
       sinParam1: O.parametrosDeCopa([0, 0, 4.4, [2,2,2,2,3,3,3,3], 1], null, null, { factorR8: 1 }),
       conParam: O.parametrosDeCopa([0, 0, 4.4, [2,2,2,2,3,3,3,3], 1], [4.6, 8.2, 0.9, 92, 0.8, 1.2, 0.3, 0], "centenario2"),
+      fuera: O.parametrosDeCopa([0, 0, 8.2, [2,2,2,2,3,3,3,3], 1], [8.2, 13, 0.9, 92, 0.1, 1.2, 0.3, 0], "centenario2"),
       tipos: Object.keys(O.TIPOS).map(k => [k, O.ID_TIPO[k], O.tipoDeId(O.ID_TIPO[k])]),
     };
     console.log(JSON.stringify(out));`;
@@ -268,6 +269,8 @@ test("semillas, épocas y parámetros desde el registro", t => {
   assert.strictEqual(o.conParam.parametros.rumbo, 90);
   assert.ok(Math.abs(o.conParam.parametros.asim - Math.min(0.6, 0.9 / 4.1 * 1.8)) < 1e-12);
   assert.strictEqual(o.conParam.origen.asim, "deducido"); assert.strictEqual(o.conParam.origen.altura, "medido");
+  assert.deepStrictEqual(o.conParam.recortes, {}, "dentro de los rangos no se recorta nada");
+  assert.deepStrictEqual(o.fuera.recortes, { altura: { medido: 8.2, dibujado: 7 }, copa: { medido: 13, dibujado: 12 }, densidad: { medido: 0.1, dibujado: 0.2 } }, "D-04: lo medido fuera de RANGOS se dibuja recortado y se dice");
   o.tipos.forEach(([k, id, k2]) => assert.strictEqual(k, k2, "id de tipo " + id));
 });
 

@@ -530,4 +530,16 @@ exige(/Generados\.actualiza\(paseando \? pp\.x : fx, paseando \? -pp\.y : fz,/.t
   }
 }
 
+// D-04: el rótulo de un olivo generado dice lo medido que se dibuja recortado a los rangos del constructor
+{
+  const D = { copas: [[0, 0, 8.2, [1, 1, 1, 1, 1, 1, 1, 1], 1]], copas_param: [[8.2, 3, 0, 0, 0.8, 1, 0.1, 0]], copas_id: [7], centro_utm: [0, 0] };
+  const cr = contexto("?olivos=gen", null, { D });
+  for (let k = 0; k < 20 && cr.__G.estado() === "cargando"; k++) { cr.__G.paso(0.016, 50); await espera(); }
+  const ol = D.copas.map((q, i) => ({ i, x: q[0], y: q[1], h: q[2], perfil: q[3] })), gr = () => cr.window.__olivosGen();
+  for (let r = 0; r < 300 && !(gr().info.arboles >= 1); r++) { cr.__G.actualiza(0, 0, TOPE, ol); for (let k = 0; k < 2000 && gr().trabajos > 0; k++) cr.__G.paso(0.00001, 50); }
+  const ro = cr.__G.rotulo(0);
+  exige(ro && ro.recortes && ro.recortes.altura && ro.recortes.altura.medido === 8.2 && ro.recortes.altura.dibujado === 7, "D-04: el rótulo no dice que la altura medida (8,2 m) se dibuja a 7 m: " + JSON.stringify(ro));
+  cr.__G.libera();
+}
+
 console.log(JSON.stringify({ mal, diag }));
