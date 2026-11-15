@@ -35,7 +35,7 @@ const exige = (c, m) => { if (!c) mal.push(m); };
   const D = { copas: [[0, 0, 5, [1, 1, 1, 1, 1, 1, 1, 1]]], copas_param: [null], copas_id: [7], centro_utm: [0, 0] };
   const aviso = []; const consola = { log() {}, error: m => aviso.push("error " + m), warn: m => aviso.push("warn " + m) };
   const d = contexto("?debug", null, { D, console: consola });
-  for (let k = 0; k < 20 && d.__G.estado() === "cargando"; k++) await espera();
+  for (let k = 0; k < 20 && d.__G.estado() === "cargando"; k++) { d.__G.paso(0.016, 50); await espera(); }   // C-03: los materiales van por la cola propia
   exige(d.__G.estado() === "activo" && d.window.__olivosGen().defecto === true, "por defecto con la finca completa: " + d.__G.estado());
   exige(d.gArboles.children.length === 1, "por defecto, Generados no añade su grupo");
   const o = contexto("?olivos=0", null, { D }); await espera();
@@ -43,18 +43,21 @@ const exige = (c, m) => { if (!c) mal.push(m); };
   const n = contexto("?debug", null, { D: { copas: D.copas, centro_utm: [0, 0] } }); await espera();
   exige(n.__G.estado() === "apagado" && /copas_param/.test(n.window.__olivosGen().apagadoPor), "sin copas_param, por defecto no apaga: " + n.__G.estado());
   const sc = contexto("?debug", null, { D, console: consola, window: { OlivoGen: { sinConstructor: true } } });   // el sustituto del build sin constructor: lo de siempre, sin avisar
-  for (let k = 0; k < 20 && sc.__G.estado() === "cargando"; k++) await espera();
+  for (let k = 0; k < 20 && sc.__G.estado() === "cargando"; k++) { sc.__G.paso(0.016, 50); await espera(); }   // C-03: los materiales van por la cola propia
   exige(sc.__G.estado() === "sin" && !aviso.some(x => /olivos generados/.test(x)), "sin constructor por defecto: " + sc.__G.estado() + " " + aviso.join("|"));
   const ex = contexto("?olivos=gen", null, { D, console: consola, window: { OlivoGen: { sinConstructor: true } } });   // con la bandera explícita sí avisa
-  for (let k = 0; k < 20 && ex.__G.estado() === "cargando"; k++) await espera();
+  for (let k = 0; k < 20 && ex.__G.estado() === "cargando"; k++) { ex.__G.paso(0.016, 50); await espera(); }   // C-03: los materiales van por la cola propia
   exige(aviso.some(x => /olivos generados/.test(x)), "con ?olivos=gen explícito y sin constructor, no avisa");
 }
 
 // ---- 2) con la bandera: materiales
 const c = contexto("?olivos=gen");
-for (let k = 0; k < 20 && c.__G.estado() === "cargando"; k++) await espera();
+for (let k = 0; k < 20 && c.__G.estado() === "cargando"; k++) { c.__G.paso(0.016, 50); await espera(); }   // C-03: los materiales van por la cola propia
 exige(c.__G.estado() === "activo", "Generados no arrancó: " + c.__G.estado() + " " + JSON.stringify(c.window.__olivosGen && c.window.__olivosGen().motivo));
 const mats = c.__G._prueba.mats(), prof = c.__G._prueba.prof();
+// C-03: los materiales (dibujos y mipmaps) salen de la cola propia a rebanadas, no de una vez en el .then del arranque
+const mm = c.window.__olivosGen().materiales;
+exige(mm && mm.rebanadas >= 3, "C-03: los materiales no pasan por la cola propia a rebanadas: " + JSON.stringify(mm));
 const LIB = { MeshStandardMaterial: "physical", MeshDepthMaterial: "depth", PointsMaterial: "points" };
 function compila(m) {   // lo que haría el renderer: onBeforeCompile sobre los sombreadores de serie de three 0.186
   const L = THREE.ShaderLib[LIB[m.type]];
@@ -90,7 +93,7 @@ exige(/#include <common>\n#include <common>/.test(compila(mats.pies).vertexShade
   if (!fs.existsSync(FX)) mal.push("sin el fixture (npm run fixture): el plan de «cerca» NO se ha comprobado");
   else {
     const I = JSON.parse(fs.readFileSync(FX, "utf8")), cf = contexto("?olivos=gen");
-    for (let k = 0; k < 20 && cf.__G.estado() === "cargando"; k++) await espera();
+    for (let k = 0; k < 20 && cf.__G.estado() === "cargando"; k++) { cf.__G.paso(0.016, 50); await espera(); }   // C-03: los materiales van por la cola propia
     cf.D.copas = I.copas; cf.D.copas_id = I.copas_id; cf.D.copas_param = I.copas_param; cf.D.copas_semilla = I.copas_semilla; cf.D.centro_utm = I.centro_utm;
     const ol = I.copas.map((q, i) => ({ i, x: q[0], y: q[1], h: q[2], perfil: q[3] })).filter(c => !(c.h > 8));
     const NAV = fs.readFileSync(path.join(RAIZ, "pruebas", "guardianes", "_navegador.js"), "utf8");
@@ -157,7 +160,7 @@ const PASO_MS = Number(process.env.GEMELO_PASEO_PASO || 0.6);
   const FX = path.join(RAIZ, "pruebas", "salida", "fixture", "hituelo", "indice.json");
   if (fs.existsSync(FX)) {
     const I = JSON.parse(fs.readFileSync(FX, "utf8")), reloj = { t: 0, now() { return (this.t += PASO_MS); } }, cp = contexto("?olivos=gen", reloj);
-    for (let k = 0; k < 20 && cp.__G.estado() === "cargando"; k++) await espera();
+    for (let k = 0; k < 20 && cp.__G.estado() === "cargando"; k++) { cp.__G.paso(0.016, 50); await espera(); }   // C-03: los materiales van por la cola propia
     cp.D.copas = I.copas; cp.D.copas_id = I.copas_id; cp.D.copas_param = I.copas_param; cp.D.copas_semilla = I.copas_semilla; cp.D.centro_utm = I.centro_utm;
     const ol = I.copas.map((q, i) => ({ i, x: q[0], y: q[1], h: q[2], perfil: q[3] })).filter(c => !(c.h > 8));
     const x0 = Math.min(...ol.map(c => c.x)), y0 = ol.reduce((s, c) => s + c.y, 0) / ol.length, PASOS = 160, MS = 1.75;
@@ -273,7 +276,7 @@ exige(/Generados\.actualiza\(paseando \? pp\.x : fx, paseando \? -pp\.y : fz,/.t
     const con = { log: (...a) => consola.push("log " + a.join(" ")), warn: (...a) => consola.push("warn " + a.join(" ")), error: (...a) => consola.push("error " + a.join(" ")) };
     const cx = contexto(busqueda, null, { fetch, console: con, window: { OlivoGen: olivoGen || OC }, D: { copas: copas6, centro_utm: [0, 0], base: BASE } });
     cx.__G._prueba.fecha(HOY);
-    for (let k = 0; k < 50 && cx.__G.estado() === "cargando"; k++) await espera();
+    for (let k = 0; k < 50 && cx.__G.estado() === "cargando"; k++) { cx.__G.paso(0.016, 50); await espera(); }   // C-03: los materiales van por la cola propia
     let t0 = performance.now();
     for (let r = 0; r < 80; r++) {
       cx.__G.actualiza(0, 0, TOPE6, ol6);
@@ -407,7 +410,7 @@ exige(/Generados\.actualiza\(paseando \? pp\.x : fx, paseando \? -pp\.y : fz,/.t
   class Mudo { constructor() { this.cartas = 0; this.muerto = false; mudos.push(this); } postMessage() { this.cartas++; } terminate() { this.muerto = true; } }   // ni contesta ni falla
   const OG = Object.assign({}, O, { creaFabrica: o => O.creaFabrica(Object.assign({}, o, { plazoMs: 40, crea: () => new Mudo() })) });
   const cm = contexto("?olivos=gen", null, { console: consola, window: { OlivoGen: OG } });
-  for (let k = 0; k < 20 && cm.__G.estado() === "cargando"; k++) await espera();
+  for (let k = 0; k < 20 && cm.__G.estado() === "cargando"; k++) { cm.__G.paso(0.016, 50); await espera(); }   // C-03: los materiales van por la cola propia
   const g0 = () => cm.window.__olivosGen();
   exige(g0().via === "trabajador", "C-02: la fábrica de mentira debía empezar con trabajador (" + g0().via + ")");
   cm.D.copas = [[0, 0, 4.5, perfil, 1], [9, 0, 4, perfil, 1]];
@@ -458,7 +461,7 @@ exige(/Generados\.actualiza\(paseando \? pp\.x : fx, paseando \? -pp\.y : fz,/.t
   class Quejica { postMessage(m) { cartas.push(m.id); setTimeout(() => this.onmessage && this.onmessage({ data: { id: m.id, error: "entrada imposible" } }), 0); } terminate() {} }
   const OG = Object.assign({}, O, { creaFabrica: o => O.creaFabrica(Object.assign({}, o, { crea: () => new Quejica() })) });
   const cq = contexto("?olivos=gen", null, { window: { OlivoGen: OG } });
-  for (let k = 0; k < 20 && cq.__G.estado() === "cargando"; k++) await espera();
+  for (let k = 0; k < 20 && cq.__G.estado() === "cargando"; k++) { cq.__G.paso(0.016, 50); await espera(); }   // C-03: los materiales van por la cola propia
   cq.D.copas = [[0, 0, 4.5, perfil, 1]];
   const ol = cq.D.copas.map((q, i) => ({ i, x: q[0], y: q[1], h: q[2], perfil: q[3] }));
   for (let k = 0; k < 40; k++) { cq.__G.actualiza(0, 0, TOPE, ol); cq.__G.paso(0.00001, 50); await new Promise(ok => setTimeout(ok, 2)); }
@@ -474,7 +477,7 @@ exige(/Generados\.actualiza\(paseando \? pp\.x : fx, paseando \? -pp\.y : fz,/.t
 // olivos dobles); el fallo de UNA receta a rebanadas (sin trabajador) se anota y no apaga los generados
 {
   const cf = contexto("?olivos=gen");
-  for (let k = 0; k < 20 && cf.__G.estado() === "cargando"; k++) await espera();
+  for (let k = 0; k < 20 && cf.__G.estado() === "cargando"; k++) { cf.__G.paso(0.016, 50); await espera(); }   // C-03: los materiales van por la cola propia
   cf.D.copas = [[0, 0, 4.5, perfil, 1], [0, 30, 4, perfil, 1]];
   const ol = cf.D.copas.map((q, i) => ({ i, x: q[0], y: q[1], h: q[2], perfil: q[3] })), gf = () => cf.window.__olivosGen();
   for (let r = 0; r < 300 && !(gf().info.arboles >= 1); r++) { cf.__G.actualiza(0, 0, TOPE, ol); for (let k = 0; k < 2000 && gf().trabajos > 0; k++) cf.__G.paso(0.00001, 50); }
@@ -493,7 +496,7 @@ exige(/Generados\.actualiza\(paseando \? pp\.x : fx, paseando \? -pp\.y : fz,/.t
 {
   const OG = Object.assign({}, O, { recetaG: function* (e) { if (e.semilla === 666) throw new Error("receta de prueba que falla"); return yield* O.recetaG(e); } });
   const cr = contexto("?olivos=gen", null, { window: { OlivoGen: OG } });
-  for (let k = 0; k < 20 && cr.__G.estado() === "cargando"; k++) await espera();
+  for (let k = 0; k < 20 && cr.__G.estado() === "cargando"; k++) { cr.__G.paso(0.016, 50); await espera(); }   // C-03: los materiales van por la cola propia
   cr.D.copas = [[0, 0, 4.5, perfil, 1], [9, 0, 4, perfil, 1]]; cr.D.copas_semilla = [666, 7];
   const ol = cr.D.copas.map((q, i) => ({ i, x: q[0], y: q[1], h: q[2], perfil: q[3] })), gr = () => cr.window.__olivosGen();
   for (let r = 0; r < 60; r++) { cr.__G.actualiza(0, 0, TOPE, ol); for (let k = 0; k < 2000 && gr().trabajos > 0; k++) cr.__G.paso(0.00001, 50); await espera(); }

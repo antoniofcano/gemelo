@@ -103,19 +103,22 @@ export function dibujaRamita(sem, flor, cv) {
 }
 
 /** Relleno de copa (512 × 512): hoja menuda a tamaño real con huecos por los que pasa la luz; con flor, racimos repartidos */
-export function dibujaRelleno(flor, cv) {
+export function dibujaRelleno(flor, cv) { return agota(dibujaRellenoG(flor, cv)); }
+/** dibujaRelleno como generador (C-03): cede el turno cada 250 hojas y 80 racimos, soltando lo dibujado (suelta). Mismo lienzo */
+export function* dibujaRellenoG(flor, cv) {
   cv = cv || lienzo(512, 512); if (!cv) return null;
   const g = cv.getContext("2d"), r = rngFrom(77); g.clearRect(0, 0, 512, 512); g.lineCap = "round";
   for (let i = 0; i < 60; i++) { const a = r() * 6.28, d = r() * 200, x = 256 + Math.cos(a) * d, y = 256 + Math.sin(a) * d, b = r() * 6.28, l = 40 + r() * 70;
     g.strokeStyle = "#9d917a"; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(b) * l, y + Math.sin(b) * l); g.stroke(); }
   for (let i = 0; i < 1100; i++) { const a = r() * 6.28, d = Math.sqrt(r()) * 235, x = 256 + Math.cos(a) * d, y = 256 + Math.sin(a) * d;
+    if (i % 250 === 249) { suelta(g); yield; }
     if (r() < Math.pow(d / 235, 3)) continue;
     const b = r() * 6.28, l = 26 + r() * 16, w = 3.2 + r() * 1.8;
     g.save(); g.translate(x, y); g.rotate(b); g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(w, -l / 2, 0, -l); g.quadraticCurveTo(-w, -l / 2, 0, 0);
     g.fillStyle = r() < 0.55 ? HAZ[(r() * HAZ.length) | 0] : ENVES[(r() * ENVES.length) | 0]; g.fill(); g.restore(); }
   if (!flor) return cv;
   const rf = rngFrom(91), nRac = flor === "flor" ? 340 : flor === "boton" ? 260 : 120;
-  for (let i = 0; i < nRac; i++) { const a = rf() * 6.28, d = Math.sqrt(rf()) * 215, cx = 256 + Math.cos(a) * d, cy = 256 + Math.sin(a) * d, n = flor === "cuajado" ? 3 + (rf() * 4 | 0) : 9 + (rf() * 9 | 0);
+  for (let i = 0; i < nRac; i++) { if (i % 80 === 79) { suelta(g); yield; } const a = rf() * 6.28, d = Math.sqrt(rf()) * 215, cx = 256 + Math.cos(a) * d, cy = 256 + Math.sin(a) * d, n = flor === "cuajado" ? 3 + (rf() * 4 | 0) : 9 + (rf() * 9 | 0);
     for (let k = 0; k < n; k++) { const x = cx + (rf() - 0.5) * 16, y = cy + (rf() - 0.5) * 16;
       if (flor === "flor") { g.fillStyle = rf() < 0.85 ? "#f3eed6" : "#e6dcae"; g.beginPath(); g.arc(x, y, 2.4 + rf() * 1.2, 0, 7); g.fill();
         if (rf() < 0.3) { g.fillStyle = "#c9a23a"; g.beginPath(); g.arc(x, y, 0.9, 0, 7); g.fill(); } }
@@ -133,7 +136,9 @@ export function dibujaRelleno(flor, cv) {
  * @param opciones { fruto (ESTADOS[epoca].fruto), colorFruto (ESTADOS[epoca].colorFruto) }
  * @returns el lienzo, o null sin lienzo 2D
  */
-export function dibujaAtlasTarjetas(ramitas, opciones, cv) {
+export function dibujaAtlasTarjetas(ramitas, opciones, cv) { return agota(dibujaAtlasTarjetasG(ramitas, opciones, cv)); }
+/** dibujaAtlasTarjetas como generador: cede el turno (yield) tras los tonos y tras cada columna (C-03: para la cola del motor, sin bloquear el fotograma) */
+export function* dibujaAtlasTarjetasG(ramitas, opciones, cv) {
   const o = opciones || {}, A = 256, cols = 4;
   cv = cv || lienzo(A * cols, A * 2); if (!cv || !ramitas || !ramitas[0]) return null;
   const g = cv.getContext("2d"); g.clearRect(0, 0, cv.width, cv.height);
@@ -143,6 +148,7 @@ export function dibujaAtlasTarjetas(ramitas, opciones, cv) {
     const c = lienzo(rc.width, rc.height), x = c.getContext("2d"); x.drawImage(rc, 0, 0);
     x.globalCompositeOperation = "source-atop"; x.fillStyle = "rgba(0,0,0," + (1 - k) + ")"; x.fillRect(0, 0, c.width, c.height); return c;
   }));
+  for (const t of tonos) for (const c of t) if (c !== t[0]) { suelta(c.getContext("2d")); yield; }
   const N = 34, fr = o.fruto > 0 && typeof o.colorFruto === "function" ? o.fruto : 0;
   for (let col = 0; col < 3; col++) {
     const r = rngFrom(4049 + 131 * col), sprites = [];
@@ -157,7 +163,9 @@ export function dibujaAtlasTarjetas(ramitas, opciones, cv) {
     for (let fila = 0; fila < 2; fila++) {
       const cx = (col + 0.5) * A, cy = (fila + 0.5) * A;
       g.save(); g.beginPath(); g.rect(col * A + 1, fila * A + 1, A - 2, A - 2); g.clip();
-      for (const s of sprites) {
+      for (let k = 0; k < sprites.length; k++) {
+        const s = sprites[k];
+        if (k % 12 === 11) { suelta(g); yield; }
         const img = tonos[s.t][s.tono], esc = s.largo * A / img.height;   // la ramita mide `largo` de la celda; su base (abajo, centro) en (bx, by)
         // la ramita de dibujaRamita crece hacia −y del lienzo: se gira para que crezca en la dirección `ang`
         g.setTransform(1, 0, 0, 1, 0, 0); g.translate(cx + s.bx * A, cy + s.by * A); g.rotate(s.ang + Math.PI / 2); g.scale(esc * s.espejo, esc);
@@ -170,10 +178,17 @@ export function dibujaAtlasTarjetas(ramitas, opciones, cv) {
         g.fillStyle = "rgb(" + c.join(",") + ")"; g.beginPath(); g.arc(x - R * 0.15, y - R * 0.15, R * 0.8, 0, 7); g.fill();
       }
       g.restore();
+      suelta(g); yield;
     }
   }
   return cv;
 }
+/** C-03: el lienzo 2D aplaza el dibujo hasta que alguien lo lee (getImageData), y entonces lo hace todo de una vez: leer un píxel lo obliga a dibujar lo
+ *  que lleva pendiente, para que cada rebanada pague solo lo suyo y no la última (en SwiftShader, ~20 ms de una vez al leer el atlas) */
+function suelta(g) { try { g.getImageData(0, 0, 1, 1); } catch (e) { /* un lienzo sin lectura: nada que soltar */ } }
+
+/** Agota un generador y devuelve su valor (la versión de una vez de las funciones *G) */
+export function agota(gen) { for (;;) { const x = gen.next(); if (x.done) return x.value; } }
 
 /** Fracción de una celda del atlas que pasa el corte alfa (`corte`, por defecto 0,45): la PHI_CELDA de tarjetas.js (null sin lienzo 2D) */
 export function coberturaCelda(cv, col, fila, corte) {
@@ -196,34 +211,48 @@ export function dibujos(flor) {
  * corte a la MISMA fracción de texeles que el nivel 0 (búsqueda binaria). Devuelve [nivel 0, 1, …, 1 × 1] como ImageData (lo que espera
  * `texture.mipmaps` de three) o null si no hay lienzo 2D (Node).
  */
-export function mipsConCobertura(cv, corte) {
+export function mipsConCobertura(cv, corte) { return agota(mipsConCoberturaG(cv, corte)); }
+/** Texeles por rebanada de mipsConCoberturaG (C-03): una pasada de cobertura o un trozo de la reducción de ~64 k texeles (≈ 0,3-1 ms en un escritorio [SUPUESTO]) */
+const TEXELES_REBANADA = 65536;
+/** mipsConCobertura como generador: cede el turno (yield) en trozos de ~TEXELES_REBANADA texeles (copia, reducción y cada pasada de la búsqueda). Mismo resultado */
+export function* mipsConCoberturaG(cv, corte) {
   const g = cv && cv.getContext ? cv.getContext("2d") : null;
   if (!g || typeof ImageData === "undefined") return null;
   let w = cv.width, h = cv.height;
   const d0 = g.getImageData(0, 0, w, h).data, out = [new ImageData(new Uint8ClampedArray(d0), w, h)];
-  let A = new Float32Array(w * h * 4); for (let i = 0; i < A.length; i++) A[i] = d0[i] / 255;
+  yield;
+  let A = new Float32Array(w * h * 4);
+  for (let i = 0; i < A.length; i++) { A[i] = d0[i] / 255; if ((i & (TEXELES_REBANADA * 4 - 1)) === TEXELES_REBANADA * 4 - 1) yield; }
+  let pasos = 0;   // texeles recorridos desde el último yield
+  const tramo = function* (n) { pasos += n; if (pasos >= TEXELES_REBANADA) { pasos = 0; yield; } };
   const cobertura = (B, n, k) => { let c = 0; for (let i = 3; i < n * 4; i += 4) if (B[i] * k >= corte) c++; return c / n; };
   const meta = cobertura(A, w * h, 1);
+  yield* tramo(w * h);
   while (w > 1 || h > 1) {
     const w2 = Math.max(1, w >> 1), h2 = Math.max(1, h >> 1), B = new Float32Array(w2 * h2 * 4), dx = w > 1 ? 2 : 1, dy = h > 1 ? 2 : 1;
-    for (let y = 0; y < h2; y++) for (let x = 0; x < w2; x++) {
-      let r = 0, gg = 0, b = 0, a = 0, r0 = 0, g0 = 0, b0 = 0;
-      for (let j = 0; j < dy; j++) for (let i = 0; i < dx; i++) {
-        const q = ((y * dy + j) * w + x * dx + i) * 4, al = A[q + 3];
-        r += A[q] * al; gg += A[q + 1] * al; b += A[q + 2] * al; a += al; r0 += A[q]; g0 += A[q + 1]; b0 += A[q + 2];
+    for (let y = 0; y < h2; y++) {
+      for (let x = 0; x < w2; x++) {
+        let r = 0, gg = 0, b = 0, a = 0, r0 = 0, g0 = 0, b0 = 0;
+        for (let j = 0; j < dy; j++) for (let i = 0; i < dx; i++) {
+          const q = ((y * dy + j) * w + x * dx + i) * 4, al = A[q + 3];
+          r += A[q] * al; gg += A[q + 1] * al; b += A[q + 2] * al; a += al; r0 += A[q]; g0 += A[q + 1]; b0 += A[q + 2];
+        }
+        const n = dx * dy, o = (y * w2 + x) * 4;
+        if (a > 0) { B[o] = r / a; B[o + 1] = gg / a; B[o + 2] = b / a; } else { B[o] = r0 / n; B[o + 1] = g0 / n; B[o + 2] = b0 / n; }
+        B[o + 3] = a / n;
       }
-      const n = dx * dy, o = (y * w2 + x) * 4;
-      if (a > 0) { B[o] = r / a; B[o + 1] = gg / a; B[o + 2] = b / a; } else { B[o] = r0 / n; B[o + 1] = g0 / n; B[o + 2] = b0 / n; }
-      B[o + 3] = a / n;
+      yield* tramo(w2 * dx * dy);
     }
     w = w2; h = h2; A = B;
     // la cobertura crece con k: búsqueda binaria del salto que cruza la del nivel 0 y, de sus dos lados, el que queda más cerca
-    let lo = 0, hi = 1;
-    while (hi < 64 && cobertura(A, w * h, hi) < meta) hi *= 2;
-    for (let it = 0; it < 18; it++) { const m = (lo + hi) / 2; if (cobertura(A, w * h, m) < meta) lo = m; else hi = m; }
-    const k = Math.abs(cobertura(A, w * h, lo) - meta) < Math.abs(cobertura(A, w * h, hi) - meta) ? lo : hi, u = new Uint8ClampedArray(w * h * 4);
+    const n = w * h; let lo = 0, hi = 1;
+    while (hi < 64 && cobertura(A, n, hi) < meta) { hi *= 2; yield* tramo(n); }
+    for (let it = 0; it < 18; it++) { const m = (lo + hi) / 2; if (cobertura(A, n, m) < meta) lo = m; else hi = m; yield* tramo(n); }
+    const k = Math.abs(cobertura(A, n, lo) - meta) < Math.abs(cobertura(A, n, hi) - meta) ? lo : hi, u = new Uint8ClampedArray(n * 4);
+    yield* tramo(2 * n);
     for (let i = 0; i < u.length; i += 4) { u[i] = A[i] * 255 + 0.5; u[i + 1] = A[i + 1] * 255 + 0.5; u[i + 2] = A[i + 2] * 255 + 0.5; u[i + 3] = Math.min(1, A[i + 3] * k) * 255 + 0.5; }
     out.push(new ImageData(u, w, h));
+    yield* tramo(n);
   }
   return out;
 }

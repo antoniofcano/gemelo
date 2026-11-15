@@ -111,7 +111,7 @@ export function creaGenerados(d: DepsGenerados) {
   var fr: A = /[?&]olivosTri=([0-9.]+)/.exec(BUSQUEDA), FRACCION: A = fr && !ESCALERA ? Math.min(0.9, Number(fr[1])) : ESCALERA ? 1 : 0.45;
   var mpr: A = /[?&]olivosPropios=([0-6])\b/.exec(BUSQUEDA), MAX_PROPIOS_VR: A = null;   // MAX_PROPIOS_VR: el de las gafas, si la configuración lo da
   var ESTIM: A = { E0: 160000, E1: 80000, E2: 38000, E2VR: 28000 }, SEM_VAR: A = [11, 23, 37, 51], MAX_PROPIOS: A = mpr ? Number(mpr[1]) : 6, MAX_VAR: A = 48, RADIO_CAND: A = 160, MARGEN: A = 12;
-  var SIL: A = null, silPend: A = false;   // AG-2.2 (?cartulina=silueta): la geometría recortada de cada cartulina de hoja, por clave de malla instanciada (claveInst)
+  var SIL: A = null, silPend: A = false, matsPend: A = false, matsMed: A = null;   // AG-2.2 (?cartulina=silueta): la geometría recortada de cada cartulina de hoja, por clave de malla instanciada (claveInst); C-03: matsPend, los materiales en la cola propia, y matsMed, lo que costaron (ms, rebanadas, la mayor)
   var nLotes: A = 0, recetas: A = {}, pidiendo: A = {}, fallidas: A = {}, nPidiendo: A = 0, plan: A = [], listos: A = {}, enLote: A = {}, lote: A = null, claveLote: A = "", nuevo: A = null, R: A = 0, triGen: A = 0, costoGen: A = 0, info: A = { llamadas: 0, triangulos: 0 };
   var ff: A = /[?&]olivosFundido=([0-9.]+)/.exec(BUSQUEDA), FUNDIDO: A = ff ? Math.min(3, Number(ff[1])) : 0.6;
   var HORNEADO: A = !/[?&]olivosHorneado=0\b/.test(BUSQUEDA), manif: A = null, varSem: A = null, epocaManif: A = null, fechaPrueba: A = null;
@@ -143,16 +143,31 @@ export function creaGenerados(d: DepsGenerados) {
       MODO = Escalera.modoGen({ bandera: BANDERA, manifiesto: !!manif, variantes: varSem ? varSem.length : 0, sinEscalera: SIN_ESCALERA });
       ESCALERA = MODO === "forzada" || MODO === "horneada";
       reemplazos = {};
-      mats = M.creaMateriales(THREE, null, { epoca: epoca(), srgb: true, parche: parcheGen, mipsCobertura: !/[?&]olivosMips=0\b/.test(BUSQUEDA) });   // sin fotos de campo aquí: corteza dibujada (texturas.js); hojas con mipmaps que conservan la cobertura (ADR-0022 §6; ?olivosMips=0, los de la GPU)
-      Object.keys(reemplazos).forEach(function (n) { mats[n] = reemplazos[n]; });   // solo con la TSL (MU6): con el clásico no hay ninguno
-      prof = { corteza: profundidad(), muerta: profundidad() };   // la sombra de las mallas por lotes, con el mismo fundido
-      // C-02: si el trabajador muere (no carga, no contesta en el plazo), la fábrica acaba a rebanadas lo que esperaba y avisa; lo que venga después va a la cola propia
-      var f: A = M.creaFabrica({ trabajador: true, alMorir: function (m: A) { if (fabrica === f) fabrica = null; motivo = String(m); if (consola) consola.warn("olivos generados: " + m + "; sigo sin trabajador (a rebanadas)"); } });
-      if (f.modo === "trabajador") fabrica = f; else f.cierra();
-      if (liberado) { suelta(); return; }
-      estado = "activo";
-      if (Materiales.cartulina.silueta) { silPend = true; encola("Gsiluetas", -2, LT.siluetasG(), function () { silPend = false; }); }   // AG-2.2: antes del primer lote (prio −2 < −1 del lote)
+      // sin fotos de campo aquí: corteza dibujada (texturas.js); hojas con mipmaps que conservan la cobertura (ADR-0022 §6; ?olivosMips=0, los de la GPU)
+      var opM: A = { epoca: epoca(), srgb: true, parche: parcheGen, mipsCobertura: !/[?&]olivosMips=0/.test(BUSQUEDA) };
+      // C-03: los dibujos y los mipmaps (53-235 ms de una vez en SwiftShader, MEDIDAS) van por la cola propia, a rebanadas (creaMaterialesG);
+      // un constructor sin el generador (un IIFE viejo), de una vez como antes
+      if (M.creaMaterialesG) {
+        var t0: A = reloj.now(); matsPend = true; matsMed = { ms: 0, rebanadas: 0, max: 0 };
+        encola("Gmateriales", -3, seguro(midiendo(M.creaMaterialesG(THREE, null, opM))), function (m: A) { matsPend = false; matsMed.ms = +(reloj.now() - t0).toFixed(1); if (m) conMateriales(m); });
+      } else conMateriales(M.creaMateriales(THREE, null, opM));
     }).catch(function (e: A) { if (liberado) return; estado = "sin"; motivo = String(e && e.message || e); if (!POR_DEFECTO && consola) consola.warn("olivos generados: " + motivo); });   // por defecto, sin avisar: se dibuja lo de siempre y ?debug lo dice
+  }
+  // C-03: cada rebanada de los materiales, medida (la mayor es lo que bloquea un fotograma; la da __olivosGen().materiales)
+  function* midiendo(g: A) {
+    for (;;) { var a: A = reloj.now(), r: A = g.next(), dt: A = reloj.now() - a; matsMed.rebanadas++; if (dt > matsMed.max) matsMed.max = +dt.toFixed(2); if (r.done) return r.value; yield r.value; }
+  }
+  // lo que sigue a los materiales (antes, en el mismo .then): la profundidad, la fábrica de recetas y el estado activo
+  function conMateriales(m: A) {
+    if (liberado) { if (m && typeof m.libera === "function") m.libera(); return; }
+    mats = m;
+    Object.keys(reemplazos).forEach(function (n) { mats[n] = reemplazos[n]; });   // solo con la TSL (MU6): con el clásico no hay ninguno
+    prof = { corteza: profundidad(), muerta: profundidad() };   // la sombra de las mallas por lotes, con el mismo fundido
+    // C-02: si el trabajador muere (no carga, no contesta en el plazo), la fábrica acaba a rebanadas lo que esperaba y avisa; lo que venga después va a la cola propia
+    var f: A = M.creaFabrica({ trabajador: true, alMorir: function (mo: A) { if (fabrica === f) fabrica = null; motivo = String(mo); if (consola) consola.warn("olivos generados: " + mo + "; sigo sin trabajador (a rebanadas)"); } });
+    if (f.modo === "trabajador") fabrica = f; else f.cierra();
+    estado = "activo";
+    if (Materiales.cartulina.silueta) { silPend = true; encola("Gsiluetas", -2, LT.siluetasG(), function () { silPend = false; }); }   // AG-2.2: antes del primer lote (prio −2 < −1 del lote)
   }
   // ---- el manifiesto de las variantes horneadas (generados-horneado.ts): solo con la página del servidor; si no vale, se ignora entero y todo se calcula (sin avisar en consola)
   var DIR: A = dirHorneado(BUSQUEDA, D.base);
@@ -468,7 +483,7 @@ export function creaGenerados(d: DepsGenerados) {
   // lo que falta para que el lote sea el del plan: trabajos de la cola propia, recetas en el trabajador, árboles del plan sin receta o fuera del lote y
   // el fundido en curso (lo esperan las pruebas: __g.pendientes() de 27_debug)
   function pendientes() {
-    if (estado !== "activo") return 0;
+    if (estado !== "activo") return estado === "cargando" && matsPend ? 1 : 0;   // C-03: los materiales, a rebanadas antes de activarse
     var n: A = cola.cuantos() + nPidiendo + (fundido ? 1 : 0);
     plan.forEach(function (p: A) { if (fallidas[p.clave]) return; if (!recetas[p.clave] || !enLote[p.c.i] || !enLote[p.c.i][p.clave]) n++; });   // C-02: lo que falló no queda pendiente para siempre
     return n;
@@ -568,7 +583,7 @@ export function creaGenerados(d: DepsGenerados) {
   }
   if (d.ventana) d.ventana.__olivosGen = function () {
     var k0: A = Object.keys(listos)[0], p0: A = k0 !== undefined ? listos[k0].c : null;   // un olivo generado ya dibujado
-    return { defecto: POR_DEFECTO, apagadoPor: DECISION.motivo, primero: p0 ? { x: p0.x, y: p0.y, h: p0.h } : null, estado: estado, motivo: motivo, via: fabrica ? "trabajador" : "rebanadas", fallidas: Object.keys(fallidas).length, plan: plan.length, recetas: Object.keys(recetas).length, pidiendo: nPidiendo, trabajos: cola.cuantos(), radio: R, info: info,
+    return { defecto: POR_DEFECTO, apagadoPor: DECISION.motivo, primero: p0 ? { x: p0.x, y: p0.y, h: p0.h } : null, estado: estado, motivo: motivo, via: fabrica ? "trabajador" : "rebanadas", fallidas: Object.keys(fallidas).length, materiales: matsMed, plan: plan.length, recetas: Object.keys(recetas).length, pidiendo: nPidiendo, trabajos: cola.cuantos(), radio: R, info: info,
       cache: cache ? cache.estado() : null,
       modoGen: MODO, escalera: ESCALERA ? { reparto: reparto, sombras: sombras(), variantes: nVar() } : undefined,
       horneado: { estado: horn.estado, motivo: horn.motivo, epoca: M && mats ? epoca() : null, variantes: (varSem || SEM_VAR).length, horneadas: horn.horneadas, calculadas: horn.calculadas,

@@ -61,7 +61,8 @@ test("L1-09 y L1-11: el bloque «árboles (niveles)» barriendo la finca y con l
       await espera(5000);   // quieta: solo las repeticiones por tiempo (cada 1,5 s en órbita)
       const quieta = t.splice(0);
       A.actualiza = orig;
-      return { moviendo: E(moviendo), quieta: E(quieta), subidasQuieta: A.resumen().subidas - s0, olivos: A.resumen(), largas: window.__largas };
+      return { moviendo: E(moviendo), quieta: E(quieta), subidasQuieta: A.resumen().subidas - s0, olivos: A.resumen(), largas: window.__largas,
+        materiales: window.__olivosGen ? window.__olivosGen().materiales : null };   // C-03: lo que costaron los materiales de los generados en la cola propia (ms, rebanadas, la mayor)
     }, est);
     if (MIDE) console.log(JSON.stringify(r));
     t.diagnostic(JSON.stringify(r));

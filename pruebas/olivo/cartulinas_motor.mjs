@@ -5,7 +5,7 @@
 // Escribe una línea JSON {mal: [...], piezas} (la lee pruebas/guardianes/cartulinas.test.js).
 import { createRequire } from "node:module";
 import path from "node:path";
-import { RAIZ, THREE, contexto, espera } from "./_contexto_generados.mjs";
+import { RAIZ, THREE, O, contexto, espera } from "./_contexto_generados.mjs";
 
 const req = createRequire(import.meta.url), { fabrica } = req(path.join(RAIZ, "pruebas", "guardianes", "_materiales.js"));
 const mal = [], exige = (c, m) => { if (!c) mal.push(m); };
@@ -21,9 +21,16 @@ function textura(w, h, cols, filas) {
   return { mipmaps: [{ data: d, width: w, height: h }] };
 }
 
+// C-03: los materiales salen de la cola propia (creaMaterialesG) y, en la misma vuelta, la cola sigue con las siluetas: las texturas sintéticas se ponen
+// al acabar el generador, antes de que el motor encole las siluetas (antes se ponían tras arrancar, cuando las siluetas aún esperaban)
+const conTexturas = Object.assign({}, O, { creaMaterialesG: function* (...a) {
+  const m = yield* O.creaMaterialesG(...a);
+  m.ramita0.map = textura(256, 512, 1, 1); m.ramita1.map = textura(256, 512, 1, 1); m.relleno.map = textura(512, 512, 1, 1); m.tarjeta.map = textura(1024, 512, 4, 2);
+  return m;
+} });
 async function arranca(q) {
-  const c = contexto(q, null, { D, Materiales: fabrica(THREE, { busqueda: q }).Materiales });
-  for (let k = 0; k < 40 && c.__G.estado() === "cargando"; k++) await espera();
+  const c = contexto(q, null, { D, Materiales: fabrica(THREE, { busqueda: q }).Materiales, window: { OlivoGen: conTexturas } });
+  for (let k = 0; k < 40 && c.__G.estado() === "cargando"; k++) { c.__G.paso(0.016, 50); await espera(); }   // C-03: los materiales van por la cola propia
   return c;
 }
 
@@ -31,9 +38,8 @@ async function arranca(q) {
 {
   const c = await arranca("?olivos=gen&cartulina=silueta");
   exige(c.__G.estado() === "activo", "no arrancó: " + c.__G.estado());
-  exige(c.__G._prueba.silPend() === true, "con silueta, las siluetas no quedan pendientes al arrancar");
-  const m = c.__G._prueba.mats();
-  m.ramita0.map = textura(256, 512, 1, 1); m.ramita1.map = textura(256, 512, 1, 1); m.relleno.map = textura(512, 512, 1, 1); m.tarjeta.map = textura(1024, 512, 4, 2);
+  exige(c.__G._prueba.silPend() === true || c.__G._prueba.siluetas() !== null, "con silueta, las siluetas no se encolan al arrancar");
+  exige(c.__G._prueba.lote() === null, "con silueta, un lote antes de las siluetas");
   for (let k = 0; k < 50 && c.__G._prueba.silPend(); k++) c.__G.paso(0.016, 50);
   exige(!c.__G._prueba.silPend(), "las siluetas no acaban");
   const S = c.__G._prueba.siluetas() || {}, P = c.Materiales.cartulina.piezas;

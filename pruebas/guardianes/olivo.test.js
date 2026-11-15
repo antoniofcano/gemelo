@@ -85,6 +85,22 @@ test("C-01: el sentido de giro de cada triángulo casa con su normal (tarjetas d
   for (const [k, g] of Object.entries(N.geosCompartidas(G))) assert.deepStrictEqual(giroContraNormal(g), [], "geometría «" + k + "» del núcleo: triángulos con el giro al revés que su normal");
 });
 
+// C-03 (auditoría del constructor, 2026-11-15): los mipmaps que conservan la cobertura se calculan a rebanadas (mipsConCoberturaG) para la cola del
+// motor, con el MISMO resultado que la versión de una vez (la huella de abajo es la del código de antes, sobre un lienzo de mentira de 1024 × 512)
+test("C-03: mipsConCoberturaG da los mismos mipmaps que antes y cede el turno a menudo", async () => {
+  const T = await import(require("url").pathToFileURL(path.join(OLIVO, "texturas.js")).href);
+  const ID = globalThis.ImageData; globalThis.ImageData = class { constructor(d, w, h) { this.data = d; this.width = w; this.height = h; } };
+  try {
+    const lienzo = (w, h) => { const d = new Uint8ClampedArray(w * h * 4); let x = 12345; for (let i = 0; i < d.length; i++) { x = (x * 1103515245 + 12345) >>> 0; d[i] = (i & 3) === 3 ? ((x >>> 16) & 255) > 150 ? 255 : (x >>> 16) & 63 : (x >>> 16) & 255; } return { width: w, height: h, getContext: () => ({ getImageData: () => ({ data: d }) }) }; };
+    const g = T.mipsConCoberturaG(lienzo(1024, 512), 0.45); let n = 0, r;
+    while (!(r = g.next()).done) n++;
+    const h = crypto.createHash("sha256"); for (const m of r.value) { h.update(m.width + "x" + m.height); h.update(Buffer.from(m.data.buffer)); }
+    assert.strictEqual(r.value.length, 11);
+    assert.strictEqual(h.digest("hex"), "e7a16fee2a639946b95ad9fe5f06e2db3466407c47b3d423864917d554287fc2", "los mipmaps a rebanadas no son los de antes");
+    assert.ok(n >= 40, "mipsConCoberturaG solo cede " + n + " veces en 1024 × 512 (cada rebanada, ~64 k texeles)");
+  } finally { globalThis.ImageData = ID; }
+});
+
 test("las huellas del módulo son las del oráculo (todos los casos, en 4 procesos)", { timeout: 600000 }, async t => {
   if (SALTO) return t.skip(SALTO);
   const partes = await Promise.all([0, 1, 2, 3].map(k => nodo([path.join("pruebas", "olivo", "compara.mjs"), "--todos", "--parte", k + "/4"])));

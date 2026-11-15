@@ -115,7 +115,7 @@ else {
   const I = JSON.parse(fs.readFileSync(FX, "utf8"));
   for (const busqueda of ["?olivos=gen", "?olivos=escalera"]) {
     const cx = contexto(busqueda, null, { THREE: T3 });
-    for (let k = 0; k < 20 && cx.__G.estado() === "cargando"; k++) await espera();
+    for (let k = 0; k < 20 && cx.__G.estado() === "cargando"; k++) { cx.__G.paso(0.016, 50); await espera(); }   // C-03: los materiales van por la cola propia
     if (cx.__G.estado() !== "activo") { mal.push(busqueda + ": Generados no arranca (" + cx.__G.estado() + ")"); continue; }
     Object.assign(cx.D, { copas: I.copas, copas_id: I.copas_id, copas_param: I.copas_param, copas_semilla: I.copas_semilla, centro_utm: I.centro_utm });
     const ol = I.copas.map((q, i) => ({ i, x: q[0], y: q[1], h: q[2], perfil: q[3] })).filter(c => !(c.h > 8));
