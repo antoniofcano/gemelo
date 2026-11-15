@@ -1,8 +1,9 @@
 // Dos builds del constructor de olivos (vite 6.4.5, devDependency de apps/web/olivo):
 //   vite build                  → la herramienta (herramienta/index.html) en GEMELO_OLIVO_SALIDA o apps/web/olivo/dist/herramienta, con las fotos
 //                                 de texturas/ servidas en su raíz
-//   GEMELO_OLIVO_IIFE=1 vite build → olivo.iife.js (global OlivoGen) en GEMELO_OLIVO_SALIDA o apps/web/olivo/dist/iife, para la salida artefacto
-//                                 (un <script> clásico). Lleva DENTRO su three 0.128.0 («three-gen»): no toma el THREE del gemelo (0.186), porque
+//   GEMELO_OLIVO_IIFE=1 vite build → olivo.iife.js (global OlivoGen) en GEMELO_OLIVO_SALIDA o apps/web/olivo/dist/iife, un <script> clásico. Era
+//                                 para la salida artefacto, retirada (ADR-0021); hoy solo lo construye y lo prueba olivo.test.js (el motor
+//                                 aún acepta window.OlivoGen si alguien lo pone, arranque.ts: cargaConstructor). Lleva DENTRO su three 0.128.0 («three-gen»): no toma el THREE del gemelo (0.186), porque
 //                                 las huellas del árbol dependen de la aritmética de r128 (ADR-0017)
 import { defineConfig } from "vite";
 import path from "node:path";

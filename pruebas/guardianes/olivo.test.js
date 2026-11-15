@@ -85,6 +85,20 @@ test("C-01: el sentido de giro de cada triángulo casa con su normal (tarjetas d
   for (const [k, g] of Object.entries(N.geosCompartidas(G))) assert.deepStrictEqual(giroContraNormal(g), [], "geometría «" + k + "» del núcleo: triángulos con el giro al revés que su normal");
 });
 
+// D-07 y D-08 (auditoría del constructor, 2026-11-15)
+test("D-08: semillaDeId rechaza los ids fuera de [0, 2^32) como semillaDeCopa (antes, 2^32 + k daba la semilla de k)", async () => {
+  const A = await import(require("url").pathToFileURL(path.join(OLIVO, "azar.js")).href);
+  assert.strictEqual(A.semillaDeId(2 ** 32 - 1), 2 ** 32 - 1); assert.strictEqual(A.semillaDeId(0), 0);
+  for (const id of [2 ** 32, 2 ** 32 + 5, -1, 1.5, NaN]) assert.strictEqual(A.semillaDeId(id), null, "semillaDeId(" + id + ")");
+});
+test("D-07: la herramienta del constructor lleva su CSP (sin scripts en línea ni de otro origen)", () => {
+  const h = fs.readFileSync(path.join(OLIVO, "herramienta", "index.html"), "utf8"), m = /<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(h);
+  assert.ok(m, "herramienta/index.html sin CSP");
+  const scr = /script-src ([^;]+)/.exec(m[1]);
+  assert.ok(scr && !/unsafe-inline|unsafe-eval|https?:/.test(scr[1]), "script-src debe ser solo del mismo origen: " + (scr && scr[1]));
+  assert.ok(!/<script(?![^>]*\ssrc=)[^>]*>/.test(h), "un script en línea en la herramienta (la CSP lo bloquearía)");
+});
+
 // C-03 (auditoría del constructor, 2026-11-15): los mipmaps que conservan la cobertura se calculan a rebanadas (mipsConCoberturaG) para la cola del
 // motor, con el MISMO resultado que la versión de una vez (la huella de abajo es la del código de antes, sobre un lienzo de mentira de 1024 × 512)
 test("C-03: mipsConCoberturaG da los mismos mipmaps que antes y cede el turno a menudo", async () => {

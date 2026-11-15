@@ -89,3 +89,18 @@ test("[hituelo] el banco mide y captura el PASEO: ronda pequeña con paseo y pas
     assert.ok(d > 0.3, "paseoAnda no se ha movido");
   } finally { await nav.close(); srv.close(); }
 });
+
+// D-09 (auditoría del constructor, 2026-11-15): sin `npm ci` en apps/web/olivo, sus pruebas se saltan ENTERAS y la puerta salía en verde sin decirlo
+test("D-09: la puerta sabe si falta el constructor de olivos (lo dice al final) y la pesada no arranca sin él", () => {
+  const { faltanDependencias } = require("../banco/puerta");
+  const os = require("os"), tmp = fs.mkdtempSync(path.join(os.tmpdir(), "puerta-dep-"));
+  try {
+    assert.strictEqual(faltanDependencias(tmp).length, 1, "sin apps/web/olivo/node_modules debe faltar el constructor");
+    assert.match(faltanDependencias(tmp)[0].orden, /cd apps\/web\/olivo && npm ci/);
+    for (const d of ["three-gen", "three-r186", "vite"]) { const p = path.join(tmp, "apps", "web", "olivo", "node_modules", d); fs.mkdirSync(p, { recursive: true }); fs.writeFileSync(path.join(p, "package.json"), "{}"); }
+    assert.deepStrictEqual(faltanDependencias(tmp), [], "instalado, no falta nada");
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+  const p = lee("pruebas/banco/puerta.js"), pp = lee("pruebas/banco/puerta_pesada.js");
+  assert.match(p, /avisaFaltan\(faltanDependencias\(\)\);\n  return res\.codigo;/, "la puerta debe decir al final lo que no ha comprobado");
+  assert.match(pp, /faltanDependencias\(\)[\s\S]*GEMELO_SIN_CONSTRUCTOR[\s\S]*process\.exit\(2\)/, "la puerta pesada debe pararse sin el constructor (salvo GEMELO_SIN_CONSTRUCTOR=1)");
+});

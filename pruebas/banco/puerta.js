@@ -29,7 +29,22 @@ async function corre(pruebas, servidor, enTurno) {
   const res = await inestables.orquesta({ ejecuta, firmas: inestables.cargaFirmas() });
   inestables.apunta(res.entradas);
   console.log("\n" + inestables.informe(res, antes));
+  avisaFaltan(faltanDependencias());
   return res.codigo;
+}
+
+/** D-09 (auditoría del constructor, 2026-11-15): dependencias que, si faltan, dejan saltadas pruebas ENTERAS (con su aviso, pero la puerta salía en verde
+ *  y nadie lo veía). Se dicen al final en voz alta; la puerta pesada no arranca sin ellas (puerta_pesada.js). → [{que, orden}] */
+function faltanDependencias(raiz = RAIZ) {
+  const r = [];
+  if (!["three-gen", "three-r186", "vite"].every(d => fs.existsSync(path.join(raiz, "apps", "web", "olivo", "node_modules", d, "package.json"))))
+    r.push({ que: "el constructor de olivos (apps/web/olivo: huellas, sellos de GEN_VERSION y CACHE_VERSION, niveles, materiales, el motor con ?olivos=gen)", orden: "cd apps/web/olivo && npm ci" });
+  return r;
+}
+function avisaFaltan(f) {
+  if (!f.length) return;
+  const rojo = process.stdout.isTTY ? "\x1b[1;31m" : "", fin = process.stdout.isTTY ? "\x1b[0m" : "";
+  console.log("\n" + rojo + "⚠ ATENCIÓN: esta puerta NO ha comprobado " + f.map(x => x.que + " — instálalo con «" + x.orden + "»").join("; ") + ". Verde no quiere decir que eso esté bien." + fin);
 }
 
 // `opciones` (inyección, para la prueba del guardián): los ficheros, el pedido de turno y la pasada de pruebas.
@@ -42,5 +57,5 @@ async function principal({ pruebas = process.argv.slice(2).length ? process.argv
   });
 }
 
-module.exports = { principal };
+module.exports = { principal, faltanDependencias };
 if (require.main === module) principal().then(c => process.exit(c), e => { console.error(e); process.exit(1); });

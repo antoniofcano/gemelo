@@ -6,7 +6,7 @@
  "maqueta_sha256": "e0ef9fe370bdf78b339cb0f585c5be28eba0b7ba7e7032804b18538844e65d28",
  "geos_sha256": "8fb991f6ece0a0100709115659987b462202b846e029f4a831601642be872091",
  "nota": "sha256: receta canónica olivo-2 (contratos/olivo-generado.md §2) del build() de «Olivos tipo»; niveles_sha256: rol, rejilla y brote por prisma sacados del MOTOR de «Olivos en el gemelo», que da el mismo árbol (comprobado en cada caso); ms es orientativo (Node, sin DOM) y no entra en la comparación",
- "fuente_sha256": "02d2084f1060b616993b7d2fdcb78501c9310e4d2aa5c6e3612a37be1108f413",
+ "fuente_sha256": "2da4f306fc5ec963b44582367ddf8b9202a33f2e97d4bc6c406fab4e763d62b6",
  "casos": [
   {"tipo":"planton","epoca":"reposo","semilla":1,"sha256":"bc03b789f3ff472c06d7f07826a3a2588d449f0d78bb2967855fe8e7e6e6713b","niveles_sha256":"21f0881373f45847eaf392f9e4e83b8d854c8ffaa685353d9f29b8f8e5f5bba2","triangulos":3792,"ms":9},
   {"tipo":"planton","epoca":"reposo","semilla":7,"sha256":"18c14629e804e424af23e93691fda21c0d4232fcffba2fa935c5bbee2169febf","niveles_sha256":"9d811ae7ad3f6f76e371c133eaff1eb847cc3a7784f6e2f6baa9a9b12d3ef354","triangulos":4523,"ms":9},
