@@ -2,7 +2,7 @@
 
 Único sitio de «dónde estamos y qué falta». Se toca solo cuando el estado cambia (no en cada commit). Lo hecho se cuenta en el [CHANGELOG](../CHANGELOG.md); el rumbo, en [PLAN](rumbo/PLAN.md).
 
-**Versión: v0.2.0** · **Al día a: 2026-11-14** · **Prototipo**: funciona en Chrome con renderizado por software y sin errores de consola. En el **Quest 3** (VR, 72 Hz) hay medidas de Antonio, las últimas de la octava subida (2026-11-05): intervalo p95 entre 15,8 y 17,5 ms frente al objetivo de 13,9 ms ([MEDIDAS](sistema/MEDIDAS.md#quest-3-con-la-octava-subida-2026-11-05-foto-no-se-mantiene)); **sin repetir tras el refactor a mundos**. En iPhone, **no medido**. La puerta pesada (Docker incluido) pasó en verde antes de cada subida, con las excepciones que cuenta cada una en el CHANGELOG. El CI de Actions sigue sin correr por la facturación (G1).
+**Versión: v0.3.0** · **Al día a: 2026-11-15** · **Prototipo**: funciona en Chrome con renderizado por software y sin errores de consola. En el **Quest 3** (VR, 72 Hz) hay medidas de Antonio, las últimas de la octava subida (2026-11-05): intervalo p95 entre 15,8 y 17,5 ms frente al objetivo de 13,9 ms ([MEDIDAS](sistema/MEDIDAS.md#quest-3-con-la-octava-subida-2026-11-05-foto-no-se-mantiene)); **sin repetir tras el refactor a mundos**. En iPhone, **no medido**. La puerta pesada (Docker incluido) pasó en verde antes de cada subida, con las excepciones que cuenta cada una en el CHANGELOG. El CI de Actions sigue sin correr por la facturación (G1).
 
 ## Publicado
 
@@ -82,7 +82,7 @@ Fuentes: LiDAR PNOA 3.ª cobertura (vuelo 2024), MDT 0,5 m, ortofoto PNOA 2022 (
 
 ## Pendiente
 
-- **Auditoría de noviembre** ([re-verificación del 2026-11-14](auditoria-noviembre2026/REVERIFICACION-2026-11-14-tarde.md)), con la ampliación a la api: sin críticos, altos ni medios abiertos; 14 aceptados firmados y 3 bajos abiertos (L1-09 y L1-12 piden medir en aparato; L10-24, una versión). Subido a GitHub y al VPS el 2026-11-15 (subida 24, migración 0028), con la puerta pesada en verde y gitleaks limpio en todo el historial (en local: la CI de GitHub no corre, la cuenta está bloqueada por facturación).
+- **Auditoría de noviembre** ([re-verificación del 2026-11-14](auditoria-noviembre2026/REVERIFICACION-2026-11-14-tarde.md)), con la ampliación a la api: sin críticos, altos ni medios abiertos; 14 aceptados firmados y 3 bajos abiertos (L1-09 y L1-12 piden medir en aparato; L10-24, una versión). Subido a GitHub y al VPS el 2026-11-15 (subida 24, migración 0028; la **v0.3.0**, con el constructor de olivos auditado, en la subida 25), con la puerta pesada en verde y gitleaks limpio en todo el historial (en local: la CI de GitHub no corre, la cuenta está bloqueada por facturación).
 - **Prueba en aparatos** (decisión 57): navegador, móvil y Quest, cada uno por su cuenta en Hituelo real con los olivos generados. Falta el código corto para entrar en las Quest (decisión 61).
 - **Medir 10 olivos en campo con cinta** (plantilla de `tuberia/factores_campo.py`, rama del constructor): cierra el paso a `factorR8 = 1` (decisión 48) y los factores reales del LiDAR (49).
 - Fundido entre niveles de olivos (decisión 168).

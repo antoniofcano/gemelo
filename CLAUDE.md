@@ -2,7 +2,7 @@
 
 Gemelo digital en 3D de fincas de olivar (three.js 0.186.1 en pantalla, `super-three` 0.185.0 en la build del Quest y `three` 0.128.0 en el constructor de olivos; teselas de 256 m, LiDAR/ortofoto/NDVI, modo VR) para Cano & Damas Oleicultores. Es la primera lectura de quien llega, persona o agente. Pacto: *si algo deja de ser cierto, se corrige en el mismo commit que lo cambia.*
 
-**Versión: v0.2.0** — prototipo (la fase 1 de una visión multiusuario: [doc/sistema/ARQUITECTURA-MULTIUSUARIO.md](doc/sistema/ARQUITECTURA-MULTIUSUARIO.md)). Dónde estamos y qué falta: [doc/ESTADO.md](doc/ESTADO.md). Qué se hizo: [CHANGELOG.md](CHANGELOG.md). Índice de toda la documentación: [doc/README.md](doc/README.md).
+**Versión: v0.3.0** — prototipo (la fase 1 de una visión multiusuario: [doc/sistema/ARQUITECTURA-MULTIUSUARIO.md](doc/sistema/ARQUITECTURA-MULTIUSUARIO.md)). Dónde estamos y qué falta: [doc/ESTADO.md](doc/ESTADO.md). Qué se hizo: [CHANGELOG.md](CHANGELOG.md). Índice de toda la documentación: [doc/README.md](doc/README.md).
 
 ---
 

@@ -7,7 +7,7 @@ Nace como mockup de [OlivarTrack](https://github.com/antoniofcano/olivartrack) p
 Un mundo: **Hituelo** (4 fincas, 27 parcelas, 95 ha, ~5.900 olivos). Cerro Velasco, la primera finca del gemelo, salió del mundo el 2026-11-06 (decisión 229).
 
 > Estado: prototipo. Funciona en Chrome (probado con renderizado por software) y sin errores de consola. En el Quest 3 hay medidas de Antonio
-> ([MEDIDAS](doc/sistema/MEDIDAS.md); tras el refactor a mundos, **sin repetir**); en iPhone, **no medido**. Mira [doc/ESTADO.md](doc/ESTADO.md) y [doc/sistema/MEDIDAS.md](doc/sistema/MEDIDAS.md). **Versión: v0.2.0.** Método de trabajo: [CLAUDE.md](CLAUDE.md); índice: [doc/README.md](doc/README.md).
+> ([MEDIDAS](doc/sistema/MEDIDAS.md); tras el refactor a mundos, **sin repetir**); en iPhone, **no medido**. Mira [doc/ESTADO.md](doc/ESTADO.md) y [doc/sistema/MEDIDAS.md](doc/sistema/MEDIDAS.md). **Versión: v0.3.0.** Método de trabajo: [CLAUDE.md](CLAUDE.md); índice: [doc/README.md](doc/README.md).
 
 ## Qué hay aquí
 

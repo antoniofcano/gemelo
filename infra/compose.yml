@@ -38,7 +38,7 @@ services:
 
   # Aplica las migraciones pendientes con el usuario DUEÑO y termina; la api arranca después (y no puede cambiar el esquema).
   migra:
-    image: gemelo-api:0.2.0
+    image: gemelo-api:0.3.0
     build: { context: .., dockerfile: apps/api/Dockerfile }
     command: ["node", "dist/src/bd/migra-cli.js"]
     restart: "no"
@@ -56,7 +56,7 @@ services:
     mem_limit: 256m
 
   api:
-    image: gemelo-api:0.2.0
+    image: gemelo-api:0.3.0
     build: { context: .., dockerfile: apps/api/Dockerfile }
     restart: unless-stopped
     env_file: [/etc/gemelo/entorno]
@@ -110,7 +110,7 @@ services:
   # el cambio de época (a las 03:00 UTC, GEMELO_HORNERO_HORA); entre medias mira sellos baratos cada 10 min. Para otra finca, repetir
   # las dos líneas de teselas y GEMELO_HORNERO_FINCAS. La carpeta olivos/ debe existir y ser del uid 1000 (RUNBOOK-VPS).
   hornero:
-    image: gemelo-hornero:0.2.0
+    image: gemelo-hornero:0.3.0
     build: { context: .., dockerfile: tuberia/olivos/Dockerfile }
     profiles: [hornero]      # no arranca con un `up -d` normal: `docker compose -f infra/compose.yml --profile hornero up -d hornero`
     restart: unless-stopped

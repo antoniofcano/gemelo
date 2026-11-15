@@ -4,7 +4,9 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 
 ## [No publicado]
 
-«No publicado» quiere decir **sin versión etiquetada**: buena parte de lo de abajo ya está en el servidor (qué y desde cuándo, en [doc/ESTADO.md](doc/ESTADO.md)); la versión siguiente lo bajará a su número.
+## [0.3.0] — 2026-11-15
+
+Primera versión etiquetada desde la 0.2.0: lo que recoge esta entrada se fue subiendo al servidor entre el 2026-10-28 y el 2026-11-15 (qué y cuándo, en [doc/ESTADO.md](doc/ESTADO.md)). Cierra la auditoría de noviembre ([re-verificación](doc/auditoria-noviembre2026/REVERIFICACION-2026-11-14-tarde.md)) y sus ampliaciones a la api y al constructor de olivos: sin críticos, altos ni medios abiertos.
 
 ### Añadido
 - Visita guiada compartida en los interiores (ADR-0036, decisiones 233-238): la guiada cruza el portón en su propia sala; la pose lleva el mundo (`livekit-roles` v9) y solo se ve a quien está en tu mismo mundo (en Gente, «en la fábrica», «en los patios» o «fuera», con su voz sin sitio). La api (`POST /api/presencia/guiadas/:evento/visita`, solo guía u oficina) escribe el estado (mundo, parada, máquinas) en los metadatos de la sala, también para quien llega tarde. La familia recibe «El guía va a la parada N [Ir] [Me quedo]» o «La visita está en la fábrica [Ir]»: «Ir» funde a negro y la deja en corro alrededor de la parada, con su ficha (en VR solo con el gatillo; «Seguir al guía» opcional y apagado en pantalla). El guía tiene «El recorrido» (entrar o salir con el grupo, máquinas para todos) y «Llevar al grupo a la parada N». «Reducir movimiento» manda en cada aparato y la familia puede «Parar para mí». Menos VRM dentro según el presupuesto que deja el interior. E2e de tres Chrome con LiveKit en verde; Quest e iPhone, no probados.

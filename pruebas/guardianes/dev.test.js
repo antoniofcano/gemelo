@@ -112,7 +112,7 @@ test("imágenes estables con versión fija Y digest (imagen:versión@sha256:…)
 test("hornero (O7f), en dev y en producción: sin puertos, usuario no root, solo lectura salvo su salida y su estado, sin capacidades, índice de solo lectura, healthcheck, candado", () => {
   const trozo = (txt, nombre) => { const m = new RegExp("^  " + nombre + ":\\n((?:    .*\\n|\\s*\\n)+)", "m").exec(txt); assert.ok(m, "no encuentro el servicio " + nombre); return m[1].split("\n").filter(l => !/^\s*#/.test(l)).join("\n"); };
   const sinCom = f => lee(f).split("\n").filter(l => !/^\s*#/.test(l)).join("\n") + "\n";
-  for (const [f, tag] of [["infra/dev/compose.yml", "gemelo-hornero:local"], ["infra/compose.yml", "gemelo-hornero:0.2.0"]]) {
+  for (const [f, tag] of [["infra/dev/compose.yml", "gemelo-hornero:local"], ["infra/compose.yml", "gemelo-hornero:" + require("fs").readFileSync(require("path").join(__dirname, "..", "..", "VERSION"), "utf8").trim()]]) {
     const h = trozo(sinCom(f), "hornero");
     assert.ok(!/^\s+ports:/m.test(h), f + ": el hornero no publica puertos");
     assert.match(h, /^\s+user: "1000:1000"/m, f + ": usuario no root");
