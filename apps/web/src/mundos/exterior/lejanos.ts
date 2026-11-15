@@ -273,11 +273,13 @@ export function creaLejanos(d: DepsLejanos) {
   }
   // ---- el sustituto: la silueta de cada variante, horneada a una textura (2 vistas por variante) y dos planos cruzados por olivo
   function sustituto(rs: any) {
+    var gs: any[] = [];   // C-07: lo montado para hornear se suelta también si el horneado falla
+    var sueltaGs = function () { gs.splice(0).forEach(function (g: any) { Generados.lejanos.libera(g); }); };
     try {
-      var gs = rs.map(function (r: any) { var g = Generados.lejanos.monta(r); g.scale.set(1, 1, 1); g.updateMatrixWorld(true); return g; });
+      rs.forEach(function (r: any) { var g = Generados.lejanos.monta(r); g.scale.set(1, 1, 1); g.updateMatrixWorld(true); gs.push(g); });
       cajas = gs.map(function (g: any) { return new THREE.Box3().setFromObject(g); });
       var tex = sinGPU ? null : hornea(gs);
-      gs.forEach(function (g: any) { Generados.lejanos.libera(g); });
+      sueltaGs();
       texMiB = tex ? 2 * CEL * nv * CEL * 4 * 4 / 3 / 1048576 : 0;
       var ponSus = function (tP: any) { ponMalla(tP ? geoPoli(2) : geoCruz(), matSustituto(tex, tP), rs, cajas); triPor = tP ? 2 * (SIL_K - 2) : 4; via = "sustituto"; tCapa = 0; uCapa.value = 0; };
       if (!tex || !Materiales.cartulina.silueta) { ponSus(null); return; }
@@ -285,7 +287,7 @@ export function creaLejanos(d: DepsLejanos) {
       via = "siluetas";
       var gen = siluetasSustitutoG(), fin = function (tP: any) { if (via === "siluetas") ponSus(tP); };
       if (typeof ColaExt !== "undefined" && ColaExt && ColaExt.pon) ColaExt.pon("Lsil", 60, gen, fin); else { var x; do { x = gen.next(); } while (!x.done); fin(x.value); }
-    } catch (e: any) { via = "sin"; motivo = String(e && e.message || e).slice(0, 80); console.warn("olivos lejanos: " + motivo + " (de lejos, solo la ortofoto)"); }
+    } catch (e: any) { sueltaGs(); via = "sin"; motivo = String(e && e.message || e).slice(0, 80); console.warn("olivos lejanos: " + motivo + " (de lejos, solo la ortofoto)"); }
   }
   function* siluetasSustitutoG() {
     try {
@@ -311,6 +313,7 @@ export function creaLejanos(d: DepsLejanos) {
     var prevRT = renderer.getRenderTarget(), prevXR = renderer.xr.enabled, cc = new THREE.Color(), ca = renderer.getClearAlpha(), cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 100);
     renderer.getClearColor(cc); renderer.xr.enabled = false; renderer.setClearColor(0x000000, 0); t.scissorTest = true;
     Materiales.recortes(false);   // AG-2.1: el blanco del horneado no tiene MSAA y su alfa tiene que seguir siendo el del recorte duro: sin alphaToCoverage mientras se hornea
+    var hecho = false;   // C-07: si un render falla (contexto perdido, un programa que no compila), el blanco se suelta aquí: aún no está en rt
     try {
       gs.forEach(function (g: any, j: any) {
         var b = cajas[j], cx = (b.min.x + b.max.x) / 2, cy = (b.min.y + b.max.y) / 2, cz = (b.min.z + b.max.z) / 2, hy = (b.max.y - b.min.y) / 2;
@@ -325,7 +328,8 @@ export function creaLejanos(d: DepsLejanos) {
         }
         sc.remove(g);
       });
-    } finally { Materiales.recortes(true); renderer.setRenderTarget(prevRT); renderer.xr.enabled = prevXR; renderer.setClearColor(cc, ca); }
+      hecho = true;
+    } finally { Materiales.recortes(true); renderer.setRenderTarget(prevRT); renderer.xr.enabled = prevXR; renderer.setClearColor(cc, ca); if (!hecho) t.dispose(); }
     rt = t; return t.texture;
   }
   // dos planos verticales que se cruzan en el eje del pie, en coordenadas unidad (la caja de la variante los estira): vista 0 en el plano XY, vista 1 en el ZY

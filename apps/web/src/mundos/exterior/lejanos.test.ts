@@ -17,7 +17,7 @@ const variante = (j: number) => ({ j, escala: [1, 1, 1] });
 interface Atlas { huella: string; bytes: number; lado: number }
 const fila = { color: { huella: "h4", bytes: 4, lado: 16 } as Atlas, normales: { huella: "h5", bytes: 5, lado: 16 } as Atlas, variantes: [{ centro: [0, 1, 0], semilado: 1 }, { centro: [0, 1, 0], semilado: 1 }] };
 
-function monta(opc: { impostor?: unknown; fallaNormales?: boolean; THREE?: unknown; Materiales?: unknown; lejanos?: Record<string, unknown> } = {}) {
+function monta(opc: { impostor?: unknown; fallaNormales?: boolean; THREE?: unknown; Materiales?: unknown; lejanos?: Record<string, unknown>; renderer?: unknown } = {}) {
   const THREE = (opc.THREE || THREE0) as typeof THREE0;
   const gArboles = new THREE.Group(), cancelados: string[] = [], bitmaps: { cerrado: boolean; close(): void; width: number; height: number }[] = [];
   const Generados = {
@@ -29,19 +29,36 @@ function monta(opc: { impostor?: unknown; fallaNormales?: boolean; THREE?: unkno
     },
   };
   const deps: DepsLejanos = {
-    THREE, renderer: {}, Estado: { exag: 1 }, gArboles, Materiales: (opc.Materiales as DepsLejanos["Materiales"]) || creaMateriales({ THREE: THREE as unknown as ThreeMin, busqueda: "" }),
+    THREE, renderer: (opc.renderer as DepsLejanos["renderer"]) || {}, Estado: { exag: 1 }, gArboles, Materiales: (opc.Materiales as DepsLejanos["Materiales"]) || creaMateriales({ THREE: THREE as unknown as ThreeMin, busqueda: "" }),
     ColaExt: { pon: () => null, cancela: (k: string) => { cancelados.push(k); } }, Generados,
     fetch: (url: string) => (opc.fallaNormales && url.includes("h5") ? Promise.resolve({ ok: false, status: 404 }) : Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(new ArrayBuffer(url.includes("h5") ? 5 : 4)) })),
     crearBitmap: () => { const b = { cerrado: false, width: 16, height: 16, close() { this.cerrado = true; } }; bitmaps.push(b); return Promise.resolve(b); },
   };
   const api = creaLejanos(deps);
   const olivos = [0, 1, 2].map((i) => ({ i, x: i * 10, y: 0, gz: 0 }));
-  api.inicia(olivos); api._prueba.sinGPU();
+  api.inicia(olivos); if (!opc.renderer) api._prueba.sinGPU();
   return { api, deps, gArboles, cancelados, bitmaps };
 }
 const escuchaDispose = (o: { addEventListener(t: string, f: () => void): void }) => { const c = { n: 0 }; o.addEventListener("dispose", () => { c.n++; }); return c; };
 
 describe("lejanos de la escalera (componente del exterior)", () => {
+  it("C-07: si el horneado del sustituto falla, se sueltan los árboles montados y el blanco de dibujo, y se queda sin capa", async () => {
+    const R = THREE0.WebGLRenderTarget.prototype, disp = R.dispose; let blancos = 0, libres = 0, montados = 0;
+    R.dispose = function (this: unknown) { blancos++; return disp.call(this); };
+    try {
+      const renderer = { getRenderTarget: () => null, setRenderTarget: () => {}, xr: { enabled: false }, getClearAlpha: () => 1, getClearColor: () => {}, setClearColor: () => {},
+        render: () => { throw new Error("contexto perdido (de prueba)"); } };
+      const lejanos = { monta: () => { montados++; const g = new THREE0.Group(); g.add(new THREE0.Mesh(new THREE0.BoxGeometry(1, 2, 1), new THREE0.MeshBasicMaterial())); return g; }, libera: () => { libres++; } };
+      const { api, gArboles } = monta({ renderer, lejanos });
+      const aviso = console.warn; console.warn = () => {};
+      try { api.paso(0.1); } finally { console.warn = aviso; }
+      expect(montados).toBe(2); expect(libres).toBe(2);   // antes: el catch no soltaba lo montado
+      expect(blancos).toBe(1);   // antes: el WebGLRenderTarget se perdía sin dispose
+      expect(api.hayCapa()).toBe(false); expect(gArboles.children).toHaveLength(0);
+      api.libera();
+    } finally { R.dispose = disp; }
+  });
+
   it("sin impostores monta el sustituto (dos planos cruzados): una malla instanciada en gArboles, con la capa entrando por su tramado", async () => {
     const { api, gArboles } = monta();
     expect(api.paso(0.1)).toBe(true); expect(api.hayCapa()).toBe(true);
