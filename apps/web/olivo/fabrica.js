@@ -40,34 +40,68 @@ export function aRebanadas(gen, rebanadaMs) {
   return { promesa, rebanadas };
 }
 
+/** Plazo por defecto (ms) sin NINGUNA respuesta del trabajador mientras hay recetas en espera: pasado, se da por muerto (C-02). Una receta E0 de
+ *  centenario3 tarda decenas de ms en el trabajador de un escritorio [medido en olivo.test.js] y unas veces más en el Quest [SUPUESTO]: 20 s es holgado */
+export const PLAZO_TRABAJADOR_MS = 20000;
+
 /**
- * @param opciones { trabajador: true (por defecto) | false, rebanadaMs: 3 }
- * @returns { modo: "trabajador" | "rebanadas", receta(entrada, nivel?) → Promise<receta>, rebanadas: [ms…] (solo a rebanadas), cierra() }
+ * @param opciones { trabajador: true (por defecto) | false, rebanadaMs: 3, plazoMs: PLAZO_TRABAJADOR_MS, alMorir(motivo) (aviso: el trabajador murió y la fábrica
+ *                   pasó a rebanadas), crea () → Worker|null (pruebas: un trabajador de mentira; por defecto crea_trabajador.js) }
+ * @returns { modo: "trabajador" | "rebanadas" (cambia a "rebanadas" si el trabajador muere), receta(entrada, nivel?) → Promise<receta>, rebanadas: [ms…],
+ *            muerto: "" | motivo, cierra() }
+ * Si el trabajador muere (evento error o messageerror, o `plazoMs` sin contestar con recetas en espera: el script no cargó, el navegador no admite
+ * trabajadores de módulo, se colgó), se termina, las recetas en espera se calculan a rebanadas (se resuelven, no se pierden), las siguientes también
+ * y se llama a `alMorir(motivo)`. Nunca queda una promesa sin resolver ni rechazar (C-02 de la auditoría del constructor, 2026-11-15).
  */
 export function creaFabrica(opciones) {
-  const o = Object.assign({ trabajador: true, rebanadaMs: 3 }, opciones || {});
-  let w = null;
-  if (o.trabajador && typeof Worker !== "undefined") {
-    try { w = creaTrabajador(); } catch (e) { w = null; }
-  }
-  if (w) {
-    let n = 0; const espera = new Map();
-    const falla = e => { for (const [, f] of espera) f.ko(e); espera.clear(); };
-    w.onmessage = e => { const f = espera.get(e.data.id); if (!f) return; espera.delete(e.data.id); if (e.data.error) f.ko(new Error(e.data.error)); else f.ok(e.data.receta); };
-    w.onerror = e => falla(new Error("trabajador: " + (e.message || "error")));
-    return {
-      modo: "trabajador",
-      receta(entrada, nivel) { const id = ++n; return new Promise((ok, ko) => { espera.set(id, { ok, ko }); w.postMessage({ id, entrada, nivel }); }); },
-      cierra() { w.terminate(); falla(new Error("fábrica cerrada")); },
-    };
-  }
+  const o = Object.assign({ trabajador: true, rebanadaMs: 3, plazoMs: PLAZO_TRABAJADOR_MS }, opciones || {});
   const todas = [];
-  return {
-    modo: "rebanadas", rebanadas: todas,
-    receta(entrada, nivel) {
-      const t = aRebanadas(recetaG(G, entrada), o.rebanadaMs);
-      return t.promesa.then(r => { todas.push(...t.rebanadas); return nivel && nivel !== "E0" ? aNivel(r, nivel) : r; });
-    },
-    cierra() {},
+  const aRebanadasReceta = (entrada, nivel) => {
+    const t = aRebanadas(recetaG(G, entrada), o.rebanadaMs);
+    return t.promesa.then(r => { todas.push(...t.rebanadas); return nivel && nivel !== "E0" ? aNivel(r, nivel) : r; });
   };
+  let w = null;
+  if (o.trabajador && (o.crea || typeof Worker !== "undefined")) {
+    try { w = (o.crea || creaTrabajador)(); } catch (e) { w = null; }
+  }
+  if (!w) return { modo: "rebanadas", rebanadas: todas, muerto: "", receta: aRebanadasReceta, cierra() {} };
+
+  let n = 0, plazo = null, muerto = "", cerrada = false; const espera = new Map();
+  const quitaPlazo = () => { if (plazo !== null) { clearTimeout(plazo); plazo = null; } };
+  const ponPlazo = () => { quitaPlazo(); if (espera.size && !muerto) plazo = setTimeout(() => muere("no contesta en " + o.plazoMs + " ms"), o.plazoMs); };
+  function muere(motivo) {
+    if (muerto || cerrada) return;
+    muerto = "trabajador: " + motivo; quitaPlazo();
+    try { w.terminate(); } catch (e) { /* ya muerto */ }
+    const pendientes = [...espera.values()]; espera.clear();
+    for (const f of pendientes) aRebanadasReceta(f.entrada, f.nivel).then(f.ok, f.ko);   // lo que esperaba, a rebanadas: se resuelve igual
+    if (o.alMorir) { try { o.alMorir(muerto); } catch (e) { /* el aviso no rompe la fábrica */ } }
+  }
+  w.onmessage = e => {
+    const d = e.data || {}, f = espera.get(d.id); ponPlazo();   // cualquier respuesta: el trabajador vive (el plazo vuelve a empezar)
+    if (!f) return; espera.delete(d.id); if (!espera.size) quitaPlazo();
+    if (d.error) f.ko(new Error(d.error)); else f.ok(d.receta);
+  };
+  w.onerror = e => { if (e && e.preventDefault) e.preventDefault(); muere(e && e.message || "error al cargar o al ejecutar"); };
+  w.onmessageerror = () => muere("mensaje ilegible");
+  const fab = {
+    get modo() { return muerto ? "rebanadas" : "trabajador"; },
+    get muerto() { return muerto; },
+    rebanadas: todas,
+    receta(entrada, nivel) {
+      if (cerrada) return Promise.reject(new Error("fábrica cerrada"));
+      if (muerto) return aRebanadasReceta(entrada, nivel);
+      const id = ++n;
+      return new Promise((ok, ko) => {
+        espera.set(id, { ok, ko, entrada, nivel }); if (plazo === null) ponPlazo();
+        try { w.postMessage({ id, entrada, nivel }); } catch (e) { muere("postMessage: " + (e && e.message || e)); }
+      });
+    },
+    cierra() {
+      if (cerrada) return; cerrada = true; quitaPlazo();
+      try { w.terminate(); } catch (e) { /* ya muerto */ }
+      for (const [, f] of espera) f.ko(new Error("fábrica cerrada")); espera.clear();
+    },
+  };
+  return fab;
 }

@@ -54,9 +54,8 @@ export function generarOlivo(entrada, opciones) {
 }
 
 export async function generarOlivoAsync(entrada, opciones) {
-  const { THREE, materiales, nivel } = opciones || {};
-  const f = opciones.fabrica || creaFabrica();
-  const r = await f.receta(entrada, nivel);
-  if (!opciones.fabrica) f.cierra();
-  return montaOlivo(THREE, r, materiales);
+  const o = opciones || {}, { THREE, materiales, nivel } = o;
+  const f = o.fabrica || creaFabrica();
+  try { return montaOlivo(THREE, await f.receta(entrada, nivel), materiales); }
+  finally { if (!o.fabrica) f.cierra(); }   // C-05: la fábrica propia se cierra también si la receta falla (si no, su trabajador se quedaba vivo)
 }

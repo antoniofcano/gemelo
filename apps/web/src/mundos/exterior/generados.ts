@@ -112,7 +112,7 @@ export function creaGenerados(d: DepsGenerados) {
   var mpr: A = /[?&]olivosPropios=([0-6])\b/.exec(BUSQUEDA), MAX_PROPIOS_VR: A = null;   // MAX_PROPIOS_VR: el de las gafas, si la configuración lo da
   var ESTIM: A = { E0: 160000, E1: 80000, E2: 38000, E2VR: 28000 }, SEM_VAR: A = [11, 23, 37, 51], MAX_PROPIOS: A = mpr ? Number(mpr[1]) : 6, MAX_VAR: A = 48, RADIO_CAND: A = 160, MARGEN: A = 12;
   var SIL: A = null, silPend: A = false;   // AG-2.2 (?cartulina=silueta): la geometría recortada de cada cartulina de hoja, por clave de malla instanciada (claveInst)
-  var nLotes: A = 0, recetas: A = {}, pidiendo: A = {}, nPidiendo: A = 0, plan: A = [], listos: A = {}, enLote: A = {}, lote: A = null, claveLote: A = "", nuevo: A = null, R: A = 0, triGen: A = 0, costoGen: A = 0, info: A = { llamadas: 0, triangulos: 0 };
+  var nLotes: A = 0, recetas: A = {}, pidiendo: A = {}, fallidas: A = {}, nPidiendo: A = 0, plan: A = [], listos: A = {}, enLote: A = {}, lote: A = null, claveLote: A = "", nuevo: A = null, R: A = 0, triGen: A = 0, costoGen: A = 0, info: A = { llamadas: 0, triangulos: 0 };
   var ff: A = /[?&]olivosFundido=([0-9.]+)/.exec(BUSQUEDA), FUNDIDO: A = ff ? Math.min(3, Number(ff[1])) : 0.6;
   var HORNEADO: A = !/[?&]olivosHorneado=0\b/.test(BUSQUEDA), manif: A = null, varSem: A = null, epocaManif: A = null, fechaPrueba: A = null;
   var horn: A = { estado: "no", motivo: "", horneadas: 0, calculadas: 0, fallos: 0, cache: 0, propios: 0, ultimoFallo: "" };
@@ -146,7 +146,9 @@ export function creaGenerados(d: DepsGenerados) {
       mats = M.creaMateriales(THREE, null, { epoca: epoca(), srgb: true, parche: parcheGen, mipsCobertura: !/[?&]olivosMips=0\b/.test(BUSQUEDA) });   // sin fotos de campo aquí: corteza dibujada (texturas.js); hojas con mipmaps que conservan la cobertura (ADR-0022 §6; ?olivosMips=0, los de la GPU)
       Object.keys(reemplazos).forEach(function (n) { mats[n] = reemplazos[n]; });   // solo con la TSL (MU6): con el clásico no hay ninguno
       prof = { corteza: profundidad(), muerta: profundidad() };   // la sombra de las mallas por lotes, con el mismo fundido
-      var f: A = M.creaFabrica({ trabajador: true }); if (f.modo === "trabajador") fabrica = f; else f.cierra();
+      // C-02: si el trabajador muere (no carga, no contesta en el plazo), la fábrica acaba a rebanadas lo que esperaba y avisa; lo que venga después va a la cola propia
+      var f: A = M.creaFabrica({ trabajador: true, alMorir: function (m: A) { if (fabrica === f) fabrica = null; motivo = String(m); if (consola) consola.warn("olivos generados: " + m + "; sigo sin trabajador (a rebanadas)"); } });
+      if (f.modo === "trabajador") fabrica = f; else f.cierra();
       if (liberado) { suelta(); return; }
       estado = "activo";
       if (Materiales.cartulina.silueta) { silPend = true; encola("Gsiluetas", -2, LT.siluetasG(), function () { silPend = false; }); }   // AG-2.2: antes del primer lote (prio −2 < −1 del lote)
@@ -208,16 +210,18 @@ export function creaGenerados(d: DepsGenerados) {
   // una receta: de la caché si está (memoria al instante; disco, sin bloquear) y, si no, se calcula (trabajador o cola propia) y se guarda en ella
   // (una variante que está en el manifiesto, antes de calcularse, se descarga horneada; si la descarga falla en algo, se calcula y se cuenta el fallo)
   function pide(clave: A, e: A, niv: A, prio: A, variante?: A) {
-    if (liberado || recetas[clave] || pidiendo[clave] || nPidiendo >= 2) return;
+    if (liberado || recetas[clave] || pidiendo[clave] || fallidas[clave] || nPidiendo >= 2) return;   // C-02: una receta que falló no se vuelve a pedir en cada fotograma
     var e2: A = { tipo: e.tipo, parametros: e.parametros, epoca: e.epoca, semilla: e.semilla }, ck: A = M.claveReceta(e2, niv), r0: A = cache ? cache.mem(ck) : null;
     if (r0) { recetas[clave] = r0; if (variante) horn.cache++; return; }
     pidiendo[clave] = true; nPidiendo++;
     var llega: A = function (r: A) { if (liberado) return; delete pidiendo[clave]; nPidiendo--; recetas[clave] = r; };
     var hecha: A = function (r: A) { if (liberado) return; llega(r); if (cache) cache.pon(ck, r); };
     var calculada: A = function (r: A) { if (variante) horn.calculadas++; else horn.propios++; hecha(r); };
+    var falla: A = function (err: A) { if (liberado) return; delete pidiendo[clave]; nPidiendo--; fallidas[clave] = true; motivo = String(err && err.message || err); };
     var calcula: A = function () {
-      if (fabrica) { fabrica.receta(e2, niv).then(calculada, function (err: A) { delete pidiendo[clave]; nPidiendo--; motivo = String(err); }); return; }
-      encola("G" + clave, prio, seguro((function* () { var r: A = yield* M.recetaG(e2); if (niv !== "E0") r = yield* M.aNivelG(r, niv); return r; })()), function (r: A) { if (r) calculada(r); else { delete pidiendo[clave]; nPidiendo--; } });
+      if (fabrica) { fabrica.receta(e2, niv).then(calculada, falla); return; }
+      // C-06: el fallo de UNA receta a rebanadas se anota (como por el trabajador) y no apaga los generados
+      encola("G" + clave, prio, (function* () { try { var r: A = yield* M.recetaG(e2); if (niv !== "E0") r = yield* M.aNivelG(r, niv); return r; } catch (e: A) { falla(e); return null; } })(), function (r: A) { if (r) calculada(r); });
     };
     var fila: A = variante && HORNEADO ? filaDe(manif, e2, niv) : null;
     var trae: A = !fila ? calcula : function () {
@@ -466,7 +470,7 @@ export function creaGenerados(d: DepsGenerados) {
   function pendientes() {
     if (estado !== "activo") return 0;
     var n: A = cola.cuantos() + nPidiendo + (fundido ? 1 : 0);
-    plan.forEach(function (p: A) { if (!recetas[p.clave] || !enLote[p.c.i] || !enLote[p.c.i][p.clave]) n++; });
+    plan.forEach(function (p: A) { if (fallidas[p.clave]) return; if (!recetas[p.clave] || !enLote[p.c.i] || !enLote[p.c.i][p.clave]) n++; });   // C-02: lo que falló no queda pendiente para siempre
     return n;
   }
   // AG-1.5: el lote acabado se compila antes de entrar en la escena (compiladoG, en generados-cola.ts), con el renderer, la cámara y la escena del legado
@@ -500,7 +504,15 @@ export function creaGenerados(d: DepsGenerados) {
     lote.userData.salen = null; info.saliendo = 0; info.triSaliendo = 0; saliendo = {};
   }
   function* seguro(gen: A) {   // si algo falla al montar el lote, Generados se apaga (y lo dice) sin parar el fotograma del motor
-    try { return yield* gen; } catch (e: A) { estado = "sin"; motivo = String(e && e.message || e); if (!POR_DEFECTO && consola) consola.warn("olivos generados: " + motivo); return null; }
+    try { return yield* gen; } catch (e: A) { apaga(e); return null; }
+  }
+  // C-06: apagado por un fallo: también se quita el lote colocado (si no, el motor vuelve a dibujar el nivel 0 de siempre con el lote viejo encima: olivos dobles)
+  function apaga(e: A) {
+    estado = "sin"; motivo = String(e && e.message || e);
+    if (fundido) terminaFundido();
+    if (lote) { grupo.remove(lote); LT.libera(lote); lote = null; }
+    listos = {}; enLote = {}; selLote = []; claveLote = ""; R = 0; triGen = 0; costoGen = 0; info = { llamadas: 0, triangulos: 0 };
+    if (!POR_DEFECTO && consola) consola.warn("olivos generados: " + motivo);
   }
   function colocaLote(g: A, sel: A, items: A, cl: A) {
     nLotes++;   // lotes montados desde el arranque: el medidor de fotogramas (30_mide, Q0g) mira si cambió en un fotograma lento
@@ -556,7 +568,7 @@ export function creaGenerados(d: DepsGenerados) {
   }
   if (d.ventana) d.ventana.__olivosGen = function () {
     var k0: A = Object.keys(listos)[0], p0: A = k0 !== undefined ? listos[k0].c : null;   // un olivo generado ya dibujado
-    return { defecto: POR_DEFECTO, apagadoPor: DECISION.motivo, primero: p0 ? { x: p0.x, y: p0.y, h: p0.h } : null, estado: estado, motivo: motivo, via: fabrica ? "trabajador" : "rebanadas", plan: plan.length, recetas: Object.keys(recetas).length, pidiendo: nPidiendo, trabajos: cola.cuantos(), radio: R, info: info,
+    return { defecto: POR_DEFECTO, apagadoPor: DECISION.motivo, primero: p0 ? { x: p0.x, y: p0.y, h: p0.h } : null, estado: estado, motivo: motivo, via: fabrica ? "trabajador" : "rebanadas", fallidas: Object.keys(fallidas).length, plan: plan.length, recetas: Object.keys(recetas).length, pidiendo: nPidiendo, trabajos: cola.cuantos(), radio: R, info: info,
       cache: cache ? cache.estado() : null,
       modoGen: MODO, escalera: ESCALERA ? { reparto: reparto, sombras: sombras(), variantes: nVar() } : undefined,
       horneado: { estado: horn.estado, motivo: horn.motivo, epoca: M && mats ? epoca() : null, variantes: (varSem || SEM_VAR).length, horneadas: horn.horneadas, calculadas: horn.calculadas,
@@ -593,7 +605,7 @@ export function creaGenerados(d: DepsGenerados) {
     if (grupo.parent) grupo.parent.remove(grupo);
     suelta();
     Object.keys(recetas).forEach(function (k) { delete recetas[k]; });   // el MISMO objeto (las pruebas lo leen por _prueba.recetas)
-    pidiendo = {}; nPidiendo = 0; plan = []; listos = {}; enLote = {}; selLote = []; claveLote = ""; R = 0; triGen = 0; costoGen = 0; info = { llamadas: 0, triangulos: 0 };
+    pidiendo = {}; fallidas = {}; nPidiendo = 0; plan = []; listos = {}; enLote = {}; selLote = []; claveLote = ""; R = 0; triGen = 0; costoGen = 0; info = { llamadas: 0, triangulos: 0 };
     bandas = {}; ranuraDe = {}; lejRanura = {}; saliendo = {}; prePide = {}; Object.keys(estEsc).forEach(function (k) { delete estEsc[k]; });
     cache = null; SIL = null; silPend = false;
     return true;

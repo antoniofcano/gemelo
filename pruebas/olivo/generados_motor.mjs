@@ -398,4 +398,108 @@ exige(/Generados\.actualiza\(paseando \? pp\.x : fx, paseando \? -pp\.y : fz,/.t
   } finally { THREE.BatchedMesh.prototype.addGeometry = addOrig; THREE.Vector3.prototype.fromBufferAttribute = fbaOrig; }
 }
 
+// ---- 8) C-02 (auditoría del constructor, 2026-11-15): un trabajador que no contesta (el script no cargó, se colgó) no deja los generados parados.
+// La fábrica tiene un plazo: pasado, da el trabajador por muerto, acaba a rebanadas lo que esperaba y avisa; el motor pasa a su cola propia.
+// Con el código de antes, las recetas se quedaban en `pidiendo` para siempre (nPidiendo ≥ 2 corta todas las demás) y no salía ningún olivo.
+{
+  const avisos = [], consola = { log() {}, error: m => avisos.push("error " + m), warn: m => avisos.push("warn " + m) };
+  const mudos = [];
+  class Mudo { constructor() { this.cartas = 0; this.muerto = false; mudos.push(this); } postMessage() { this.cartas++; } terminate() { this.muerto = true; } }   // ni contesta ni falla
+  const OG = Object.assign({}, O, { creaFabrica: o => O.creaFabrica(Object.assign({}, o, { plazoMs: 40, crea: () => new Mudo() })) });
+  const cm = contexto("?olivos=gen", null, { console: consola, window: { OlivoGen: OG } });
+  for (let k = 0; k < 20 && cm.__G.estado() === "cargando"; k++) await espera();
+  const g0 = () => cm.window.__olivosGen();
+  exige(g0().via === "trabajador", "C-02: la fábrica de mentira debía empezar con trabajador (" + g0().via + ")");
+  cm.D.copas = [[0, 0, 4.5, perfil, 1], [9, 0, 4, perfil, 1]];
+  const ol = cm.D.copas.map((q, i) => ({ i, x: q[0], y: q[1], h: q[2], perfil: q[3] }));
+  let r = 0;
+  for (; r < 400 && !(g0().info.arboles >= 1 && g0().pidiendo === 0); r++) {
+    cm.__G.actualiza(0, 0, TOPE, ol); cm.__G.paso(0.00001, 50);
+    await new Promise(ok => setTimeout(ok, 5));
+  }
+  const e = g0();
+  diag.trabajadorMudo = { vueltas: r, via: e.via, pidiendo: e.pidiendo, arboles: e.info.arboles, cartas: mudos.map(w => w.cartas), avisos: avisos.length };
+  exige(mudos.length === 1 && mudos[0].cartas >= 1 && mudos[0].muerto, "C-02: el trabajador mudo debía recibir recetas y acabar terminado (" + JSON.stringify(diag.trabajadorMudo) + ")");
+  exige(e.via === "rebanadas", "C-02: muerto el trabajador, el motor debía seguir a rebanadas (va por " + e.via + ")");
+  exige(e.info.arboles >= 1, "C-02: con el trabajador mudo no sale ningún olivo generado (" + JSON.stringify(diag.trabajadorMudo) + ")");
+  exige(e.pidiendo === 0, "C-02: recetas colgadas en pidiendo (" + e.pidiendo + ")");
+  exige(avisos.some(x => /no contesta/.test(x)), "C-02: sin aviso en consola de que el trabajador murió: " + avisos.join(" | "));
+  cm.__G.libera();
+}
+// la fábrica sola (la API pública): con un trabajador que muere al cargar (evento error) o que no contesta, las recetas en espera y las siguientes
+// salen a rebanadas, iguales a las del hilo principal; cierra() rechaza lo que quede
+{
+  const ent = { tipo: "adulto1", epoca: "envero", semilla: 3 }, ref = await O.huella(O.aNivel(O.receta(ent), "E2"));
+  class Roto { constructor() { setTimeout(() => this.onerror && this.onerror({ message: "404 del trozo del trabajador" }), 0); } postMessage() {} terminate() {} }
+  class Mudo2 { postMessage() {} terminate() {} }
+  for (const [nombre, W] of [["roto", Roto], ["mudo", Mudo2]]) {
+    const muertes = [], f = O.creaFabrica({ plazoMs: 30, crea: () => new W(), alMorir: m => muertes.push(m) });
+    const [a, b] = await Promise.all([f.receta(ent, "E2"), f.receta(ent, "E2")]);
+    const c = await f.receta(ent, "E2");
+    exige(muertes.length === 1 && f.modo === "rebanadas" && f.muerto, "C-02 fábrica (" + nombre + "): sin aviso o sin pasar a rebanadas: " + JSON.stringify({ muertes, modo: f.modo }));
+    for (const r of [a, b, c]) exige(await O.huella(r) === ref, "C-02 fábrica (" + nombre + "): la receta a rebanadas no es la del hilo principal");
+    f.cierra();
+    let rechazo = null; await f.receta(ent).catch(e => { rechazo = String(e); });
+    exige(/cerrada/.test(rechazo || ""), "C-02 fábrica (" + nombre + "): tras cierra(), receta() debía rechazarse");
+  }
+}
+// C-05: generarOlivoAsync sin opciones no lanza TypeError, y si la receta falla cierra su fábrica (su trabajador no se queda vivo)
+{
+  const antesW = globalThis.Worker; let terminados = 0;
+  globalThis.Worker = class { postMessage(m) { setTimeout(() => this.onmessage && this.onmessage({ data: { id: m.id, error: "entrada mala" } }), 0); } terminate() { terminados++; } };
+  let err = null;
+  try { await O.generarOlivoAsync({ tipo: "no-existe", epoca: "envero", semilla: 1 }).catch(e => { err = e; }); } finally { if (antesW === undefined) delete globalThis.Worker; else globalThis.Worker = antesW; }
+  exige(err && !(err instanceof TypeError) && /entrada mala/.test(String(err)), "C-05: generarOlivoAsync sin opciones: " + err);
+  exige(terminados === 1, "C-05: la receta falló y el trabajador de la fábrica propia no se terminó (" + terminados + ")");
+}
+// una receta que el trabajador no sabe hacer ({error}) se anota y no se vuelve a pedir en cada fotograma (antes: una carta por fotograma, sin fin)
+{
+  const cartas = [];
+  class Quejica { postMessage(m) { cartas.push(m.id); setTimeout(() => this.onmessage && this.onmessage({ data: { id: m.id, error: "entrada imposible" } }), 0); } terminate() {} }
+  const OG = Object.assign({}, O, { creaFabrica: o => O.creaFabrica(Object.assign({}, o, { crea: () => new Quejica() })) });
+  const cq = contexto("?olivos=gen", null, { window: { OlivoGen: OG } });
+  for (let k = 0; k < 20 && cq.__G.estado() === "cargando"; k++) await espera();
+  cq.D.copas = [[0, 0, 4.5, perfil, 1]];
+  const ol = cq.D.copas.map((q, i) => ({ i, x: q[0], y: q[1], h: q[2], perfil: q[3] }));
+  for (let k = 0; k < 40; k++) { cq.__G.actualiza(0, 0, TOPE, ol); cq.__G.paso(0.00001, 50); await new Promise(ok => setTimeout(ok, 2)); }
+  const q = cq.window.__olivosGen();
+  diag.recetaImposible = { cartas: cartas.length, fallidas: q.fallidas, pendientes: cq.__G.pendientes() };
+  exige(cartas.length > 0 && cartas.length <= 4, "C-02: una receta imposible se pide " + cartas.length + " veces en 40 fotogramas (debía anotarse y no repetirse)");
+  exige(q.fallidas >= 1 && /entrada imposible/.test(q.motivo), "C-02: la receta imposible no queda anotada: " + JSON.stringify(diag.recetaImposible) + " " + q.motivo);
+  exige(cq.__G.pendientes() === 0 || cq.__G.pendientes() < ol.length * 3, "C-02: lo que falló no debe quedar pendiente para siempre");
+  cq.__G.libera();
+}
+
+// C-06: si falla el montaje de un lote, Generados se apaga Y quita el lote colocado (antes se quedaba colgado mientras el motor volvía a su nivel 0:
+// olivos dobles); el fallo de UNA receta a rebanadas (sin trabajador) se anota y no apaga los generados
+{
+  const cf = contexto("?olivos=gen");
+  for (let k = 0; k < 20 && cf.__G.estado() === "cargando"; k++) await espera();
+  cf.D.copas = [[0, 0, 4.5, perfil, 1], [0, 30, 4, perfil, 1]];
+  const ol = cf.D.copas.map((q, i) => ({ i, x: q[0], y: q[1], h: q[2], perfil: q[3] })), gf = () => cf.window.__olivosGen();
+  for (let r = 0; r < 300 && !(gf().info.arboles >= 1); r++) { cf.__G.actualiza(0, 0, TOPE, ol); for (let k = 0; k < 2000 && gf().trabajos > 0; k++) cf.__G.paso(0.00001, 50); }
+  exige(gf().info.arboles >= 1 && cf.__G._prueba.lote(), "C-06: no se llegó a colocar el primer lote");
+  const add = THREE.BatchedMesh.prototype.addGeometry;
+  THREE.BatchedMesh.prototype.addGeometry = function () { throw new Error("addGeometry de prueba que falla"); };
+  try {
+    for (let r = 0; r < 300 && cf.__G.estado() === "activo"; r++) { for (let k = 0; k < 100 && gf().fundido.activo; k++) cf.__G.paso(0.1, 1); cf.__G.actualiza(0, -30, TOPE, ol); for (let k = 0; k < 2000 && gf().trabajos > 0 && cf.__G.estado() === "activo"; k++) cf.__G.paso(0.00001, 50); }
+  } finally { THREE.BatchedMesh.prototype.addGeometry = add; }
+  const grupo = cf.gArboles.children.find(o => o.name === "olivosGenerados");
+  exige(cf.__G.estado() === "sin", "C-06: el lote que falla debía apagar los generados (" + cf.__G.estado() + ")");
+  exige(!cf.__G._prueba.lote() && grupo && grupo.children.length === 0, "C-06: apagados por un fallo, el lote anterior sigue en la escena (" + (grupo && grupo.children.length) + " hijos)");
+  exige(cf.__G.actualiza(0, 0, TOPE, ol).radio === 0, "C-06: apagados, el motor debe volver a su nivel de siempre");
+  cf.__G.libera();
+}
+{
+  const OG = Object.assign({}, O, { recetaG: function* (e) { if (e.semilla === 666) throw new Error("receta de prueba que falla"); return yield* O.recetaG(e); } });
+  const cr = contexto("?olivos=gen", null, { window: { OlivoGen: OG } });
+  for (let k = 0; k < 20 && cr.__G.estado() === "cargando"; k++) await espera();
+  cr.D.copas = [[0, 0, 4.5, perfil, 1], [9, 0, 4, perfil, 1]]; cr.D.copas_semilla = [666, 7];
+  const ol = cr.D.copas.map((q, i) => ({ i, x: q[0], y: q[1], h: q[2], perfil: q[3] })), gr = () => cr.window.__olivosGen();
+  for (let r = 0; r < 60; r++) { cr.__G.actualiza(0, 0, TOPE, ol); for (let k = 0; k < 2000 && gr().trabajos > 0; k++) cr.__G.paso(0.00001, 50); await espera(); }
+  diag.recetaQueFalla = { estado: cr.__G.estado(), fallidas: gr().fallidas, arboles: gr().info.arboles, via: gr().via };
+  exige(cr.__G.estado() === "activo" && gr().fallidas >= 1, "C-06: el fallo de una receta a rebanadas apagó los generados o no se anotó: " + JSON.stringify(diag.recetaQueFalla));
+  cr.__G.libera();
+}
+
 console.log(JSON.stringify({ mal, diag }));
