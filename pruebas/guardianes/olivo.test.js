@@ -50,6 +50,17 @@ test("si cambia el código del núcleo, sube GEN_VERSION", t => {
     "»: sube GEN_VERSION (y escribe sus huellas) o, si el árbol NO cambia (p. ej. un comentario), vuelve a sellar con «node pruebas/olivo/compara.mjs --todos --sella»");
 });
 
+// C-04 / D-01 (auditoría del constructor, 2026-11-15; regla 13): «CACHE_VERSION sube si cambia lo que da una receta sin cambiar GEN_VERSION»
+// tiene guardián. pruebas/olivo/sella_cache.mjs dice qué fuentes entran (FUENTES_CACHE) y por qué los demás no.
+test("si cambia niveles.js o tarjetas.js (E1/E2 y la geometría de la tarjeta), sube CACHE_VERSION", async () => {
+  const S = await import(require("url").pathToFileURL(path.join(RAIZ, "pruebas", "olivo", "sella_cache.mjs")).href);
+  const sello = JSON.parse(fs.readFileSync(S.SELLO, "utf8")), v = S.cacheVersion();
+  assert.deepStrictEqual(sello.fuentes, S.FUENTES_CACHE, "el sello es de otra lista de fuentes: vuelve a sellar (node pruebas/olivo/sella_cache.mjs)");
+  assert.strictEqual(sello.cache_version, v, "CACHE_VERSION es " + v + " y el sello es de la " + sello.cache_version + ": sella con «node pruebas/olivo/sella_cache.mjs»");
+  assert.strictEqual(S.shaFuentesCache(), sello.fuentes_sha256, S.FUENTES_CACHE.join(" o ") + " han cambiado y CACHE_VERSION sigue en " + v +
+    ": súbela en apps/web/olivo/cache.js y sella (node pruebas/olivo/sella_cache.mjs); si ningún árbol cambia (un comentario), sella con --sin-cambio");
+});
+
 test("las huellas del módulo son las del oráculo (todos los casos, en 4 procesos)", { timeout: 600000 }, async t => {
   if (SALTO) return t.skip(SALTO);
   const partes = await Promise.all([0, 1, 2, 3].map(k => nodo([path.join("pruebas", "olivo", "compara.mjs"), "--todos", "--parte", k + "/4"])));

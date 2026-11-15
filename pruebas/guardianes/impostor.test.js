@@ -105,6 +105,17 @@ test("claveImpostor: determinista y cambia con la época, las fuentes y lo que h
   assert.notStrictEqual(I.claveImpostor({ epoca: "envero", fuentes: [], three: "0.186.1" }), I.claveImpostor({ epoca: "envero", fuentes: [], three: "0.187.0" }));
 });
 
+test("la clave del impostor (huellaPagina) cubre los fuentes del constructor que montan y pintan el árbol (C-04: tarjetas.js y compat.js faltaban)", () => {
+  const OL = path.join(RAIZ, "apps", "web", "olivo"), GEN = ["nucleo.js", "tipos.js", "azar.js", "version.js"];   // los del núcleo: GEN_VERSION (cambian las huellas de las fuentes)
+  const vistos = new Set(), pend = ["montaje.js", "materiales.js", "impostor.js", "tarjetas.js"];
+  while (pend.length) {
+    const f = pend.pop(); if (vistos.has(f)) continue; vistos.add(f);
+    for (const m of fs.readFileSync(path.join(OL, f), "utf8").matchAll(/from "\.\/([a-z_]+\.js)"/g)) pend.push(m[1]);
+  }
+  const falta = [...vistos].filter(f => !GEN.includes(f) && !IM.FUENTES_PAGINA_OLIVO.includes(f));
+  assert.deepStrictEqual(falta, [], "fuentes que cambian el atlas de los impostores sin cambiar su clave: añádelos a FUENTES_PAGINA_OLIVO (tuberia/olivos/impostores.mjs)");
+});
+
 test("incremental sin Chrome: una fila con la misma clave y sus atlas en disco se reutiliza; el hornero sin impostores conserva las que siguen valiendo", async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "impostor-")), m = ejemplo();
   const huellas = ["1".repeat(32), "2".repeat(32)];
