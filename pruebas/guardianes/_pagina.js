@@ -92,6 +92,22 @@ function podaCache() {
   }
 }
 
+/** El código que entra en la página (el cliente, su build y, si está instalado, el constructor de olivos), en el hash h */
+function huellaCodigo(h) {
+  hashFicheros(h, path.join(WEB, "src"), "src");   // el cliente entero (A3-8c: el arranque y sus módulos; antes, también apps/web/motor/)
+  for (const f of ["plantilla.html", "plantilla.css", "vite.config.js", "package-lock.json", path.join("herramientas", "genera_motor.mjs"), path.join("herramientas", "pasos.mjs"), path.join("herramientas", "builds.mjs"), path.join("herramientas", "sin_tiles3d.js")]) {
+    const p = path.join(WEB, f); if (fs.existsSync(p)) { h.update(f + "\0"); h.update(fs.readFileSync(p)); }
+  }
+  // el constructor de olivos va dentro de la página (Vite: «gemelo-olivo» → apps/web/olivo): sin sus fuentes en la huella, un cambio en él (p. ej.
+  // la geometría de las tarjetas, C-01) se probaba con la página vieja de la caché
+  if (OLIVO_INSTALADO()) {
+    const OL = path.join(WEB, "olivo");
+    for (const f of fs.readdirSync(OL).filter(f => /\.(js|json)$/.test(f)).sort()) { h.update("olivo/" + f + "\0"); h.update(fs.readFileSync(path.join(OL, f))); }
+    hashFicheros(h, path.join(OL, "texturas"), "olivo/texturas");
+  }
+  return h;
+}
+
 /** Ver la cabecera. Síncrono (spawnSync): se llama en test.before o en una prueba, nunca con un servidor del mismo proceso esperando respuesta. */
 function montaPagina({ finca = "hituelo", conTileset = true, tileset, olivos = false, salida, fixture: dirFixture } = {}) {
   const motivo = saltoPagina("la página de prueba"); if (motivo) throw new Error(motivo);
@@ -111,10 +127,7 @@ function montaPagina({ finca = "hituelo", conTileset = true, tileset, olivos = f
 
   // la huella: todo lo que cambia la página
   const h = crypto.createHash("sha256");
-  hashFicheros(h, path.join(WEB, "src"), "src");   // el cliente entero (A3-8c: el arranque y sus módulos; antes, también apps/web/motor/)
-  for (const f of ["plantilla.html", "plantilla.css", "vite.config.js", "package-lock.json", path.join("herramientas", "genera_motor.mjs"), path.join("herramientas", "pasos.mjs"), path.join("herramientas", "builds.mjs"), path.join("herramientas", "sin_tiles3d.js")]) {
-    const p = path.join(WEB, f); if (fs.existsSync(p)) { h.update(f + "\0"); h.update(fs.readFileSync(p)); }
-  }
+  huellaCodigo(h);
   // F2a: la build (GEMELO_BUILD=vr cambia three por super-three, apps/web/herramientas/builds.mjs) también cambia la página: sin esto, una prueba con la
   // build de VR reutilizaría la página de pantalla de la caché (o al revés). La de pantalla conserva la huella de antes (no invalida la caché del banco)
   h.update(JSON.stringify({ finca, indice, olivo: OLIVO_INSTALADO() }));
@@ -154,4 +167,4 @@ function datosDe(carpeta, pagina = "index.html") {
   return JSON.parse(m ? m[1] : fs.readFileSync(path.join(carpeta, "indice.json"), "utf8"));
 }
 
-module.exports = { montaPagina, saltoPagina, datosDe, renombraConReintento, WEB, VITE };
+module.exports = { montaPagina, saltoPagina, datosDe, renombraConReintento, huellaCodigo, WEB, VITE };

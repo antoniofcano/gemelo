@@ -42,3 +42,16 @@ test("un error que no es transitorio se lanza al momento, sin reintentar", () =>
     assert.strictEqual(llamadas(), 1, "sin reintento");
   });
 });
+
+// La huella de la caché de páginas (montaPagina) incluye el constructor de olivos, que Vite mete en la página: sin él, un cambio en
+// apps/web/olivo (p. ej. la geometría de las tarjetas, C-01 de la auditoría del constructor) se probaba con la página vieja de la caché.
+test("la huella de la página cambia si cambia un fuente del constructor de olivos", t => {
+  const { huellaCodigo, WEB } = require("./_pagina");
+  if (!fs.existsSync(path.join(WEB, "olivo", "node_modules", "three-gen", "package.json"))) return t.skip("apps/web/olivo sin instalar: la página no lleva el constructor");
+  const crypto = require("crypto"), d = () => huellaCodigo(crypto.createHash("sha256")).digest("hex");
+  const a = d(), objetivo = path.join(WEB, "olivo", "tarjetas.js"), original = fs.readFileSync;
+  fs.readFileSync = function (p, ...r) { const v = original.call(this, p, ...r); return path.resolve(String(p)) === objetivo ? Buffer.concat([Buffer.from(v), Buffer.from("// cambio")]) : v; };
+  let b; try { b = d(); } finally { fs.readFileSync = original; }
+  assert.notStrictEqual(a, b, "la huella no cambia con apps/web/olivo/tarjetas.js");
+  assert.strictEqual(d(), a, "determinista");
+});
