@@ -4,7 +4,7 @@
 // `parche(material, nombre)` permite al anfitrión encadenar su propio onBeforeCompile (p. ej. el parcheTiempo del gemelo: luz, nubes y helada).
 import { colorLineal, texturaDeColor, uvDelMapa } from "./compat.js";
 import { ESTADOS } from "./tipos.js";
-import { dibujaCorteza, dibujaRamita, dibujaRelleno, dibujaAtlasTarjetas, mipsConCobertura } from "./texturas.js";
+import { dibujaCorteza, dibujaRamita, dibujaRellenoG, dibujaAtlasTarjetasG, mipsConCoberturaG, agota } from "./texturas.js";
 
 /** Nombres de material que puede pedir una receta (montaOlivo falla si falta uno) */
 export const MATERIALES = ["corteza", "pies", "musgo", "muerta", "raiz", "corte", "tutor", "oliva", "relleno", "relleno_sombra",
@@ -51,7 +51,10 @@ function conMarcas(THREE, mat, texMuerta) {
  *                  sin conservar la cobertura; por defecto se conserva) }
  * @returns { nombre → material } y además .avisos (lo que falta) y .libera()
  */
-export function creaMateriales(THREE, fotos, opciones) {
+export function creaMateriales(THREE, fotos, opciones) { return agota(creaMaterialesG(THREE, fotos, opciones)); }
+/** creaMateriales como generador (C-03): cede el turno (yield) tras cada dibujo y en trozos de los mipmaps con cobertura (texturas.js), para que el
+ *  anfitrión lo pase por su cola sin bloquear el fotograma (en el motor, 53-235 ms de una vez en SwiftShader: MEDIDAS). Mismo resultado */
+export function* creaMaterialesG(THREE, fotos, opciones) {
   const o = opciones || {}, f = fotos || {}, avisos = [].concat(f.avisos || []), texturas = [];
   const est = ESTADOS[o.epoca || "envero"] || ESTADOS.envero, flor = est.flor;
   const tex = (img, desdeBitmap) => {
@@ -64,6 +67,7 @@ export function creaMateriales(THREE, fotos, opciones) {
   };
   const S = (props, hex) => { const m = new THREE.MeshStandardMaterial(props); colorLineal(m.color, hex); return m; };
   const dibujada = dibujaCorteza();
+  yield;
   if (!dibujada) avisos.push("sin lienzo (OffscreenCanvas ni documento): materiales sin textura dibujada");
   const texCorteza = tex(f.corteza, true) || tex(dibujada, false), conFoto = !!f.corteza;
   const texMusgo = tex(f.musgo, true), texMuerta = tex(f.muerta, true);
@@ -79,17 +83,20 @@ export function creaMateriales(THREE, fotos, opciones) {
   M.oliva = S({ roughness: 0.5 }, 0xffffff);
   // las hojas (recorte alfa): mipmaps que conservan la cobertura del corte (texturas.js, ADR-0022 §6); `mipsCobertura: false` (en el motor,
   // ?olivosMips=0) los deja en los de la GPU, para comparar. Sin lienzo 2D (Node), los de siempre.
-  const hoja = (c, corte) => {
+  const hoja = function* (c, corte) {
     const t = tex(c, false); if (!t) return t;
     t.anisotropy = 4;
-    const mips = o.mipsCobertura === false ? null : mipsConCobertura(c, corte);
+    const mips = o.mipsCobertura === false ? null : yield* mipsConCoberturaG(c, corte);
     if (mips) { t.mipmaps = mips; t.generateMipmaps = false; t.minFilter = THREE.LinearMipmapLinearFilter; }
     return t;
   };
-  const lienzosRamita = [dibujaRamita(11, flor), dibujaRamita(29, flor)], ramitas = lienzosRamita.map(c => hoja(c, 0.45));
+  const lienzosRamita = [dibujaRamita(11, flor)]; yield;
+  lienzosRamita.push(dibujaRamita(29, flor)); yield;
+  const ramitas = [yield* hoja(lienzosRamita[0], 0.45), yield* hoja(lienzosRamita[1], 0.45)];
   // el atlas de las tarjetas de racimo de E1/E2 (O9b), con las mismas ramitas y, en la fila de E2, las olivas de la época
-  const texAtlas = hoja(dibujaAtlasTarjetas(lienzosRamita, { fruto: est.fruto, colorFruto: est.colorFruto }), 0.45);
-  const texRel = hoja(dibujaRelleno(flor), 0.5);
+  const texAtlas = yield* hoja(yield* dibujaAtlasTarjetasG(lienzosRamita, { fruto: est.fruto, colorFruto: est.colorFruto }), 0.45);
+  const lienzoRel = yield* dibujaRellenoG(flor);
+  const texRel = yield* hoja(lienzoRel, 0.5);
   M.relleno = S({ map: texRel, alphaTest: 0.5, side: D, roughness: 0.9 }, 0xffffff);
   M.relleno_sombra = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: texRel, alphaTest: 0.5 });
   [0, 1].forEach(i => {

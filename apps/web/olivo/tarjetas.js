@@ -33,7 +33,12 @@ function geoTarjeta(fila) {
   for (const [f, n, col] of planos) {
     const [u0, u1, v0, v1] = celda(col), b = pos.length / 3;
     for (const [s, w] of [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]) { pos.push(...f(s, w)); nor.push(...n); uv.push(s < 0 ? u0 : u1, w < 0 ? v0 : v1); }
-    ind.push(b, b + 1, b + 2, b, b + 2, b + 3);
+    // el sentido de giro de los triángulos tiene que casar con la normal (antihorario visto desde donde apunta): con caras dobles, three toma la normal
+    // de gl_FrontFacing, y un plano con el giro al revés se ilumina con la normal hacia dentro (C-01: el plano A, el radial, iba así hasta CACHE_VERSION 3).
+    // Se decide con el producto de las aristas y no a mano: (e1 × e2) · n > 0
+    const p0 = f(-0.5, -0.5), p1 = f(0.5, -0.5), p2 = f(0.5, 0.5), e1 = p1.map((x, k) => x - p0[k]), e2 = p2.map((x, k) => x - p0[k]);
+    const giro = (e1[1] * e2[2] - e1[2] * e2[1]) * n[0] + (e1[2] * e2[0] - e1[0] * e2[2]) * n[1] + (e1[0] * e2[1] - e1[1] * e2[0]) * n[2];
+    ind.push(...(giro > 0 ? [b, b + 1, b + 2, b, b + 2, b + 3] : [b, b + 2, b + 1, b, b + 3, b + 2]));
   }
   return { atrib: { position: new Float32Array(pos), normal: new Float32Array(nor), uv: new Float32Array(uv) }, indice: Uint32Array.from(ind),
     caja: { min: { x: -0.5, y: -0.5, z: -0.5 }, max: { x: 0.5, y: 0.5, z: 0.5 } } };

@@ -3,7 +3,7 @@
 // comprobada con su huella— y casa con el registro; en las hojas está cada olivo una vez; _TIPO casa con copas_tipo por la tabla.
 //
 //   node tuberia/tiles3d/comprueba.mjs --entrada <carpeta con indice.json | indice.json> --tileset <carpeta del tileset>
-//        [--catalogo <catalogo.json>]   (el mismo que se pasó a genera.mjs; sin él, el catálogo «olivos»)
+//        [--catalogo <catalogo.json>]   (el mismo que se pasó a genera.mjs: el que nombra copas_tipo_catalogo del índice; sin él, «olivos»)
 //   (sin --entrada se lee GEMELO_DATOS, que apunta al indice.json). La raíz no tiene contenido (generador ≥ 0.3.0): se salta.
 //
 // Contrato: contratos/tileset.schema.json y doc/sistema/TILES3D.md («Identidad y tipo por instancia»).
@@ -23,7 +23,7 @@ export async function comprueba(entrada, dir, catalogo) {
   if (G.huella_registro !== huella(ids)) mal("huella_registro no casa con el registro");
   if (G.id_fuente !== (I.copas_id ? "copas_id" : "indice")) mal("id_fuente " + G.id_fuente);
   const nombreDe = new Map(Object.entries(G.tipos).map(([n, nombre]) => [Number(n), nombre]));
-  const tt = tablaTipos(I, catalogoTipos(catalogo)), tipoEsperado = g => tt.tabla[tt.local.get(I.copas_tipo ? I.copas_tipo[g] : -1)];
+  const tt = tablaTipos(I, catalogoTipos(catalogo, I)), tipoEsperado = g => tt.tabla[tt.local.get(I.copas_tipo ? I.copas_tipo[g] : -1)];
   if (G.catalogo_tipos !== tt.catalogo) mal("catalogo_tipos " + G.catalogo_tipos + ", esperado " + tt.catalogo);
   if (TS.root.content) mal("la raíz no debe tener contenido");
   if (JSON.stringify(Object.entries(G.tipos).sort()) !== JSON.stringify(Object.entries(tt.tabla).sort())) mal("la tabla de tipos no es la del registro");

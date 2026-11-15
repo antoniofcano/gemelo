@@ -4,6 +4,7 @@
 import { atributoIndice, limitesDeInstancias } from "./compat.js";
 
 const cacheCompartidas = new WeakMap();   // THREE → { geos → { nombre → BufferGeometry } }
+const listaCompartidas = new WeakMap();   // THREE → [{ nombre → BufferGeometry }…] (las mismas, para poder soltarlas: C-10)
 
 function geometria(THREE, atrib, indice) {
   const g = new THREE.BufferGeometry();
@@ -26,8 +27,18 @@ export function compartidas(THREE, geos) {
     c = {};
     for (const [k, a] of Object.entries(geos)) { c[k] = geometria(THREE, a.atrib, a.indice); c[k].userData.compartida = true; }
     porGeos.set(geos, c);
+    if (!listaCompartidas.has(THREE)) listaCompartidas.set(THREE, []);
+    listaCompartidas.get(THREE).push(c);
   }
   return c;
+}
+/** C-10: suelta de la GPU las geometrías compartidas de ese three y las olvida (si alguien vuelve a montar un árbol, se crean otra vez). Para
+ *  cuando el anfitrión se va (el motor: Generados.libera); devuelve cuántas soltó */
+export function liberaCompartidas(THREE) {
+  const L = listaCompartidas.get(THREE) || []; let n = 0;
+  for (const c of L) for (const g of Object.values(c)) { g.dispose(); n++; }
+  listaCompartidas.delete(THREE); cacheCompartidas.delete(THREE);
+  return n;
 }
 
 /**

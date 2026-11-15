@@ -1,6 +1,6 @@
 # Contrato `olivos-tipo` (v = 1)
 
-Qué tiene que entregar el **constructor de olivos-tipo** (herramienta aparte, aún sin definir) para que el gemelo pueda dibujar sus modelos, y qué parámetros de cada árbol viajan en el registro. Decisión y lo que queda abierto: [ADR-0012](../doc/adr/0012-catalogo-de-olivos-tipo-e-id-estable.md). Esquema: [`olivos-tipo.schema.json`](olivos-tipo.schema.json) (JSON Schema 2020-12). Ejemplo que lo cumple: `modelos/olivos/fixture/` (sintético, lo genera `modelos/olivos/fixture/genera.js`). Lo vigila `pruebas/guardianes/olivos.test.js`.
+Qué tiene que entregar el **constructor de olivos-tipo** (una herramienta que dé glb fijos; aún no existe: el constructor de olivos generados de `apps/web/olivo/`, [ADR-0017](../doc/adr/0017-constructor-de-olivos-generados.md), da recetas, no un catálogo de glb) para que el gemelo pueda dibujar sus modelos, y qué parámetros de cada árbol viajan en el registro. Decisión y lo que queda abierto: [ADR-0012](../doc/adr/0012-catalogo-de-olivos-tipo-e-id-estable.md). Esquema: [`olivos-tipo.schema.json`](olivos-tipo.schema.json) (JSON Schema 2020-12). Ejemplo que lo cumple: `modelos/olivos/fixture/` (sintético, lo genera `modelos/olivos/fixture/genera.js`). Lo vigila `pruebas/guardianes/olivos.test.js`.
 
 La idea en una frase: **los parámetros de cada árbol viajan en el registro; las formas, en un catálogo.** Así el olivo no queda atado al formato de las teselas: hoy son teselas de 256 m en JSON; en la fase F1d serán 3D Tiles 1.1, donde el registro pasa a ser una tabla de propiedades por instancia y el catálogo sigue siendo el mismo.
 
@@ -27,11 +27,11 @@ La idea en una frase: **los parámetros de cada árbol viajan en el registro; la
 ### Presupuesto por modelo (todas sus piezas)
 | Nivel | Objetivo | Tope (objetivo × 1,2) | Piezas máx. | Hoy por procedimiento (tipo −1) |
 |---|---|---|---|---|
-| L0 | ≈ 800 tri | 960 | 3 | no sale del catálogo: copa **medida** de cada árbol (`06_arboles.js`) |
+| L0 | ≈ 800 tri | 960 | 3 | no sale del catálogo: copa **medida** de cada árbol (`apps/web/src/mundos/exterior/arboles-l0.ts`, antes `06_arboles.js`) |
 | L1 | ≈ 170 tri | 204 | 2 | 150 / 160 (4 variantes, copa + tronco) |
 | L2 | ≈ 30 tri | 36 | 1 | 35 (2 variantes, solo copa) |
 
-La fuente de verdad es `presupuesto_tri` del esquema; el motor (`Catalogo.PRES_TRI` en `07a_catalogo.js`) dice lo mismo y lo comprueba el guardián. Un tipo que se pasa no se registra (queda en `Catalogo.avisos()`) y sus olivos se dibujan como tipo −1. **Cada tipo cargado cuesta sus piezas en llamadas de dibujo** cuando tiene olivos a la vista: hasta 2 en L1 y 1 en L2 (ADR-0012).
+La fuente de verdad es `presupuesto_tri` del esquema; el motor (`Catalogo.PRES_TRI` en `apps/web/src/mundos/exterior/catalogo.ts`, antes `07a_catalogo.js`) dice lo mismo y lo comprueba el guardián. Un tipo que se pasa no se registra (queda en `Catalogo.avisos()`) y sus olivos se dibujan como tipo −1. **Cada tipo cargado cuesta sus piezas en llamadas de dibujo** cuando tiene olivos a la vista: hasta 2 en L1 y 1 en L2 (ADR-0012).
 
 ## 2. Parámetros por árbol (en el registro, no en el modelo)
 
@@ -41,10 +41,11 @@ Van en el índice de la finca ([CONTRATOS §1.1](../doc/sistema/CONTRATOS.md#11-
 |---|---|
 | `copas[i]` | `[x, y, h, r8[8], parcela+1]` — **medido** (LiDAR): posición, altura y los 8 radios de la copa |
 | `copas_id[i]` | *(opcional)* entero ≥ 0, **id estable** del árbol, único en la finca (identidad global = `finca_id` + id); sobrevive a una reexportación aunque cambie su índice en `copas`. `< 2^31`: id del **censo de OlivarTrack** (marca emparejada); `≥ 2^31`: **provisional**, por posición UTM ([CONTRATOS §1.1](../doc/sistema/CONTRATOS.md#11-indicejson-va-en-la-página-como-d)). Es la semilla del generador de olivos |
-| `copas_tipo[i]` | *(opcional)* `id` del olivo-tipo del catálogo; **−1 = sin asignar**. Un tipo que el catálogo cargado no conoce se dibuja como −1 |
+| `copas_tipo[i]` | *(opcional)* `id` del olivo-tipo en el catálogo que nombra `copas_tipo_catalogo`; **−1 = sin asignar**. Un tipo que el catálogo cargado no conoce se dibuja como −1 |
+| `copas_tipo_catalogo` | *(opcional)* **qué catálogo manda** (D-03): `"olivos"` —el del constructor de olivos generados ([olivo-generado.md](olivo-generado.md) §1.1), `ID_TIPO` 0-6— si falta; o el `id` de un catálogo de este contrato, cuyos `tipos[].id` son entonces los números. Los tres que leen `copas_tipo` lo hacen igual (`apps/web/olivo/copas.js`): el tileset nombra cada tipo con ese catálogo (`tuberia/tiles3d/genera.mjs`; si es de glb, exige su `catalogo.json` con `--catalogo`), los niveles 1-2 del motor solo dibujan un modelo si el catálogo cargado es ese, y los olivos generados toman su forma de `copas_tipo` solo si es «olivos» (con otro catálogo, centenario de 3 pies, como sin tipo). Lo vigila `pruebas/guardianes/olivos.test.js` |
 
 Lo demás no viaja: el motor estira el modelo a cada árbol con lo medido. Escala vertical = `h / altura del modelo`; en planta, los semiejes del modelo pasan a los ejes de la copa medida (el par de radios opuestos más largo y su perpendicular, como hoy en L1) y el modelo se gira según ese eje largo; color por árbol desde la ortofoto. Así un olivo-tipo nunca contradice la copa medida en tamaño ni en orientación.
 
 ## 3. Cómo lo carga el motor (preparado, sin activar en F1b)
 
-`Catalogo.instala(desc, cargador, base)` (`07a_catalogo.js`): `desc` es el `catalogo.json`; `cargador(url, THREE)` es una función **inyectada** por quien llama que devuelve `Promise<[{nombre, geometria}]>` (una entrada por pieza); el motor no añade dependencias. En la prueba se inyecta el `GLTFLoader` de three r128; en F1d lo dará la tubería de 3D Tiles. El motor pone **sus propios materiales** (copa o tronco, por el nombre de la pieza), con la misma luz, sombra de nubes y helada que el resto. Nada del motor llama hoy a `instala`: con el catálogo vacío todo olivo es tipo −1 y se ve como siempre.
+`Catalogo.instala(desc, cargador, base)` (`apps/web/src/mundos/exterior/catalogo.ts`): `desc` es el `catalogo.json`; `cargador(url, THREE)` es una función **inyectada** por quien llama que devuelve `Promise<[{nombre, geometria}]>` (una entrada por pieza); el motor no añade dependencias. En la prueba se inyecta el `GLTFLoader` de three r128; en F1d lo dará la tubería de 3D Tiles. El motor pone **sus propios materiales** (copa o tronco, por el nombre de la pieza), con la misma luz, sombra de nubes y helada que el resto. Nada del motor llama hoy a `instala`: con el catálogo vacío todo olivo es tipo −1 y se ve como siempre.

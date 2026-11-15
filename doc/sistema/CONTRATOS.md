@@ -53,7 +53,7 @@ Convenciones comunes: **x este, y norte**, en metros relativos a `centro_utm` (U
 
 ### 1.1 `indice.json` (va en la página como `D`)
 
-Campos obligatorios: `v, ts, res, srs, orto_px, finca_id, centro_utm, z0, ext, parcelas, copas, marcados, ot, avance, teselas, grueso, mosaico`. Opcionales: `fincas, textos, ndvi, suelo_ndvi, paisaje, zmax, cobertura_nube, base, tileset, copas_id, copas_tipo, copas_semilla, copas_param, biodiversidad, titulo_vr, config` (los vigila `contratos.test.js`: esta lista es la del esquema, y cada `D.<campo>` que lee el motor está en él; L4-09, L4-13). El esquema es **cerrado** en la raíz (`additionalProperties: false`): un campo que no está en él no entra en el índice, y `construye()` copia del intermedio solo estos (L4-10).
+Campos obligatorios: `v, ts, res, srs, orto_px, finca_id, centro_utm, z0, ext, parcelas, copas, marcados, ot, avance, teselas, grueso, mosaico`. Opcionales: `fincas, textos, ndvi, suelo_ndvi, paisaje, zmax, cobertura_nube, base, tileset, copas_id, copas_tipo, copas_tipo_catalogo, copas_semilla, copas_param, biodiversidad, titulo_vr, config` (los vigila `contratos.test.js`: esta lista es la del esquema, y cada `D.<campo>` que lee el motor está en él; L4-09, L4-13). El esquema es **cerrado** en la raíz (`additionalProperties: false`): un campo que no está en él no entra en el índice, y `construye()` copia del intermedio solo estos (L4-10).
 
 | Campo | Contenido |
 |---|---|
@@ -68,7 +68,8 @@ Campos obligatorios: `v, ts, res, srs, orto_px, finca_id, centro_utm, z0, ext, p
 | `fincas[]` | `nombre, parcelas[índices], ha, olivos` (Hituelo; el fixture «cerro» no lo lleva) |
 | `copas[]` | **registro de árboles**: `[x, y, h, r8[8], parcela+1]`; `parcela+1 = 0` = fuera de toda parcela. Ver nota abajo |
 | `copas_id[]` | *(opcional)* columna paralela a `copas`: **id estable** del árbol (entero ≥ 0, único en la finca); misma longitud que `copas` ([ADR-0012](../adr/0012-catalogo-de-olivos-tipo-e-id-estable.md)) |
-| `copas_tipo[]` | *(opcional)* columna paralela a `copas`: **olivo-tipo** del catálogo ([olivos-tipo.md](../../contratos/olivos-tipo.md)); −1 = sin asignar; un tipo desconocido se dibuja como −1 |
+| `copas_tipo[]` | *(opcional)* columna paralela a `copas`: **olivo-tipo** en el catálogo que dice `copas_tipo_catalogo` ([olivos-tipo.md](../../contratos/olivos-tipo.md) §2); −1 = sin asignar; un tipo desconocido se dibuja como −1 |
+| `copas_tipo_catalogo` | *(opcional, D-03)* el catálogo de esos números: `"olivos"` (el del constructor, `ID_TIPO`; lo que vale si falta) o el `id` de un catálogo de glb del contrato olivos-tipo (`"fixture-sintetico"` en el fixture). Una sola lectura para el motor y el tileset: `catalogoDeTipos` y `tipoDeRegistro` de `apps/web/olivo/copas.js` |
 | `marcados[]` | `[x, y, índice en copas o -1, índice de parcela]`: olivos marcados en OlivarTrack |
 | `ndvi` | `w, h, fechas[], media[]` y los datos **o** `u8` (Hituelo: 0 = sin dato; 1..254 → −0,2..1,0 con `(u−1)/253·1,2−0,2`) **o** `b64` (Int16 en milésimas, −32768 = sin dato; variante antigua, la del fixture «cerro») |
 | `suelo_ndvi` | `w, h, a[], b[], f, fechas[]`: NDVI del suelo = NDVI − b·f/1000 por fecha (`f`: Int16 por celda) |

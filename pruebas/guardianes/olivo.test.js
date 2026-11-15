@@ -50,6 +50,71 @@ test("si cambia el código del núcleo, sube GEN_VERSION", t => {
     "»: sube GEN_VERSION (y escribe sus huellas) o, si el árbol NO cambia (p. ej. un comentario), vuelve a sellar con «node pruebas/olivo/compara.mjs --todos --sella»");
 });
 
+// C-04 / D-01 (auditoría del constructor, 2026-11-15; regla 13): «CACHE_VERSION sube si cambia lo que da una receta sin cambiar GEN_VERSION»
+// tiene guardián. pruebas/olivo/sella_cache.mjs dice qué fuentes entran (FUENTES_CACHE) y por qué los demás no.
+test("si cambia niveles.js o tarjetas.js (E1/E2 y la geometría de la tarjeta), sube CACHE_VERSION", async () => {
+  const S = await import(require("url").pathToFileURL(path.join(RAIZ, "pruebas", "olivo", "sella_cache.mjs")).href);
+  const sello = JSON.parse(fs.readFileSync(S.SELLO, "utf8")), v = S.cacheVersion();
+  assert.deepStrictEqual(sello.fuentes, S.FUENTES_CACHE, "el sello es de otra lista de fuentes: vuelve a sellar (node pruebas/olivo/sella_cache.mjs)");
+  assert.strictEqual(sello.cache_version, v, "CACHE_VERSION es " + v + " y el sello es de la " + sello.cache_version + ": sella con «node pruebas/olivo/sella_cache.mjs»");
+  assert.strictEqual(S.shaFuentesCache(), sello.fuentes_sha256, S.FUENTES_CACHE.join(" o ") + " han cambiado y CACHE_VERSION sigue en " + v +
+    ": súbela en apps/web/olivo/cache.js y sella (node pruebas/olivo/sella_cache.mjs); si ningún árbol cambia (un comentario), sella con --sin-cambio");
+});
+
+// C-01 (auditoría del constructor, 2026-11-15): con caras dobles (DoubleSide), three ilumina cada triángulo con su normal multiplicada por
+// gl_FrontFacing; si el sentido de giro va al revés que la normal declarada, la cara se sombrea con la normal hacia dentro (el plano A de las
+// tarjetas de E1/E2 iba así). Cada triángulo de las geometrías compartidas tiene que tener (e1 × e2) · n > 0 con la media de sus tres normales.
+function giroContraNormal(g) {
+  const p = g.atrib ? g.atrib.position : g.attributes.position.array, nn = g.atrib ? g.atrib.normal : g.attributes.normal && g.attributes.normal.array;
+  const ix = g.indice || (g.index ? g.index.array : null), N = ix ? ix.length / 3 : p.length / 9, malos = [];
+  if (!nn) return malos;
+  for (let t = 0; t < N; t++) {
+    const i = [0, 1, 2].map(k => (ix ? ix[t * 3 + k] : t * 3 + k)), v = i.map(j => [p[j * 3], p[j * 3 + 1], p[j * 3 + 2]]);
+    const e1 = v[1].map((x, k) => x - v[0][k]), e2 = v[2].map((x, k) => x - v[0][k]);
+    const c = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+    const m = [0, 1, 2].map(k => nn[i[0] * 3 + k] + nn[i[1] * 3 + k] + nn[i[2] * 3 + k]);
+    if (c[0] * m[0] + c[1] * m[1] + c[2] * m[2] <= 0) malos.push(t);
+  }
+  return malos;
+}
+test("C-01: el sentido de giro de cada triángulo casa con su normal (tarjetas de E1/E2 y geometrías compartidas del núcleo)", async t => {
+  const T = await import(require("url").pathToFileURL(path.join(OLIVO, "tarjetas.js")).href);   // sin THREE: no necesita npm i
+  for (const [k, g] of Object.entries(T.geosTarjeta())) assert.deepStrictEqual(giroContraNormal(g), [], "geometría «" + k + "»: triángulos con el giro al revés que su normal (se iluminan del revés)");
+  if (SALTO) return t.skip(SALTO + " (las geometrías del núcleo)");
+  const N = await import(require("url").pathToFileURL(path.join(OLIVO, "nucleo.js")).href), G = await import(require("url").pathToFileURL(path.join(MODS, "three-gen", "build", "three.module.js")).href);
+  for (const [k, g] of Object.entries(N.geosCompartidas(G))) assert.deepStrictEqual(giroContraNormal(g), [], "geometría «" + k + "» del núcleo: triángulos con el giro al revés que su normal");
+});
+
+// D-07 y D-08 (auditoría del constructor, 2026-11-15)
+test("D-08: semillaDeId rechaza los ids fuera de [0, 2^32) como semillaDeCopa (antes, 2^32 + k daba la semilla de k)", async () => {
+  const A = await import(require("url").pathToFileURL(path.join(OLIVO, "azar.js")).href);
+  assert.strictEqual(A.semillaDeId(2 ** 32 - 1), 2 ** 32 - 1); assert.strictEqual(A.semillaDeId(0), 0);
+  for (const id of [2 ** 32, 2 ** 32 + 5, -1, 1.5, NaN]) assert.strictEqual(A.semillaDeId(id), null, "semillaDeId(" + id + ")");
+});
+test("D-07: la herramienta del constructor lleva su CSP (sin scripts en línea ni de otro origen)", () => {
+  const h = fs.readFileSync(path.join(OLIVO, "herramienta", "index.html"), "utf8"), m = /<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(h);
+  assert.ok(m, "herramienta/index.html sin CSP");
+  const scr = /script-src ([^;]+)/.exec(m[1]);
+  assert.ok(scr && !/unsafe-inline|unsafe-eval|https?:/.test(scr[1]), "script-src debe ser solo del mismo origen: " + (scr && scr[1]));
+  assert.ok(!/<script(?![^>]*\ssrc=)[^>]*>/.test(h), "un script en línea en la herramienta (la CSP lo bloquearía)");
+});
+
+// C-03 (auditoría del constructor, 2026-11-15): los mipmaps que conservan la cobertura se calculan a rebanadas (mipsConCoberturaG) para la cola del
+// motor, con el MISMO resultado que la versión de una vez (la huella de abajo es la del código de antes, sobre un lienzo de mentira de 1024 × 512)
+test("C-03: mipsConCoberturaG da los mismos mipmaps que antes y cede el turno a menudo", async () => {
+  const T = await import(require("url").pathToFileURL(path.join(OLIVO, "texturas.js")).href);
+  const ID = globalThis.ImageData; globalThis.ImageData = class { constructor(d, w, h) { this.data = d; this.width = w; this.height = h; } };
+  try {
+    const lienzo = (w, h) => { const d = new Uint8ClampedArray(w * h * 4); let x = 12345; for (let i = 0; i < d.length; i++) { x = (x * 1103515245 + 12345) >>> 0; d[i] = (i & 3) === 3 ? ((x >>> 16) & 255) > 150 ? 255 : (x >>> 16) & 63 : (x >>> 16) & 255; } return { width: w, height: h, getContext: () => ({ getImageData: () => ({ data: d }) }) }; };
+    const g = T.mipsConCoberturaG(lienzo(1024, 512), 0.45); let n = 0, r;
+    while (!(r = g.next()).done) n++;
+    const h = crypto.createHash("sha256"); for (const m of r.value) { h.update(m.width + "x" + m.height); h.update(Buffer.from(m.data.buffer)); }
+    assert.strictEqual(r.value.length, 11);
+    assert.strictEqual(h.digest("hex"), "e7a16fee2a639946b95ad9fe5f06e2db3466407c47b3d423864917d554287fc2", "los mipmaps a rebanadas no son los de antes");
+    assert.ok(n >= 40, "mipsConCoberturaG solo cede " + n + " veces en 1024 × 512 (cada rebanada, ~64 k texeles)");
+  } finally { globalThis.ImageData = ID; }
+});
+
 test("las huellas del módulo son las del oráculo (todos los casos, en 4 procesos)", { timeout: 600000 }, async t => {
   if (SALTO) return t.skip(SALTO);
   const partes = await Promise.all([0, 1, 2, 3].map(k => nodo([path.join("pruebas", "olivo", "compara.mjs"), "--todos", "--parte", k + "/4"])));
@@ -196,6 +261,7 @@ test("semillas, épocas y parámetros desde el registro", t => {
       sinParam: O.parametrosDeCopa([0, 0, 4.4, [2,2,2,2,3,3,3,3], 1], null, null),
       sinParam1: O.parametrosDeCopa([0, 0, 4.4, [2,2,2,2,3,3,3,3], 1], null, null, { factorR8: 1 }),
       conParam: O.parametrosDeCopa([0, 0, 4.4, [2,2,2,2,3,3,3,3], 1], [4.6, 8.2, 0.9, 92, 0.8, 1.2, 0.3, 0], "centenario2"),
+      fuera: O.parametrosDeCopa([0, 0, 8.2, [2,2,2,2,3,3,3,3], 1], [8.2, 13, 0.9, 92, 0.1, 1.2, 0.3, 0], "centenario2"),
       tipos: Object.keys(O.TIPOS).map(k => [k, O.ID_TIPO[k], O.tipoDeId(O.ID_TIPO[k])]),
     };
     console.log(JSON.stringify(out));`;
@@ -217,6 +283,8 @@ test("semillas, épocas y parámetros desde el registro", t => {
   assert.strictEqual(o.conParam.parametros.rumbo, 90);
   assert.ok(Math.abs(o.conParam.parametros.asim - Math.min(0.6, 0.9 / 4.1 * 1.8)) < 1e-12);
   assert.strictEqual(o.conParam.origen.asim, "deducido"); assert.strictEqual(o.conParam.origen.altura, "medido");
+  assert.deepStrictEqual(o.conParam.recortes, {}, "dentro de los rangos no se recorta nada");
+  assert.deepStrictEqual(o.fuera.recortes, { altura: { medido: 8.2, dibujado: 7 }, copa: { medido: 13, dibujado: 12 }, densidad: { medido: 0.1, dibujado: 0.2 } }, "D-04: lo medido fuera de RANGOS se dibuja recortado y se dice");
   o.tipos.forEach(([k, id, k2]) => assert.strictEqual(k, k2, "id de tipo " + id));
 });
 

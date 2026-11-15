@@ -2,13 +2,13 @@
 // Busca un olivo del índice de la finca por su id estable (copas_id, ADR-0012), arma la MISMA entrada del generador que arma el motor
 // (apps/web/motor/07ab_generados.js, entrada() y parametrosDe(): reusa semillaDeCopa y parametrosDeCopa del constructor, no los reescribe)
 // y ordena los escalones para ponerlos lado a lado. La receta y los escalones los calcula el constructor (olivo_real.js, con import() perezoso).
-import { parametrosDeCopa, semillaDeCopa, CAMPOS_PARAM } from "../olivo/copas.js";
+import { parametrosDeCopa, semillaDeCopa, tipoDeRegistro, CAMPOS_PARAM } from "../olivo/copas.js";
 import { ESTADOS } from "../olivo/tipos.js";
 
 /** El radio dibujado de los olivos del constructor en el motor = r8 × este factor (FACTOR_R8_GEN de apps/web/motor/01_datos.js, decisión 81). El guardián lo contrasta. */
 export const FACTOR_R8_GEN = 1;
 /** El tipo que el motor da a todos sus olivos generados (07ab: parametrosDe) */
-export const TIPO_MOTOR = "centenario3";
+export const TIPO_MOTOR = "centenario3";   // el de un olivo sin tipo del catálogo «olivos» (D-03: con tipo, tipoDeRegistro, como el motor)
 /** Desde aquí un copas_id es provisional (tuberia/ids_copas.py: PROV = 2^31); por debajo, del censo */
 export const ID_PROVISIONAL = 2 ** 31;
 export const EPOCA_POR_DEFECTO = "envero";
@@ -58,7 +58,7 @@ export function buscaOlivo(indice, texto, finca) {
 /** Lo que el índice MEDIDO dice del olivo i (altura y copa del LiDAR) y lo DEDUCIDO de ello (origen por campo, de parametrosDeCopa). Para la ficha. */
 export function fichaDeOlivo(indice, i) {
   const raw = indice.copas[i], fila = indice.copas_param ? indice.copas_param[i] || null : null;
-  const p = parametrosDeCopa(raw, fila, TIPO_MOTOR, { factorR8: FACTOR_R8_GEN });
+  const p = parametrosDeCopa(raw, fila, tipoDeRegistro(indice, i) || TIPO_MOTOR, { factorR8: FACTOR_R8_GEN });
   const r8 = raw[3] && raw[3].length ? raw[3].reduce((a, b) => a + b, 0) / raw[3].length : null;
   const crudos = fila ? Object.fromEntries(CAMPOS_PARAM.map((k, j) => [k, fila[j]])) : null;
   return { x: raw[0], y: raw[1], altura_lidar_m: raw[2], r8_medio_m: r8, copas_param: crudos, con_copas_param: !!fila, tipo: p.tipo, parametros: p.parametros, origen: p.origen,

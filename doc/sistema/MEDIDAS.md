@@ -524,6 +524,17 @@ Chrome sin pantalla con SwiftShader, three 0.186.1, `node pruebas/olivo/o9b_tarj
 
 Sin cumplir: E2 ≤ 10 k en centenario3 (10.702; pesan las ramas, 5.550) e IoU ≥ 0,9 a 128 px en los olivos tipo. A 128 px la cobertura queda +13/+27 % sobre el E0 (de lejos, más llena). Se pierde algo de contraste (E2 medido 0,59 → 0,42). No probado en aparatos.
 
+## Materiales de los olivos generados a rebanadas (C-03, 2026-11-15, foto, no se mantiene)
+Chrome sin pantalla con SwiftShader, three 0.186.1, CPU del banco (i5 de 4 núcleos); tres vueltas por época. `creaMateriales` dibuja la corteza, las dos ramitas, el atlas de tarjetas (1024 × 512) y el relleno, y calcula los mipmaps que conservan la cobertura de las cuatro hojas. **Antes** iba de una vez en el `.then` del arranque de los generados, fuera de la Cola; **ahora** (`creaMaterialesG`) va por la cola propia de los generados, a rebanadas, con el mismo resultado (mismos píxeles del atlas y del relleno, mismos mipmaps: comprobado con su huella).
+
+| | envero | flor |
+|---|---|---|
+| De una vez (la tarea larga de antes) | 103-270 ms | 117-148 ms |
+| Rebanada mayor de `creaMaterialesG`, página suelta | 5,4-9,4 ms (162 rebanadas) | 5,4-6,4 ms (166) |
+| Rebanada mayor en el motor (`__olivosGen().materiales`, `tirones_olivos_chrome.test.js`) | 7,6 ms (162 rebanadas, 2,5 s de reloj repartidos) | — |
+
+El lienzo 2D aplaza el dibujo hasta que se lee: sin «soltarlo» (`getImageData` de un píxel) tras cada trozo, la lectura del atlas se llevaba ~20 ms de una vez. Las tareas largas de la carga que cuenta `tirones_olivos_chrome.test.js` (PerformanceObserver) no se pueden atribuir una a una: antes, la mayor 558 ms; después, 673 ms (son las de la carga de la página y el tileset, que oscilan entre vueltas). **No medido** en el iPhone ni en el Quest (allí el JS va unas 3-4 veces más lento [SUPUESTO]).
+
 ## Escalera horneada con `?olivos=gen` (O8c, 2026-10-31, foto, no se mantiene)
 Lo que cambia cuando el manifiesto trae variantes horneadas de la época: `?olivos=gen` dibuja la escalera (variantes E2 e impostores en lugar del nivel 0 de siempre y de los olivos del tileset; `Escalera.modoGen` de `07ab`). Página: el fixture de Hituelo con `node pruebas/olivo/horneado/pagina_banco.mjs --impostores` (16 variantes olivo-2, `CACHE_VERSION` 2, y los impostores de envero y madura re-horneados tras O9b en Chrome por el turno: 132 s; atlas WebP de 0,70-0,74 MB de color y 1,06 MB de normales por época). URL `?olivos=gen&olivosDir=olivos/&epoca=envero`. Banco: tres rondas, SwiftShader, ventana 900 × 650, de noche (sin la bandada de 16_vida), máquina cargada (`esc` 0,7 → presupuesto de olivos 385 k): **recuentos y memoria, no fps**. «ms de JS» = media del contador de `?debug` (`__g.depuraJs()`, nuevo) en la última media segunda, a 0,6-9 fps: indicativo, con mucho ruido.
 

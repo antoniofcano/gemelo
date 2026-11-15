@@ -177,7 +177,7 @@ exige(E.tope({ base: 550000, movil: false, escala: 2, triLejanos: 1000 }) === 10
 // ---- 3) sin la bandera (y con ?olivos=gen) la escalera no actúa: sin capa de lejanos, sin trabajo
 for (const q of ["?debug", "?olivos=gen"]) {
   const c = contexto(q);
-  for (let k = 0; k < 20 && c.__G.estado() === "cargando"; k++) await espera();
+  for (let k = 0; k < 20 && c.__G.estado() === "cargando"; k++) { c.__G.paso(0.016, 50); await espera(); }   // C-03: los materiales van por la cola propia
   exige(!c.__G.escalera(), q + ": Generados dice escalera");
   c.__L.inicia([{ i: 0, x: 0, y: 0, h: 4, perfil: [2, 2, 2, 2, 2, 2, 2, 2], gz: 0 }]);
   exige(c.__L.paso(0.016) === false && c.__L.pendientes() === 0 && c.__L.triangulos() === 0 && c.__L.resumen() === null && c.gArboles.children.length === (q === "?olivos=gen" ? 1 : 0), q + ": Lejanos hace algo");
@@ -220,7 +220,7 @@ for (const q of ["?debug", "?olivos=gen"]) {
     ["?olivos=gen&olivosDir=olivos/&epoca=envero&olivosEscalera=0", man("envero", 4), "gen"], ["?olivos=gen&epoca=envero", man("envero", 4), "gen"]]) {
     // (la última: sin ?olivosDir= ni página del servidor no se pide manifiesto)
     const c = conFetch(q, m);
-    for (let k = 0; k < 40 && c.__G.estado() === "cargando"; k++) await espera();
+    for (let k = 0; k < 40 && c.__G.estado() === "cargando"; k++) { c.__G.paso(0.016, 50); await espera(); }   // C-03: los materiales van por la cola propia
     const G = c.__G, st = c.window.__olivosGen();
     diag.modoGen[q + " · " + m.variantes[0].epoca] = { modo: G.modoGen(), escalera: G.escalera(), horneado: st.horneado.estado };
     exige(G.estado() === "activo" && G.modoGen() === quiere && G.escalera() === (quiere === "horneada"), q + " con variantes de " + m.variantes[0].epoca + ": modo " + G.modoGen() + " (escalera " + G.escalera() + ") y debe " + quiere);
@@ -237,7 +237,7 @@ if (!fs.existsSync(FX)) mal.push("sin el fixture (npm run fixture): la escalera 
 else {
   const I = JSON.parse(fs.readFileSync(FX, "utf8"));
   const reloj = { t: 0, now() { return (this.t += 0.6); } }, cx = contexto("?olivos=escalera", reloj);
-  for (let k = 0; k < 20 && cx.__G.estado() === "cargando"; k++) await espera();
+  for (let k = 0; k < 20 && cx.__G.estado() === "cargando"; k++) { cx.__G.paso(0.016, 50); await espera(); }   // C-03: los materiales van por la cola propia
   exige(cx.__G.estado() === "activo", "escalera: Generados no arrancó: " + cx.__G.estado());
   Object.assign(cx.D, { copas: I.copas, copas_id: I.copas_id, copas_param: I.copas_param, copas_semilla: I.copas_semilla, centro_utm: I.centro_utm });
   const ol = I.copas.map((q, i) => ({ i, x: q[0], y: q[1], h: q[2], perfil: q[3], gz: 0 })).filter(c => !(c.h > 8));
@@ -339,7 +339,7 @@ if (fs.existsSync(FX)) {
     };
     const reloj = { t: 0, now() { return (this.t += 0.6); } }, cx = contexto(q, reloj, { glob, codigo: B07 + "\n;this.__A = Arboles;" });
     Object.assign(cx.D, { copas: I.copas, copas_id: I.copas_id, copas_param: I.copas_param, copas_semilla: I.copas_semilla, centro_utm: I.centro_utm });
-    for (let k = 0; k < 40 && cx.__G.estado() === "cargando"; k++) await espera();
+    for (let k = 0; k < 40 && cx.__G.estado() === "cargando"; k++) { cx.__G.paso(0.016, 50); await espera(); }   // C-03: los materiales van por la cola propia
     cx.__L._prueba.sinGPU();
     const A = cx.__A, G = cx.__G, L = cx.__L, olv = copas.filter(c => c.oliv);
     A.inicia();

@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- D-07: CSP de defensa en profundidad (herramienta de desarrollo; si un día se sirve, el Caddy pone la suya). Estilos en línea: los de esta página.
+     connect-src con ws: para el servidor de desarrollo de Vite; worker-src para el trabajador de recetas (mismo origen) -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; worker-src 'self' blob:; connect-src 'self' ws: wss:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Olivo generado</title>
 <style>
   :root { --suelo: #eeeae0; --panel: #f8f6f0; --linea: #d9d3c4; --tinta: #2c2a24; --tinta-2: #6b665a; --cielo: #dfe4dc; }

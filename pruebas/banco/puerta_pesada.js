@@ -9,6 +9,12 @@ if (d.status !== 0 && process.env.GEMELO_SIN_DOCKER !== "1") {
   console.error("puerta:pesada: el demonio de Docker no responde. Enciende Docker Desktop (y comprueba que quedan ~1,5 GB libres) y repite; GEMELO_SIN_DOCKER=1 la deja pasar sin Docker, y entonces NO vale para subir main.");
   process.exit(2);
 }
+// D-09: sin el constructor de olivos instalado, sus pruebas se saltan enteras y la pesada (la que autoriza a subir main) salía en verde: se para antes
+const falta = require("./puerta").faltanDependencias();
+if (falta.length && process.env.GEMELO_SIN_CONSTRUCTOR !== "1") {
+  console.error("puerta:pesada: falta " + falta.map(x => x.que + " («" + x.orden + "»)").join("; ") + ". Instálalo y repite; GEMELO_SIN_CONSTRUCTOR=1 la deja pasar sin él, y entonces NO autoriza a subir main.");
+  process.exit(2);
+}
 const env = Object.assign({}, process.env, { GEMELO_DOCKER: "1" });
 delete env.GEMELO_SOLO_NODE;
 const r = spawnSync(process.execPath, [path.join(__dirname, "puerta.js"), ...process.argv.slice(2)], { env, stdio: "inherit" });

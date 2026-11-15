@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://gemelo.invalid/contratos/olivos-tipo.schema.json",
-  "$comment": "Contrato de ENTRADA del constructor de olivos-tipo (contratos/olivos-tipo.md, ADR-0012): el catálogo que produce. JSON Schema 2020-12 estándar; lo valida ajv en pruebas/guardianes/olivos.test.js. Las reglas de los glb (metros, +Y, pivote, sin luces ni cámaras, un material por pieza, triángulos) no caben en un esquema: las comprueba el mismo guardián con gltf-validator (Khronos) y @gltf-transform/core. 'presupuesto_tri' (palabra de anotación) es la única fuente de los topes por modelo (todas sus piezas): tope = objetivo × (1 + tolerancia); el motor (07a_catalogo.js, PRES_TRI y TOLERANCIA) debe decir lo mismo.",
+  "$comment": "Contrato de ENTRADA del constructor de olivos-tipo (contratos/olivos-tipo.md, ADR-0012): el catálogo que produce. JSON Schema 2020-12 estándar; lo valida ajv en pruebas/guardianes/olivos.test.js. Las reglas de los glb (metros, +Y, pivote, sin luces ni cámaras, un material por pieza, triángulos) no caben en un esquema: las comprueba el mismo guardián con gltf-validator (Khronos) y @gltf-transform/core. 'presupuesto_tri' (palabra de anotación) es la única fuente de los topes por modelo (todas sus piezas): tope = objetivo × (1 + tolerancia); el motor (apps/web/src/mundos/exterior/catalogo.ts, antes 07a_catalogo.js, PRES_TRI y TOLERANCIA) debe decir lo mismo.",
   "title": "olivos-tipo",
   "presupuesto_tri": { "objetivo": { "L0": 800, "L1": 170, "L2": 30 }, "tolerancia": 0.2, "piezas_max": { "L0": 3, "L1": 2, "L2": 1 } },
   "type": "object",

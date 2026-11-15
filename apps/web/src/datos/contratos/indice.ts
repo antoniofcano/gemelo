@@ -54,6 +54,7 @@ export interface Indice {
   ][];
   copas_id?: number[];
   copas_tipo?: number[];
+  copas_tipo_catalogo?: string;
   copas_semilla?: (number | null)[];
   copas_param?: (null | [number, number, number, number, number, number, number, number])[];
   marcados: [number, number, number, number][];

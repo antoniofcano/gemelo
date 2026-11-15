@@ -196,9 +196,14 @@ export function creaArbolesL0(d: DepsArbolesL0) {
       });
       return best ? { id: idDe(best), t: bt, s: bp } : null;
     }
+    // D-04: lo medido que el constructor dibuja recortado a sus rangos se dice («altura dibujada a 7 m; medida, 8,2 m»)
+    function textoRecortes(rec: any) {
+      var NOM: any = { altura: "altura", copa: "copa", densidad: "densidad" }, ks = Object.keys(rec || {}).filter(function (k) { return NOM[k]; });
+      return ks.length ? "; " + ks.map(function (k) { var u = k === "densidad" ? "" : " m", f = function (v: any) { return (Math.round(v * 10) / 10).toString().replace(".", ","); }; return NOM[k] + " dibujada a " + f(rec[k].dibujado) + u + " (medida, " + f(rec[k].medido) + u + ")"; }).join(", ") : "";
+    }
     function rotuloGenerado(i: any, filas: any) {   // decisión 34: si el olivo se dibuja generado (?olivos=gen), se dice que su forma es ilustrativa y si su id es provisional
       var r = d.Generados.rotulo(i); if (!r) return;
-      filas.push({ k: "Forma", v: "ilustrativa con medidas del LiDAR" + (r.lejano ? " (lejano)" : r.variante ? " (variante)" : r.niv && d.Generados.escalera() ? " (propio)" : "") });
+      filas.push({ k: "Forma", v: "ilustrativa con medidas del LiDAR" + (r.lejano ? " (lejano)" : r.variante ? " (variante)" : r.niv && d.Generados.escalera() ? " (propio)" : "") + textoRecortes(r.recortes) });
     }
     function filaId(c: any) {   // OF8c: el id real, para pegarlo en la pestaña «Olivo real» de la oficina (texto de la ficha: se selecciona y se copia); provisional desde 2^31 (tuberia/ids_copas.py)
       return c.id >= 0 ? { k: "Id", v: c.id + (c.id >= 2147483648 ? " (provisional, aún no viene del censo)" : " (del censo)") + " · en la oficina, «posición " + (c.i + 1) + "»" }

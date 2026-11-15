@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "biodiversidad.schema.json",
   "title": "Aves de GBIF por especie y mes en el cuadro de 10 km de una finca (EV-1g, v 1)",
-  "description": "Lo escribe tuberia/biodiversidad/gbif_aves.py (fuera del repo) y se publica junto al índice de la finca como biodiversidad.json; lo lee el motor (apps/web/motor/52_aves_mes.js). DEDUCIDO: registros de GBIF en 10 km, no observado en la finca. Solo licencias CC0, CC BY y CC BY-SA (decisión 198). No lleva el centro ni el cuadro: solo su lado.",
+  "description": "Lo escribe tuberia/biodiversidad/gbif_aves.py (fuera del repo) y se publica junto al índice de la finca como biodiversidad.json; lo lee el motor (apps/web/src/mundos/exterior/aves-mes.ts). DEDUCIDO: registros de GBIF en 10 km, no observado en la finca. Solo licencias CC0, CC BY y CC BY-SA (decisión 198). No lleva el centro ni el cuadro: solo su lado.",
   "type": "object",
   "additionalProperties": false,
   "required": ["v", "origen", "grupo", "generado", "cuadro_km", "anios", "descarga", "atribucion", "fuentes", "especies"],

@@ -216,11 +216,11 @@ async function compara(o) {
     if (T === T128) mats = O.creaMateriales(T, null, { epoca: o.epoca });   // la referencia: r128, sin gestión de color (como la herramienta)
     else {
       R.outputColorSpace = THREE.SRGBColorSpace;
-      const k = c.k || 1, ao = c.ao || 1, kc = c.kc || 1;   // pruebas de corrección: factor del follaje (lineal), oclusión de copa mínima, factor de la corteza
+      const k = c.k || 1, ao = c.ao || 1, kc = c.kc || 1;   // pruebas de corrección: factor del follaje (lineal; ramitas, relleno y tarjetas de E1/E2, como FOLLAJE de materiales.js), oclusión de copa mínima, factor de la corteza
       if (c.ao) { const { copa } = cajas(O.montaOlivo(THREE, receta, materiales(o.epoca))); copa.getCenter(uCentroCopa.value); copa.getSize(uSemiCopa.value).multiplyScalar(0.5); }
       mats = c.albedo ? materiales(o.epoca) : O.creaMateriales(THREE, null, { epoca: o.epoca, srgb: true, calibracion: c.calibracion, parche: (m, n) => {
         if (m.isMeshDepthMaterial) return; if (m.color) m.color.convertSRGBToLinear();
-        const fol = /^(ramita|relleno)/.test(n), f = (fol ? k : /^(corteza|pies|musgo|raiz|muerta)$/.test(n) ? kc : 1).toFixed(4);
+        const fol = /^(ramita|relleno|tarjeta$)/.test(n), f = (fol ? k : /^(corteza|pies|musgo|raiz|muerta)$/.test(n) ? kc : 1).toFixed(4);
         O.encadena(m, sh => {
           Object.assign(sh.uniforms, { uCentroCopa, uSemiCopa });
           sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\n" + GLSL_LIN + "varying vec3 vArbol;\n")

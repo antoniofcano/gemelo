@@ -55,7 +55,7 @@ NULL: ese aviso no lleva invitación). La lectura por hogar es `avisos_hogar.lei
 - `POST /api/avisos/:id/leido` (sesión, con Origin, cuerpo vacío o `{}`): marca como leído solo lo suyo; idempotente (204); 404 si no es de ese hogar o no existe;
   auditoría `avisos.leido` la primera vez. No manda correo.
 - `GET /api/admin/eventos/:id/avisos` (oficina): historial del evento con agregados (`destinatarios`, `leidos`, `correos_enviados`); nunca qué familia lo leyó.
-- Código: `apps/api/src/avisos/rutas.ts`, `apps/api/src/agenda/rutas.ts` (`avisaA`). Mundo: componente `agenda` (`apps/web/motor/43_agenda.js`).
+- Código: `apps/api/src/avisos/rutas.ts`, `apps/api/src/agenda/rutas.ts` (`avisaA`). Mundo: componente `agenda` (`apps/web/src/ui/agenda.ts`).
 
 ## Cómo sale
 

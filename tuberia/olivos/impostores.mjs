@@ -31,9 +31,13 @@ const raizPaquete = (req, nombre) => { let d = path.dirname(req.resolve(nombre))
 export const versionDe = (req, nombre) => JSON.parse(fs.readFileSync(path.join(raizPaquete(req, nombre), "package.json"), "utf8")).version;
 
 /** Huella del código que hornea (la página y la disposición): si cambia, cambia la clave y se vuelve a hornear */
+/** Los fuentes del constructor que deciden el atlas sin entrar en la receta (la receta entra por las huellas de las fuentes): materiales, texturas,
+ *  montaje y la geometría unidad de las tarjetas (tarjetas.js, geosTarjeta; C-01). impostor.test.js comprueba que están todos los que importan
+ *  montaje.js, materiales.js e impostor.js (salvo los del núcleo, que gobierna GEN_VERSION) */
+export const FUENTES_PAGINA_OLIVO = ["impostor.js", "materiales.js", "texturas.js", "montaje.js", "compat.js", "tarjetas.js"];
 export function huellaPagina() {
   const h = crypto.createHash("sha256");
-  for (const f of [path.join(PAGINA, "pagina.mjs"), path.join(PAGINA, "pagina.html"), path.join(OLIVO, "impostor.js"), path.join(OLIVO, "materiales.js"), path.join(OLIVO, "texturas.js"), path.join(OLIVO, "montaje.js")])
+  for (const f of [path.join(PAGINA, "pagina.mjs"), path.join(PAGINA, "pagina.html")].concat(FUENTES_PAGINA_OLIVO.map(f => path.join(OLIVO, f))))
     h.update(fs.readFileSync(f).toString("utf8").replace(/\r\n/g, "\n"));
   return h.digest("hex").slice(0, 16);
 }

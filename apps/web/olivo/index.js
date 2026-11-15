@@ -17,7 +17,7 @@
 // cuando el gemelo sube de versión. Lo comprueba pruebas/guardianes/olivo.test.js.
 import * as G from "three-gen";
 import { recetaG as recetaGN, receta as recetaN, geosCompartidas, resuelve, triangulos } from "./nucleo.js";
-import { montaOlivo as montaN, triangulosDe, liberaOlivo } from "./montaje.js";
+import { montaOlivo as montaN, triangulosDe, liberaOlivo, liberaCompartidas } from "./montaje.js";
 import { aNivel, aNivelG, NIVELES, triangulosNivel, llamadasNivel } from "./niveles.js";
 import { creaFabrica, aRebanadas } from "./fabrica.js";
 import { geosTarjeta } from "./tarjetas.js";
@@ -25,20 +25,20 @@ import { geosTarjeta } from "./tarjetas.js";
 export { GEN_VERSION } from "./version.js";
 export { TIPOS, ESTADOS, RANGOS, ID_TIPO, TIPO_DE_ID, tipoDeId, bbchAEpoca } from "./tipos.js";
 export { rngFrom, semillaDeId } from "./azar.js";
-export { semillaDeCopa, parametrosDeCopa, CAMPOS_PARAM, ORIGEN_TRONCO } from "./copas.js";
+export { semillaDeCopa, parametrosDeCopa, CAMPOS_PARAM, ORIGEN_TRONCO, catalogoDeTipos, numeroDeTipo, tipoDeRegistro } from "./copas.js";
 export { CATALOGO, NOMBRE_TIPO, tipoDeNombre, tablaLocal } from "./catalogo.js";
 export { huella, huellaNiveles, huellaEstructura, diferenciaMax } from "./huella.js";
-export { creaMateriales, MATERIALES, encadena, CALIBRACION_LINEAL } from "./materiales.js";
-export { cargaFotos, FOTOS, dibujaAtlasTarjetas, coberturaCelda } from "./texturas.js";
+export { creaMateriales, creaMaterialesG, MATERIALES, encadena, CALIBRACION_LINEAL } from "./materiales.js";
+export { cargaFotos, FOTOS, dibujaAtlasTarjetas, coberturaCelda, mipsConCobertura, mipsConCoberturaG } from "./texturas.js";
 export { RACIMOS, ATLAS, PHI_RAMITA, PHI_CELDA, TRI_TARJETA, geosTarjeta, racimos, tarjetasDe, tarjetasDeG } from "./tarjetas.js";
-export { hornear, glb } from "./hornear.js";
-export { creaCache, claveReceta, bytesReceta, CACHE_VERSION, PREFIJO_CLAVE } from "./cache.js";
+export { hornear, glb, liberaHorneado } from "./hornear.js";
+export { creaCache, claveReceta, entradaCanonica, bytesReceta, CACHE_VERSION, PREFIJO_CLAVE } from "./cache.js";
 export { FORMATO as FORMATO_HORNEADO, TOPES as TOPES_HORNEADO, codifica, decodifica, leeCabecera, huellaBytes, verificaHuella, perdida, igualEstructura, codificaManifiestoTesela, decodificaManifiestoTesela } from "./horneado.js";
 export { ORDEN_EPOCAS, tablaDe, epocaDeFecha, siguienteEpoca, validaTabla } from "./epocas.js";
 export { IMPOSTOR, direccionDeVista, octaDeDireccion, vistaContinua, baseDeVista, celdaUV, celdaPixeles, claveImpostor, validaFilaImpostor } from "./impostor.js";
 export { SILUETA, siluetaDe, recortaQuads, mipsCaja, compensa as compensaSilueta, poligonosFijos, envolvente, reduce as reducePoligono, contiene as contienePunto } from "./silueta.js";
 export { revision,uvDelMapa, texturaDeColor, colorLineal } from "./compat.js";
-export { aNivel, aNivelG, NIVELES, triangulosNivel, llamadasNivel, creaFabrica, aRebanadas, triangulosDe, liberaOlivo, resuelve, triangulos };
+export { aNivel, aNivelG, NIVELES, triangulosNivel, llamadasNivel, creaFabrica, aRebanadas, triangulosDe, liberaOlivo, liberaCompartidas, resuelve, triangulos };
 
 /** Las geometrías compartidas (calculadas con three 0.128.0 una vez) y las de las tarjetas de E1/E2 (tarjetas.js, O9b); siempre el mismo objeto */
 let geosTodas = null;
@@ -54,9 +54,8 @@ export function generarOlivo(entrada, opciones) {
 }
 
 export async function generarOlivoAsync(entrada, opciones) {
-  const { THREE, materiales, nivel } = opciones || {};
-  const f = opciones.fabrica || creaFabrica();
-  const r = await f.receta(entrada, nivel);
-  if (!opciones.fabrica) f.cierra();
-  return montaOlivo(THREE, r, materiales);
+  const o = opciones || {}, { THREE, materiales, nivel } = o;
+  const f = o.fabrica || creaFabrica();
+  try { return montaOlivo(THREE, await f.receta(entrada, nivel), materiales); }
+  finally { if (!o.fabrica) f.cierra(); }   // C-05: la fábrica propia se cierra también si la receta falla (si no, su trabajador se quedaba vivo)
 }

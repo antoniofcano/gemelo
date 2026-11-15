@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "$comment": "Catálogo de eventos del Bus del motor (apps/web/src/nucleo/bus.ts, que crea el talón apps/web/motor/02c_componentes.js; contratos/eventos.md, ADR-0023). Forma: contratos/eventos.schema.json. Un evento nuevo, o un módulo que empieza a emitirlo o escucharlo, cambia este fichero en el mismo commit: lo comprueba pruebas/guardianes/componentes.test.js.",
+  "$comment": "Catálogo de eventos del Bus del motor (apps/web/src/nucleo/bus.ts; contratos/eventos.md, ADR-0023). Forma: contratos/eventos.schema.json. Un evento nuevo, o un módulo que empieza a emitirlo o escucharlo, cambia este fichero en el mismo commit: lo comprueba pruebas/guardianes/componentes.test.js.",
   "eventos": {
     "agenda:cambia": {
       "descripcion": "La agenda de la finca (componente «agenda») acaba de cargarse o recargarse desde la api: cuántos eventos próximos hay y si esta sesión puede apuntar a la familia (false en las gafas vinculadas). Nadie lo atiende hoy; sirve a quien quiera enseñar un aviso de «hay una visita esta semana».",
