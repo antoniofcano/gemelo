@@ -16,13 +16,20 @@ const get = p(get0), set = p(set0), delMany = p(delMany0), keys = p(keys0);   //
 /** Prefijo de las claves de ESTA versión del generador: lo guardado con otro (otro GEN_VERSION o CACHE_VERSION) ya no sirve y se borra del disco al abrir */
 export const PREFIJO_CLAVE = "olivo|" + GEN_VERSION + "|c" + CACHE_VERSION + "|";
 
-// número canónico: 6 decimales (lo que llega por JSON o por cálculo da la misma clave)
-const num = v => (typeof v === "number" ? Number(v.toFixed(6)) : v);
+// número canónico: 6 decimales (lo que llega por JSON o por cálculo da la misma clave). C-09: NaN e ±Infinity no se confunden con null (JSON los
+// escribe null): van como texto
+const num = v => (typeof v === "number" ? (Number.isFinite(v) ? Number(v.toFixed(6)) : String(v)) : v);
 function canon(o) {
   if (o === null || typeof o !== "object") return num(o);
   if (Array.isArray(o)) return o.map(canon);
   const r = {}; for (const k of Object.keys(o).sort()) if (o[k] !== undefined) r[k] = canon(o[k]);
   return r;
+}
+/** C-09: la entrada con los parámetros canónicos (6 decimales, como la clave): quien calcula con ella guarda bajo su clave justo la receta de esa clave
+ *  (sin esto, dos entradas que difieren en menos de 5·10⁻⁷ compartían clave y una recibía la receta de la otra) */
+export function entradaCanonica(entrada) {
+  const e = entrada || {};
+  return e.parametros ? Object.assign({}, e, { parametros: canon(e.parametros) }) : e;
 }
 /** Clave de una receta: todo lo que la cambia (tipo, parámetros —altura y copa ya llevan factorR8—, época, semilla, nivel) y las versiones */
 export function claveReceta(entrada, nivel) {
@@ -99,7 +106,7 @@ export function creaCache(o) {
     return cargaIndice().then(ix => {
       if (!store || !ix[clave]) { aciertos.fallos++; return undefined; }
       return get(clave, store).then(r2 => {
-        if (!r2) { delete ix[clave]; aciertos.fallos++; return undefined; }
+        if (!r2) { discoB -= ix[clave][0]; delete ix[clave]; aciertos.fallos++; return undefined; }   // C-08: borrada por debajo (otra pestaña, el navegador): sus bytes salen de la cuenta
         ix[clave][1] = ahora(); aciertos.disco++; enMemoria(clave, r2, bytesReceta(r2)); return r2;
       }, e => { apaga(e); aciertos.fallos++; return undefined; });
     });

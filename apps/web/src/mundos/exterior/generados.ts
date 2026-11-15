@@ -228,7 +228,9 @@ export function creaGenerados(d: DepsGenerados) {
   // (una variante que está en el manifiesto, antes de calcularse, se descarga horneada; si la descarga falla en algo, se calcula y se cuenta el fallo)
   function pide(clave: A, e: A, niv: A, prio: A, variante?: A) {
     if (liberado || recetas[clave] || pidiendo[clave] || fallidas[clave] || nPidiendo >= 2) return;   // C-02: una receta que falló no se vuelve a pedir en cada fotograma
-    var e2: A = { tipo: e.tipo, parametros: e.parametros, epoca: e.epoca, semilla: e.semilla }, ck: A = M.claveReceta(e2, niv), r0: A = cache ? cache.mem(ck) : null;
+    var e2: A = { tipo: e.tipo, parametros: e.parametros, epoca: e.epoca, semilla: e.semilla };
+    if (M.entradaCanonica) e2 = M.entradaCanonica(e2);   // C-09: se calcula con los parámetros de la clave (6 decimales)
+    var ck: A = M.claveReceta(e2, niv), r0: A = cache ? cache.mem(ck) : null;
     if (r0) { recetas[clave] = r0; if (variante) horn.cache++; return; }
     pidiendo[clave] = true; nPidiendo++;
     var llega: A = function (r: A) { if (liberado) return; delete pidiendo[clave]; nPidiendo--; recetas[clave] = r; };

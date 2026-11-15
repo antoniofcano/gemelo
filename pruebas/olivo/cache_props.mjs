@@ -101,6 +101,24 @@ if (fc) {
   }), { numRuns: 40, seed: 20261030 });
   diag.propiedades = { memoria: 300, disco: corridas };
 }
+// ---- C-08 (auditoría del constructor, 2026-11-15): una entrada borrada por debajo del índice (otra pestaña, el navegador) sale también de la cuenta del disco
+{
+  const nom = nombre(), c1 = C.creaCache(Object.assign({ memMB: 5, discoMB: 300, nombre: nom }, sinRetraso));
+  await c1.pon(C.PREFIJO_CLAVE + "E0|x|y|1|{}", receta(500, 1)); await c1.pon(C.PREFIJO_CLAVE + "E0|x|y|2|{}", receta(500, 2));
+  const idb = await modulo("idb-keyval", "dist", "index.js"), st = idb.createStore(nom, "recetas");
+  await idb.del(C.PREFIJO_CLAVE + "E0|x|y|1|{}", st);   // la borra otro, sin tocar el índice
+  const c2 = C.creaCache(Object.assign({ memMB: 5, discoMB: 300, nombre: nom }, sinRetraso));
+  const antes = c2.estado(); await c2.lee(C.PREFIJO_CLAVE + "E0|x|y|1|{}"); const despues = c2.estado();
+  diag.borradaPorDebajo = { antes: antes.discoMB, despues: despues.discoMB };
+  exige(despues.discoMB < 0.6, "C-08: la entrada borrada por debajo sigue contando en el disco: " + JSON.stringify(diag.borradaPorDebajo));
+}
+// ---- C-09: la clave no confunde NaN con null, y quien calcula con entradaCanonica calcula justo la entrada de su clave
+{
+  const e = p => ({ tipo: "centenario3", epoca: "envero", semilla: 7, parametros: p });
+  exige(C.claveReceta(e({ asim: NaN })) !== C.claveReceta(e({ asim: null })), "C-09: NaN y null dan la misma clave");
+  const a = C.entradaCanonica(e({ asim: 0.1234567891, altura: 4 })), b = C.entradaCanonica(e({ asim: 0.1234568, altura: 4 }));
+  exige(JSON.stringify(a) === JSON.stringify(b) && C.claveReceta(a) === C.claveReceta(e({ asim: 0.1234567891, altura: 4 })), "C-09: dos entradas con la misma clave deben dar la misma entrada canónica: " + JSON.stringify([a, b]));
+}
 // ---- medida: acierto de una receta del tamaño de una E1 (la generación real la mide generados_motor.mjs / el banco)
 {
   const r = receta(2300, 7), k = C.claveReceta({ tipo: "centenario3", epoca: "envero", semilla: 7, parametros: { altura: 4.5 } }, "E1"), nom = nombre();

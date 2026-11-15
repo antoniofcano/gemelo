@@ -32,7 +32,7 @@ export { creaMateriales, creaMaterialesG, MATERIALES, encadena, CALIBRACION_LINE
 export { cargaFotos, FOTOS, dibujaAtlasTarjetas, coberturaCelda, mipsConCobertura, mipsConCoberturaG } from "./texturas.js";
 export { RACIMOS, ATLAS, PHI_RAMITA, PHI_CELDA, TRI_TARJETA, geosTarjeta, racimos, tarjetasDe, tarjetasDeG } from "./tarjetas.js";
 export { hornear, glb } from "./hornear.js";
-export { creaCache, claveReceta, bytesReceta, CACHE_VERSION, PREFIJO_CLAVE } from "./cache.js";
+export { creaCache, claveReceta, entradaCanonica, bytesReceta, CACHE_VERSION, PREFIJO_CLAVE } from "./cache.js";
 export { FORMATO as FORMATO_HORNEADO, TOPES as TOPES_HORNEADO, codifica, decodifica, leeCabecera, huellaBytes, verificaHuella, perdida, igualEstructura, codificaManifiestoTesela, decodificaManifiestoTesela } from "./horneado.js";
 export { ORDEN_EPOCAS, tablaDe, epocaDeFecha, siguienteEpoca, validaTabla } from "./epocas.js";
 export { IMPOSTOR, direccionDeVista, octaDeDireccion, vistaContinua, baseDeVista, celdaUV, celdaPixeles, claveImpostor, validaFilaImpostor } from "./impostor.js";
