@@ -1,9 +1,9 @@
 {
- "cache_version": 2,
+ "cache_version": 3,
  "fuentes": [
   "niveles.js",
   "tarjetas.js"
  ],
- "fuentes_sha256": "d9a0e857f935fc816f23f46a5527ba79ee8264bfdab1c2bfb3c74f316283ddfa",
+ "fuentes_sha256": "4bf705d89be1af8ede7cbb015fa6457eb420a44cd89f1b64fb2e768d1f83304b",
  "nota": "pruebas/olivo/sella_cache.mjs; si cambia uno de estos fuentes, sube CACHE_VERSION y vuelve a sellar"
 }

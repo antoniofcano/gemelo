@@ -5,7 +5,7 @@ import { createStore, get as get0, set as set0, delMany as delMany0, keys as key
 import { GEN_VERSION } from "./version.js";
 
 /** Sube si cambia lo que da una receta sin que cambie GEN_VERSION (p. ej. niveles.js, que no entra en la huella olivo-2) o el formato guardado */
-export const CACHE_VERSION = 2;   // 2: E1/E2 con tarjetas de racimo (O9b)
+export const CACHE_VERSION = 3;   // 2: E1/E2 con tarjetas de racimo (O9b); 3: el plano A de la tarjeta con el giro de su normal (C-01, 2026-11-15)
 const INDICE = "__indice";
 // idb-keyval abre la base al primer uso y puede lanzar ahí mismo (marco que prohíbe IndexedDB): todo pasa a promesa rechazada
 // y cada operación lleva un plazo: un IndexedDB bloqueado (otra pestaña con una versión vieja, disco colgado) no abre ni falla nunca, y sin plazo la lectura no volvería

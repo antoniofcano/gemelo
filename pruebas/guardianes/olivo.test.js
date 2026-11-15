@@ -61,6 +61,30 @@ test("si cambia niveles.js o tarjetas.js (E1/E2 y la geometría de la tarjeta), 
     ": súbela en apps/web/olivo/cache.js y sella (node pruebas/olivo/sella_cache.mjs); si ningún árbol cambia (un comentario), sella con --sin-cambio");
 });
 
+// C-01 (auditoría del constructor, 2026-11-15): con caras dobles (DoubleSide), three ilumina cada triángulo con su normal multiplicada por
+// gl_FrontFacing; si el sentido de giro va al revés que la normal declarada, la cara se sombrea con la normal hacia dentro (el plano A de las
+// tarjetas de E1/E2 iba así). Cada triángulo de las geometrías compartidas tiene que tener (e1 × e2) · n > 0 con la media de sus tres normales.
+function giroContraNormal(g) {
+  const p = g.atrib ? g.atrib.position : g.attributes.position.array, nn = g.atrib ? g.atrib.normal : g.attributes.normal && g.attributes.normal.array;
+  const ix = g.indice || (g.index ? g.index.array : null), N = ix ? ix.length / 3 : p.length / 9, malos = [];
+  if (!nn) return malos;
+  for (let t = 0; t < N; t++) {
+    const i = [0, 1, 2].map(k => (ix ? ix[t * 3 + k] : t * 3 + k)), v = i.map(j => [p[j * 3], p[j * 3 + 1], p[j * 3 + 2]]);
+    const e1 = v[1].map((x, k) => x - v[0][k]), e2 = v[2].map((x, k) => x - v[0][k]);
+    const c = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+    const m = [0, 1, 2].map(k => nn[i[0] * 3 + k] + nn[i[1] * 3 + k] + nn[i[2] * 3 + k]);
+    if (c[0] * m[0] + c[1] * m[1] + c[2] * m[2] <= 0) malos.push(t);
+  }
+  return malos;
+}
+test("C-01: el sentido de giro de cada triángulo casa con su normal (tarjetas de E1/E2 y geometrías compartidas del núcleo)", async t => {
+  const T = await import(require("url").pathToFileURL(path.join(OLIVO, "tarjetas.js")).href);   // sin THREE: no necesita npm i
+  for (const [k, g] of Object.entries(T.geosTarjeta())) assert.deepStrictEqual(giroContraNormal(g), [], "geometría «" + k + "»: triángulos con el giro al revés que su normal (se iluminan del revés)");
+  if (SALTO) return t.skip(SALTO + " (las geometrías del núcleo)");
+  const N = await import(require("url").pathToFileURL(path.join(OLIVO, "nucleo.js")).href), G = await import(require("url").pathToFileURL(path.join(MODS, "three-gen", "build", "three.module.js")).href);
+  for (const [k, g] of Object.entries(N.geosCompartidas(G))) assert.deepStrictEqual(giroContraNormal(g), [], "geometría «" + k + "» del núcleo: triángulos con el giro al revés que su normal");
+});
+
 test("las huellas del módulo son las del oráculo (todos los casos, en 4 procesos)", { timeout: 600000 }, async t => {
   if (SALTO) return t.skip(SALTO);
   const partes = await Promise.all([0, 1, 2, 3].map(k => nodo([path.join("pruebas", "olivo", "compara.mjs"), "--todos", "--parte", k + "/4"])));
