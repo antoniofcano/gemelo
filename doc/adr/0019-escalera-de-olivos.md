@@ -8,7 +8,7 @@ Hoy un olivo puede verse de **tres maneras** según la distancia y las banderas:
 
 **Lo medido o leído en el código** (fuente entre paréntesis):
 - Triángulos por árbol, centenario de 3 pies, envero, semilla 7: **E0 102.978 · E1 48.378 · E2 19.366 · E2-VR 14.618** (ADR-0017 §4). Un adulto de un pie da 35-50 k en E0 (anexo de ADR-0017). El motor presupuesta con `ESTIM` = 160 k / 80 k / 38 k / 28 k, que **dobla** los triángulos «por la pasada de sombras» (`costo()` de `07ab_generados.js`).
-- **[DEDUCIDO del código, sin confirmar con `renderer.info`]** el motor no activa `renderer.shadowMap` (ninguna aparición en `apps/web/motor/`): la pasada de sombras que se cobra no se dibuja. Si se confirma, en el mismo presupuesto caben unas dos veces más árboles 3D.
+- **[DEDUCIDO del código, sin confirmar con `renderer.info`]** el motor no activa `renderer.shadowMap` (ninguna aparición en el motor de entonces, antes `apps/web/motor/`): la pasada de sombras que se cobra no se dibuja. Si se confirma, en el mismo presupuesto caben unas dos veces más árboles 3D.
 - Dibujo fusionado: **6-7 llamadas en total** para 2-7 generados (MEDIDAS, P7 y O1c); sin fusionar serían 36 por árbol.
 - Topes del aparato: `TOPE_TRI = 550.000` triángulos de olivo en escritorio; `VR_PERFILES` 380 k / 270 k / 190 k / 130 k (valores de partida **sin medir** en las gafas); el **móvil no tiene perfil propio** (usa el de escritorio y la escala adaptativa). Escala adaptativa de 07b: `esc` de 0,7 a 2,5 según el tiempo por fotograma; techo de diseño 1,7 M triángulos, 250 llamadas, 350 MB (ADR-0002).
 - Hituelo: 5.859 olivos (5.882 copas). Densidad de una zona mediana: **28 copas a menos de 40 m** (MEDIDAS, `?olivos=gen` con Hituelo real); la hoja de 128 m más poblada del tileset tiene 1.225 olivos.

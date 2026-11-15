@@ -1,6 +1,6 @@
 # Contrato del mundo de hoy (`GET /api/mundo/hoy`, versión 1)
 
-EV-3a «El mundo de hoy» (idea D de [EV-3](../doc/rumbo/EV-3-QUE-LA-GENTE-VUELVA.md)): una respuesta pequeña con lo que hace falta para que el mundo arranque **en el día real** y diga qué pasa hoy en el campo. Esquema: [`mundo-hoy.schema.json`](mundo-hoy.schema.json) (lista blanca, `additionalProperties: false`). Ejemplo **sintético**: [`mundo-hoy-ejemplo.json`](mundo-hoy-ejemplo.json). Ruta en [`api.openapi.yaml`](api.openapi.yaml). Código: `apps/api/src/mundo/` (`hoy.ts`, `rutas.ts`, `registro.ts`); motor: `apps/web/motor/53_mundo_hoy.js`.
+EV-3a «El mundo de hoy» (idea D de [EV-3](../doc/rumbo/EV-3-QUE-LA-GENTE-VUELVA.md)): una respuesta pequeña con lo que hace falta para que el mundo arranque **en el día real** y diga qué pasa hoy en el campo. Esquema: [`mundo-hoy.schema.json`](mundo-hoy.schema.json) (lista blanca, `additionalProperties: false`). Ejemplo **sintético**: [`mundo-hoy-ejemplo.json`](mundo-hoy-ejemplo.json). Ruta en [`api.openapi.yaml`](api.openapi.yaml). Código: `apps/api/src/mundo/` (`hoy.ts`, `rutas.ts`, `registro.ts`); motor: `apps/web/src/mundos/exterior/mundo-hoy.ts`.
 
 ## De dónde sale (no lee nada nuevo de fuera: regla 12)
 

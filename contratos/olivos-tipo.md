@@ -27,11 +27,11 @@ La idea en una frase: **los parámetros de cada árbol viajan en el registro; la
 ### Presupuesto por modelo (todas sus piezas)
 | Nivel | Objetivo | Tope (objetivo × 1,2) | Piezas máx. | Hoy por procedimiento (tipo −1) |
 |---|---|---|---|---|
-| L0 | ≈ 800 tri | 960 | 3 | no sale del catálogo: copa **medida** de cada árbol (`06_arboles.js`) |
+| L0 | ≈ 800 tri | 960 | 3 | no sale del catálogo: copa **medida** de cada árbol (`apps/web/src/mundos/exterior/arboles-l0.ts`, antes `06_arboles.js`) |
 | L1 | ≈ 170 tri | 204 | 2 | 150 / 160 (4 variantes, copa + tronco) |
 | L2 | ≈ 30 tri | 36 | 1 | 35 (2 variantes, solo copa) |
 
-La fuente de verdad es `presupuesto_tri` del esquema; el motor (`Catalogo.PRES_TRI` en `07a_catalogo.js`) dice lo mismo y lo comprueba el guardián. Un tipo que se pasa no se registra (queda en `Catalogo.avisos()`) y sus olivos se dibujan como tipo −1. **Cada tipo cargado cuesta sus piezas en llamadas de dibujo** cuando tiene olivos a la vista: hasta 2 en L1 y 1 en L2 (ADR-0012).
+La fuente de verdad es `presupuesto_tri` del esquema; el motor (`Catalogo.PRES_TRI` en `apps/web/src/mundos/exterior/catalogo.ts`, antes `07a_catalogo.js`) dice lo mismo y lo comprueba el guardián. Un tipo que se pasa no se registra (queda en `Catalogo.avisos()`) y sus olivos se dibujan como tipo −1. **Cada tipo cargado cuesta sus piezas en llamadas de dibujo** cuando tiene olivos a la vista: hasta 2 en L1 y 1 en L2 (ADR-0012).
 
 ## 2. Parámetros por árbol (en el registro, no en el modelo)
 
@@ -47,4 +47,4 @@ Lo demás no viaja: el motor estira el modelo a cada árbol con lo medido. Escal
 
 ## 3. Cómo lo carga el motor (preparado, sin activar en F1b)
 
-`Catalogo.instala(desc, cargador, base)` (`07a_catalogo.js`): `desc` es el `catalogo.json`; `cargador(url, THREE)` es una función **inyectada** por quien llama que devuelve `Promise<[{nombre, geometria}]>` (una entrada por pieza); el motor no añade dependencias. En la prueba se inyecta el `GLTFLoader` de three r128; en F1d lo dará la tubería de 3D Tiles. El motor pone **sus propios materiales** (copa o tronco, por el nombre de la pieza), con la misma luz, sombra de nubes y helada que el resto. Nada del motor llama hoy a `instala`: con el catálogo vacío todo olivo es tipo −1 y se ve como siempre.
+`Catalogo.instala(desc, cargador, base)` (`apps/web/src/mundos/exterior/catalogo.ts`): `desc` es el `catalogo.json`; `cargador(url, THREE)` es una función **inyectada** por quien llama que devuelve `Promise<[{nombre, geometria}]>` (una entrada por pieza); el motor no añade dependencias. En la prueba se inyecta el `GLTFLoader` de three r128; en F1d lo dará la tubería de 3D Tiles. El motor pone **sus propios materiales** (copa o tronco, por el nombre de la pieza), con la misma luz, sombra de nubes y helada que el resto. Nada del motor llama hoy a `instala`: con el catálogo vacío todo olivo es tipo −1 y se ve como siempre.

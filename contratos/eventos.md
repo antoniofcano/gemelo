@@ -1,6 +1,6 @@
 # Eventos del motor (`Bus`, versión 1)
 
-Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md), [COMPONENTES](../doc/sistema/COMPONENTES.md)) no se llaman por su nombre: se hablan por el **bus de eventos** del núcleo (`apps/web/src/nucleo/bus.ts`, que crea el talón `apps/web/motor/02c_componentes.js`). Catálogo: [`eventos.json`](eventos.json); su forma: [`eventos.schema.json`](eventos.schema.json).
+Los componentes del motor ([ADR-0023](../doc/adr/0023-componentes-del-mundo.md), [COMPONENTES](../doc/sistema/COMPONENTES.md)) no se llaman por su nombre: se hablan por el **bus de eventos** del núcleo (`apps/web/src/nucleo/bus.ts`). Catálogo: [`eventos.json`](eventos.json); su forma: [`eventos.schema.json`](eventos.schema.json).
 
 ## Cómo se usa
 

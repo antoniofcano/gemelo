@@ -47,6 +47,34 @@ test("las rutas de ficheros citadas entre comillas inversas en los .md existen",
   assert.deepStrictEqual(mal, [], "rutas citadas que no existen (si es una foto, archívala en doc/historico/)");
 });
 
+// D-02 (auditoría del constructor de olivos, 2026-11-15): en los contratos y los ADR, las rutas de código citadas (apps/…, tuberia/…, pruebas/…,
+// contratos/…, con cualquier extensión o una carpeta), también las del motor legado, existen. Lo de antes se dice «antes …» (hasta 60 caracteres
+// por delante) o va en HISTORICO_RUTAS con su motivo: un contrato es una interfaz viva y quien lo sigue no debe buscar un fichero que no está.
+const HISTORICO_RUTAS = {
+  "doc/adr/0007-suelo-abierto-de-la-ortofoto.md": "describe el suelo de entonces, en el motor legado (borrado en A3-8c, ADR-0033)",
+  "doc/adr/0008-ficheros-de-apoyo-json-jpg.md": "superado: la salida artefacto se retiró (ADR-0021)",
+  "doc/adr/0010-monorepo-y-build-con-vite.md": "superado por ADR-0033: cuenta el borrado de apps/web/motor/",
+  "doc/adr/0021-se-retira-la-salida-artefacto-y-la-escena-de-siempre.md": "decide borrar justo esos ficheros",
+  "doc/adr/0033-mundos.md": "decide el paso de apps/web/motor/ a apps/web/src/",
+};
+test("D-02: las rutas de código citadas en contratos/ y doc/adr/ existen (lo de antes, con «antes» o en HISTORICO_RUTAS)", () => {
+  const re = /`((?:apps|tuberia|pruebas|contratos)\/[A-Za-z0-9_./\-*]*)`|\(((?:apps|tuberia|pruebas|contratos)\/[A-Za-z0-9_./\-]+\.[a-z]+)[,;)]/g, mal = [];
+  const fich = TODOS.filter(f => (f.startsWith("contratos/") && /\.(md|json)$/.test(f)) || /^doc\/adr\/\d{4}-.*\.md$/.test(f));
+  assert.ok(fich.length > 30, "pocos contratos y ADR: " + fich.length);
+  for (const f of fich) {
+    if (HISTORICO_RUTAS[f]) continue;
+    const s = lee(f);
+    for (const m of s.matchAll(re)) {
+      const r = (m[1] || m[2]).replace(/[.,;:]+$/, "");
+      if (r.includes("*") || r.includes("<") || /(^|\/)salida(s)?\//.test(r) || /node_modules|\/dist\//.test(r)) continue;   // patrones y generados
+      if (existe(r) || existe(r.replace(/\/$/, ""))) continue;
+      if (/\bantes\b/i.test(s.slice(Math.max(0, m.index - 60), m.index))) continue;   // «antes `apps/web/motor/…`»: lo de su momento
+      mal.push(f + " cita " + r);
+    }
+  }
+  assert.deepStrictEqual(mal, [], "rutas de código que no existen en contratos o ADR: corrígelas, di «antes …» si es historia, o (un ADR que trata de ello) ponlo en HISTORICO_RUTAS");
+});
+
 test("ADR: una fila de índice por fichero, en orden, con estado, y cada ADR tiene Estado y Fecha", () => {
   const adrs = TODOS.filter(f => /^doc\/adr\/\d{4}-.*\.md$/.test(f)).sort();
   assert.ok(adrs.length >= 8, "se esperaban ≥ 8 ADR y hay " + adrs.length);
