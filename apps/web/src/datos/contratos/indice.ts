@@ -54,7 +54,7 @@ export interface Indice {
   ][];
   copas_id?: number[];
   copas_tipo?: number[];
-  copas_tipo_catalogo?: string;   // D-03: el catálogo de los números de copas_tipo («olivos», el del constructor, si falta)
+  copas_tipo_catalogo?: string;
   copas_semilla?: (number | null)[];
   copas_param?: (null | [number, number, number, number, number, number, number, number])[];
   marcados: [number, number, number, number][];

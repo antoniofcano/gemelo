@@ -87,10 +87,13 @@ test("la entrada del generador es la del motor: mismo semillaDeCopa, mismo param
   // A3-8c: el factor de los olivos del constructor es FactorR8.E.gen (mundos/exterior/factor-r8.ts; antes, FACTOR_R8_GEN de 01_datos), sin URL ni configuración
   const gen = require("./_mundos").creaFactorR8({ busqueda: "", D: {}, param: (r, codigo) => codigo }).E.gen;
   assert.strictEqual(gen, P.FACTOR_R8_GEN, "FACTOR_R8_GEN de la oficina = el del motor (FactorR8.E.gen)");
-  assert.match(require("./_fuente").fuenteMotor("07ab_generados.js") /* A3-2a */, new RegExp('M\\.parametrosDeCopa\\(raw, D\\.copas_param \\? D\\.copas_param\\[c\\.i\\] : null, "' + P.TIPO_MOTOR + '"'), "el tipo del motor es el de la oficina");
+  // D-03: el tipo es el del registro (tipoDeRegistro, catálogo «olivos») o, sin él, TIPO_MOTOR, igual en el motor y en la oficina
+  const fm = require("./_fuente").fuenteMotor("07ab_generados.js") /* A3-2a */;
+  assert.ok(fm.includes('(M.tipoDeRegistro && M.tipoDeRegistro(D, c.i)) || "' + P.TIPO_MOTOR + '"') && /M\.parametrosDeCopa\(raw, D\.copas_param \? D\.copas_param\[c\.i\] : null, tipo,/.test(fm), "el tipo del motor es el de la oficina");
+  assert.strictEqual(P.entradaDeOlivo(Object.assign({}, INDICE, { copas_tipo: [0, -1, -1] }), 0, "envero").tipo, "planton", "con copas_tipo del catálogo «olivos», la oficina usa ese tipo, como el motor");
   for (const i of [0, 1, 2]) {
     const e = P.entradaDeOlivo(INDICE, i, "envero"), s = C.semillaDeCopa(INDICE.copas[i], INDICE.copas_id[i], INDICE.centro_utm, undefined);
-    const p = C.parametrosDeCopa(INDICE.copas[i], INDICE.copas_param[i], P.TIPO_MOTOR, { factorR8: P.FACTOR_R8_GEN });
+    const p = C.parametrosDeCopa(INDICE.copas[i], INDICE.copas_param[i], C.tipoDeRegistro(INDICE, i) || P.TIPO_MOTOR, { factorR8: P.FACTOR_R8_GEN });
     assert.deepStrictEqual(e, { tipo: p.tipo, parametros: p.parametros, epoca: "envero", semilla: s.semilla, provisional: !!s.provisional });
   }
   assert.strictEqual(P.entradaDeOlivo(INDICE, 0, "envero").semilla, 101, "la semilla es el id (ADR-0012)");

@@ -2,7 +2,7 @@
  * Regenerar: node apps/web/herramientas/genera_tipos.mjs (el guardián tipos_contratos lo comprueba). */
 
 /**
- * Aves de GBIF por especie y mes en el cuadro de 10 km de una finca (EV-1g, v 1). Lo escribe tuberia/biodiversidad/gbif_aves.py (fuera del repo) y se publica junto al índice de la finca como biodiversidad.json; lo lee el motor (apps/web/motor/52_aves_mes.js). DEDUCIDO: registros de GBIF en 10 km, no observado en la finca. Solo licencias CC0, CC BY y CC BY-SA (decisión 198). No lleva el centro ni el cuadro: solo su lado.
+ * Aves de GBIF por especie y mes en el cuadro de 10 km de una finca (EV-1g, v 1). Lo escribe tuberia/biodiversidad/gbif_aves.py (fuera del repo) y se publica junto al índice de la finca como biodiversidad.json; lo lee el motor (apps/web/src/mundos/exterior/aves-mes.ts). DEDUCIDO: registros de GBIF en 10 km, no observado en la finca. Solo licencias CC0, CC BY y CC BY-SA (decisión 198). No lleva el centro ni el cuadro: solo su lado.
  */
 export interface Biodiversidad {
   v: 1;
