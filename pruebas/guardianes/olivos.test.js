@@ -69,14 +69,40 @@ test("el generador del catálogo sintético es determinista: da los mismos bytes
   assert.ok(total < 100 * 1024, "el catálogo sintético pesa " + total + " B: debe seguir siendo pequeño");
 });
 
+// D-03 (auditoría del constructor, 2026-11-15): copas_tipo tenía tres lecturas (el tileset, como ID_TIPO del constructor; los niveles 1-2, como id del
+// catálogo de glb cargado; los olivos generados, ninguna: siempre centenario3). Ahora el índice dice su catálogo (copas_tipo_catalogo, «olivos» si falta)
+// y los tres leen igual: tipoDeRegistro/catalogoDeTipos de apps/web/olivo/copas.js (generados.ts y tuberia/tiles3d) y la misma regla en orto-tinte.ts
+// (cat de cada copa) con Catalogo.id() en arboles.ts. La parte del tileset la prueba tiles3d.test.js (catalogoTipos).
+test("D-03: copas_tipo tiene una sola lectura (copas.js), y el motor la usa en los generados y en los niveles 1-2", async () => {
+  const C = await import(require("url").pathToFileURL(path.join(RAIZ, "apps", "web", "olivo", "copas.js")).href);
+  const { CATALOGO } = await import(require("url").pathToFileURL(path.join(RAIZ, "apps", "web", "olivo", "catalogo.js")).href);
+  const I = { copas_tipo: [6, 0, -1, 99] };
+  assert.strictEqual(C.catalogoDeTipos(I), CATALOGO, "sin copas_tipo_catalogo, «olivos»");
+  assert.deepStrictEqual([0, 1, 2, 3].map(i => C.tipoDeRegistro(I, i)), ["centenario3", "planton", null, null]);
+  const F = Object.assign({ copas_tipo_catalogo: CAT.id }, I);
+  assert.strictEqual(C.catalogoDeTipos(F), CAT.id);
+  assert.deepStrictEqual([0, 1, 2, 3].map(i => C.tipoDeRegistro(F, i)), [null, null, null, null], "con un catálogo de glb, el constructor no toma la forma de copas_tipo");
+  const { fuenteMotor } = require("./_fuente");
+  assert.match(fuenteMotor("07ab_generados.js"), /M\.tipoDeRegistro\(D, c\.i\)/, "los olivos generados deben tomar el tipo con tipoDeRegistro");
+  const ot = lee("apps/web/src/mundos/exterior/orto-tinte.ts");
+  assert.ok(ot.includes('D.copas_tipo_catalogo) || "' + CATALOGO + '"'), "orto-tinte.ts: el catálogo por defecto de las copas debe ser «" + CATALOGO + "», como catalogoDeTipos");
+  assert.match(lee("apps/web/src/mundos/exterior/arboles.ts"), /c\.cat === Catalogo\.id\(\)/, "los niveles 1-2 solo dibujan el modelo de un tipo si el catálogo cargado es el del índice");
+  const { creaCopas } = await import(require("url").pathToFileURL(path.join(RAIZ, "apps", "web", "src", "mundos", "exterior", "orto-tinte.ts")).href).catch(() => ({}));
+  if (creaCopas) {
+    const D = { copas: [[0, 0, 4, [1, 1, 1, 1, 1, 1, 1, 1], 1]], copas_tipo: [0], marcados: [] };
+    assert.strictEqual(creaCopas(D).copas[0].cat, CATALOGO); assert.strictEqual(creaCopas(Object.assign({ copas_tipo_catalogo: CAT.id }, D)).copas[0].cat, CAT.id);
+  }
+});
+
 test("el motor usa el mismo presupuesto de triángulos que el esquema (07a_catalogo.js, PRES_TRI y TOLERANCIA)", () => {
   const s = require("./_fuente").fuenteMotor("07a_catalogo.js");   // A3-2a: talón + catalogo.ts
   assert.match(s, new RegExp("PRES_TRI = \\[" + ["L0", "L1", "L2"].map(n => PRES.objetivo[n]).join(", ") + "\\], TOLERANCIA = " + PRES.tolerancia));
 });
 
-test("los tipos del registro del fixture (copas_tipo) son −1 o tipos del catálogo sintético", () => {
+test("los tipos del registro del fixture (copas_tipo) son −1 o tipos del catálogo sintético, y el índice lo dice (copas_tipo_catalogo, D-03)", () => {
   const FX = fixture({ sinTileset: true }), I = JSON.parse(fs.readFileSync(path.join(FX, "hituelo", "indice.json"), "utf8")), ids = new Set(CAT.tipos.map(t => t.id).concat([-1]));
   assert.ok(I.copas_tipo, "el fixture de Hituelo debe llevar copas_tipo");
+  assert.strictEqual(I.copas_tipo_catalogo, CAT.id, "el fixture debe decir que sus copas_tipo son del catálogo sintético (si no, el 0 se leería como olivos:planton)");
   assert.deepStrictEqual(I.copas_tipo.filter(t => !ids.has(t)), []);
 });
 

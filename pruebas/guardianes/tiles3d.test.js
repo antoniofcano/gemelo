@@ -171,6 +171,15 @@ test("_TIPO sin --catalogo: los nombres del catálogo «olivos» (tablaLocal de 
   assert.deepStrictEqual(gen.tablaTipos({}).tabla, { "-1": null }, "sin copas_tipo, solo −1");
 });
 
+test("D-03: el catálogo de _TIPO es el que nombra el índice (copas_tipo_catalogo): con uno de glb exige su catalogo.json y no lee los números como «olivos»", async t => {
+  if (SALTO) return t.skip(SALTO);
+  const CAT = path.join(RAIZ, "modelos", "olivos", "fixture", "catalogo.json"), I = { copas_tipo: [0, -1], copas_tipo_catalogo: "fixture-sintetico" };
+  assert.throws(() => gen.tablaTipos(I), /hace falta su catalogo\.json/, "sin --catalogo, un índice de glb no se nombra con «olivos» en silencio");
+  assert.deepStrictEqual(gen.tablaTipos(I, gen.catalogoTipos(CAT, I)).tabla, { "-1": null, "0": "fixture-sintetico:0" });
+  assert.throws(() => gen.catalogoTipos(CAT, { copas_tipo: [0] }), /copas_tipo es del catálogo «olivos»/, "un --catalogo que no es el del índice es un error");
+  assert.deepStrictEqual(gen.tablaTipos({ copas_tipo: [-1, -1], copas_tipo_catalogo: "fixture-sintetico" }).tabla, { "-1": null }, "sin tipos asignados no hace falta el catálogo");
+});
+
 test("planArbol: unos datos que cruzan una línea gruesa de la rejilla UTM no suben la raíz (antes, 32.768 m en Hituelo)", t => {
   if (SALTO) return t.skip(SALTO);
   // dos teselas de 256 m a los dos lados de N = 16.384 (múltiplo de 16.384): la regla vieja daba una raíz de 32.768 m

@@ -102,6 +102,7 @@ def indice(finca, copas, tes):
         # Solo Hituelo las lleva: Cerro conserva el formato de antes y las dos cargas deben dibujar lo mismo (el catálogo por defecto no conoce el tipo 0).
         I["copas_id"] = [1000 + 3 * i for i in range(len(copas))]
         I["copas_tipo"] = [0 if i % 7 == 0 else -1 for i in range(len(copas))]
+        I["copas_tipo_catalogo"] = "fixture-sintetico"   # D-03: esos 0 son del catálogo sintético de glb (modelos/olivos/fixture/), no olivos:planton
         # copas_semilla (ADR-0017): la semilla guardada; aquí la del primer id, salvo una copa que la «heredó» de una exportación anterior
         I["copas_semilla"] = [I["copas_id"][i] if i != 4 else 2 ** 31 + 4242 for i in range(len(copas))]
         # copas_param (ADR-0017, contratos/olivo-generado.md): SINTÉTICO, derivado de h y r8 del propio fixture (r8 es radio); una fila de cada 11 sin medir (null)

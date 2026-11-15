@@ -5,7 +5,7 @@
 //   (sin --entrada se lee GEMELO_DATOS, que apunta al indice.json: los datos reales viven fuera del repo, regla 4 de CLAUDE.md)
 //        [--hoja 128] [--celdas 128] [--textura 256] [--ondulacion 0] [--error-hoja 0.05] [--niveles-olivo 3]
 //        [--nivel-util <m>]   (lado de los hijos de la raíz; por defecto hoja·2^(niveles-olivo − 1), el nivel más alto con olivos)
-//        [--catalogo <catalogo.json del contrato olivos-tipo>]   (solo para el fixture: sin él, copas_tipo son ids del catálogo «olivos»)
+//        [--catalogo <catalogo.json del contrato olivos-tipo>]   (el del catálogo que nombra copas_tipo_catalogo del índice, si no es «olivos»: el fixture)
 //
 // Librerías (package.json): @gltf-transform (escribir glb y EXT_mesh_gpu_instancing), meshoptimizer (simplificar el terreno con
 // error absoluto y bordes bloqueados), sharp (mosaico de ortofoto, recortes y remuestreo Lanczos, JPEG), three (geometrías de los
@@ -26,6 +26,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { transformRaiz } from "./marco.mjs";
 import { CATALOGO, tablaLocal } from "../../apps/web/olivo/catalogo.js";
 import { tipoDeId } from "../../apps/web/olivo/tipos.js";
+import { catalogoDeTipos } from "../../apps/web/olivo/copas.js";
 
 export const VERSION_GENERADOR = "0.3.0";
 
@@ -146,19 +147,26 @@ export function huella(ids) {
   ids.forEach((v, k) => { if (!Number.isInteger(v) || v < 0 || v >= 2 ** 32) throw new Error("id fuera de [0, 2^32): " + v); b.writeUInt32LE(v, k * 4); });
   return "sha256:" + crypto.createHash("sha256").update(b).digest("hex");
 }
-/** Nombre de catálogo de un id de copas_tipo, o null si el catálogo no lo conoce. Por defecto, el catálogo «olivos» del constructor
- *  (contratos/olivo-generado.md §1.1): id = ID_TIPO de apps/web/olivo/tipos.js, nombre = tablaLocal() de apps/web/olivo/catalogo.js.
- *  Con la ruta de un catalogo.json del contrato olivos-tipo (solo el sintético de pruebas, modelos/olivos/fixture/), «<id del
- *  catálogo>:<id del tipo>»: así el tipo 0 del fixture se llama «fixture-sintetico:0» y no se confunde con olivos:planton. */
-export function catalogoTipos(ruta) {
-  if (!ruta) return { id: CATALOGO, nombre: t => { const k = tipoDeId(t); return k ? tablaLocal([k])[0] : null; } };
-  const C = JSON.parse(fs.readFileSync(ruta, "utf8")), ids = new Set(C.tipos.map(t => t.id));
+/** Nombre de catálogo de un id de copas_tipo, o null si el catálogo no lo conoce. El catálogo lo dice el índice (copas_tipo_catalogo; D-03, la misma
+ *  lectura que el motor: catalogoDeTipos de apps/web/olivo/copas.js): «olivos» (el del constructor, contratos/olivo-generado.md §1.1; id = ID_TIPO
+ *  de tipos.js, nombre = tablaLocal() de catalogo.js) si no lo dice; si nombra un catálogo de glb del contrato olivos-tipo (el sintético de pruebas),
+ *  hace falta su catalogo.json (`ruta`, --catalogo) y los nombres son «<id del catálogo>:<id del tipo>» (el tipo 0 del fixture, «fixture-sintetico:0»).
+ *  Un catalogo.json que no es el que dice el índice, o un índice con tipos de otro catálogo sin el suyo, es un error (antes se leía en silencio con otro). */
+export function catalogoTipos(ruta, I) {
+  const quiere = catalogoDeTipos(I), hay = !!(I && I.copas_tipo && I.copas_tipo.some(t => t >= 0));
+  const C = ruta ? JSON.parse(fs.readFileSync(ruta, "utf8")) : null;
+  if (C && C.id !== quiere && (hay || quiere !== CATALOGO)) throw new Error("--catalogo es «" + C.id + "» y copas_tipo es del catálogo «" + quiere + "» (copas_tipo_catalogo del índice)");
+  if (quiere === CATALOGO || !C) {
+    if (quiere !== CATALOGO && hay) throw new Error("copas_tipo es del catálogo «" + quiere + "» (copas_tipo_catalogo): hace falta su catalogo.json (--catalogo)");
+    return { id: CATALOGO, nombre: t => { const k = tipoDeId(t); return k ? tablaLocal([k])[0] : null; } };
+  }
+  const ids = new Set(C.tipos.map(t => t.id));
   return { id: C.id, nombre: t => ids.has(t) ? C.id + ":" + t : null };
 }
 /** Tabla de tipos del tileset: número local → nombre del tipo de catálogo. −1 = sin asignar (null). Los números locales 0..m−1 se
  *  dan a los ids de copas_tipo presentes que el catálogo conoce, de menor a mayor; un id que no conoce va a −1 (como en el motor) y
  *  se cuenta en «desconocidos». */
-export function tablaTipos(I, cat = catalogoTipos()) {
+export function tablaTipos(I, cat = catalogoTipos(undefined, I)) {
   const vistos = [...new Set((I.copas_tipo || []).filter(t => t >= 0))].sort((a, b) => a - b);
   const presentes = vistos.filter(t => cat.nombre(t) !== null), desconocidos = vistos.filter(t => cat.nombre(t) === null);
   const tabla = { "-1": null }, local = new Map([[-1, -1]]);
@@ -315,7 +323,7 @@ export async function genera(op) {
   await MeshoptSimplifier.ready;
   const { I, teselas } = leeContrato(op.entrada), R = relieve(I, teselas), TS = I.ts, [CX, CY] = I.centro_utm;
   const plan = planArbol(teselas, TS, I.centro_utm, op.hoja, op.nivelUtil || op.hoja * 2 ** (op.nivelesOlivo - 1)), { S, profMax } = plan;
-  const orto = await ortofoto(I, teselas), protos = prototipos(), tipos = tablaTipos(I, catalogoTipos(op.catalogo)), ids = idsDe(I);
+  const orto = await ortofoto(I, teselas), protos = prototipos(), tipos = tablaTipos(I, catalogoTipos(op.catalogo, I)), ids = idsDe(I);
   const olivos = I.copas.map((c, id) => ({ c, id })).filter(o => esOlivo(o.c)).map(({ c, id }) => {
     const s = silueta(c), col = orto.color(c[0], c[1]), vf = 0.88 + 0.26 * hash(id * 3.7);
     const lin = v => Math.pow(v, 2.2);                                          // glTF guarda color lineal

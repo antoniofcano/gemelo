@@ -241,7 +241,7 @@ export function creaArboles(d: DepsArboles) {
       c.niv = l1 ? 1 : 2; firma = (Math.imul(firma, 31) + c.i * 2 + (l1 ? 1 : 0)) | 0;   // L1-11
       c3[0] = c.cr; c3[1] = c.cg; c3[2] = c.cb; aviva(c3, c.x, c.y);   // el tinte NDVI, si está activo, también llega de lejos
       tc.setRGB(c3[0] * 0.74 * c.vf, c3[1] * 0.88 * c.vf, c3[2] * 0.64 * c.vf);   // un verde plateado algo distinto en cada olivo
-      var X = c.tipo !== -1 ? extra[c.tipo] : null;   // olivo con un tipo del catálogo cargado (y piezas en este nivel); si no, el de siempre
+      var X = c.tipo !== -1 && c.cat === Catalogo.id() ? extra[c.tipo] : null;   // olivo con un tipo del catálogo cargado, si es el que nombra el índice (D-03), y piezas en este nivel; si no, el de siempre
       if (X && (l1 ? X.m1 : X.m2).length) { colocaModelo(X, c, l1, gz, tc); if (l1) a1++; else a2++; continue; }
       var sx = c.rx, sz = c.rz;
       e[0] = cs * sx; e[1] = 0; e[2] = -sn * sx; e[3] = 0; e[4] = 0; e[5] = H; e[6] = 0; e[7] = 0; e[8] = sn * sz; e[9] = 0; e[10] = cs * sz; e[11] = 0; e[12] = c.x; e[13] = gz + cb * Estado.exag; e[14] = -c.y; e[15] = 1;

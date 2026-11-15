@@ -103,7 +103,7 @@ export const DEF_TRONCO_L1: DefMaterial<OpcCatalogo> = {
 export function creaCatalogo(d: DepsCatalogo) {
   const THREE = d.THREE, hash = d.hash, parcheTiempo = d.parcheTiempo, Materiales = d.Materiales;
   var SIN = -1, VARIANTES = [0, 4, 2], PRES_TRI = [800, 170, 30], TOLERANCIA = 0.2, NIV = ["L0", "L1", "L2"];   // presupuesto por modelo = contratos/olivos-tipo.schema.json
-  var proc: Record<string, Pieza[]> = {}, modelos: Record<string, T3> = {}, oyentes: ((t: number[]) => void)[] = [], avisos: string[] = [];
+  var proc: Record<string, Pieza[]> = {}, modelos: Record<string, T3> = {}, idCatalogo: string | null = null, oyentes: ((t: number[]) => void)[] = [], avisos: string[] = [];
 
   // ----- las formas: una copa en vaso (abierta por abajo, cerrada con un casquete oscuro), 4 variantes de lóbulos, y un tronco de 2 o 3 pies
   function copaGeo(seed: number, anillos: number, lados: number, lobulos: number): T3 {
@@ -201,6 +201,7 @@ export function creaCatalogo(d: DepsCatalogo) {
   function instala(desc: T3, cargador: Cargador, base?: string): Promise<number[]> {
     if (typeof cargador !== "function") return Promise.reject(new Error("Catalogo.instala: falta la función cargador(url, THREE)"));
     var pref = base || "";
+    idCatalogo = typeof desc.id === "string" ? desc.id : null;   // D-03: los números de copas_tipo solo valen con el catálogo que nombra el índice
     return Promise.all((desc.tipos || []).map(function (tp: T3) {
       return Promise.all(NIV.map(function (nv) {
         var f = tp.niveles && tp.niveles[nv]; if (!f) return [];
@@ -230,7 +231,7 @@ export function creaCatalogo(d: DepsCatalogo) {
     if (habia) avisa();
     return n;
   }
-  return { SIN: SIN, PRES_TRI: PRES_TRI, tipos: tipos, tiene: tiene, variantes: variantes, geometria: geometria, triangulos: triangulos, info: info, instala: instala, retira: retira, alCambiar: alCambiar, avisos: function () { return avisos.slice(); }, libera: libera };
+  return { SIN: SIN, PRES_TRI: PRES_TRI, id: function (): string | null { return idCatalogo; }, tipos: tipos, tiene: tiene, variantes: variantes, geometria: geometria, triangulos: triangulos, info: info, instala: instala, retira: retira, alCambiar: alCambiar, avisos: function () { return avisos.slice(); }, libera: libera };
 }
 export type Catalogo = ReturnType<typeof creaCatalogo>;
 

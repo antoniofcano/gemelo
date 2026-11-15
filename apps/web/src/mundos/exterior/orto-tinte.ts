@@ -41,13 +41,15 @@ export type TinteOrto = ReturnType<typeof creaTinteOrto>;
 
 /** Una fila de D.copas: [x, y, h, r8 (8 radios), parcela+1] (CONTRATOS §1.1). */
 export type FilaCopa = [number, number, number, number[], number];
-export interface Copa { i: number; id: number; tipo: number; x: number; y: number; h: number; perfil: number[]; dentro: boolean; parc: number; oliv: boolean }
+export interface Copa { i: number; id: number; tipo: number; cat: string; x: number; y: number; h: number; perfil: number[]; dentro: boolean; parc: number; oliv: boolean }
 export interface Marca { i: number; x: number; y: number; par: unknown; parc: unknown }
 
 // el registro de árboles: copas[i] = [x, y, h, r8, parcela+1] y, en columnas paralelas opcionales (CONTRATOS §1.1), copas_id[i] (id estable) y copas_tipo[i]
-// (olivo-tipo del catálogo, ADR-0012); sin ellas, −1: sin id y sin tipo (se dibuja como siempre)
-export function creaCopas(D: { copas: FilaCopa[]; copas_id?: number[] | null; copas_tipo?: number[] | null; marcados: [number, number, unknown, unknown][] }) {
-  var copas: Copa[] = D.copas.map(function (c, i) { var rm = c[3].reduce(function (a, b) { return a + b; }, 0) / 8; return { i: i, id: D.copas_id ? D.copas_id[i]! : -1, tipo: D.copas_tipo ? D.copas_tipo[i]! : -1, x: c[0], y: c[1], h: c[2], perfil: c[3], dentro: c[4] > 0, parc: c[4] - 1, oliv: !(c[2] > 8 || (c[2] > 6.5 && rm < 2.2)) }; });
+// (olivo-tipo del catálogo, ADR-0012); sin ellas, −1: sin id y sin tipo (se dibuja como siempre). `cat`: el catálogo de ese número, copas_tipo_catalogo o «olivos»
+// (D-03: la misma regla que catalogoDeTipos de apps/web/olivo/copas.js, que el exterior no importa; lo vigila pruebas/guardianes/olivos.test.js)
+export function creaCopas(D: { copas: FilaCopa[]; copas_id?: number[] | null; copas_tipo?: number[] | null; copas_tipo_catalogo?: string | null; marcados: [number, number, unknown, unknown][] }) {
+  var cat = (typeof D.copas_tipo_catalogo === "string" && D.copas_tipo_catalogo) || "olivos";
+  var copas: Copa[] = D.copas.map(function (c, i) { var rm = c[3].reduce(function (a, b) { return a + b; }, 0) / 8; return { i: i, id: D.copas_id ? D.copas_id[i]! : -1, tipo: D.copas_tipo ? D.copas_tipo[i]! : -1, cat: cat, x: c[0], y: c[1], h: c[2], perfil: c[3], dentro: c[4] > 0, parc: c[4] - 1, oliv: !(c[2] > 8 || (c[2] > 6.5 && rm < 2.2)) }; });
   var cIn = copas.filter(function (c) { return c.dentro && c.oliv; });
   var marc: Marca[] = D.marcados.map(function (m, i) { return { i: i, x: m[0], y: m[1], par: m[2], parc: m[3] }; });
   var med = function (a: number[]) { var s = a.slice().sort(function (p, q) { return p - q; }); return s.length ? s[Math.floor(s.length / 2)]! : 0; };

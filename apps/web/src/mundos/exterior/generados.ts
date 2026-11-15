@@ -216,7 +216,9 @@ export function creaGenerados(d: DepsGenerados) {
   // (matrizDe): el mismo olivo tiene la misma anchura y altura en todos los escalones. Se guarda en el olivo (no cambia con la época ni el nivel).
   function parametrosDe(c: A) {
     if (c.pgen && c.pgen.f === d.factorR8Gen()) return c.pgen.p;
-    var raw: A = D.copas[c.i] || [c.x, c.y, c.h, c.perfil], p: A = M.parametrosDeCopa(raw, D.copas_param ? D.copas_param[c.i] : null, "centenario3", { factorR8: d.factorR8Gen() });
+    // D-03: la forma del tipo del registro si es del catálogo «olivos» (tipoDeRegistro, la misma lectura que el tileset); si no (sin tipo o de otro catálogo), centenario de 3 pies
+    var tipo: A = (M.tipoDeRegistro && M.tipoDeRegistro(D, c.i)) || "centenario3";
+    var raw: A = D.copas[c.i] || [c.x, c.y, c.h, c.perfil], p: A = M.parametrosDeCopa(raw, D.copas_param ? D.copas_param[c.i] : null, tipo, { factorR8: d.factorR8Gen() });
     c.pgen = { f: d.factorR8Gen(), p: p }; return p;
   }
   function topeCacheMem() {

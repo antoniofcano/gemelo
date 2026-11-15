@@ -25,7 +25,7 @@ import { geosTarjeta } from "./tarjetas.js";
 export { GEN_VERSION } from "./version.js";
 export { TIPOS, ESTADOS, RANGOS, ID_TIPO, TIPO_DE_ID, tipoDeId, bbchAEpoca } from "./tipos.js";
 export { rngFrom, semillaDeId } from "./azar.js";
-export { semillaDeCopa, parametrosDeCopa, CAMPOS_PARAM, ORIGEN_TRONCO } from "./copas.js";
+export { semillaDeCopa, parametrosDeCopa, CAMPOS_PARAM, ORIGEN_TRONCO, catalogoDeTipos, numeroDeTipo, tipoDeRegistro } from "./copas.js";
 export { CATALOGO, NOMBRE_TIPO, tipoDeNombre, tablaLocal } from "./catalogo.js";
 export { huella, huellaNiveles, huellaEstructura, diferenciaMax } from "./huella.js";
 export { creaMateriales, creaMaterialesG, MATERIALES, encadena, CALIBRACION_LINEAL } from "./materiales.js";
