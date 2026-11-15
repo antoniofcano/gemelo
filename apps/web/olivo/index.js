@@ -17,7 +17,7 @@
 // cuando el gemelo sube de versión. Lo comprueba pruebas/guardianes/olivo.test.js.
 import * as G from "three-gen";
 import { recetaG as recetaGN, receta as recetaN, geosCompartidas, resuelve, triangulos } from "./nucleo.js";
-import { montaOlivo as montaN, triangulosDe, liberaOlivo } from "./montaje.js";
+import { montaOlivo as montaN, triangulosDe, liberaOlivo, liberaCompartidas } from "./montaje.js";
 import { aNivel, aNivelG, NIVELES, triangulosNivel, llamadasNivel } from "./niveles.js";
 import { creaFabrica, aRebanadas } from "./fabrica.js";
 import { geosTarjeta } from "./tarjetas.js";
@@ -31,14 +31,14 @@ export { huella, huellaNiveles, huellaEstructura, diferenciaMax } from "./huella
 export { creaMateriales, creaMaterialesG, MATERIALES, encadena, CALIBRACION_LINEAL } from "./materiales.js";
 export { cargaFotos, FOTOS, dibujaAtlasTarjetas, coberturaCelda, mipsConCobertura, mipsConCoberturaG } from "./texturas.js";
 export { RACIMOS, ATLAS, PHI_RAMITA, PHI_CELDA, TRI_TARJETA, geosTarjeta, racimos, tarjetasDe, tarjetasDeG } from "./tarjetas.js";
-export { hornear, glb } from "./hornear.js";
+export { hornear, glb, liberaHorneado } from "./hornear.js";
 export { creaCache, claveReceta, entradaCanonica, bytesReceta, CACHE_VERSION, PREFIJO_CLAVE } from "./cache.js";
 export { FORMATO as FORMATO_HORNEADO, TOPES as TOPES_HORNEADO, codifica, decodifica, leeCabecera, huellaBytes, verificaHuella, perdida, igualEstructura, codificaManifiestoTesela, decodificaManifiestoTesela } from "./horneado.js";
 export { ORDEN_EPOCAS, tablaDe, epocaDeFecha, siguienteEpoca, validaTabla } from "./epocas.js";
 export { IMPOSTOR, direccionDeVista, octaDeDireccion, vistaContinua, baseDeVista, celdaUV, celdaPixeles, claveImpostor, validaFilaImpostor } from "./impostor.js";
 export { SILUETA, siluetaDe, recortaQuads, mipsCaja, compensa as compensaSilueta, poligonosFijos, envolvente, reduce as reducePoligono, contiene as contienePunto } from "./silueta.js";
 export { revision,uvDelMapa, texturaDeColor, colorLineal } from "./compat.js";
-export { aNivel, aNivelG, NIVELES, triangulosNivel, llamadasNivel, creaFabrica, aRebanadas, triangulosDe, liberaOlivo, resuelve, triangulos };
+export { aNivel, aNivelG, NIVELES, triangulosNivel, llamadasNivel, creaFabrica, aRebanadas, triangulosDe, liberaOlivo, liberaCompartidas, resuelve, triangulos };
 
 /** Las geometrías compartidas (calculadas con three 0.128.0 una vez) y las de las tarjetas de E1/E2 (tarjetas.js, O9b); siempre el mismo objeto */
 let geosTodas = null;

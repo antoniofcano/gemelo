@@ -612,6 +612,7 @@ export function creaGenerados(d: DepsGenerados) {
     if (fabrica) { fabrica.cierra(); fabrica = null; }
     if (mats && typeof mats.libera === "function") mats.libera();
     mats = null;
+    if (M && M.liberaCompartidas) M.liberaCompartidas(THREE);   // C-10: las geometrías compartidas del constructor (las subió el horneado del sustituto de los lejanos)
     prof = null;
     propios.libera();   // los de la fábrica con dueño «olivos-generados»: los del constructor (ya soltados con sus texturas: no se sueltan dos veces) y los dos de profundidad
   }

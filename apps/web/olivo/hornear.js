@@ -44,7 +44,14 @@ export function hornear(THREE, src) {
   return out;
 }
 
-/** glb (ArrayBuffer) del árbol horneado, con el GLTFExporter que pase el anfitrión (`new GLTFExporter()`) */
+/** Suelta lo que creó hornear() (una geometría y un material por malla; las texturas son las del árbol de origen y no se tocan). C-12 */
+export function liberaHorneado(grupo) {
+  grupo.traverse(m => { if (m.isMesh) { m.geometry.dispose(); m.material.dispose(); } });
+}
+
+/** glb (ArrayBuffer) del árbol horneado, con el GLTFExporter que pase el anfitrión (`new GLTFExporter()`); lo horneado se suelta al acabar (C-12) */
 export function glb(THREE, grupo, exportador, opciones) {
-  return exportaGlb(exportador, hornear(THREE, grupo), Object.assign({ binary: true, maxTextureSize: 1024 }, opciones || {}));
+  const h = hornear(THREE, grupo);
+  let p; try { p = Promise.resolve(exportaGlb(exportador, h, Object.assign({ binary: true, maxTextureSize: 1024 }, opciones || {}))); } catch (e) { p = Promise.reject(e); }
+  return p.finally(() => liberaHorneado(h));
 }

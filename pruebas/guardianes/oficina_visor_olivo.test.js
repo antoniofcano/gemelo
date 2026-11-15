@@ -101,6 +101,19 @@ test("cámara: la esfera del olivo cabe en el campo de visión más estrecho; gi
   assert.ok(Math.abs(Math.hypot(...p.map((v, i) => v - e.objetivo[i])) - e.maxDistancia) < 1e-9, "ni se va lejos");
 });
 
+// C-11 (auditoría del constructor, 2026-11-15): dos pon() seguidos (cambiar de olivo deprisa) piden las fotos una vez (unaVez: la promesa se comparte)
+// y solo monta el último (turno). El visor necesita WebGL: aquí se prueba unaVez y que pon() la usa con el turno (lo demás, el recorrido en Chrome)
+test("C-11: pon() pide las fotos una sola vez y solo monta el último olivo aunque lleguen dos seguidos", async t => {
+  assert.match(visor3d, /const mio = \+\+turno;/, "pon() debe tomar su turno");
+  assert.match(visor3d, /fotos = await cargaUna\(\);/, "pon() debe cargar las fotos con cargaUna (una sola carga compartida)");
+  assert.match(visor3d, /if \(!vivo \|\| mio !== turno\) return;/, "pon() debe abandonar si ya no es el último");
+  assert.match(visor3d, /const cargaUna = unaVez\(\(\) => cargaFotos\(FOTOS_URL\)\);/);
+  let V; try { V = await import(pathToFileURL(path.join(RAIZ, "apps", "web", "olivo", "visor.js")).href); } catch (e) { return t.skip("no se puede importar visor.js en Node (" + String(e.message).slice(0, 80) + ")"); }
+  let n = 0; const f = V.unaVez(() => { n++; return new Promise(ok => setTimeout(() => ok({ avisos: [] }), 5)); });
+  const [a, b] = await Promise.all([f(), f()]);
+  assert.strictEqual(n, 1, "dos peticiones a la vez cargan " + n + " veces"); assert.strictEqual(a, b);
+});
+
 test("rótulos: cada celda con su escalón, sus triángulos y sus llamadas; solo los escalones calculados", async () => {
   const P = await importa("visor_olivo_puro.js"), R = await importa("olivo_real_puro.js");
   const filas = R.filasEscalones({ E0: { triangulos: 234567, mallas: 14, ms: 90 }, E1: { triangulos: 50000, mallas: 1, ms: 3 }, E2: { triangulos: 4000, mallas: 9, ms: 2 }, E2VR: { triangulos: 3000, mallas: 9, ms: 2 } });

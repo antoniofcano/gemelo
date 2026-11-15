@@ -17,6 +17,9 @@ const FOTOS_URL = {
 };
 const FONDO = 0xdfe4dc, SUELO = 0x9c7a58;
 
+/** C-11: la función que lanza `fn` una sola vez y da a todos la misma promesa (dos pon() a la vez no cargan las fotos dos veces) */
+export function unaVez(fn) { let p = null; return () => p || (p = fn()); }
+
 /** ¿Hay WebGL en este aparato? (sin crear el renderer) */
 export function hayWebGL() {
   try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2") || c.getContext("webgl")); } catch { return false; }
@@ -53,7 +56,8 @@ export function creaVisor(host, opciones) {
   controles.enableDamping = false;            // sin bucle: cada gesto pide un dibujo
   controles.maxPolarAngle = Math.PI * 0.495;  // no se mete bajo el suelo
 
-  let fotos = null, materiales = null, epocaMat = null, arboles = [], pedido = 0, vivo = true;
+  let fotos = null, materiales = null, epocaMat = null, arboles = [], pedido = 0, vivo = true, turno = 0;
+  const cargaUna = unaVez(() => cargaFotos(FOTOS_URL));
   const pide = () => { if (!pedido && vivo) pedido = requestAnimationFrame(() => { pedido = 0; dibuja(); }); };
   controles.addEventListener("change", pide);
 
@@ -87,8 +91,11 @@ export function creaVisor(host, opciones) {
   const api = {
     /** Pone los escalones de un olivo: recetas { E0: receta, … } (ya calculadas con receta() y aNivel()), su época (materiales) y la cámara */
     async pon(recetas, epoca, enc) {
-      if (!fotos) fotos = await cargaFotos(FOTOS_URL);
-      if (!vivo) return;
+      // C-11: las fotos se piden UNA vez aunque lleguen dos pon() seguidos (antes, la segunda carga dejaba sin cerrar los ImageBitmap de la primera),
+      // y solo monta el último pon(): el de un olivo anterior que acabe tarde no se queda encima
+      const mio = ++turno;
+      if (!fotos) fotos = await cargaUna();
+      if (!vivo || mio !== turno) return;
       quitaArboles();
       if (epocaMat !== epoca) { if (materiales) materiales.libera(); materiales = creaMateriales(THREE, fotos, { epoca }); epocaMat = epoca; }
       for (const [k, r] of Object.entries(recetas)) { const grupo = montaOlivo(THREE, r, materiales); scene.add(grupo); arboles.push({ k, grupo }); }

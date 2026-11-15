@@ -505,4 +505,29 @@ exige(/Generados\.actualiza\(paseando \? pp\.x : fx, paseando \? -pp\.y : fz,/.t
   cr.__G.libera();
 }
 
+// C-10: libera() suelta también las geometrías compartidas del constructor (las de montaOlivo: las sube el horneado del sustituto de los lejanos)
+{
+  const cl = contexto("?olivos=gen");
+  for (let k = 0; k < 20 && cl.__G.estado() === "cargando"; k++) { cl.__G.paso(0.016, 50); await espera(); }
+  const g = cl.__G.lejanos.monta(O.aNivel(O.receta({ tipo: "adulto1", epoca: "envero", semilla: 3 }), "E2"));
+  const comp = new Set(); g.traverse(m => { if (m.geometry && m.geometry.userData.compartida) comp.add(m.geometry); });
+  let sueltas = 0; comp.forEach(x => x.addEventListener("dispose", () => { sueltas++; }));
+  cl.__G.lejanos.libera(g); cl.__G.libera();
+  exige(comp.size > 0 && sueltas === comp.size, "C-10: libera() no suelta las geometrías compartidas (" + sueltas + " de " + comp.size + ")");
+  const g2 = O.montaOlivo(THREE, O.aNivel(O.receta({ tipo: "adulto1", epoca: "envero", semilla: 3 }), "E2"), O.creaMateriales(THREE, null, {}));
+  let nuevas = 0; g2.traverse(m => { if (m.geometry && m.geometry.userData.compartida) { nuevas++; exige(!comp.has(m.geometry), "C-10: tras soltarlas, montar otra vez reutiliza una geometría soltada"); } });
+  exige(nuevas > 0, "C-10: el árbol montado otra vez no tiene geometrías compartidas");
+}
+
+// C-12: glb() suelta lo que hornea (una geometría y un material por malla) cuando el exportador acaba, también si falla
+{
+  const g = O.montaOlivo(THREE, O.aNivel(O.receta({ tipo: "planton", epoca: "envero", semilla: 1 }), "E2"), O.creaMateriales(THREE, null, {}));
+  for (const falla of [false, true]) {
+    let horneado = null, sueltas = 0, total = 0;
+    const exportador = { parseAsync: obj => { horneado = obj; obj.traverse(m => { if (m.isMesh) { total += 2; m.geometry.addEventListener("dispose", () => sueltas++); m.material.addEventListener("dispose", () => sueltas++); } }); return falla ? Promise.reject(new Error("exportador de prueba")) : Promise.resolve(new ArrayBuffer(8)); } };
+    await O.glb(THREE, g, exportador).catch(() => {});
+    exige(horneado && total > 0 && sueltas === total, "C-12: glb()" + (falla ? " con el exportador que falla" : "") + " no suelta lo horneado (" + sueltas + " de " + total + ")");
+  }
+}
+
 console.log(JSON.stringify({ mal, diag }));
