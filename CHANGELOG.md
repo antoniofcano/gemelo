@@ -339,6 +339,15 @@ Formato [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado 
 
 
 ### Corregido
+- Constructor de olivos (auditoría del 2026-11-15: 0 críticos, 0 altos, 7 medios y 14 bajos, arreglados salvo D-05, que espera la decisión 240):
+  - Olivos generados de cerca (E1 y E2): ya se iluminan del lado del sol; un plano de cada racimo tenía los triángulos al revés. Aspecto nuevo aprobado por Antonio. La calibración de color 0,3 se volvió a medir y se mantiene. La versión de la caché pasa a 3: lo horneado viejo se descarta y el hornero lo rehace.
+  - Si el trabajador de recetas se cuelga, los olivos siguen a rebanadas y se avisa, en vez de quedarse parados.
+  - Los materiales se preparan a rebanadas por la cola: la tarea más larga baja de 103-270 ms a menos de 11 ms (SwiftShader).
+  - `copas_tipo` se lee igual en el motor, la oficina y el tileset, con `copas_tipo_catalogo` en el índice.
+  - La ficha dice cuándo la altura o la copa medidas se dibujan recortadas.
+  - Las rutas citadas en los contratos y ADR existen, y lo vigila un guardián.
+  - La puerta avisa en rojo si no ha comprobado el constructor.
+  - Visto en Chrome sin pantalla; GPU real, iPhone y Quest no probados.
 - Puerta pesada del 2026-11-15:
   - Visita guiada: la palabra vence a los 2 min aunque su temporizador salte 1 ms antes de su hora; antes podía no vencer nunca.
   - Expulsar: la oficina o el guía ven las conexiones que de verdad tenía quien sale; el centinela ya no se adelanta a la ruta.
